@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plantly_inventory/features/home/home_providers.dart';
 import 'package:plantly_inventory/features/home/home_screen.dart';
+import 'package:plantly_inventory/l10n/generated/app_localizations.dart';
 import 'package:plantly_inventory/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -111,7 +112,13 @@ void main() {
   testWidgets('HomeScreen builds without crash', (tester) async {
     await _pumpHome(
       tester,
-      buildTestApp(child: const MaterialApp(home: HomeScreen())),
+      buildTestApp(
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const HomeScreen(),
+        ),
+      ),
     );
     expect(tester.takeException(), isNull);
   });

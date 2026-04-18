@@ -7,6 +7,7 @@ import '../../data/providers.dart';
 import '../../theme/tokens.dart';
 import '../calendar/calendar_screen.dart';
 import '../plant_detail/plant_detail_screen.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../locations/locations_screen.dart';
 import '../search/search_screen.dart';
 import 'add_plant_sheet.dart';
@@ -165,7 +166,9 @@ class _EditToggleBar extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
-                editing ? '✓ Done' : '✎ Customize home',
+                editing
+                    ? '✓ ${AppLocalizations.of(context).doneBtn}'
+                    : '✎ ${AppLocalizations.of(context).customizeHome}',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,

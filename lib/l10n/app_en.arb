@@ -1,0 +1,39 @@
+{
+  "@@locale": "en",
+  "appTitle": "PlantlyInventory",
+  "@appTitle": {
+    "description": "Application title shown in task switcher and app bar"
+  },
+  "goodMorning": "Good morning, {name}",
+  "@goodMorning": {
+    "description": "Greeting on the home screen",
+    "placeholders": {
+      "name": { "type": "String", "example": "Ana" }
+    }
+  },
+  "statOverdue": "Overdue",
+  "statDueToday": "Due today",
+  "statPlants": "Plants",
+  "statSpaces": "Spaces",
+  "customizeHome": "Customize home",
+  "doneBtn": "Done",
+  "snoozeBtn": "Snooze",
+  "saveDraft": "Save draft",
+  "postNow": "Post now",
+  "addPlant": "Add a plant",
+  "nickname": "Nickname",
+  "notesLabel": "Notes",
+  "addPhoto": "Add photo",
+  "allPlants": "All plants",
+  "recentActivity": "Recent activity",
+  "search": "Search plants, notes…",
+  "spaces": "Spaces",
+  "thisWeek": "This week",
+  "rainExpected": "Rain expected",
+  "skipOutdoor": "Skip outdoor watering — we'll reschedule.",
+  "nothingOverdue": "Nothing overdue — nice.",
+  "allCaughtUp": "All caught up for today.",
+  "postOnPlantlyRo": "Post on plantly.ro",
+  "upcomingCare": "Upcoming care",
+  "timeline": "Timeline"
+}

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'features/home/home_providers.dart';
 import 'features/home/home_screen.dart';
+import 'l10n/generated/app_localizations.dart';
 import 'theme/tokens.dart';
 
 void main() {
@@ -22,6 +23,8 @@ class PlantlyApp extends ConsumerWidget {
       themeMode: mode,
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: const HomeScreen(),
     );
   }
