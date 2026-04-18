@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PlantlyInventory — design exploration</title>
+  <link rel="stylesheet" href="../design-system/colors_and_type.css" />
+  <style>
+    html, body { margin: 0; padding: 0; background: #f0eee9; font-family: 'Inter', system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    .tweak-panel {
+      position: fixed; right: 20px; bottom: 20px; z-index: 1000;
+      background: #fff; border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.08);
+      padding: 12px 14px; display: flex; align-items: center; gap: 10px;
+      border: 1px solid #e4e4e7;
+    }
+    .tweak-panel button {
+      border: 1px solid #e4e4e7; background: #fafaf7;
+      padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    .tweak-panel button.active { background: #3D7A5F; color: white; border-color: #3D7A5F; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Edit-mode defaults block -->
+  <script>
+    window.__TWEAKS = /*EDITMODE-BEGIN*/{
+      "theme": "dark"
+    }/*EDITMODE-END*/;
+  </script>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="../components/shared.jsx"></script>
+  <script type="text/babel" src="home-grouped.jsx"></script>
+  <script type="text/babel" src="home-dashboard.jsx"></script>
+  <script type="text/babel" src="home-feed.jsx"></script>
+  <script type="text/babel" src="locations.jsx"></script>
+  <script type="text/babel" src="desktop-home.jsx"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function App() {
+      const [theme, setTheme] = useState(window.__TWEAKS.theme || 'light');
+      const [editMode, setEditMode] = useState(false);
+
+      // Edit-mode protocol
+      useEffect(() => {
+        const onMsg = (e) => {
+          if (e.data?.type === '__activate_edit_mode') setEditMode(true);
+          else if (e.data?.type === '__deactivate_edit_mode') setEditMode(false);
+        };
+        window.addEventListener('message', onMsg);
+        window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+        return () => window.removeEventListener('message', onMsg);
+      }, []);
+
+      const setTheme_ = (t) => {
+        setTheme(t);
+        window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { theme: t } }, '*');
+      };
+
+      const canvasBg = theme === 'dark' ? '#1a1816' : '#f0eee9';
+
+      return (
+        <>
+          <DesignCanvas style={{ background: canvasBg }}>
+            {/* Header block */}
+            <div style={{ padding: '0 60px 40px', maxWidth: 900 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#3D7A5F', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: 8 }}>🌿 PlantlyInventory</div>
+              <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 40, fontWeight: 800, color: 'rgba(40,30,20,0.9)', letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 14 }}>
+                Companion plant tracker for plantly.ro
+              </div>
+              <div style={{ fontSize: 15, color: 'rgba(60,50,40,0.75)', lineHeight: 1.55, maxWidth: 720 }}>
+                Mobile-first, offline-first inventory + care tracking. Per PLAN.md, the app is Flutter
+                (phone · tablet · web · desktop), with plantly.ro as the first export plugin. Below: three
+                home-screen layouts explored side-by-side — <b>Grouped</b> stays closest to the wireframe
+                in PLAN.md; <b>Dashboard</b> foregrounds stats + weather; <b>Feed</b> is a chronological
+                triage view. Plus a Spaces/locations screen and a desktop companion.
+              </div>
+
+              {/* System notes */}
+              <div style={{
+                marginTop: 22, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10,
+                background: 'rgba(255,255,255,0.55)', borderRadius: 14,
+                padding: '14px 16px', border: '1px solid rgba(0,0,0,0.06)',
+                maxWidth: 840,
+              }}>
+                {[
+                  { k: 'Type', v: 'Plus Jakarta Sans · Inter' },
+                  { k: 'Brand', v: '#3D7A5F · #C26A3A' },
+                  { k: 'Radius', v: '10 / 14 / 16 / full' },
+                  { k: 'Density', v: 'Hobbyist (24 plants)' },
+                ].map((x, i) => (
+                  <div key={i}>
+                    <div style={{ fontSize: 10.5, fontWeight: 700, color: '#3D7A5F', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{x.k}</div>
+                    <div style={{ fontSize: 12.5, color: 'rgba(40,30,20,0.85)', marginTop: 2, fontWeight: 500 }}>{x.v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Mobile home variations */}
+            <DCSection title="Mobile · Home screen — three layouts" subtitle="Same content, three mental models. Pick the one that matches how you think about your plants.">
+              <DCArtboard label="A. Grouped — care-first triage (matches PLAN.md wireframe)" width="auto" height="auto" style={{ background: 'transparent', boxShadow: 'none' }}>
+                <PhoneFrame theme={theme}><HomeGrouped theme={theme} /></PhoneFrame>
+              </DCArtboard>
+              <DCArtboard label="B. Dashboard — summary + weather first" width="auto" height="auto" style={{ background: 'transparent', boxShadow: 'none' }}>
+                <PhoneFrame theme={theme}><HomeDashboard theme={theme} /></PhoneFrame>
+              </DCArtboard>
+              <DCArtboard label="C. Feed — chronological & actionable" width="auto" height="auto" style={{ background: 'transparent', boxShadow: 'none' }}>
+                <PhoneFrame theme={theme}><HomeFeed theme={theme} /></PhoneFrame>
+              </DCArtboard>
+              <DCPostIt top={-40} left={820} rotate={2} width={200}>
+                All three feed the same Drift schema — which layout feels most "you"?
+              </DCPostIt>
+            </DCSection>
+
+            {/* Locations */}
+            <DCSection title="Mobile · Spaces (locations hierarchy)" subtitle="The nested locations picker from the data model — Home → Room → Zone, plus outdoor.">
+              <DCArtboard label="Hierarchical tree with light/humidity hints" width="auto" height="auto" style={{ background: 'transparent', boxShadow: 'none' }}>
+                <PhoneFrame theme={theme}><LocationsScreen theme={theme} /></PhoneFrame>
+              </DCArtboard>
+              <div style={{ width: 360, padding: 24, background: 'rgba(255,255,255,0.6)', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#3D7A5F', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>Design decisions</div>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'rgba(40,30,20,0.85)', lineHeight: 1.55 }}>
+                  <li style={{ marginBottom: 8 }}>Botanical green for indoor spaces, terracotta for outdoor — matches brand's "pot" accent.</li>
+                  <li style={{ marginBottom: 8 }}>Each node shows live plant count as a pill; light/humidity as sub-copy (maps to schema).</li>
+                  <li style={{ marginBottom: 8 }}>Gentle suggestion card at the bottom uses the adaptive-schedule signal ("your Calathea may prefer…").</li>
+                  <li>Taps expand/collapse with a quiet 12° chevron rotation (ease-out, 200ms).</li>
+                </ul>
+              </div>
+            </DCSection>
+
+            {/* Desktop */}
+            <DCSection title="Desktop · web companion" subtitle="Same content, roomier. Sidebar for navigation, table-style triage row, 4-col plant grid.">
+              <DCArtboard label="1440×900 · feels like a sibling to plantly.ro" width={1440} height={900}>
+                <DesktopHome theme={theme} />
+              </DCArtboard>
+            </DCSection>
+
+            {/* Next steps */}
+            <div style={{ padding: '0 60px', maxWidth: 840, marginTop: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#3D7A5F', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: 10 }}>Next steps</div>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, color: 'rgba(40,30,20,0.85)', lineHeight: 1.6 }}>
+                <li>Pick one of the three home variations — I'll wire it into a clickable prototype with real state.</li>
+                <li>Add the Plant Detail screen (hero carousel + upcoming care + timeline) and the plantly.ro post dialog.</li>
+                <li>Calendar week view with the "rain Saturday → skip water" weather suggestion.</li>
+                <li>Explore empty states (first-run, no plants yet) and the add-plant flow.</li>
+              </ul>
+            </div>
+          </DesignCanvas>
+
+          {editMode && (
+            <div className="tweak-panel">
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#3D7A5F', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Tweaks</span>
+              <div style={{ width: 1, height: 20, background: '#e4e4e7' }} />
+              <span style={{ fontSize: 12, color: '#52525b' }}>Theme</span>
+              <button className={theme === 'light' ? 'active' : ''} onClick={() => setTheme_('light')}>☀ Light</button>
+              <button className={theme === 'dark' ? 'active' : ''} onClick={() => setTheme_('dark')}>☾ Dark</button>
+            </div>
+          )}
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

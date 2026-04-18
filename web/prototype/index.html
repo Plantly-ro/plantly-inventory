@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PlantlyInventory — clickable prototype</title>
+  <link rel="stylesheet" href="design-system/colors_and_type.css" />
+  <style>
+    html, body { margin: 0; padding: 0; background: #1a1816; font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
+    * { box-sizing: border-box; }
+    body.light { background: #efede8; }
+    .stage {
+      min-height: 100vh; padding: 40px 20px 80px;
+      display: flex; flex-direction: column; align-items: center; gap: 24px;
+    }
+    .intro {
+      max-width: 420px; text-align: center;
+      color: rgba(255,255,255,0.82);
+    }
+    body.light .intro { color: rgba(40,30,20,0.82); }
+    .intro .eyebrow {
+      font-size: 11px; font-weight: 700; color: #5aac83;
+      text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 8px;
+    }
+    .intro h1 {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 28px; font-weight: 800; letter-spacing: -0.02em;
+      margin: 0 0 10px; line-height: 1.15;
+    }
+    .intro p { font-size: 14px; line-height: 1.55; margin: 0; }
+    .tabbar {
+      display: inline-flex; gap: 4px; padding: 4px;
+      background: rgba(255,255,255,0.08); border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    body.light .tabbar { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.08); }
+    .tabbar button {
+      font-family: inherit; font-size: 12px; font-weight: 600;
+      padding: 7px 14px; border-radius: 999px;
+      background: transparent; border: none; cursor: pointer;
+      color: rgba(255,255,255,0.6);
+    }
+    body.light .tabbar button { color: rgba(40,30,20,0.6); }
+    .tabbar button.active { background: #3D7A5F; color: white; }
+    .tweak-panel {
+      position: fixed; right: 20px; bottom: 20px; z-index: 1000;
+      background: #fff; border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.08);
+      padding: 12px 14px; display: flex; align-items: center; gap: 10px;
+      border: 1px solid #e4e4e7;
+    }
+    .tweak-panel button {
+      border: 1px solid #e4e4e7; background: #fafaf7;
+      padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    .tweak-panel button.active { background: #3D7A5F; color: white; border-color: #3D7A5F; }
+    .toast {
+      position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+      background: #18181b; color: white; padding: 10px 18px; border-radius: 999px;
+      font-size: 13px; font-weight: 500; z-index: 2000;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      animation: toastIn 0.2s ease-out;
+    }
+    @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  </style>
+</head>
+<body class="">
+  <div id="root"></div>
+
+  <script>
+    window.__TWEAKS = /*EDITMODE-BEGIN*/{
+      "theme": "light"
+    }/*EDITMODE-END*/;
+  </script>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="components/shared.jsx"></script>
+  <script type="text/babel" src="components/widgets.jsx"></script>
+  <script type="text/babel" src="components/screens.jsx"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const DEFAULT_LAYOUT = ['greeting', 'stats', 'overdue', 'today', 'grid', 'activity'];
+
+    function App() {
+      const [theme, setTheme] = useState(window.__TWEAKS.theme || 'dark');
+      const [editMode, setEditMode] = useState(false);
+      const [screen, setScreen] = useState(() => localStorage.getItem('plantly_screen') || 'home');
+      const [plantId, setPlantId] = useState(null);
+      const [homeEditing, setHomeEditing] = useState(false);
+      const [layout, setLayout] = useState(() => {
+        try {
+          const s = localStorage.getItem('plantly_layout');
+          return s ? JSON.parse(s) : DEFAULT_LAYOUT;
+        } catch { return DEFAULT_LAYOUT; }
+      });
+      const [exportOpen, setExportOpen] = useState(false);
+      const [toast, setToast] = useState(null);
+
+      useEffect(() => {
+        document.body.className = theme === 'light' ? 'light' : '';
+      }, [theme]);
+      useEffect(() => { localStorage.setItem('plantly_screen', screen); }, [screen]);
+      useEffect(() => { localStorage.setItem('plantly_layout', JSON.stringify(layout)); }, [layout]);
+
+      // Edit-mode protocol
+      useEffect(() => {
+        const onMsg = (e) => {
+          if (e.data?.type === '__activate_edit_mode') setEditMode(true);
+          else if (e.data?.type === '__deactivate_edit_mode') setEditMode(false);
+        };
+        window.addEventListener('message', onMsg);
+        window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+        return () => window.removeEventListener('message', onMsg);
+      }, []);
+
+      const setTheme_ = (t) => {
+        setTheme(t);
+        window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { theme: t } }, '*');
+      };
+
+      const showToast = (msg) => {
+        setToast(msg);
+        clearTimeout(window.__toastTimer);
+        window.__toastTimer = setTimeout(() => setToast(null), 1800);
+      };
+
+      const goToPlant = (id) => { setPlantId(id); setScreen('detail'); };
+      const openExport = () => setExportOpen(true);
+
+      const screenBody = (() => {
+        if (screen === 'home') {
+          return <CustomHome
+            theme={theme}
+            layout={layout}
+            setLayout={setLayout}
+            editing={homeEditing}
+            setEditing={setHomeEditing}
+            onPlantClick={goToPlant}
+            onToast={showToast}
+            onNav={setScreen}
+          />;
+        }
+        if (screen === 'detail') {
+          return <PlantDetail theme={theme} plantId={plantId} onBack={() => setScreen('home')} onToast={showToast} onExport={openExport} />;
+        }
+        if (screen === 'calendar') {
+          return <CalendarScreen theme={theme} onBack={() => setScreen('home')} onPlantClick={goToPlant} />;
+        }
+        return null;
+      })();
+
+      return (
+        <div className="stage">
+          <div className="intro">
+            <div className="eyebrow">🌿 PlantlyInventory · clickable prototype</div>
+            <h1>Assemble your home from widgets</h1>
+            <p>
+              Rather than pick one of the three home layouts, each becomes a <b>preset</b> of the same widget system.
+              Tap <b>Customize home</b> to reorder, add, remove — or apply a preset. Tap any plant card to open its detail;
+              tap <b>Post on plantly.ro</b> from the detail to see the export plugin.
+            </p>
+          </div>
+
+          <div className="tabbar">
+            <button className={screen === 'home' ? 'active' : ''} onClick={() => setScreen('home')}>Home</button>
+            <button className={screen === 'detail' ? 'active' : ''} onClick={() => { setPlantId(plantId || 'bob'); setScreen('detail'); }}>Plant detail</button>
+            <button className={screen === 'calendar' ? 'active' : ''} onClick={() => setScreen('calendar')}>Calendar</button>
+            <button onClick={openExport}>Export dialog</button>
+          </div>
+
+          <PhoneFrame theme={theme}>
+            <div style={{ position: 'relative', height: '100%' }}>
+              {screenBody}
+              {exportOpen && <ExportDialog theme={theme} onClose={() => setExportOpen(false)} onToast={showToast} />}
+            </div>
+          </PhoneFrame>
+
+          {toast && <div className="toast">{toast}</div>}
+
+          {editMode && (
+            <div className="tweak-panel">
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#3D7A5F', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Tweaks</span>
+              <div style={{ width: 1, height: 20, background: '#e4e4e7' }} />
+              <span style={{ fontSize: 12, color: '#52525b' }}>Theme</span>
+              <button className={theme === 'light' ? 'active' : ''} onClick={() => setTheme_('light')}>☀ Light</button>
+              <button className={theme === 'dark' ? 'active' : ''} onClick={() => setTheme_('dark')}>☾ Dark</button>
+              <div style={{ width: 1, height: 20, background: '#e4e4e7' }} />
+              <button onClick={() => { setLayout(DEFAULT_LAYOUT); setHomeEditing(false); }}>Reset home</button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

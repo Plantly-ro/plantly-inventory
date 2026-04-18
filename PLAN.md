@@ -566,6 +566,14 @@ Free tier exists to convert, not to last: 25-plant ceiling is intentionally belo
 
 ## Phased roadmap
 
+### Phase 0 — Visual prototype (landed 2026-04-18)
+- Clickable HTML/React design prototype under `web/prototype/`, handed off from claude.ai/design (bundle manifest preserved at `web/prototype/DESIGN_BUNDLE_README.md`, chat transcript at `web/prototype/DESIGN_CHAT.md`).
+- Screens: customizable widget-based Home (four presets), Plant Detail, Week Calendar, plantly.ro Export dialog. Light + dark themes.
+- Dev server: `npm start` serves the prototype at `http://localhost:4173` using `http-server` (no bundler — the design's in-browser Babel pipeline is the handoff contract).
+- Test harness: Playwright e2e (`tests/e2e/prototype.spec.ts`) + visual regression (`tests/e2e/visual.spec.ts`) run in CI (`.github/workflows/web-ci.yml`).
+- **Purpose:** the prototype is the pixel-perfect reference that the Phase 1 Flutter port must match. See `CLAUDE.md` §"Widget → Flutter mapping" for the file-by-file port plan.
+- **Monetization hook:** none — this is a design artifact.
+
 ### Phase 1 — Offline MVP (Flutter only, no server)
 - Drift schema (full DDL above) including `sync_ops`.
 - Plant CRUD with photos; thumbnail + 1600px display via `flutter_image_compress`; SHA-256 content addressing; OPFS on web.
@@ -722,9 +730,15 @@ abstract class ExportPlugin {
 
 ## Verification plan
 
+### Phase 0
+- `npm install && npm test` — Playwright runs against `web/prototype/`:
+  - Functional: widget reorder / add / remove / preset swap persisted to `localStorage`; plant-card → detail navigation; `Save draft` + `Post now` toasts on the export dialog; calendar rain suggestion + Saturday Skip row; light/dark toggle via edit-mode protocol.
+  - Visual: committed baselines for Home / Plant Detail / Calendar / Export Dialog under `tests/e2e/visual.spec.ts-snapshots/` (regenerate with `npm run test:update-snapshots`).
+
 ### Phase 1
 - `flutter test` — unit tests for: Drift schema, HLC ordering, op-log writes, adaptive scheduler (table-driven), OR-Set resolution, FTS search ranking.
 - `flutter test integration_test/` on web + Android: create plant → add 3 photos → log watering → set schedule → receive local notification at `next_due`.
+- **Visual parity**: golden-file widget tests for the ported screens must be visually compared against the Phase 0 prototype screenshots under `tests/e2e/visual.spec.ts-snapshots/`. If a Flutter screen diverges, either update the baseline (with design justification in the commit message) or fix the port.
 - Manual: export JSON → fresh install → import → verify all entities + photos present; corrupt HMAC → import rejected.
 - Resource target: 500 plants + 2000 photos on a Pixel 4a (2019) and Raspberry Pi 4 — cold start <3s, search <100ms.
 

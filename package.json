@@ -1,0 +1,22 @@
+{
+  "name": "plantly-inventory",
+  "version": "0.0.1",
+  "private": true,
+  "description": "PlantlyInventory — design prototype and its e2e test harness. The Flutter application is tracked by PLAN.md and has not been scaffolded yet.",
+  "license": "AGPL-3.0-or-later",
+  "scripts": {
+    "start": "http-server web/prototype -p 4173 -c-1 --silent",
+    "dev": "http-server web/prototype -p 4173 -c-1",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:update-snapshots": "playwright test --update-snapshots"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.59.1",
+    "http-server": "14.1.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

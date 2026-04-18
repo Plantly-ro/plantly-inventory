@@ -1,0 +1,256 @@
+/* ==========================================================================
+   Plantly — Design Tokens
+   Source: frontend/tailwind.config.ts + frontend/app/globals.css on
+   github.com/URunDEAD/Pltio@development
+   ========================================================================== */
+
+/* ── Fonts ───────────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* =========================================================================
+     COLOR — Brand (Botanical green)
+     ========================================================================= */
+  --botanical-50:  #f0f7f3;
+  --botanical-100: #d9ebe0;
+  --botanical-200: #b5d6c3;
+  --botanical-300: #86bb9d;
+  --botanical-400: #5aac83;
+  --botanical-500: #3D7A5F;  /* primary brand anchor */
+  --botanical-600: #2f6149;
+  --botanical-700: #264e3b;
+  --botanical-800: #1e3e30;
+  --botanical-900: #172f24;
+  --botanical-950: #0a1a13;
+
+  /* =========================================================================
+     COLOR — Accent (Terracotta)
+     ========================================================================= */
+  --terra-50:  #fdf5ef;
+  --terra-100: #fbe8d7;
+  --terra-200: #f6cfab;
+  --terra-300: #eeaf7a;
+  --terra-400: #e58255;
+  --terra-500: #C26A3A;  /* accent anchor */
+  --terra-600: #a25529;
+  --terra-700: #834324;
+  --terra-800: #653320;
+  --terra-900: #4d281b;
+  --terra-950: #2a140d;
+
+  /* =========================================================================
+     COLOR — Neutrals (Zinc)
+     ========================================================================= */
+  --zinc-50:  #fafafa;
+  --zinc-100: #f4f4f5;
+  --zinc-200: #e4e4e7;
+  --zinc-300: #d4d4d8;
+  --zinc-400: #a1a1aa;
+  --zinc-500: #71717a;
+  --zinc-600: #52525b;
+  --zinc-700: #3f3f46;
+  --zinc-800: #27272a;
+  --zinc-900: #18181b;
+  --zinc-950: #09090b;
+
+  /* =========================================================================
+     COLOR — Semantic (HSL from globals.css, light theme)
+     ========================================================================= */
+  --background:        hsl(0 0% 100%);
+  --foreground:        hsl(240 10% 3.9%);
+  --card:              hsl(0 0% 100%);
+  --card-foreground:   hsl(240 10% 3.9%);
+  --popover:           hsl(0 0% 100%);
+  --popover-foreground:hsl(240 10% 3.9%);
+  --primary:           hsl(148 34% 36%);   /* botanical-500 */
+  --primary-foreground:hsl(0 0% 100%);
+  --secondary:         hsl(240 5% 96%);
+  --secondary-foreground: hsl(240 5.9% 10%);
+  --muted:             hsl(240 5% 96%);
+  --muted-foreground:  hsl(240 3.8% 46.1%);
+  --accent:            hsl(21 53% 50%);    /* terra-500 */
+  --accent-foreground: hsl(0 0% 100%);
+  --destructive:       hsl(0 84.2% 60.2%);
+  --destructive-foreground: hsl(0 0% 98%);
+  --success:           hsl(142 71% 45%);
+  --warning:           hsl(38 92% 50%);
+  --info:              hsl(199 89% 48%);
+  --border:            hsl(240 5% 90%);
+  --input:             hsl(240 5% 90%);
+  --ring:              hsl(148 34% 36%);   /* focus = botanical */
+
+  /* =========================================================================
+     TYPE
+     ========================================================================= */
+  --font-display: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-body:    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono:    ui-monospace, SFMono-Regular, Menlo, Monaco, 'Courier New', monospace;
+
+  /* Size scale (px) */
+  --text-xs:   12px;
+  --text-sm:   14px;
+  --text-base: 16px;
+  --text-lg:   18px;
+  --text-xl:   20px;
+  --text-2xl:  24px;
+  --text-3xl:  30px;
+  --text-4xl:  36px;
+  --text-5xl:  48px;
+
+  /* Line-height */
+  --leading-tight:  1.2;
+  --leading-snug:   1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed:1.625;
+
+  /* Tracking */
+  --tracking-tight:   -0.015em;
+  --tracking-normal:  0;
+  --tracking-wide:    0.025em;
+  --tracking-widest:  0.15em;  /* eyebrow */
+
+  /* Weight */
+  --weight-normal:   400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+  --weight-extrabold:800;
+
+  /* =========================================================================
+     SPACING — 4pt rhythm (Tailwind defaults)
+     ========================================================================= */
+  --space-0:  0px;
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* =========================================================================
+     RADIUS — base = 0.625rem / 10px (--radius), all else computed
+     ========================================================================= */
+  --radius:      10px;
+  --radius-sm:   6px;   /* calc(--radius - 4) */
+  --radius-md:   8px;   /* calc(--radius - 2) */
+  --radius-lg:   10px;  /* = --radius */
+  --radius-xl:   14px;  /* calc(--radius + 4) */
+  --radius-2xl:  16px;
+  --radius-3xl:  24px;
+  --radius-full: 9999px;
+
+  /* =========================================================================
+     SHADOWS
+     ========================================================================= */
+  --shadow-card:     0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-elevated: 0 4px 16px -2px rgb(0 0 0 / 0.1), 0 2px 6px -2px rgb(0 0 0 / 0.06);
+  --shadow-lift:     0 8px 24px -4px rgb(0 0 0 / 0.12);
+  --shadow-glow:      0 0 0 3px rgb(61 122 95 / 0.4);   /* botanical */
+  --shadow-glow-terra:0 0 0 3px rgb(194 106 58 / 0.4);  /* terracotta */
+
+  /* =========================================================================
+     MOTION
+     ========================================================================= */
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);  /* slide-in-right */
+  --ease-out:      cubic-bezier(0, 0, 0.2, 1);
+  --ease-in:       cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out:   cubic-bezier(0.4, 0, 0.2, 1);
+
+  --dur-fast:   0.2s;   /* hover / color */
+  --dur-base:   0.35s;  /* fade-in, entry */
+  --dur-slow:   2s;     /* shimmer */
+  --dur-ambient:12s;    /* blob drift */
+}
+
+/* ── Dark mode overrides (from globals.css) ─────────────────────────────── */
+.dark, [data-theme="dark"] {
+  --background:        hsl(240 10% 3.9%);
+  --foreground:        hsl(0 0% 98%);
+  --card:              hsl(240 5.9% 10%);
+  --card-foreground:   hsl(0 0% 98%);
+  --popover:           hsl(240 5.9% 10%);
+  --popover-foreground:hsl(0 0% 98%);
+  --primary:           hsl(148 40% 45%);   /* botanical-400 in dark */
+  --primary-foreground:hsl(0 0% 100%);
+  --secondary:         hsl(240 3.7% 15.9%);
+  --secondary-foreground: hsl(0 0% 98%);
+  --muted:             hsl(240 3.7% 15.9%);
+  --muted-foreground:  hsl(240 5% 64.9%);
+  --accent:            hsl(21 53% 55%);
+  --accent-foreground: hsl(0 0% 100%);
+  --destructive:       hsl(0 72% 50%);
+  --destructive-foreground: hsl(0 0% 98%);
+  --border:            hsl(240 5% 20%);
+  --input:             hsl(240 5% 20%);
+  --ring:              hsl(148 40% 45%);
+
+  --shadow-card:     0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+  --shadow-elevated: 0 4px 16px -2px rgb(0 0 0 / 0.4), 0 2px 6px -2px rgb(0 0 0 / 0.25);
+  --shadow-lift:     0 8px 24px -4px rgb(0 0 0 / 0.5);
+}
+
+/* ============================================================================
+   KEYFRAMES (from tailwind.config.ts)
+   ============================================================================ */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes blob-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(30px, -20px) scale(1.05); }
+  66%      { transform: translate(-20px, 15px) scale(0.95); }
+}
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
+.gradient-text {
+  background-image: linear-gradient(135deg, var(--botanical-500), var(--botanical-400));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.glass-card {
+  background: rgb(255 255 255 / 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgb(255 255 255 / 0.3);
+  box-shadow: var(--shadow-card);
+  border-radius: var(--radius-2xl);
+}
+.dark .glass-card {
+  background: rgb(24 24 27 / 0.7);
+  border-color: rgb(63 63 70 / 0.4);
+}
+
+/* Preview-page body base */
+html, body {
+  font-family: var(--font-body);
+  color: var(--foreground);
+  background: var(--background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: var(--tracking-tight);
+  font-weight: var(--weight-bold);
+}
