@@ -40,6 +40,12 @@ dependencies:
     sdk: flutter
   intl: ^0.20.2
 
+  # Local reminders. DST-safe via timezone. Plugin registers POST_NOTIFICATIONS
+  # + SCHEDULE_EXACT_ALARM itself on Android; iOS requests permission via
+  # UNNotificationCenter.
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.9.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
