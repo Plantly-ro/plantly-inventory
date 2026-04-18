@@ -60,7 +60,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               children: [
                 CircularProgressIndicator(color: surface.green),
                 const SizedBox(height: 12),
-                Text('Opening your garden…', style: TextStyle(color: surface.muted)),
+                Text(AppLocalizations.of(context).openingGarden, style: TextStyle(color: surface.muted)),
               ],
             ),
           ),

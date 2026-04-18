@@ -53,6 +53,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notesLabel => 'Notes';
 
   @override
+  String get nicknameHint => 'e.g. Monstera Bob';
+
+  @override
+  String get notesHint => 'optional';
+
+  @override
+  String get saving => 'Saving…';
+
+  @override
   String get addPhoto => 'Add photo';
 
   @override
@@ -63,6 +72,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get search => 'Search plants, notes…';
+
+  @override
+  String get searchEmptyStart =>
+      'Type to search your plants by nickname or notes.';
+
+  @override
+  String searchNoMatch(String query) {
+    return 'No plants match \"$query\".';
+  }
 
   @override
   String get spaces => 'Spaces';
@@ -90,4 +108,38 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get timeline => 'Timeline';
+
+  @override
+  String get filterAll => 'All';
+
+  @override
+  String get filterOverdue => 'Overdue';
+
+  @override
+  String get filterDueToday => 'Due today';
+
+  @override
+  String get openingGarden => 'Opening your garden…';
+
+  @override
+  String get noSpacesYet =>
+      'No spaces yet. Tap + to add a room, shelf, or balcony.';
+
+  @override
+  String get addSpace => 'Add a space';
+
+  @override
+  String get kindLabel => 'Kind';
+
+  @override
+  String get insideLabel => 'Inside (optional)';
+
+  @override
+  String get topLevel => '— top level —';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get addBtn => 'Add';
 }

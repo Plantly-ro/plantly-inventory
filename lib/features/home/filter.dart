@@ -1,7 +1,9 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 /// The set of filters a user can apply on the plant grid. Phase 1 ships
 /// the three most common — status / location / tag filters plug into the
@@ -9,11 +11,15 @@ import '../../data/providers.dart';
 enum PlantFilter { all, overdue, dueToday }
 
 extension PlantFilterLabel on PlantFilter {
-  String get label => switch (this) {
-        PlantFilter.all => 'All',
-        PlantFilter.overdue => 'Overdue',
-        PlantFilter.dueToday => 'Due today',
-      };
+  /// Localized label — looks up [AppLocalizations] for the current context.
+  String label(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    return switch (this) {
+      PlantFilter.all => l.filterAll,
+      PlantFilter.overdue => l.filterOverdue,
+      PlantFilter.dueToday => l.filterDueToday,
+    };
+  }
 }
 
 final activeFilterProvider = StateProvider<PlantFilter>((_) => PlantFilter.all);

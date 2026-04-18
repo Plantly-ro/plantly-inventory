@@ -53,6 +53,15 @@ class AppLocalizationsRo extends AppLocalizations {
   String get notesLabel => 'Note';
 
   @override
+  String get nicknameHint => 'ex.: Monstera Bob';
+
+  @override
+  String get notesHint => 'opțional';
+
+  @override
+  String get saving => 'Se salvează…';
+
+  @override
   String get addPhoto => 'Adaugă fotografie';
 
   @override
@@ -63,6 +72,15 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get search => 'Caută plante, note…';
+
+  @override
+  String get searchEmptyStart =>
+      'Scrie pentru a căuta plantele după nume sau note.';
+
+  @override
+  String searchNoMatch(String query) {
+    return 'Nicio plantă nu corespunde \"$query\".';
+  }
 
   @override
   String get spaces => 'Spații';
@@ -90,4 +108,38 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get timeline => 'Istoric';
+
+  @override
+  String get filterAll => 'Toate';
+
+  @override
+  String get filterOverdue => 'Întârziate';
+
+  @override
+  String get filterDueToday => 'Astăzi';
+
+  @override
+  String get openingGarden => 'Se deschide grădina ta…';
+
+  @override
+  String get noSpacesYet =>
+      'Niciun spațiu încă. Apasă + pentru a adăuga o cameră, un raft sau balcon.';
+
+  @override
+  String get addSpace => 'Adaugă un spațiu';
+
+  @override
+  String get kindLabel => 'Tip';
+
+  @override
+  String get insideLabel => 'În interiorul (opțional)';
+
+  @override
+  String get topLevel => '— nivel superior —';
+
+  @override
+  String get cancel => 'Renunță';
+
+  @override
+  String get addBtn => 'Adaugă';
 }

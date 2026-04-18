@@ -234,7 +234,7 @@ class _FilterChipsRow extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: 6),
               child: _Chip(
-                label: f.label,
+                label: f.label(context),
                 selected: f == active,
                 surface: surface,
                 onTap: () => ref.read(activeFilterProvider.notifier).state = f,

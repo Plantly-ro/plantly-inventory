@@ -94,9 +94,6 @@ void main() {
     expect(result.requireValue.map((p) => p.id), ['b']);
   });
 
-  test('PlantFilter.label returns the expected chip text', () {
-    expect(PlantFilter.all.label, 'All');
-    expect(PlantFilter.overdue.label, 'Overdue');
-    expect(PlantFilter.dueToday.label, 'Due today');
-  });
+  // PlantFilter.label now resolves against BuildContext — see i18n_test.dart
+  // for coverage of the locale-driven label strings.
 }

@@ -182,6 +182,24 @@ abstract class AppLocalizations {
   /// **'Notes'**
   String get notesLabel;
 
+  /// No description provided for @nicknameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Monstera Bob'**
+  String get nicknameHint;
+
+  /// No description provided for @notesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'optional'**
+  String get notesHint;
+
+  /// No description provided for @saving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get saving;
+
   /// No description provided for @addPhoto.
   ///
   /// In en, this message translates to:
@@ -205,6 +223,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search plants, notes…'**
   String get search;
+
+  /// No description provided for @searchEmptyStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Type to search your plants by nickname or notes.'**
+  String get searchEmptyStart;
+
+  /// No description provided for @searchNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No plants match \"{query}\".'**
+  String searchNoMatch(String query);
 
   /// No description provided for @spaces.
   ///
@@ -259,6 +289,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Timeline'**
   String get timeline;
+
+  /// No description provided for @filterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get filterAll;
+
+  /// No description provided for @filterOverdue.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue'**
+  String get filterOverdue;
+
+  /// No description provided for @filterDueToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Due today'**
+  String get filterDueToday;
+
+  /// No description provided for @openingGarden.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening your garden…'**
+  String get openingGarden;
+
+  /// No description provided for @noSpacesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No spaces yet. Tap + to add a room, shelf, or balcony.'**
+  String get noSpacesYet;
+
+  /// No description provided for @addSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a space'**
+  String get addSpace;
+
+  /// No description provided for @kindLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Kind'**
+  String get kindLabel;
+
+  /// No description provided for @insideLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Inside (optional)'**
+  String get insideLabel;
+
+  /// No description provided for @topLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'— top level —'**
+  String get topLevel;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @addBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get addBtn;
 }
 
 class _AppLocalizationsDelegate
