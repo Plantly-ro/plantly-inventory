@@ -144,7 +144,7 @@ Do not change these without re-reading the `DESIGN_CHAT.md` transcript:
 
 ## Phase 1 status (as of 2026-04-18)
 
-Phase 1 (per `PLAN.md`) is **landed** on `main` across PRs #2 → #14. What the app does today and what's explicitly deferred:
+Phase 1 (per `PLAN.md`) is **feature-complete** on `main` across PRs #2 → #22. What the app does today and what's explicitly deferred:
 
 ### Shipped
 
@@ -162,18 +162,24 @@ Phase 1 (per `PLAN.md`) is **landed** on `main` across PRs #2 → #14. What the 
 | #12 | **Photos** — content-addressed store + OR-Set attach/detach + picker UI | `lib/data/repositories/photo_repository.dart`, `lib/data/photo_picker.dart`; Plant Detail AppBar "add photo" + hero image from attached sha |
 | #13 | **i18n** en + ro via `flutter gen-l10n` | `l10n.yaml`, `lib/l10n/{app_en,app_ro}.arb`, `lib/l10n/generated/` |
 | #14 | **`flutter_local_notifications`** plugin + NotificationService | `lib/notifications/notification_service.dart`; Android desugaring enabled in `android/app/build.gradle.kts` |
+| #16 | **Reminder pipeline glue** — ReminderEngine → NotificationService.syncAll on care-event record / snooze | `lib/notifications/reminder_sync.dart` |
+| #17 | **Filter chips** (All / Overdue / Due today) on plant grid | `lib/features/home/filter.dart` |
+| #18 | **ZIP-with-photos export** + import | `lib/domain/services/zip_backup_service.dart` |
+| #19 | **Inventory transactions** (schema v3) + propagation API | `lib/data/repositories/inventory_transaction_repository.dart` |
+| #20 | **Image compression** (1600px display / 320px thumb) on photo save | `lib/data/image_processor.dart` |
+| #21 | **Externalised strings** + locale-aware PlantFilter.label | `lib/l10n/app_{en,ro}.arb` |
+| #22 | **Propagate UI** on Plant Detail overflow menu | `lib/features/plant_detail/propagate_dialog.dart` |
 
-**78 Dart tests + 13 Playwright tests pass.** `flutter analyze` clean. Release APKs (v0.2.0-phase1) for all three ABIs ship at `http://wrk2.netbird.overlay:4173/`.
+**96 Dart tests + 13 Playwright tests pass.** `flutter analyze` clean. Release APKs (v0.5.0-phase1) for all three ABIs ship at `http://wrk2.netbird.overlay:4173/`.
 
-### Still deferred (finish-strong candidates)
+### Still deferred (explicitly out of Phase 1 scope as scoped)
 
-- **Notifications pipeline** — ReminderEngine → NotificationService.syncAll glue, fired on care-event record / snooze / reschedule. Both sides exist; one focused PR wires them.
-- **Filter chips** (status / location / overdue / tags) on Home / Search.
-- **ZIP-with-photos export** — the attached content-addressed photos bundled next to the existing HMAC JSON backup.
-- **Inventory-transactions UI** (propagation parent↔child). Table exists; UI is a one-screen port.
-- **Externalise remaining English strings** — plumbing is live; each feature surface is a small diff.
-- **`.github/workflows/*.yml`** — blocked on PAT missing `workflow` scope.
+- **Remaining English strings** — i18n plumbing is live; each of Plant Detail / Calendar / Export Dialog / SearchScreen is a small routine diff per surface.
+- **Location + tag filter chips** — the provider + enum pattern is established, adding more variants is mechanical.
+- **`.github/workflows/*.yml`** — blocked on PAT missing `workflow` scope. Workflow YAML exists locally at `.github/workflows/web-ci.yml`; needs either a PAT with `workflow` scope or a web-UI commit.
+- **Gift / sale / death inventory actions** — ledger + schema support all of them; only `propagate` has a UI so far.
+- **Web backend** — Phase 2's province.
 
-### Next logical PR
+### Next phase (Phase 2 per PLAN.md)
 
-Wire the notifications pipeline: on every `CareEventRepository.record` / `CareScheduleRepository.snooze`, rebuild events via `ReminderEngine.buildUpcoming(schedules, ...)` and hand them to `NotificationService.syncAll`. Everything it needs is already in the repo.
+The Go sync server + MinIO + imgproxy + Caddy stack, and the plantly.ro `ExportPlugin` concrete implementation. The op-log wire format is already being written on every mutation, so a server push is a new data path rather than a schema change. Start with `POST /sync/push` + `GET /sync/pull` against the existing `sync_ops` table.
