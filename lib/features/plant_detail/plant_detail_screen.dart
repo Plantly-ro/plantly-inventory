@@ -12,6 +12,7 @@ import '../../shared/plant_thumb.dart';
 import '../../theme/tokens.dart';
 import '../export/export_dialog.dart';
 import '../home/home_providers.dart';
+import 'propagate_dialog.dart';
 
 /// Port of `PlantDetail` in `web/prototype/components/screens.jsx`.
 class PlantDetailScreen extends ConsumerWidget {
@@ -55,9 +56,25 @@ class PlantDetailScreen extends ConsumerWidget {
               await joins.attach(plantId, sha);
             },
           ),
-          IconButton(
+          PopupMenuButton<String>(
             icon: Icon(Icons.more_horiz, color: surface.text),
-            onPressed: () {},
+            onSelected: (value) async {
+              if (value == 'propagate') {
+                final child = await PropagateDialog.show(
+                  context,
+                  parentId: plantId,
+                  parentName: plant.name,
+                );
+                if (child != null && context.mounted) {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: child.id)),
+                  );
+                }
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'propagate', child: Text('Propagate')),
+            ],
           ),
         ],
       ),
