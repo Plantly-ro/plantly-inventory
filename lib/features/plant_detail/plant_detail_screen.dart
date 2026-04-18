@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../data/image_processor.dart';
 import '../../data/mock_plants.dart';
 import '../../data/photo_picker.dart';
 import '../../data/providers.dart';
@@ -42,9 +43,15 @@ class PlantDetailScreen extends ConsumerWidget {
               final picker = ref.read(photoPickerProvider);
               final picked = await picker.pickFromGallery();
               if (picked == null) return;
+              // Shrink before hashing: the hash changes after compression,
+              // which is the desired behaviour — a 20 MB camera capture
+              // and its 600 KB display-resize are semantically different
+              // images as far as the content-addressed store is concerned.
+              final processor = ref.read(imageProcessorProvider);
+              final shrunk = await processor.toDisplay(picked.bytes);
               final photos = ref.read(photoRepositoryProvider);
               final joins = ref.read(plantPhotoRepositoryProvider);
-              final sha = await photos.saveBytes(picked.bytes, mime: picked.mime);
+              final sha = await photos.saveBytes(shrunk, mime: 'image/jpeg');
               await joins.attach(plantId, sha);
             },
           ),
