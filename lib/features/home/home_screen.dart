@@ -7,6 +7,7 @@ import '../../data/providers.dart';
 import '../../theme/tokens.dart';
 import '../calendar/calendar_screen.dart';
 import '../plant_detail/plant_detail_screen.dart';
+import '../locations/locations_screen.dart';
 import '../search/search_screen.dart';
 import 'add_plant_sheet.dart';
 import 'home_providers.dart';
@@ -340,7 +341,14 @@ class _TabBar extends StatelessWidget {
         children: [
           _TabIcon(icon: Icons.home_outlined, label: 'Home', active: true, surface: surface),
           _TabIcon(icon: Icons.calendar_today_outlined, label: 'Calendar', onTap: onCalendar, surface: surface),
-          _TabIcon(icon: Icons.place_outlined, label: 'Spaces', surface: surface),
+          _TabIcon(
+            icon: Icons.place_outlined,
+            label: 'Spaces',
+            surface: surface,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LocationsScreen()),
+            ),
+          ),
           _TabIcon(icon: Icons.person_outline, label: 'Me', surface: surface),
         ],
       ),

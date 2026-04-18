@@ -6,6 +6,7 @@ import '../sync/hlc.dart';
 import '../sync/op_log.dart';
 import 'database/app_database.dart';
 import 'repositories/care_event_repository.dart';
+import 'repositories/location_repository.dart';
 import 'repositories/plant_repository.dart';
 import 'repositories/search_repository.dart';
 import 'seed.dart';
@@ -65,6 +66,16 @@ final careEventRepositoryProvider = Provider<CareEventRepository>((ref) {
 final searchRepositoryProvider = Provider<SearchRepository>((ref) {
   final ctx = ref.watch(appContextProvider).requireValue;
   return SearchRepository(db: ctx.db, tenantId: ctx.opLog.tenantId);
+});
+
+final locationRepositoryProvider = Provider<LocationRepository>((ref) {
+  final ctx = ref.watch(appContextProvider).requireValue;
+  return LocationRepository(db: ctx.db, opLog: ctx.opLog);
+});
+
+final locationsStreamProvider = StreamProvider<List<LocationRow>>((ref) {
+  final repo = ref.watch(locationRepositoryProvider);
+  return repo.watchAll();
 });
 
 /// Live stream of non-deleted plants.
