@@ -17,6 +17,11 @@ dependencies:
   # Typography — Inter + Plus Jakarta Sans (the prototype's two families)
   google_fonts: ^6.2.1
 
+  # Lightweight prefs — replaces the prototype's localStorage keys
+  # (plantly_layout, plantly_theme). Drift replaces this in Phase 1 proper;
+  # the keys + schema stay the same.
+  shared_preferences: ^2.3.2
+
   cupertino_icons: ^1.0.8
 
   # Phase-1 data/sync/notification deps land here when the repositories are
