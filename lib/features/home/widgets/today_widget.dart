@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/database/app_database.dart' as db;
 import '../../../data/mock_plants.dart';
+import '../../../data/providers.dart';
 import '../../../theme/tokens.dart';
 import 'plant_row.dart';
 import 'widget_shell.dart';
 
-class TodayWidget extends StatelessWidget {
+class TodayWidget extends ConsumerWidget {
   const TodayWidget({
     super.key,
     required this.surface,
@@ -25,14 +28,23 @@ class TodayWidget extends StatelessWidget {
   final VoidCallback? onMoveDown;
   final VoidCallback? onRemove;
 
-  static const _items = <_TodayItem>[
-    _TodayItem(plantId: 'snake', action: 'Water', icon: Icons.water_drop_outlined),
-    _TodayItem(plantId: 'cala', action: 'Mist', icon: Icons.water_drop_outlined),
-    _TodayItem(plantId: 'fid', action: 'Rotate', icon: Icons.light_mode_outlined),
-  ];
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(dueBeforeEodProvider);
+    final plantRows = ref.watch(plantsStreamProvider).maybeWhen(
+          data: (r) => r,
+          orElse: () => const <db.PlantRow>[],
+        );
+    final plantsById = {for (final p in plantRows) p.id: p};
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final today = async.maybeWhen(
+      data: (rows) => rows
+          .where((s) => s.nextDueAt != null && s.nextDueAt! >= now)
+          .toList(),
+      orElse: () => const <db.CareScheduleRow>[],
+    );
+
     return WidgetShell(
       surface: surface,
       editing: editing,
@@ -40,42 +52,99 @@ class TodayWidget extends StatelessWidget {
       onMoveDown: onMoveDown,
       onRemove: onRemove,
       title: 'Due today',
-      accentLabel: '${_items.length}',
+      accentLabel: '${today.length}',
       accentColor: surface.green,
-      child: PlantRowGroup(
-        surface: surface,
-        rows: [
-          for (var i = 0; i < _items.length; i++)
-            _row(_items[i], i == _items.length - 1),
-        ],
+      child: async.when(
+        loading: () => const SizedBox(height: 60, child: Center(child: CircularProgressIndicator())),
+        error: (e, _) => Text('$e', style: TextStyle(color: surface.terra)),
+        data: (_) {
+          if (today.isEmpty) {
+            return Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: surface.surface,
+                border: Border.all(color: surface.border),
+                borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                'All caught up for today.',
+                style: TextStyle(fontSize: 12, color: surface.muted),
+              ),
+            );
+          }
+          return PlantRowGroup(
+            surface: surface,
+            rows: [
+              for (var i = 0; i < today.length; i++)
+                _todayRow(today[i], plantsById, i == today.length - 1),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _row(_TodayItem item, bool last) {
-    final plant = MockPlants.byId(item.plantId);
+  Widget _todayRow(
+    db.CareScheduleRow schedule,
+    Map<String, db.PlantRow> plantsById,
+    bool last,
+  ) {
+    final mock = MockPlants.byId(schedule.plantId);
+    final action = _verb(schedule.type);
     return PlantRow(
-      plant: plant,
+      plant: mock,
       surface: surface,
-      subtitle: item.action,
-      subtitleIcon: item.icon,
+      subtitle: action,
+      subtitleIcon: _iconFor(schedule.type),
       subtitleColor: surface.muted,
       first: false,
       last: last,
-      onTap: () => onPlantTap?.call(plant),
-      trailing: _CheckButton(
-        surface: surface,
-        onPressed: () => onLogCare?.call(plant, item.action),
+      onTap: () => onPlantTap?.call(mock),
+      trailing: Consumer(
+        builder: (context, ref, _) => _CheckButton(
+          surface: surface,
+          onPressed: () async {
+            await ref.read(careEventRepositoryProvider).record(
+                  plantId: schedule.plantId,
+                  type: schedule.type,
+                );
+            if (context.mounted) onLogCare?.call(mock, action);
+          },
+        ),
       ),
     );
   }
-}
 
-class _TodayItem {
-  const _TodayItem({required this.plantId, required this.action, required this.icon});
-  final String plantId;
-  final String action;
-  final IconData icon;
+  String _verb(String type) {
+    switch (type) {
+      case 'water':
+        return 'Water';
+      case 'fertilize':
+        return 'Fertilize';
+      case 'mist':
+        return 'Mist';
+      case 'repot':
+        return 'Repot';
+      case 'prune':
+        return 'Prune';
+      case 'rotate':
+        return 'Rotate';
+      default:
+        return type;
+    }
+  }
+
+  IconData _iconFor(String type) {
+    switch (type) {
+      case 'fertilize':
+        return Icons.eco_outlined;
+      case 'rotate':
+        return Icons.light_mode_outlined;
+      default:
+        return Icons.water_drop_outlined;
+    }
+  }
 }
 
 class _CheckButton extends StatelessWidget {

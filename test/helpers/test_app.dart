@@ -19,6 +19,11 @@ Widget buildTestApp({
     overrides: [
       databaseProvider.overrideWith((ref) => AppDatabase.forTesting(NativeDatabase.memory())),
       plantsStreamProvider.overrideWith((ref) => Stream.value(_seedRows())),
+      // Every Drift-backed StreamProvider needs a static override in tests,
+      // otherwise the teardown Timer leaks past the widget tree. Add new
+      // providers here as they get wired into widgets.
+      dueBeforeEodProvider.overrideWith((ref) => Stream.value(const <CareScheduleRow>[])),
+      locationsStreamProvider.overrideWith((ref) => Stream.value(const <LocationRow>[])),
       ...overrides,
     ],
     child: child,

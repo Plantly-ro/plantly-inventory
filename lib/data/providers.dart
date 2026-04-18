@@ -6,6 +6,7 @@ import '../sync/hlc.dart';
 import '../sync/op_log.dart';
 import 'database/app_database.dart';
 import 'repositories/care_event_repository.dart';
+import 'repositories/care_schedule_repository.dart';
 import 'repositories/location_repository.dart';
 import 'repositories/plant_repository.dart';
 import 'repositories/search_repository.dart';
@@ -58,9 +59,28 @@ final plantRepositoryProvider = Provider<PlantRepository>((ref) {
   return PlantRepository(db: ctx.db, opLog: ctx.opLog);
 });
 
+final careScheduleRepositoryProvider = Provider<CareScheduleRepository>((ref) {
+  final ctx = ref.watch(appContextProvider).requireValue;
+  return CareScheduleRepository(db: ctx.db, opLog: ctx.opLog);
+});
+
 final careEventRepositoryProvider = Provider<CareEventRepository>((ref) {
   final ctx = ref.watch(appContextProvider).requireValue;
-  return CareEventRepository(db: ctx.db, opLog: ctx.opLog);
+  return CareEventRepository(
+    db: ctx.db,
+    opLog: ctx.opLog,
+    schedules: ref.watch(careScheduleRepositoryProvider),
+  );
+});
+
+/// "Due today or earlier" — everything OverdueWidget + TodayWidget need.
+final dueBeforeEodProvider = StreamProvider<List<CareScheduleRow>>((ref) {
+  final repo = ref.watch(careScheduleRepositoryProvider);
+  final now = DateTime.now();
+  // End of the current local day (23:59:59.999) so "due today" reminders
+  // surface even though the wall clock is mid-afternoon.
+  final eod = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+  return repo.watchDueBefore(eod.millisecondsSinceEpoch);
 });
 
 final searchRepositoryProvider = Provider<SearchRepository>((ref) {

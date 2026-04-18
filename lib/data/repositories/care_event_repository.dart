@@ -3,16 +3,18 @@ import 'package:ulid/ulid.dart';
 
 import '../../sync/op_log.dart';
 import '../database/app_database.dart';
+import 'care_schedule_repository.dart';
 
 /// CRUD for the `care_events` table. A care event is append-only by design
 /// — there is no update flow, only create (record_care) and soft-delete
-/// (undo_care). Adaptive scheduling (PLAN.md §Phase 1) will read the last
-/// N events per (plant, type) and compute the next interval.
+/// (undo_care). After each record, drives CareScheduleRepository to
+/// refresh current_interval / next_due_at via the adaptive algorithm.
 class CareEventRepository {
-  CareEventRepository({required this.db, required this.opLog});
+  CareEventRepository({required this.db, required this.opLog, this.schedules});
 
   final AppDatabase db;
   final OpLogWriter opLog;
+  final CareScheduleRepository? schedules;
 
   Stream<List<CareEventRow>> watchForPlant(String plantId) {
     return (db.select(db.careEvents)
@@ -32,9 +34,10 @@ class CareEventRepository {
     String? dose,
     String? product,
     String? photoSha,
+    int snoozedBeforeDone = 0,
   }) async {
     final ts = doneAt ?? DateTime.now().toUtc().millisecondsSinceEpoch;
-    return db.transaction(() async {
+    final inserted = await db.transaction(() async {
       final id = Ulid().toString();
       final value = {
         'id': id,
@@ -69,6 +72,15 @@ class CareEventRepository {
       await db.into(db.careEvents).insert(row);
       return (await (db.select(db.careEvents)..where((e) => e.id.equals(id))).getSingle());
     });
+
+    // Refresh the matching schedule (if any) after the event is committed.
+    await schedules?.applyCareEvent(
+      plantId: plantId,
+      type: type,
+      doneAt: DateTime.fromMillisecondsSinceEpoch(ts, isUtc: true),
+      snoozedBeforeDone: snoozedBeforeDone,
+    );
+    return inserted;
   }
 
   Future<void> undo(String id) async {
