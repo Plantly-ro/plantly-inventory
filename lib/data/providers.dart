@@ -9,6 +9,7 @@ import '../sync/op_log.dart';
 import 'database/app_database.dart';
 import 'repositories/care_event_repository.dart';
 import 'repositories/care_schedule_repository.dart';
+import 'repositories/inventory_transaction_repository.dart';
 import 'repositories/location_repository.dart';
 import 'repositories/photo_repository.dart';
 import 'repositories/plant_repository.dart';
@@ -131,6 +132,19 @@ final plantPhotoRepositoryProvider = Provider<PlantPhotoRepository>((ref) {
 /// the Plant Detail hero + carousel.
 final attachedPhotosProvider = StreamProvider.family<List<String>, String>((ref, plantId) {
   return ref.watch(plantPhotoRepositoryProvider).watchAttached(plantId);
+});
+
+final inventoryTransactionRepositoryProvider = Provider<InventoryTransactionRepository>((ref) {
+  final ctx = ref.watch(appContextProvider).requireValue;
+  return InventoryTransactionRepository(
+    db: ctx.db,
+    opLog: ctx.opLog,
+    plants: PlantsTableForWrites(db: ctx.db, opLog: ctx.opLog),
+  );
+});
+
+final inventoryForPlantProvider = StreamProvider.family<List<InventoryTransactionRow>, String>((ref, plantId) {
+  return ref.watch(inventoryTransactionRepositoryProvider).watchForPlant(plantId);
 });
 
 final locationsStreamProvider = StreamProvider<List<LocationRow>>((ref) {

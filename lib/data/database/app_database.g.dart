@@ -5964,6 +5964,836 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
   }
 }
 
+class $InventoryTransactionsTable extends InventoryTransactions
+    with TableInfo<$InventoryTransactionsTable, InventoryTransactionRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InventoryTransactionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _tenantIdMeta = const VerificationMeta(
+    'tenantId',
+  );
+  @override
+  late final GeneratedColumn<String> tenantId = GeneratedColumn<String>(
+    'tenant_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _parentPlantIdMeta = const VerificationMeta(
+    'parentPlantId',
+  );
+  @override
+  late final GeneratedColumn<String> parentPlantId = GeneratedColumn<String>(
+    'parent_plant_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _childPlantIdMeta = const VerificationMeta(
+    'childPlantId',
+  );
+  @override
+  late final GeneratedColumn<String> childPlantId = GeneratedColumn<String>(
+    'child_plant_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _plantIdMeta = const VerificationMeta(
+    'plantId',
+  );
+  @override
+  late final GeneratedColumn<String> plantId = GeneratedColumn<String>(
+    'plant_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _counterpartyMeta = const VerificationMeta(
+    'counterparty',
+  );
+  @override
+  late final GeneratedColumn<String> counterparty = GeneratedColumn<String>(
+    'counterparty',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _atMeta = const VerificationMeta('at');
+  @override
+  late final GeneratedColumn<int> at = GeneratedColumn<int>(
+    'at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _amountMinorMeta = const VerificationMeta(
+    'amountMinor',
+  );
+  @override
+  late final GeneratedColumn<int> amountMinor = GeneratedColumn<int>(
+    'amount_minor',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _currencyMeta = const VerificationMeta(
+    'currency',
+  );
+  @override
+  late final GeneratedColumn<String> currency = GeneratedColumn<String>(
+    'currency',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedHlcMeta = const VerificationMeta(
+    'updatedHlc',
+  );
+  @override
+  late final GeneratedColumn<String> updatedHlc = GeneratedColumn<String>(
+    'updated_hlc',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<int> deletedAt = GeneratedColumn<int>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deviceIdMeta = const VerificationMeta(
+    'deviceId',
+  );
+  @override
+  late final GeneratedColumn<String> deviceId = GeneratedColumn<String>(
+    'device_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    tenantId,
+    type,
+    parentPlantId,
+    childPlantId,
+    plantId,
+    counterparty,
+    at,
+    notes,
+    amountMinor,
+    currency,
+    updatedHlc,
+    deletedAt,
+    deviceId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'inventory_transactions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InventoryTransactionRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('tenant_id')) {
+      context.handle(
+        _tenantIdMeta,
+        tenantId.isAcceptableOrUnknown(data['tenant_id']!, _tenantIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tenantIdMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('parent_plant_id')) {
+      context.handle(
+        _parentPlantIdMeta,
+        parentPlantId.isAcceptableOrUnknown(
+          data['parent_plant_id']!,
+          _parentPlantIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('child_plant_id')) {
+      context.handle(
+        _childPlantIdMeta,
+        childPlantId.isAcceptableOrUnknown(
+          data['child_plant_id']!,
+          _childPlantIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('plant_id')) {
+      context.handle(
+        _plantIdMeta,
+        plantId.isAcceptableOrUnknown(data['plant_id']!, _plantIdMeta),
+      );
+    }
+    if (data.containsKey('counterparty')) {
+      context.handle(
+        _counterpartyMeta,
+        counterparty.isAcceptableOrUnknown(
+          data['counterparty']!,
+          _counterpartyMeta,
+        ),
+      );
+    }
+    if (data.containsKey('at')) {
+      context.handle(_atMeta, at.isAcceptableOrUnknown(data['at']!, _atMeta));
+    } else if (isInserting) {
+      context.missing(_atMeta);
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('amount_minor')) {
+      context.handle(
+        _amountMinorMeta,
+        amountMinor.isAcceptableOrUnknown(
+          data['amount_minor']!,
+          _amountMinorMeta,
+        ),
+      );
+    }
+    if (data.containsKey('currency')) {
+      context.handle(
+        _currencyMeta,
+        currency.isAcceptableOrUnknown(data['currency']!, _currencyMeta),
+      );
+    }
+    if (data.containsKey('updated_hlc')) {
+      context.handle(
+        _updatedHlcMeta,
+        updatedHlc.isAcceptableOrUnknown(data['updated_hlc']!, _updatedHlcMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedHlcMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('device_id')) {
+      context.handle(
+        _deviceIdMeta,
+        deviceId.isAcceptableOrUnknown(data['device_id']!, _deviceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deviceIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InventoryTransactionRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InventoryTransactionRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      tenantId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tenant_id'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      parentPlantId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}parent_plant_id'],
+      ),
+      childPlantId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}child_plant_id'],
+      ),
+      plantId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plant_id'],
+      ),
+      counterparty: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}counterparty'],
+      ),
+      at: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}at'],
+      )!,
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      amountMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount_minor'],
+      ),
+      currency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency'],
+      ),
+      updatedHlc: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}updated_hlc'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      deviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_id'],
+      )!,
+    );
+  }
+
+  @override
+  $InventoryTransactionsTable createAlias(String alias) {
+    return $InventoryTransactionsTable(attachedDatabase, alias);
+  }
+}
+
+class InventoryTransactionRow extends DataClass
+    implements Insertable<InventoryTransactionRow> {
+  final String id;
+  final String tenantId;
+  final String type;
+  final String? parentPlantId;
+  final String? childPlantId;
+  final String? plantId;
+  final String? counterparty;
+  final int at;
+  final String? notes;
+  final int? amountMinor;
+  final String? currency;
+  final String updatedHlc;
+  final int? deletedAt;
+  final String deviceId;
+  const InventoryTransactionRow({
+    required this.id,
+    required this.tenantId,
+    required this.type,
+    this.parentPlantId,
+    this.childPlantId,
+    this.plantId,
+    this.counterparty,
+    required this.at,
+    this.notes,
+    this.amountMinor,
+    this.currency,
+    required this.updatedHlc,
+    this.deletedAt,
+    required this.deviceId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['tenant_id'] = Variable<String>(tenantId);
+    map['type'] = Variable<String>(type);
+    if (!nullToAbsent || parentPlantId != null) {
+      map['parent_plant_id'] = Variable<String>(parentPlantId);
+    }
+    if (!nullToAbsent || childPlantId != null) {
+      map['child_plant_id'] = Variable<String>(childPlantId);
+    }
+    if (!nullToAbsent || plantId != null) {
+      map['plant_id'] = Variable<String>(plantId);
+    }
+    if (!nullToAbsent || counterparty != null) {
+      map['counterparty'] = Variable<String>(counterparty);
+    }
+    map['at'] = Variable<int>(at);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    if (!nullToAbsent || amountMinor != null) {
+      map['amount_minor'] = Variable<int>(amountMinor);
+    }
+    if (!nullToAbsent || currency != null) {
+      map['currency'] = Variable<String>(currency);
+    }
+    map['updated_hlc'] = Variable<String>(updatedHlc);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<int>(deletedAt);
+    }
+    map['device_id'] = Variable<String>(deviceId);
+    return map;
+  }
+
+  InventoryTransactionsCompanion toCompanion(bool nullToAbsent) {
+    return InventoryTransactionsCompanion(
+      id: Value(id),
+      tenantId: Value(tenantId),
+      type: Value(type),
+      parentPlantId: parentPlantId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentPlantId),
+      childPlantId: childPlantId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(childPlantId),
+      plantId: plantId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(plantId),
+      counterparty: counterparty == null && nullToAbsent
+          ? const Value.absent()
+          : Value(counterparty),
+      at: Value(at),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      amountMinor: amountMinor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(amountMinor),
+      currency: currency == null && nullToAbsent
+          ? const Value.absent()
+          : Value(currency),
+      updatedHlc: Value(updatedHlc),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      deviceId: Value(deviceId),
+    );
+  }
+
+  factory InventoryTransactionRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InventoryTransactionRow(
+      id: serializer.fromJson<String>(json['id']),
+      tenantId: serializer.fromJson<String>(json['tenantId']),
+      type: serializer.fromJson<String>(json['type']),
+      parentPlantId: serializer.fromJson<String?>(json['parentPlantId']),
+      childPlantId: serializer.fromJson<String?>(json['childPlantId']),
+      plantId: serializer.fromJson<String?>(json['plantId']),
+      counterparty: serializer.fromJson<String?>(json['counterparty']),
+      at: serializer.fromJson<int>(json['at']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      amountMinor: serializer.fromJson<int?>(json['amountMinor']),
+      currency: serializer.fromJson<String?>(json['currency']),
+      updatedHlc: serializer.fromJson<String>(json['updatedHlc']),
+      deletedAt: serializer.fromJson<int?>(json['deletedAt']),
+      deviceId: serializer.fromJson<String>(json['deviceId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'tenantId': serializer.toJson<String>(tenantId),
+      'type': serializer.toJson<String>(type),
+      'parentPlantId': serializer.toJson<String?>(parentPlantId),
+      'childPlantId': serializer.toJson<String?>(childPlantId),
+      'plantId': serializer.toJson<String?>(plantId),
+      'counterparty': serializer.toJson<String?>(counterparty),
+      'at': serializer.toJson<int>(at),
+      'notes': serializer.toJson<String?>(notes),
+      'amountMinor': serializer.toJson<int?>(amountMinor),
+      'currency': serializer.toJson<String?>(currency),
+      'updatedHlc': serializer.toJson<String>(updatedHlc),
+      'deletedAt': serializer.toJson<int?>(deletedAt),
+      'deviceId': serializer.toJson<String>(deviceId),
+    };
+  }
+
+  InventoryTransactionRow copyWith({
+    String? id,
+    String? tenantId,
+    String? type,
+    Value<String?> parentPlantId = const Value.absent(),
+    Value<String?> childPlantId = const Value.absent(),
+    Value<String?> plantId = const Value.absent(),
+    Value<String?> counterparty = const Value.absent(),
+    int? at,
+    Value<String?> notes = const Value.absent(),
+    Value<int?> amountMinor = const Value.absent(),
+    Value<String?> currency = const Value.absent(),
+    String? updatedHlc,
+    Value<int?> deletedAt = const Value.absent(),
+    String? deviceId,
+  }) => InventoryTransactionRow(
+    id: id ?? this.id,
+    tenantId: tenantId ?? this.tenantId,
+    type: type ?? this.type,
+    parentPlantId: parentPlantId.present
+        ? parentPlantId.value
+        : this.parentPlantId,
+    childPlantId: childPlantId.present ? childPlantId.value : this.childPlantId,
+    plantId: plantId.present ? plantId.value : this.plantId,
+    counterparty: counterparty.present ? counterparty.value : this.counterparty,
+    at: at ?? this.at,
+    notes: notes.present ? notes.value : this.notes,
+    amountMinor: amountMinor.present ? amountMinor.value : this.amountMinor,
+    currency: currency.present ? currency.value : this.currency,
+    updatedHlc: updatedHlc ?? this.updatedHlc,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    deviceId: deviceId ?? this.deviceId,
+  );
+  InventoryTransactionRow copyWithCompanion(
+    InventoryTransactionsCompanion data,
+  ) {
+    return InventoryTransactionRow(
+      id: data.id.present ? data.id.value : this.id,
+      tenantId: data.tenantId.present ? data.tenantId.value : this.tenantId,
+      type: data.type.present ? data.type.value : this.type,
+      parentPlantId: data.parentPlantId.present
+          ? data.parentPlantId.value
+          : this.parentPlantId,
+      childPlantId: data.childPlantId.present
+          ? data.childPlantId.value
+          : this.childPlantId,
+      plantId: data.plantId.present ? data.plantId.value : this.plantId,
+      counterparty: data.counterparty.present
+          ? data.counterparty.value
+          : this.counterparty,
+      at: data.at.present ? data.at.value : this.at,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      amountMinor: data.amountMinor.present
+          ? data.amountMinor.value
+          : this.amountMinor,
+      currency: data.currency.present ? data.currency.value : this.currency,
+      updatedHlc: data.updatedHlc.present
+          ? data.updatedHlc.value
+          : this.updatedHlc,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InventoryTransactionRow(')
+          ..write('id: $id, ')
+          ..write('tenantId: $tenantId, ')
+          ..write('type: $type, ')
+          ..write('parentPlantId: $parentPlantId, ')
+          ..write('childPlantId: $childPlantId, ')
+          ..write('plantId: $plantId, ')
+          ..write('counterparty: $counterparty, ')
+          ..write('at: $at, ')
+          ..write('notes: $notes, ')
+          ..write('amountMinor: $amountMinor, ')
+          ..write('currency: $currency, ')
+          ..write('updatedHlc: $updatedHlc, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('deviceId: $deviceId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    tenantId,
+    type,
+    parentPlantId,
+    childPlantId,
+    plantId,
+    counterparty,
+    at,
+    notes,
+    amountMinor,
+    currency,
+    updatedHlc,
+    deletedAt,
+    deviceId,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InventoryTransactionRow &&
+          other.id == this.id &&
+          other.tenantId == this.tenantId &&
+          other.type == this.type &&
+          other.parentPlantId == this.parentPlantId &&
+          other.childPlantId == this.childPlantId &&
+          other.plantId == this.plantId &&
+          other.counterparty == this.counterparty &&
+          other.at == this.at &&
+          other.notes == this.notes &&
+          other.amountMinor == this.amountMinor &&
+          other.currency == this.currency &&
+          other.updatedHlc == this.updatedHlc &&
+          other.deletedAt == this.deletedAt &&
+          other.deviceId == this.deviceId);
+}
+
+class InventoryTransactionsCompanion
+    extends UpdateCompanion<InventoryTransactionRow> {
+  final Value<String> id;
+  final Value<String> tenantId;
+  final Value<String> type;
+  final Value<String?> parentPlantId;
+  final Value<String?> childPlantId;
+  final Value<String?> plantId;
+  final Value<String?> counterparty;
+  final Value<int> at;
+  final Value<String?> notes;
+  final Value<int?> amountMinor;
+  final Value<String?> currency;
+  final Value<String> updatedHlc;
+  final Value<int?> deletedAt;
+  final Value<String> deviceId;
+  final Value<int> rowid;
+  const InventoryTransactionsCompanion({
+    this.id = const Value.absent(),
+    this.tenantId = const Value.absent(),
+    this.type = const Value.absent(),
+    this.parentPlantId = const Value.absent(),
+    this.childPlantId = const Value.absent(),
+    this.plantId = const Value.absent(),
+    this.counterparty = const Value.absent(),
+    this.at = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.amountMinor = const Value.absent(),
+    this.currency = const Value.absent(),
+    this.updatedHlc = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.deviceId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  InventoryTransactionsCompanion.insert({
+    required String id,
+    required String tenantId,
+    required String type,
+    this.parentPlantId = const Value.absent(),
+    this.childPlantId = const Value.absent(),
+    this.plantId = const Value.absent(),
+    this.counterparty = const Value.absent(),
+    required int at,
+    this.notes = const Value.absent(),
+    this.amountMinor = const Value.absent(),
+    this.currency = const Value.absent(),
+    required String updatedHlc,
+    this.deletedAt = const Value.absent(),
+    required String deviceId,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       tenantId = Value(tenantId),
+       type = Value(type),
+       at = Value(at),
+       updatedHlc = Value(updatedHlc),
+       deviceId = Value(deviceId);
+  static Insertable<InventoryTransactionRow> custom({
+    Expression<String>? id,
+    Expression<String>? tenantId,
+    Expression<String>? type,
+    Expression<String>? parentPlantId,
+    Expression<String>? childPlantId,
+    Expression<String>? plantId,
+    Expression<String>? counterparty,
+    Expression<int>? at,
+    Expression<String>? notes,
+    Expression<int>? amountMinor,
+    Expression<String>? currency,
+    Expression<String>? updatedHlc,
+    Expression<int>? deletedAt,
+    Expression<String>? deviceId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (tenantId != null) 'tenant_id': tenantId,
+      if (type != null) 'type': type,
+      if (parentPlantId != null) 'parent_plant_id': parentPlantId,
+      if (childPlantId != null) 'child_plant_id': childPlantId,
+      if (plantId != null) 'plant_id': plantId,
+      if (counterparty != null) 'counterparty': counterparty,
+      if (at != null) 'at': at,
+      if (notes != null) 'notes': notes,
+      if (amountMinor != null) 'amount_minor': amountMinor,
+      if (currency != null) 'currency': currency,
+      if (updatedHlc != null) 'updated_hlc': updatedHlc,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (deviceId != null) 'device_id': deviceId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  InventoryTransactionsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? tenantId,
+    Value<String>? type,
+    Value<String?>? parentPlantId,
+    Value<String?>? childPlantId,
+    Value<String?>? plantId,
+    Value<String?>? counterparty,
+    Value<int>? at,
+    Value<String?>? notes,
+    Value<int?>? amountMinor,
+    Value<String?>? currency,
+    Value<String>? updatedHlc,
+    Value<int?>? deletedAt,
+    Value<String>? deviceId,
+    Value<int>? rowid,
+  }) {
+    return InventoryTransactionsCompanion(
+      id: id ?? this.id,
+      tenantId: tenantId ?? this.tenantId,
+      type: type ?? this.type,
+      parentPlantId: parentPlantId ?? this.parentPlantId,
+      childPlantId: childPlantId ?? this.childPlantId,
+      plantId: plantId ?? this.plantId,
+      counterparty: counterparty ?? this.counterparty,
+      at: at ?? this.at,
+      notes: notes ?? this.notes,
+      amountMinor: amountMinor ?? this.amountMinor,
+      currency: currency ?? this.currency,
+      updatedHlc: updatedHlc ?? this.updatedHlc,
+      deletedAt: deletedAt ?? this.deletedAt,
+      deviceId: deviceId ?? this.deviceId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (tenantId.present) {
+      map['tenant_id'] = Variable<String>(tenantId.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (parentPlantId.present) {
+      map['parent_plant_id'] = Variable<String>(parentPlantId.value);
+    }
+    if (childPlantId.present) {
+      map['child_plant_id'] = Variable<String>(childPlantId.value);
+    }
+    if (plantId.present) {
+      map['plant_id'] = Variable<String>(plantId.value);
+    }
+    if (counterparty.present) {
+      map['counterparty'] = Variable<String>(counterparty.value);
+    }
+    if (at.present) {
+      map['at'] = Variable<int>(at.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (amountMinor.present) {
+      map['amount_minor'] = Variable<int>(amountMinor.value);
+    }
+    if (currency.present) {
+      map['currency'] = Variable<String>(currency.value);
+    }
+    if (updatedHlc.present) {
+      map['updated_hlc'] = Variable<String>(updatedHlc.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<int>(deletedAt.value);
+    }
+    if (deviceId.present) {
+      map['device_id'] = Variable<String>(deviceId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InventoryTransactionsCompanion(')
+          ..write('id: $id, ')
+          ..write('tenantId: $tenantId, ')
+          ..write('type: $type, ')
+          ..write('parentPlantId: $parentPlantId, ')
+          ..write('childPlantId: $childPlantId, ')
+          ..write('plantId: $plantId, ')
+          ..write('counterparty: $counterparty, ')
+          ..write('at: $at, ')
+          ..write('notes: $notes, ')
+          ..write('amountMinor: $amountMinor, ')
+          ..write('currency: $currency, ')
+          ..write('updatedHlc: $updatedHlc, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SyncOpsTable extends SyncOps with TableInfo<$SyncOpsTable, SyncOpRow> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -6524,6 +7354,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PlantTagsTable plantTags = $PlantTagsTable(this);
   late final $CareEventsTable careEvents = $CareEventsTable(this);
   late final $CareSchedulesTable careSchedules = $CareSchedulesTable(this);
+  late final $InventoryTransactionsTable inventoryTransactions =
+      $InventoryTransactionsTable(this);
   late final $SyncOpsTable syncOps = $SyncOpsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -6539,6 +7371,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     plantTags,
     careEvents,
     careSchedules,
+    inventoryTransactions,
     syncOps,
   ];
 }
@@ -9392,6 +10225,406 @@ typedef $$CareSchedulesTableProcessedTableManager =
       CareScheduleRow,
       PrefetchHooks Function()
     >;
+typedef $$InventoryTransactionsTableCreateCompanionBuilder =
+    InventoryTransactionsCompanion Function({
+      required String id,
+      required String tenantId,
+      required String type,
+      Value<String?> parentPlantId,
+      Value<String?> childPlantId,
+      Value<String?> plantId,
+      Value<String?> counterparty,
+      required int at,
+      Value<String?> notes,
+      Value<int?> amountMinor,
+      Value<String?> currency,
+      required String updatedHlc,
+      Value<int?> deletedAt,
+      required String deviceId,
+      Value<int> rowid,
+    });
+typedef $$InventoryTransactionsTableUpdateCompanionBuilder =
+    InventoryTransactionsCompanion Function({
+      Value<String> id,
+      Value<String> tenantId,
+      Value<String> type,
+      Value<String?> parentPlantId,
+      Value<String?> childPlantId,
+      Value<String?> plantId,
+      Value<String?> counterparty,
+      Value<int> at,
+      Value<String?> notes,
+      Value<int?> amountMinor,
+      Value<String?> currency,
+      Value<String> updatedHlc,
+      Value<int?> deletedAt,
+      Value<String> deviceId,
+      Value<int> rowid,
+    });
+
+class $$InventoryTransactionsTableFilterComposer
+    extends Composer<_$AppDatabase, $InventoryTransactionsTable> {
+  $$InventoryTransactionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tenantId => $composableBuilder(
+    column: $table.tenantId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get parentPlantId => $composableBuilder(
+    column: $table.parentPlantId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get childPlantId => $composableBuilder(
+    column: $table.childPlantId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get plantId => $composableBuilder(
+    column: $table.plantId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get counterparty => $composableBuilder(
+    column: $table.counterparty,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get at => $composableBuilder(
+    column: $table.at,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amountMinor => $composableBuilder(
+    column: $table.amountMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get updatedHlc => $composableBuilder(
+    column: $table.updatedHlc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InventoryTransactionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $InventoryTransactionsTable> {
+  $$InventoryTransactionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tenantId => $composableBuilder(
+    column: $table.tenantId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get parentPlantId => $composableBuilder(
+    column: $table.parentPlantId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get childPlantId => $composableBuilder(
+    column: $table.childPlantId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get plantId => $composableBuilder(
+    column: $table.plantId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get counterparty => $composableBuilder(
+    column: $table.counterparty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get at => $composableBuilder(
+    column: $table.at,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amountMinor => $composableBuilder(
+    column: $table.amountMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get updatedHlc => $composableBuilder(
+    column: $table.updatedHlc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InventoryTransactionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InventoryTransactionsTable> {
+  $$InventoryTransactionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get tenantId =>
+      $composableBuilder(column: $table.tenantId, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get parentPlantId => $composableBuilder(
+    column: $table.parentPlantId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get childPlantId => $composableBuilder(
+    column: $table.childPlantId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get plantId =>
+      $composableBuilder(column: $table.plantId, builder: (column) => column);
+
+  GeneratedColumn<String> get counterparty => $composableBuilder(
+    column: $table.counterparty,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get at =>
+      $composableBuilder(column: $table.at, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<int> get amountMinor => $composableBuilder(
+    column: $table.amountMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get currency =>
+      $composableBuilder(column: $table.currency, builder: (column) => column);
+
+  GeneratedColumn<String> get updatedHlc => $composableBuilder(
+    column: $table.updatedHlc,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get deviceId =>
+      $composableBuilder(column: $table.deviceId, builder: (column) => column);
+}
+
+class $$InventoryTransactionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InventoryTransactionsTable,
+          InventoryTransactionRow,
+          $$InventoryTransactionsTableFilterComposer,
+          $$InventoryTransactionsTableOrderingComposer,
+          $$InventoryTransactionsTableAnnotationComposer,
+          $$InventoryTransactionsTableCreateCompanionBuilder,
+          $$InventoryTransactionsTableUpdateCompanionBuilder,
+          (
+            InventoryTransactionRow,
+            BaseReferences<
+              _$AppDatabase,
+              $InventoryTransactionsTable,
+              InventoryTransactionRow
+            >,
+          ),
+          InventoryTransactionRow,
+          PrefetchHooks Function()
+        > {
+  $$InventoryTransactionsTableTableManager(
+    _$AppDatabase db,
+    $InventoryTransactionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InventoryTransactionsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$InventoryTransactionsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$InventoryTransactionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> tenantId = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<String?> parentPlantId = const Value.absent(),
+                Value<String?> childPlantId = const Value.absent(),
+                Value<String?> plantId = const Value.absent(),
+                Value<String?> counterparty = const Value.absent(),
+                Value<int> at = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<int?> amountMinor = const Value.absent(),
+                Value<String?> currency = const Value.absent(),
+                Value<String> updatedHlc = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<String> deviceId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InventoryTransactionsCompanion(
+                id: id,
+                tenantId: tenantId,
+                type: type,
+                parentPlantId: parentPlantId,
+                childPlantId: childPlantId,
+                plantId: plantId,
+                counterparty: counterparty,
+                at: at,
+                notes: notes,
+                amountMinor: amountMinor,
+                currency: currency,
+                updatedHlc: updatedHlc,
+                deletedAt: deletedAt,
+                deviceId: deviceId,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String tenantId,
+                required String type,
+                Value<String?> parentPlantId = const Value.absent(),
+                Value<String?> childPlantId = const Value.absent(),
+                Value<String?> plantId = const Value.absent(),
+                Value<String?> counterparty = const Value.absent(),
+                required int at,
+                Value<String?> notes = const Value.absent(),
+                Value<int?> amountMinor = const Value.absent(),
+                Value<String?> currency = const Value.absent(),
+                required String updatedHlc,
+                Value<int?> deletedAt = const Value.absent(),
+                required String deviceId,
+                Value<int> rowid = const Value.absent(),
+              }) => InventoryTransactionsCompanion.insert(
+                id: id,
+                tenantId: tenantId,
+                type: type,
+                parentPlantId: parentPlantId,
+                childPlantId: childPlantId,
+                plantId: plantId,
+                counterparty: counterparty,
+                at: at,
+                notes: notes,
+                amountMinor: amountMinor,
+                currency: currency,
+                updatedHlc: updatedHlc,
+                deletedAt: deletedAt,
+                deviceId: deviceId,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InventoryTransactionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InventoryTransactionsTable,
+      InventoryTransactionRow,
+      $$InventoryTransactionsTableFilterComposer,
+      $$InventoryTransactionsTableOrderingComposer,
+      $$InventoryTransactionsTableAnnotationComposer,
+      $$InventoryTransactionsTableCreateCompanionBuilder,
+      $$InventoryTransactionsTableUpdateCompanionBuilder,
+      (
+        InventoryTransactionRow,
+        BaseReferences<
+          _$AppDatabase,
+          $InventoryTransactionsTable,
+          InventoryTransactionRow
+        >,
+      ),
+      InventoryTransactionRow,
+      PrefetchHooks Function()
+    >;
 typedef $$SyncOpsTableCreateCompanionBuilder =
     SyncOpsCompanion Function({
       Value<int> seq,
@@ -9677,6 +10910,8 @@ class $AppDatabaseManager {
       $$CareEventsTableTableManager(_db, _db.careEvents);
   $$CareSchedulesTableTableManager get careSchedules =>
       $$CareSchedulesTableTableManager(_db, _db.careSchedules);
+  $$InventoryTransactionsTableTableManager get inventoryTransactions =>
+      $$InventoryTransactionsTableTableManager(_db, _db.inventoryTransactions);
   $$SyncOpsTableTableManager get syncOps =>
       $$SyncOpsTableTableManager(_db, _db.syncOps);
 }

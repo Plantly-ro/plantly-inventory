@@ -176,6 +176,30 @@ class CareSchedules extends Table {
   List<String> get customConstraints => ['UNIQUE(tenant_id, plant_id, type)'];
 }
 
+@DataClassName('InventoryTransactionRow')
+class InventoryTransactions extends Table {
+  // PLAN.md §"Schema non-negotiables": records plant-lifecycle transitions
+  // including propagation (parent → child), gift, sale, death. `type`
+  // decides which of parent_plant_id / child_plant_id / plant_id is set.
+  TextColumn get id => text()();
+  TextColumn get tenantId => text().named('tenant_id')();
+  TextColumn get type => text()();
+  TextColumn get parentPlantId => text().named('parent_plant_id').nullable()();
+  TextColumn get childPlantId => text().named('child_plant_id').nullable()();
+  TextColumn get plantId => text().named('plant_id').nullable()();
+  TextColumn get counterparty => text().nullable()();
+  IntColumn get at => integer()();
+  TextColumn get notes => text().nullable()();
+  IntColumn get amountMinor => integer().named('amount_minor').nullable()();
+  TextColumn get currency => text().nullable()();
+  TextColumn get updatedHlc => text().named('updated_hlc')();
+  IntColumn get deletedAt => integer().named('deleted_at').nullable()();
+  TextColumn get deviceId => text().named('device_id')();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DataClassName('SyncOpRow')
 class SyncOps extends Table {
   // The wire format: one row per (entity, entity_id, field, hlc). field='*'
@@ -202,6 +226,7 @@ class SyncOps extends Table {
   PlantTags,
   CareEvents,
   CareSchedules,
+  InventoryTransactions,
   SyncOps,
 ])
 class AppDatabase extends _$AppDatabase {
@@ -209,7 +234,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -221,6 +246,9 @@ class AppDatabase extends _$AppDatabase {
         onUpgrade: (m, from, to) async {
           if (from < 2) {
             await _createPlantsFts();
+          }
+          if (from < 3) {
+            await m.createTable(inventoryTransactions);
           }
         },
       );
