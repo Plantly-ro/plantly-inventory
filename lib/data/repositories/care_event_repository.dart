@@ -1,20 +1,27 @@
 import 'package:drift/drift.dart';
 import 'package:ulid/ulid.dart';
 
+import '../../notifications/reminder_sync.dart';
 import '../../sync/op_log.dart';
 import '../database/app_database.dart';
 import 'care_schedule_repository.dart';
 
 /// CRUD for the `care_events` table. A care event is append-only by design
 /// — there is no update flow, only create (record_care) and soft-delete
-/// (undo_care). After each record, drives CareScheduleRepository to
-/// refresh current_interval / next_due_at via the adaptive algorithm.
+/// (undo_care). After each record we (a) refresh the adaptive schedule,
+/// (b) re-sync OS notifications so pushed reminders track reality.
 class CareEventRepository {
-  CareEventRepository({required this.db, required this.opLog, this.schedules});
+  CareEventRepository({
+    required this.db,
+    required this.opLog,
+    this.schedules,
+    this.reminderSync,
+  });
 
   final AppDatabase db;
   final OpLogWriter opLog;
   final CareScheduleRepository? schedules;
+  final ReminderSync? reminderSync;
 
   Stream<List<CareEventRow>> watchForPlant(String plantId) {
     return (db.select(db.careEvents)
@@ -80,6 +87,14 @@ class CareEventRepository {
       doneAt: DateTime.fromMillisecondsSinceEpoch(ts, isUtc: true),
       snoozedBeforeDone: snoozedBeforeDone,
     );
+    // Re-sync OS notifications so the user's push-reminder set reflects
+    // the new next_due_at. Best-effort — notification failures must not
+    // rollback the committed care event.
+    try {
+      await reminderSync?.syncFromDatabase();
+    } catch (_) {
+      // swallow — the next successful record() will catch up.
+    }
     return inserted;
   }
 

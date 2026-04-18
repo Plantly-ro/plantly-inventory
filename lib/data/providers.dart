@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../notifications/notification_service.dart';
+import '../notifications/reminder_sync.dart';
 import '../sync/device_id.dart';
 import '../sync/hlc.dart';
 import '../sync/op_log.dart';
@@ -60,9 +62,29 @@ final plantRepositoryProvider = Provider<PlantRepository>((ref) {
   return PlantRepository(db: ctx.db, opLog: ctx.opLog);
 });
 
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  final svc = LocalNotificationService();
+  // Best-effort init — failures here shouldn't block the app opening.
+  svc.init().catchError((_) {});
+  return svc;
+});
+
+final reminderSyncProvider = Provider<ReminderSync>((ref) {
+  final ctx = ref.watch(appContextProvider).requireValue;
+  return ReminderSync(
+    db: ctx.db,
+    notifications: ref.watch(notificationServiceProvider),
+    tenantId: ctx.opLog.tenantId,
+  );
+});
+
 final careScheduleRepositoryProvider = Provider<CareScheduleRepository>((ref) {
   final ctx = ref.watch(appContextProvider).requireValue;
-  return CareScheduleRepository(db: ctx.db, opLog: ctx.opLog);
+  return CareScheduleRepository(
+    db: ctx.db,
+    opLog: ctx.opLog,
+    reminderSync: ref.watch(reminderSyncProvider),
+  );
 });
 
 final careEventRepositoryProvider = Provider<CareEventRepository>((ref) {
@@ -71,6 +93,7 @@ final careEventRepositoryProvider = Provider<CareEventRepository>((ref) {
     db: ctx.db,
     opLog: ctx.opLog,
     schedules: ref.watch(careScheduleRepositoryProvider),
+    reminderSync: ref.watch(reminderSyncProvider),
   );
 });
 

@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:ulid/ulid.dart';
 
 import '../../domain/services/adaptive_schedule.dart';
+import '../../notifications/reminder_sync.dart';
 import '../../sync/op_log.dart';
 import '../database/app_database.dart';
 
@@ -15,10 +16,11 @@ import '../database/app_database.dart';
 /// list of `{done_at, snoozed}` records, newest-first, capped at
 /// [AdaptiveSchedule.windowSize] entries.
 class CareScheduleRepository {
-  CareScheduleRepository({required this.db, required this.opLog});
+  CareScheduleRepository({required this.db, required this.opLog, this.reminderSync});
 
   final AppDatabase db;
   final OpLogWriter opLog;
+  final ReminderSync? reminderSync;
 
   static const int maxWindow = AdaptiveSchedule.windowSize;
 
@@ -178,7 +180,7 @@ class CareScheduleRepository {
   }
 
   Future<void> snooze(String scheduleId, {Duration by = const Duration(days: 1)}) async {
-    return db.transaction(() async {
+    await db.transaction(() async {
       final s = await (db.select(db.careSchedules)..where((r) => r.id.equals(scheduleId))).getSingleOrNull();
       if (s == null || s.nextDueAt == null) return;
       final next = s.nextDueAt! + by.inMilliseconds;
@@ -197,6 +199,11 @@ class CareScheduleRepository {
         ),
       );
     });
+    try {
+      await reminderSync?.syncFromDatabase();
+    } catch (_) {
+      // Notification re-sync is best-effort.
+    }
   }
 
   List<_EventSample> _decodeWindow(String json_) {
