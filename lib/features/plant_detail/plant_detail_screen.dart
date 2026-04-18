@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/mock_plants.dart';
+import '../../data/photo_picker.dart';
+import '../../data/providers.dart';
 import '../../shared/plant_thumb.dart';
 import '../../theme/tokens.dart';
 import '../export/export_dialog.dart';
@@ -19,6 +23,8 @@ class PlantDetailScreen extends ConsumerWidget {
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
     final plant = MockPlants.byId(plantId);
 
+    final attachedAsync = ref.watch(attachedPhotosProvider(plantId));
+
     return Scaffold(
       backgroundColor: surface.bg,
       appBar: AppBar(
@@ -29,6 +35,19 @@ class PlantDetailScreen extends ConsumerWidget {
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.add_a_photo_outlined, color: surface.text),
+            tooltip: 'Add photo',
+            onPressed: () async {
+              final picker = ref.read(photoPickerProvider);
+              final picked = await picker.pickFromGallery();
+              if (picked == null) return;
+              final photos = ref.read(photoRepositoryProvider);
+              final joins = ref.read(plantPhotoRepositoryProvider);
+              final sha = await photos.saveBytes(picked.bytes, mime: picked.mime);
+              await joins.attach(plantId, sha);
+            },
+          ),
           IconButton(
             icon: Icon(Icons.more_horiz, color: surface.text),
             onPressed: () {},
@@ -41,8 +60,12 @@ class PlantDetailScreen extends ConsumerWidget {
             aspectRatio: 1.3,
             child: Container(
               color: surface.surfaceAlt,
-              child: Center(
-                child: PlantThumb(plant: plant, size: 280),
+              child: attachedAsync.when(
+                loading: () => Center(child: PlantThumb(plant: plant, size: 280)),
+                error: (_, _) => Center(child: PlantThumb(plant: plant, size: 280)),
+                data: (shas) => shas.isEmpty
+                    ? Center(child: PlantThumb(plant: plant, size: 280))
+                    : _HeroPhoto(sha: shas.first, ref: ref, fallback: plant),
               ),
             ),
           ),
@@ -149,6 +172,31 @@ class PlantDetailScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _HeroPhoto extends StatelessWidget {
+  const _HeroPhoto({required this.sha, required this.ref, required this.fallback});
+  final String sha;
+  final WidgetRef ref;
+  final MockPlant fallback;
+
+  @override
+  Widget build(BuildContext context) {
+    final repo = ref.read(photoRepositoryProvider);
+    return FutureBuilder(
+      future: repo.byHash(sha),
+      builder: (context, snap) {
+        final path = snap.data?.localPath;
+        if (path != null) {
+          final file = File(path);
+          if (file.existsSync()) {
+            return Image.file(file, fit: BoxFit.cover, width: double.infinity);
+          }
+        }
+        return Center(child: PlantThumb(plant: fallback, size: 280));
+      },
     );
   }
 }

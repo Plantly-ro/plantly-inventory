@@ -8,6 +8,7 @@ import 'database/app_database.dart';
 import 'repositories/care_event_repository.dart';
 import 'repositories/care_schedule_repository.dart';
 import 'repositories/location_repository.dart';
+import 'repositories/photo_repository.dart';
 import 'repositories/plant_repository.dart';
 import 'repositories/search_repository.dart';
 import 'seed.dart';
@@ -91,6 +92,22 @@ final searchRepositoryProvider = Provider<SearchRepository>((ref) {
 final locationRepositoryProvider = Provider<LocationRepository>((ref) {
   final ctx = ref.watch(appContextProvider).requireValue;
   return LocationRepository(db: ctx.db, opLog: ctx.opLog);
+});
+
+final photoRepositoryProvider = Provider<PhotoRepository>((ref) {
+  final ctx = ref.watch(appContextProvider).requireValue;
+  return PhotoRepository(db: ctx.db, opLog: ctx.opLog);
+});
+
+final plantPhotoRepositoryProvider = Provider<PlantPhotoRepository>((ref) {
+  final ctx = ref.watch(appContextProvider).requireValue;
+  return PlantPhotoRepository(db: ctx.db, opLog: ctx.opLog);
+});
+
+/// Live set of SHA-256 hashes currently attached to a given plant — drives
+/// the Plant Detail hero + carousel.
+final attachedPhotosProvider = StreamProvider.family<List<String>, String>((ref, plantId) {
+  return ref.watch(plantPhotoRepositoryProvider).watchAttached(plantId);
 });
 
 final locationsStreamProvider = StreamProvider<List<LocationRow>>((ref) {
