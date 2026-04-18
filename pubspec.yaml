@@ -17,23 +17,31 @@ dependencies:
   # Typography — Inter + Plus Jakarta Sans (the prototype's two families)
   google_fonts: ^6.2.1
 
-  # Lightweight prefs — replaces the prototype's localStorage keys
-  # (plantly_layout, plantly_theme). Drift replaces this in Phase 1 proper;
-  # the keys + schema stay the same.
+  # Lightweight prefs — for UI state (layout, theme). Drift handles the
+  # domain data; prefs are just for per-install UI choices.
   shared_preferences: ^2.3.2
 
   cupertino_icons: ^1.0.8
 
-  # Phase-1 data/sync/notification deps land here when the repositories are
-  # written: drift, drift_flutter, sqlite3_flutter_libs, dio, retrofit,
-  # flutter_secure_storage, flutter_local_notifications, timezone, crypto, ulid.
-  # They're intentionally omitted from the scaffold to keep pubspec.lock small
-  # until the code that uses them exists.
+  # Phase-1 data layer — Drift (SQLite) + HLC + op-log (PLAN.md §"Schema
+  # non-negotiables"). Each synced entity carries id/tenant_id/updated_hlc/
+  # deleted_at/device_id and every write emits an entry in sync_ops.
+  drift: ^2.21.0
+  drift_flutter: ^0.2.4
+  sqlite3_flutter_libs: ^0.5.26
+  path_provider: ^2.1.5
+  path: ^1.9.0
+  ulid: ^2.0.0
+  crypto: ^3.0.5    # photo content-addressing (sha256)
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  drift_dev: ^2.21.0
+  build_runner: ^2.4.13
+  # test/flutter_test_config.dart overrides sqlite3 lookup path on Linux
+  sqlite3: ^2.4.7
 
 flutter:
   uses-material-design: true

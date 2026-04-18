@@ -22,9 +22,11 @@ playwright/.cache/
 build/
 .flutter-plugins-dependencies
 
-# Generated Dart
+# Generated Dart — ignore by default, but commit drift-generated DB schema
+# so the repo builds without running build_runner (no CI for Flutter yet).
 *.freezed.dart
 *.g.dart
+!lib/data/database/*.g.dart
 
 # Android
 android/.gradle/
