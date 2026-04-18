@@ -144,34 +144,36 @@ Do not change these without re-reading the `DESIGN_CHAT.md` transcript:
 
 ## Phase 1 status (as of 2026-04-18)
 
-Phase 1 (per `PLAN.md`) is **landed** on `main` across PRs #2 → #9. What the app does today and what's explicitly deferred:
+Phase 1 (per `PLAN.md`) is **landed** on `main` across PRs #2 → #14. What the app does today and what's explicitly deferred:
 
 ### Shipped
 
 | PR | Area | Files |
 |---|---|---|
-| #2 | Flutter scaffold + tokens + greeting/stats | `pubspec.yaml`, `lib/theme/tokens.dart`, `lib/main.dart`, `test/widget_test.dart` |
-| #3 | Full prototype widget + screen port | `lib/features/home/**`, `lib/features/{plant_detail,calendar,export}/**` |
+| #2 | Flutter scaffold + tokens + greeting/stats | `pubspec.yaml`, `lib/theme/tokens.dart`, `lib/main.dart` |
+| #3 | Full prototype widget + screen port | `lib/features/{home,plant_detail,calendar,export}/**` |
 | #4 | **Drift schema + HLC + op-log** + Plant/CareEvent repos | `lib/data/database/app_database.dart`, `lib/sync/{hlc,op_log,device_id}.dart`, `lib/data/repositories/{plant,care_event}_repository.dart` |
 | #5 | UI ↔ Drift wiring + FAB + **adaptive scheduler** | `lib/data/providers.dart`, `lib/data/seed.dart`, `lib/features/home/add_plant_sheet.dart`, `lib/domain/services/adaptive_schedule.dart` |
 | #6 | **FTS5 search** + SearchScreen | `lib/data/repositories/search_repository.dart`, `lib/features/search/search_screen.dart` (schema v2 migration) |
 | #7 | **Locations hierarchy** + Spaces screen | `lib/data/repositories/location_repository.dart`, `lib/features/locations/locations_screen.dart` |
 | #8 | **HMAC JSON backup/import** | `lib/domain/services/backup_service.dart` |
 | #9 | **iCal export** + ReminderEngine | `lib/domain/services/{ical_export,reminder_engine}.dart` |
+| #11 | **CareSchedule runtime** — Overdue/Today widgets read real data | `lib/data/repositories/care_schedule_repository.dart`; Overdue/Today widgets are ConsumerWidgets now |
+| #12 | **Photos** — content-addressed store + OR-Set attach/detach + picker UI | `lib/data/repositories/photo_repository.dart`, `lib/data/photo_picker.dart`; Plant Detail AppBar "add photo" + hero image from attached sha |
+| #13 | **i18n** en + ro via `flutter gen-l10n` | `l10n.yaml`, `lib/l10n/{app_en,app_ro}.arb`, `lib/l10n/generated/` |
+| #14 | **`flutter_local_notifications`** plugin + NotificationService | `lib/notifications/notification_service.dart`; Android desugaring enabled in `android/app/build.gradle.kts` |
 
-57 Dart tests pass (`flutter test`) + 13 Playwright tests pass (`npm test`). `flutter analyze` is clean. Release APKs for three ABIs ship at `http://wrk2.netbird.overlay:4173/`.
+**78 Dart tests + 13 Playwright tests pass.** `flutter analyze` clean. Release APKs (v0.2.0-phase1) for all three ABIs ship at `http://wrk2.netbird.overlay:4173/`.
 
-### Deferred (still on Phase 1 roadmap)
+### Still deferred (finish-strong candidates)
 
-- **Photos + content-addressed store** — camera plugin + SHA-256 write + OPFS on web. `photos` / `plant_photos` tables already exist.
-- **`flutter_local_notifications` registration** — `ReminderEngine` produces the right shape; platform plugin + POST_NOTIFICATIONS permission + iOS Info.plist + channel setup is a focused platform-specific PR.
-- **CareSchedule runtime** — the table exists, `AdaptiveSchedule.adjust()` is tested; the engine that stamps `next_due_at` on each care event (and feeds OverdueWidget / TodayWidget) is the next PR.
-- **Filter chips** (status / location / overdue / tags) — lands with the schedule runtime.
-- **ZIP-with-photos export** — with the photo pipeline.
-- **Inventory transactions UI** — `inventory_transactions` table exists; UI is out of scope until photos land.
-- **i18n (en, ro)** — `intl` + `flutter gen-l10n` scaffolding; no text has been externalised yet.
-- **`.github/workflows/web-ci.yml`** + a matching `flutter-ci.yml` — blocked on the PAT missing `workflow` scope.
+- **Notifications pipeline** — ReminderEngine → NotificationService.syncAll glue, fired on care-event record / snooze / reschedule. Both sides exist; one focused PR wires them.
+- **Filter chips** (status / location / overdue / tags) on Home / Search.
+- **ZIP-with-photos export** — the attached content-addressed photos bundled next to the existing HMAC JSON backup.
+- **Inventory-transactions UI** (propagation parent↔child). Table exists; UI is a one-screen port.
+- **Externalise remaining English strings** — plumbing is live; each feature surface is a small diff.
+- **`.github/workflows/*.yml`** — blocked on PAT missing `workflow` scope.
 
 ### Next logical PR
 
-Most-impactful single follow-up: **CareSchedule runtime**. That closes the loop by (a) stamping `next_due_at` on new care events, (b) invoking `AdaptiveSchedule.adjust()` with the rolling window, (c) flipping OverdueWidget + TodayWidget + ActivityWidget to real data, (d) re-enabling the filter chips. Everything it needs is already in the repo.
+Wire the notifications pipeline: on every `CareEventRepository.record` / `CareScheduleRepository.snooze`, rebuild events via `ReminderEngine.buildUpcoming(schedules, ...)` and hand them to `NotificationService.syncAll`. Everything it needs is already in the repo.

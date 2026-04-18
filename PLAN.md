@@ -576,22 +576,23 @@ Free tier exists to convert, not to last: 25-plant ceiling is intentionally belo
 
 ### Phase 1 — Offline MVP (Flutter only, no server)
 
-> Status as of 2026-04-18: **landed** on `main` via PRs #2 → #9 (scaffold → widget port → Drift schema → UI wiring + adaptive scheduler → FTS5 → Locations → HMAC backup → iCal).
+> Status as of 2026-04-18: **landed** on `main` via PRs #2 → #14 (scaffold → widget port → Drift schema → UI wiring + adaptive scheduler → FTS5 → Locations → HMAC backup → iCal → schedule runtime → photos → i18n → local notifications plugin).
 >
 > Shipped-phase-1 items are marked ✅. Items marked ⏳ are *on the Phase 1 roadmap* but descoped to follow-on PRs in the same phase once the remaining platform plumbing is in place.
 
 - ✅ Drift schema (full DDL above) including `sync_ops`. *(PR #4)*
-- ⏳ Plant CRUD with **photos**; thumbnail + 1600px display via `flutter_image_compress`; SHA-256 content addressing; OPFS on web. *(Plant CRUD landed PR #4 + PR #5; the photo pipeline — camera plugin + hash write + OPFS — needs a focused PR.)*
+- ✅ Plant CRUD *(PR #4 + #5)* with **content-addressed photos** (SHA-256 + sharded on-disk + OR-Set attach/detach + gallery picker UI). *(PR #12.)* ZIP-with-photos export still ⏳; thumbnail + 1600px resize via `flutter_image_compress` and OPFS on web are the remaining sub-items.
 - ✅ Locations (hierarchical picker). *(PR #7)*
-- ✅ Care events (record + undo) + per-plant schedules (schema live; runtime wiring is the next PR).
-- ✅ **Adaptive schedule algorithm** — EWMA (α=0.3) + snooze-ratio + early-completion + [0.5×, 2× base] clamp, with a returnable streak counter. Pure function, 13 tests. *(PR #5.)* Integration (stamping `next_due_at` on each care event) comes with the schedule-engine PR.
+- ✅ Care events (record + undo). *(PR #4 + #11)* Per-plant care schedules wired at runtime — `CareScheduleRepository` + Overdue/Today widgets read real data. *(PR #11.)*
+- ✅ **Adaptive schedule algorithm** — EWMA (α=0.3) + snooze-ratio + early-completion + [0.5×, 2× base] clamp. *(PR #5.)* Integrated into the care-event write path. *(PR #11.)*
 - ✅ **iCal export** (RFC 5545, UTC-safe against DST). *(PR #9.)*
-- ⏳ **Local notifications** (`flutter_local_notifications` + `timezone`) — `ReminderEngine` produces the right shape; the platform plugin + permissions wiring lands next.
+- ✅ **Local notifications plugin** — `flutter_local_notifications` + `timezone` + Android desugaring + abstract `NotificationService`. *(PR #14.)* ⏳ The ReminderEngine → syncAll glue (fire on care-event record / snooze / reschedule) is a focused follow-up.
 - ✅ FTS5 search (unicode61 + remove_diacritics). *(PR #6.)*
-- ⏳ Filter chips (status / location / overdue / tags) — lands with the care-schedule runtime.
+- ⏳ Filter chips (status / location / overdue / tags) — lands with the small UI follow-up.
 - ✅ JSON backup export + import (HMAC-SHA256 signature). *(PR #8.)*
-- ⏳ ZIP-with-photos export — comes with the photo pipeline.
-- ⏳ Inventory graph (propagations parent↔child) — table exists (`inventory_transactions`), UI is out of scope until photos land.
+- ⏳ ZIP-with-photos export — straightforward extension of the existing JSON path now that the photo store is live.
+- ⏳ Inventory graph (propagations parent↔child) — table exists (`inventory_transactions`), one-screen UI port.
+- ✅ i18n: `en`, `ro` from day 1. *(PR #13.)* ⏳ Remaining English strings get externalised per-surface.
 - Riverpod state + `go_router`.
 - i18n: `en`, `ro` from day 1.
 - **Monetization hook**: none — this phase builds trust.
