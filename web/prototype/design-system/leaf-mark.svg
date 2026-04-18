@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <g transform="translate(2, 0)">
+    <path d="M22 4 C11 4, 3 13, 3 26 C3 37, 11 44, 22 44 C33 44, 41 37, 41 26 C41 13, 33 4, 22 4 Z&#xA;             M18 16 C18 14, 19 13, 20 13 C21 13, 22 14, 22 16 C22 18, 21 19, 20 19 C19 19, 18 18, 18 16 Z&#xA;             M24 28 C24 26, 25 25, 26 25 C27 25, 28 26, 28 28 C28 30, 27 31, 26 31 C25 31, 24 30, 24 28 Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="2" stroke-linejoin="round"></path>
+    <line x1="22" y1="44" x2="22" y2="48" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>
+  </g>
+</svg>

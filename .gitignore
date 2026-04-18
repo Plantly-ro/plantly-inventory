@@ -1,0 +1,45 @@
+# Node / Playwright
+node_modules/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# OS + editor
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Flutter (for Phase 1 — kept here now so the first `flutter create` doesn't dirty the tree)
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins-dependencies
+
+# Generated Dart
+*.freezed.dart
+*.g.dart
+
+# Android
+android/.gradle/
+android/app/release/
+android/local.properties
+android/key.properties
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/flutter_export_environment.sh
+
+# Environment / secrets
+.env
+.env.*
+*.log
