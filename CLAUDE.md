@@ -43,7 +43,7 @@ PlantlyInventory/
     └── visual.spec.ts-snapshots/   # committed baselines
 ```
 
-Phase 1 data-layer files (`lib/data/`, `lib/sync/`, `lib/features/*/...`, `integration_test/`, `l10n/`) land as the port progresses per PLAN.md §"Critical files".
+Phase 1 data-layer files (`lib/data/`, `lib/sync/`, `lib/domain/services/`, `lib/features/*/...`) landed via PRs #2 → #9 (2026-04-18). See the **"Phase 1 status"** section at the bottom of this file for the shipped / deferred breakdown.
 
 ## Running the Flutter app locally
 
@@ -85,11 +85,11 @@ CI runs the same thing on Linux Chromium; visual snapshots in `tests/e2e/visual.
 ## What is the prototype vs. what is "the product"
 
 - **The prototype** (`web/prototype/`) is **what the user approved**. It is the pixel-level reference for how the Phase 1 Flutter app should look. It was produced by claude.ai/design during an iterative session — the chat transcript is preserved at `web/prototype/DESIGN_CHAT.md`. The design bundle's own instructions for a coding agent are at `web/prototype/DESIGN_BUNDLE_README.md` — those instructions end with *"recreate them pixel-perfectly in whatever technology makes sense for the target codebase."* In our case, that target is **Flutter**.
-- **Phase 1 of the product** (per `PLAN.md`) is a Flutter + Drift offline MVP that ports the prototype's screens into native Flutter widgets. Phase 1 has not been scaffolded yet — this repository deliberately does **not** contain a `pubspec.yaml` until Flutter is installed on a dev machine and a human runs `flutter create` against this directory.
+- **Phase 1 of the product** (per `PLAN.md`) is a Flutter + Drift offline MVP that ports the prototype's screens into native Flutter widgets. Landed via PRs #2 → #9 on 2026-04-18 — see the **"Phase 1 status"** section at the bottom of this file for shipped vs. deferred items.
 
-## Widget → Flutter mapping (for when Phase 1 starts)
+## Widget → Flutter mapping (as landed)
 
-When the port begins, the prototype files map onto the Flutter feature tree like this:
+The prototype files were ported onto the Flutter feature tree like this (the table kept current for future design re-exports):
 
 | Prototype file | Flutter destination (see PLAN.md "Critical files") |
 |---|---|
@@ -141,3 +141,37 @@ Do not change these without re-reading the `DESIGN_CHAT.md` transcript:
   - Flutter integration: `flutter test integration_test/` on Chrome + Android emulator.
   - E2E sync (Phase 2): `docker compose up` on a clean VM → two devices → reconcile.
 - **Commits:** conventional (`feat:`, `fix:`, `docs:`). Include the Phase number in the body if the commit touches phased work.
+
+## Phase 1 status (as of 2026-04-18)
+
+Phase 1 (per `PLAN.md`) is **landed** on `main` across PRs #2 → #9. What the app does today and what's explicitly deferred:
+
+### Shipped
+
+| PR | Area | Files |
+|---|---|---|
+| #2 | Flutter scaffold + tokens + greeting/stats | `pubspec.yaml`, `lib/theme/tokens.dart`, `lib/main.dart`, `test/widget_test.dart` |
+| #3 | Full prototype widget + screen port | `lib/features/home/**`, `lib/features/{plant_detail,calendar,export}/**` |
+| #4 | **Drift schema + HLC + op-log** + Plant/CareEvent repos | `lib/data/database/app_database.dart`, `lib/sync/{hlc,op_log,device_id}.dart`, `lib/data/repositories/{plant,care_event}_repository.dart` |
+| #5 | UI ↔ Drift wiring + FAB + **adaptive scheduler** | `lib/data/providers.dart`, `lib/data/seed.dart`, `lib/features/home/add_plant_sheet.dart`, `lib/domain/services/adaptive_schedule.dart` |
+| #6 | **FTS5 search** + SearchScreen | `lib/data/repositories/search_repository.dart`, `lib/features/search/search_screen.dart` (schema v2 migration) |
+| #7 | **Locations hierarchy** + Spaces screen | `lib/data/repositories/location_repository.dart`, `lib/features/locations/locations_screen.dart` |
+| #8 | **HMAC JSON backup/import** | `lib/domain/services/backup_service.dart` |
+| #9 | **iCal export** + ReminderEngine | `lib/domain/services/{ical_export,reminder_engine}.dart` |
+
+57 Dart tests pass (`flutter test`) + 13 Playwright tests pass (`npm test`). `flutter analyze` is clean. Release APKs for three ABIs ship at `http://wrk2.netbird.overlay:4173/`.
+
+### Deferred (still on Phase 1 roadmap)
+
+- **Photos + content-addressed store** — camera plugin + SHA-256 write + OPFS on web. `photos` / `plant_photos` tables already exist.
+- **`flutter_local_notifications` registration** — `ReminderEngine` produces the right shape; platform plugin + POST_NOTIFICATIONS permission + iOS Info.plist + channel setup is a focused platform-specific PR.
+- **CareSchedule runtime** — the table exists, `AdaptiveSchedule.adjust()` is tested; the engine that stamps `next_due_at` on each care event (and feeds OverdueWidget / TodayWidget) is the next PR.
+- **Filter chips** (status / location / overdue / tags) — lands with the schedule runtime.
+- **ZIP-with-photos export** — with the photo pipeline.
+- **Inventory transactions UI** — `inventory_transactions` table exists; UI is out of scope until photos land.
+- **i18n (en, ro)** — `intl` + `flutter gen-l10n` scaffolding; no text has been externalised yet.
+- **`.github/workflows/web-ci.yml`** + a matching `flutter-ci.yml` — blocked on the PAT missing `workflow` scope.
+
+### Next logical PR
+
+Most-impactful single follow-up: **CareSchedule runtime**. That closes the loop by (a) stamping `next_due_at` on new care events, (b) invoking `AdaptiveSchedule.adjust()` with the rolling window, (c) flipping OverdueWidget + TodayWidget + ActivityWidget to real data, (d) re-enabling the filter chips. Everything it needs is already in the repo.
