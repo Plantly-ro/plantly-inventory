@@ -7,6 +7,7 @@ import '../sync/op_log.dart';
 import 'database/app_database.dart';
 import 'repositories/care_event_repository.dart';
 import 'repositories/plant_repository.dart';
+import 'repositories/search_repository.dart';
 import 'seed.dart';
 
 /// App-wide dependencies. Everything downstream of [appBootstrapProvider]
@@ -59,6 +60,11 @@ final plantRepositoryProvider = Provider<PlantRepository>((ref) {
 final careEventRepositoryProvider = Provider<CareEventRepository>((ref) {
   final ctx = ref.watch(appContextProvider).requireValue;
   return CareEventRepository(db: ctx.db, opLog: ctx.opLog);
+});
+
+final searchRepositoryProvider = Provider<SearchRepository>((ref) {
+  final ctx = ref.watch(appContextProvider).requireValue;
+  return SearchRepository(db: ctx.db, tenantId: ctx.opLog.tenantId);
 });
 
 /// Live stream of non-deleted plants.

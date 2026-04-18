@@ -7,6 +7,7 @@ import '../../data/providers.dart';
 import '../../theme/tokens.dart';
 import '../calendar/calendar_screen.dart';
 import '../plant_detail/plant_detail_screen.dart';
+import '../search/search_screen.dart';
 import 'add_plant_sheet.dart';
 import 'home_providers.dart';
 import 'widget_registry.dart';
@@ -137,30 +138,42 @@ class _EditToggleBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(0, 4, 16, 6),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(999),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: editing ? surface.green : surface.surface,
-              border: Border.all(color: editing ? surface.green : surface.border),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              editing ? '✓ Done' : '✎ Customize home',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: editing ? Colors.white : surface.muted,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+      child: Row(
+        children: [
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: Icon(Icons.search, color: surface.muted),
+            tooltip: 'Search plants',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SearchScreen()),
+              );
+            },
+          ),
+          const Spacer(),
+          InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(999),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: editing ? surface.green : surface.surface,
+                border: Border.all(color: editing ? surface.green : surface.border),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                editing ? '✓ Done' : '✎ Customize home',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: editing ? Colors.white : surface.muted,
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

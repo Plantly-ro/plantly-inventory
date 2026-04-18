@@ -209,36 +209,91 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
-          await customStatement(
-            'CREATE INDEX IF NOT EXISTS idx_plants_tenant ON plants(tenant_id)',
-          );
-          await customStatement(
-            'CREATE INDEX IF NOT EXISTS idx_plants_location ON plants(tenant_id, location_id)',
-          );
-          await customStatement(
-            'CREATE INDEX IF NOT EXISTS idx_plants_status ON plants(tenant_id, status)',
-          );
-          await customStatement(
-            'CREATE INDEX IF NOT EXISTS idx_care_events_plant_done ON care_events(tenant_id, plant_id, done_at DESC)',
-          );
-          await customStatement(
-            'CREATE INDEX IF NOT EXISTS idx_schedules_due ON care_schedules(tenant_id, enabled, next_due_at)',
-          );
-          await customStatement(
-            'CREATE INDEX IF NOT EXISTS idx_sync_ops_tenant_pending ON sync_ops(tenant_id, pushed_at) WHERE pushed_at IS NULL',
-          );
-          await customStatement(
-            'CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_tenant_name ON tags(tenant_id, name)',
-          );
-          await customStatement(
-            'CREATE UNIQUE INDEX IF NOT EXISTS idx_plant_photos_unique_add ON plant_photos(tenant_id, plant_id, photo_sha, added_hlc)',
-          );
+          await _createIndexes();
+          await _createPlantsFts();
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await _createPlantsFts();
+          }
         },
       );
+
+  Future<void> _createIndexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_plants_tenant ON plants(tenant_id)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_plants_location ON plants(tenant_id, location_id)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_plants_status ON plants(tenant_id, status)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_care_events_plant_done ON care_events(tenant_id, plant_id, done_at DESC)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_schedules_due ON care_schedules(tenant_id, enabled, next_due_at)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_sync_ops_tenant_pending ON sync_ops(tenant_id, pushed_at) WHERE pushed_at IS NULL',
+    );
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_tenant_name ON tags(tenant_id, name)',
+    );
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_plant_photos_unique_add ON plant_photos(tenant_id, plant_id, photo_sha, added_hlc)',
+    );
+  }
+
+  /// FTS5 virtual table over plants (PLAN.md §"Schema non-negotiables"). The
+  /// full schema eventually joins species/tags/locations; Phase 1 indexes
+  /// nickname + notes. Triggers keep the FTS table in sync with plants.
+  ///
+  /// tokenize = 'unicode61 remove_diacritics 2' — Romanian plant names with
+  /// diacritics (ă, â, î, ș, ț) match their ASCII-folded counterparts.
+  Future<void> _createPlantsFts() async {
+    await customStatement('''
+      CREATE VIRTUAL TABLE IF NOT EXISTS plants_fts USING fts5(
+        plant_id UNINDEXED,
+        tenant_id UNINDEXED,
+        nickname,
+        notes,
+        tokenize = 'unicode61 remove_diacritics 2'
+      )
+    ''');
+
+    // Backfill from existing rows (harmless when empty).
+    await customStatement('''
+      INSERT INTO plants_fts(plant_id, tenant_id, nickname, notes)
+      SELECT id, tenant_id, nickname, COALESCE(notes, '') FROM plants
+      WHERE deleted_at IS NULL
+    ''');
+
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS plants_fts_ai AFTER INSERT ON plants BEGIN
+        INSERT INTO plants_fts(plant_id, tenant_id, nickname, notes)
+        VALUES (new.id, new.tenant_id, new.nickname, COALESCE(new.notes, ''));
+      END
+    ''');
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS plants_fts_ad AFTER DELETE ON plants BEGIN
+        DELETE FROM plants_fts WHERE plant_id = old.id;
+      END
+    ''');
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS plants_fts_au AFTER UPDATE ON plants BEGIN
+        DELETE FROM plants_fts WHERE plant_id = old.id;
+        INSERT INTO plants_fts(plant_id, tenant_id, nickname, notes)
+        SELECT new.id, new.tenant_id, new.nickname, COALESCE(new.notes, '')
+        WHERE new.deleted_at IS NULL;
+      END
+    ''');
+  }
 }
