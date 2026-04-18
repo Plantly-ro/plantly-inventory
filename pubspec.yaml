@@ -1,0 +1,34 @@
+name: plantly_inventory
+description: "PlantlyInventory — offline-first companion plant care tracker. Phase 1 Flutter app; see PLAN.md."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State + routing (per PLAN.md §"Package list")
+  flutter_riverpod: ^2.5.1
+  go_router: ^14.2.7
+
+  # Typography — Inter + Plus Jakarta Sans (the prototype's two families)
+  google_fonts: ^6.2.1
+
+  cupertino_icons: ^1.0.8
+
+  # Phase-1 data/sync/notification deps land here when the repositories are
+  # written: drift, drift_flutter, sqlite3_flutter_libs, dio, retrofit,
+  # flutter_secure_storage, flutter_local_notifications, timezone, crypto, ulid.
+  # They're intentionally omitted from the scaffold to keep pubspec.lock small
+  # until the code that uses them exists.
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

@@ -14,10 +14,21 @@ PlantlyInventory/
 ├── CLAUDE.md                       # this file
 ├── README.md                       # user-facing quickstart
 ├── LICENSE                         # AGPL-3.0-or-later
+│
+├── pubspec.yaml                    # Flutter app — Phase 1
+├── analysis_options.yaml           # flutter_lints ruleset
+├── lib/
+│   ├── main.dart                   # ProviderScope → PlantlyApp → HomeScreen
+│   └── theme/
+│       └── tokens.dart             # mechanical port of design-system/colors_and_type.css
+├── test/widget_test.dart           # Flutter widget tests (greeting + stats + theme toggle)
+├── android/ ios/ web/ linux/ macos/ windows/   # flutter create output
+│
 ├── package.json                    # Node dev deps (http-server, Playwright). No bundler.
-├── playwright.config.ts            # Playwright config — starts the dev server, one chromium project
-├── .github/workflows/web-ci.yml    # runs prototype e2e + visual tests on push/PR
+├── playwright.config.ts            # Playwright config — starts the prototype dev server
+├── .github/workflows/web-ci.yml    # (pending — PAT lacks workflow scope)
 ├── web/
+│   ├── index.html  manifest.json  favicon.png  icons/   # Flutter web entry (Phase 1)
 │   └── prototype/                  # the clickable design prototype (React via in-browser Babel)
 │       ├── index.html              # entry point (copied verbatim from the Claude Design handoff)
 │       ├── components/             # shared.jsx, widgets.jsx, screens.jsx — loaded by index.html
@@ -25,14 +36,29 @@ PlantlyInventory/
 │       ├── _exploration/           # designer's earlier variations — NOT loaded by index.html
 │       ├── DESIGN_BUNDLE_README.md # the handoff bundle's own README
 │       └── DESIGN_CHAT.md          # the design-session chat transcript (provenance)
-└── tests/
-    └── e2e/
-        ├── prototype.spec.ts       # functional e2e (navigation, widget editing, export flow)
-        ├── visual.spec.ts          # visual-regression screenshots
-        └── visual.spec.ts-snapshots/  # committed baselines
+└── tests/e2e/                      # Playwright — for the design prototype (not the Flutter app)
+    ├── prototype.spec.ts           # functional e2e
+    ├── visual.spec.ts              # visual-regression screenshots
+    ├── helpers.ts                  # shared waitForProtoReady / waitForFontsReady
+    └── visual.spec.ts-snapshots/   # committed baselines
 ```
 
-Once the Flutter port starts (Phase 1), `lib/`, `pubspec.yaml`, `integration_test/`, and `l10n/` land at the repo root per the "Critical files" tree in `PLAN.md`.
+Phase 1 data-layer files (`lib/data/`, `lib/sync/`, `lib/features/*/...`, `integration_test/`, `l10n/`) land as the port progresses per PLAN.md §"Critical files".
+
+## Running the Flutter app locally
+
+```bash
+export PATH="$HOME/flutter/bin:$PATH"   # if Flutter was installed to $HOME/flutter
+flutter pub get
+flutter test                             # widget tests (greeting + stats + theme toggle)
+flutter analyze                          # static analysis — must be clean
+# flutter run -d chrome                  # needs Chrome installed (flutter doctor)
+# flutter build apk --debug              # needs Android SDK (flutter doctor)
+```
+
+Toolchain notes for this box (as of Phase 1 scaffold):
+- `flutter doctor` reports Android SDK / Chrome / Linux desktop toolchain missing. `flutter test` and `flutter analyze` still work (pure Dart VM). APK and web builds need those installed.
+- Flutter SDK is at `$HOME/flutter` (cloned `-b stable`, shallow). Upgrade with `flutter upgrade`.
 
 ## Running the prototype locally
 
