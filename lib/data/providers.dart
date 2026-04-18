@@ -1,0 +1,68 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../sync/device_id.dart';
+import '../sync/hlc.dart';
+import '../sync/op_log.dart';
+import 'database/app_database.dart';
+import 'repositories/care_event_repository.dart';
+import 'repositories/plant_repository.dart';
+import 'seed.dart';
+
+/// App-wide dependencies. Everything downstream of [appBootstrapProvider]
+/// waits for the async bootstrap to finish so widgets can consume the
+/// repos synchronously via [plantRepositoryProvider] etc.
+
+final databaseProvider = Provider<AppDatabase>((ref) {
+  final db = AppDatabase();
+  ref.onDispose(db.close);
+  return db;
+});
+
+final sharedPreferencesProvider = FutureProvider<SharedPreferences>((_) {
+  return SharedPreferences.getInstance();
+});
+
+/// Default tenant for the single-user Phase 1 app. PLAN.md reserves
+/// tenant_id for Phase 4 household sharing; every synced row needs a value
+/// now so the schema doesn't rewrite later.
+const String kDefaultTenantId = 'local';
+
+class AppContext {
+  const AppContext({
+    required this.db,
+    required this.clock,
+    required this.opLog,
+    required this.deviceId,
+  });
+  final AppDatabase db;
+  final HlcClock clock;
+  final OpLogWriter opLog;
+  final String deviceId;
+}
+
+final appContextProvider = FutureProvider<AppContext>((ref) async {
+  final db = ref.watch(databaseProvider);
+  final prefs = await ref.watch(sharedPreferencesProvider.future);
+  final deviceId = await DeviceId.load(prefs);
+  final clock = HlcClock(deviceId: deviceId);
+  final opLog = OpLogWriter(db: db, clock: clock, tenantId: kDefaultTenantId);
+  await seedIfEmpty(db: db, opLog: opLog);
+  return AppContext(db: db, clock: clock, opLog: opLog, deviceId: deviceId);
+});
+
+final plantRepositoryProvider = Provider<PlantRepository>((ref) {
+  final ctx = ref.watch(appContextProvider).requireValue;
+  return PlantRepository(db: ctx.db, opLog: ctx.opLog);
+});
+
+final careEventRepositoryProvider = Provider<CareEventRepository>((ref) {
+  final ctx = ref.watch(appContextProvider).requireValue;
+  return CareEventRepository(db: ctx.db, opLog: ctx.opLog);
+});
+
+/// Live stream of non-deleted plants.
+final plantsStreamProvider = StreamProvider<List<PlantRow>>((ref) {
+  final repo = ref.watch(plantRepositoryProvider);
+  return repo.watchAll();
+});

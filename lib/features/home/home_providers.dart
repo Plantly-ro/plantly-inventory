@@ -4,16 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../data/providers.dart';
 import 'widget_registry.dart';
 
 /// Keys mirror the prototype's localStorage contract so a later Drift-backed
 /// implementation can re-hydrate state without shape changes.
 const _kLayoutKey = 'plantly_layout';
 const _kThemeKey = 'plantly_theme';
-
-final sharedPreferencesProvider = FutureProvider<SharedPreferences>((_) {
-  return SharedPreferences.getInstance();
-});
 
 class HomeLayoutController extends StateNotifier<List<String>> {
   HomeLayoutController(this._prefs) : super(WidgetRegistry.defaultLayout) {

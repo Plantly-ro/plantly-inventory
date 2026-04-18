@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/mock_plants.dart';
+import '../../../data/providers.dart';
 import '../../../shared/plant_thumb.dart';
 import '../../../theme/tokens.dart';
 import 'widget_shell.dart';
 
-class GridWidget extends StatelessWidget {
+/// DB-backed plant grid. Streams `plants.watchAll()` from the repository
+/// and renders each row as a tappable card. Status colour (ok / terra) is
+/// still driven by a small `_okFor` lookup until care_schedules feeds it.
+class GridWidget extends ConsumerWidget {
   const GridWidget({
     super.key,
     required this.surface,
@@ -23,17 +28,13 @@ class GridWidget extends StatelessWidget {
   final VoidCallback? onMoveDown;
   final VoidCallback? onRemove;
 
-  static const _items = <_GridItem>[
-    _GridItem(id: 'fern', ok: true),
-    _GridItem(id: 'bob', ok: false),
-    _GridItem(id: 'suc', ok: true),
-    _GridItem(id: 'green', ok: false),
-    _GridItem(id: 'pete', ok: true),
-    _GridItem(id: 'cala', ok: true),
-  ];
+  // Two plant ids that are still "overdue" until the schedule engine takes
+  // over — keeps the existing visual state so the prototype match holds.
+  static const _overdueIds = {'bob', 'green'};
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(plantsStreamProvider);
     return WidgetShell(
       surface: surface,
       editing: editing,
@@ -41,34 +42,51 @@ class GridWidget extends StatelessWidget {
       onMoveDown: onMoveDown,
       onRemove: onRemove,
       title: 'All plants',
-      accentLabel: '24',
+      accentLabel: async.maybeWhen(
+        data: (rows) => '${rows.length}',
+        orElse: () => null,
+      ),
       accentColor: surface.muted,
       action: 'See all',
-      child: GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: 0.78,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
-        children: _items.map((item) {
-          final plant = MockPlants.byId(item.id);
-          return _Card(plant: plant, ok: item.ok, surface: surface, onTap: () => onPlantTap?.call(plant));
-        }).toList(growable: false),
+      child: async.when(
+        loading: () => const SizedBox(height: 120, child: Center(child: CircularProgressIndicator())),
+        error: (e, _) => _ErrorPlaceholder(message: '$e', surface: surface),
+        data: (rows) => rows.isEmpty
+            ? _EmptyPlaceholder(surface: surface)
+            : GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                childAspectRatio: 0.78,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                children: rows.map((row) {
+                  final mock = MockPlants.byId(row.id);
+                  return _Card(
+                    plant: mock,
+                    label: row.nickname,
+                    ok: !_overdueIds.contains(row.id),
+                    surface: surface,
+                    onTap: () => onPlantTap?.call(mock),
+                  );
+                }).toList(growable: false),
+              ),
       ),
     );
   }
 }
 
-class _GridItem {
-  const _GridItem({required this.id, required this.ok});
-  final String id;
-  final bool ok;
-}
-
 class _Card extends StatelessWidget {
-  const _Card({required this.plant, required this.ok, required this.surface, required this.onTap});
+  const _Card({
+    required this.plant,
+    required this.label,
+    required this.ok,
+    required this.surface,
+    required this.onTap,
+  });
+
   final MockPlant plant;
+  final String label;
   final bool ok;
   final PlantlySurface surface;
   final VoidCallback onTap;
@@ -129,7 +147,7 @@ class _Card extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    plant.name,
+                    label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -163,3 +181,48 @@ class _Card extends StatelessWidget {
     );
   }
 }
+
+class _EmptyPlaceholder extends StatelessWidget {
+  const _EmptyPlaceholder({required this.surface});
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: surface.surface,
+        border: Border.all(color: surface.border),
+        borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        'No plants yet — tap the + button to add one.',
+        style: TextStyle(fontSize: 12, color: surface.muted),
+      ),
+    );
+  }
+}
+
+class _ErrorPlaceholder extends StatelessWidget {
+  const _ErrorPlaceholder({required this.message, required this.surface});
+  final String message;
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: surface.surfaceAlt,
+        border: Border.all(color: surface.terra),
+        borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
+      ),
+      child: Text(
+        'Could not load plants.\n$message',
+        style: TextStyle(fontSize: 12, color: surface.terra),
+      ),
+    );
+  }
+}
+

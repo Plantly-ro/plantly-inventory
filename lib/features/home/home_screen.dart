@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/mock_plants.dart';
+import '../../data/providers.dart';
 import '../../theme/tokens.dart';
 import '../calendar/calendar_screen.dart';
 import '../plant_detail/plant_detail_screen.dart';
+import 'add_plant_sheet.dart';
 import 'home_providers.dart';
 import 'widget_registry.dart';
 
@@ -26,35 +28,73 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
 
+    // The DB needs one round-trip to open, load the device id, and seed the
+    // fixture plants on first launch — show a lightweight loader until then.
+    final bootstrap = ref.watch(appContextProvider);
+
     return Scaffold(
       backgroundColor: surface.bg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _EditToggleBar(
-              editing: _editing,
-              surface: surface,
-              onTap: () => setState(() => _editing = !_editing),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.only(top: 6, bottom: 24),
-                children: [
-                  for (var i = 0; i < layout.length; i++)
-                    _renderWidget(layout[i], i, layout.length, surface),
-                  if (_editing) _EditPanel(surface: surface, current: layout),
-                ],
-              ),
-            ),
-            _TabBar(
-              surface: surface,
-              onCalendar: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const CalendarScreen()),
+      floatingActionButton: bootstrap.hasValue
+          ? FloatingActionButton(
+              backgroundColor: surface.green,
+              foregroundColor: Colors.white,
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => const AddPlantSheet(),
                 );
               },
+              child: const Icon(Icons.add),
+            )
+          : null,
+      body: SafeArea(
+        child: bootstrap.when(
+          loading: () => Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: surface.green),
+                const SizedBox(height: 12),
+                Text('Opening your garden…', style: TextStyle(color: surface.muted)),
+              ],
             ),
-          ],
+          ),
+          error: (e, _) => Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'Failed to open local database.\n$e',
+              style: TextStyle(color: surface.terra),
+            ),
+          ),
+          data: (_) => Column(
+            children: [
+              _EditToggleBar(
+                editing: _editing,
+                surface: surface,
+                onTap: () => setState(() => _editing = !_editing),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.only(top: 6, bottom: 24),
+                  children: [
+                    for (var i = 0; i < layout.length; i++)
+                      _renderWidget(layout[i], i, layout.length, surface),
+                    if (_editing) _EditPanel(surface: surface, current: layout),
+                  ],
+                ),
+              ),
+              _TabBar(
+                surface: surface,
+                onCalendar: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const CalendarScreen()),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

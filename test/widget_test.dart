@@ -6,6 +6,8 @@ import 'package:plantly_inventory/features/home/home_screen.dart';
 import 'package:plantly_inventory/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'helpers/test_app.dart';
+
 /// Widget tests default to an 800×600 viewport; the prototype home stacks
 /// six widgets vertically (~2000 logical px), so without a tall surface the
 /// offscreen portions (grid / activity / edit panel) never build and the
@@ -16,7 +18,20 @@ Future<void> _pumpHome(WidgetTester tester, [Widget? root]) async {
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 
-  await tester.pumpWidget(root ?? const ProviderScope(child: PlantlyApp()));
+  // Drift's stream teardown schedules a zero-duration Timer that the
+  // flutter_test fake clock leaves "pending" at widget-tree disposal;
+  // give it real time to drain in tearDown so the binding doesn't fail.
+  addTearDown(() async {
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    });
+  });
+
+  await tester.pumpWidget(
+    root ?? buildTestApp(child: const PlantlyApp()),
+  );
+  // Pump extra frames so the async appContextProvider (DB open + seed) finishes.
+  await tester.pumpAndSettle(const Duration(milliseconds: 100));
   await tester.pumpAndSettle();
 }
 
@@ -71,15 +86,13 @@ void main() {
     SharedPreferences.setMockInitialValues({
       'plantly_layout': '["greeting"]',
     });
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
-
-    await _pumpHome(
-      tester,
-      UncontrolledProviderScope(container: container, child: const PlantlyApp()),
-    );
+    await _pumpHome(tester);
 
     expect(find.text('All plants'), findsNothing);
+    // Grab the container via a dummy ConsumerWidget so we can drive the
+    // layout controller from the test.
+    final BuildContext homeContext = tester.element(find.byType(HomeScreen));
+    final container = ProviderScope.containerOf(homeContext);
     await container.read(homeLayoutProvider.notifier).reset();
     await tester.pumpAndSettle();
     expect(find.text('All plants'), findsOneWidget);
@@ -96,7 +109,25 @@ void main() {
   });
 
   testWidgets('HomeScreen builds without crash', (tester) async {
-    await _pumpHome(tester, const ProviderScope(child: MaterialApp(home: HomeScreen())));
+    await _pumpHome(
+      tester,
+      buildTestApp(child: const MaterialApp(home: HomeScreen())),
+    );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('FAB opens the add-plant sheet + submits to the repository', (tester) async {
+    await _pumpHome(tester);
+
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add a plant'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'Test Sprout');
+    await tester.tap(find.widgetWithText(FilledButton, 'Add plant'));
+    await tester.pumpAndSettle();
+
+    // Sheet dismissed on successful save.
+    expect(find.text('Add a plant'), findsNothing);
   });
 }
