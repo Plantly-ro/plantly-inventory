@@ -1,0 +1,244 @@
+import 'dart:convert';
+
+import 'package:drift/drift.dart';
+import 'package:ulid/ulid.dart';
+
+import '../../domain/services/adaptive_schedule.dart';
+import '../../notifications/reminder_sync.dart';
+import '../../sync/op_log.dart';
+import '../database/app_database.dart';
+
+/// CRUD + runtime for `care_schedules`. In addition to plain persistence,
+/// it runs `AdaptiveSchedule.adjust()` on every recorded care event to
+/// maintain `current_interval_days` and stamp `next_due_at`.
+///
+/// The rolling window of events is persisted in `recent_events_json` as a
+/// list of `{done_at, snoozed}` records, newest-first, capped at
+/// [AdaptiveSchedule.windowSize] entries.
+class CareScheduleRepository {
+  CareScheduleRepository({required this.db, required this.opLog, this.reminderSync});
+
+  final AppDatabase db;
+  final OpLogWriter opLog;
+  final ReminderSync? reminderSync;
+
+  static const int maxWindow = AdaptiveSchedule.windowSize;
+
+  /// Live stream of schedules due on or before [cutoff] (ms since epoch).
+  /// Used by OverdueWidget (today's wall-clock) and TodayWidget
+  /// (cutoff = end of local day).
+  Stream<List<CareScheduleRow>> watchDueBefore(int cutoffMs) {
+    return (db.select(db.careSchedules)
+          ..where((s) =>
+              s.tenantId.equals(opLog.tenantId) &
+              s.deletedAt.isNull() &
+              s.enabled.equals(true) &
+              s.nextDueAt.isNotNull() &
+              s.nextDueAt.isSmallerOrEqualValue(cutoffMs))
+          ..orderBy([(s) => OrderingTerm(expression: s.nextDueAt)]))
+        .watch();
+  }
+
+  Stream<List<CareScheduleRow>> watchForPlant(String plantId) {
+    return (db.select(db.careSchedules)
+          ..where((s) =>
+              s.tenantId.equals(opLog.tenantId) &
+              s.plantId.equals(plantId) &
+              s.deletedAt.isNull()))
+        .watch();
+  }
+
+  Future<CareScheduleRow?> forPlantAndType(String plantId, String type) {
+    return (db.select(db.careSchedules)
+          ..where((s) =>
+              s.tenantId.equals(opLog.tenantId) &
+              s.plantId.equals(plantId) &
+              s.type.equals(type) &
+              s.deletedAt.isNull()))
+        .getSingleOrNull();
+  }
+
+  /// Create a schedule with a base interval. `next_due_at` is computed
+  /// from [firstDueAt] (defaults to "now + base_interval_days").
+  Future<CareScheduleRow> upsert({
+    required String plantId,
+    required String type,
+    required double baseIntervalDays,
+    DateTime? firstDueAt,
+  }) async {
+    final existing = await forPlantAndType(plantId, type);
+    if (existing != null) return existing;
+    return db.transaction(() async {
+      final id = Ulid().toString();
+      final firstDue = firstDueAt ??
+          DateTime.now().toUtc().add(Duration(
+                milliseconds: (baseIntervalDays * 86400 * 1000).round(),
+              ));
+      final value = {
+        'id': id,
+        'tenant_id': opLog.tenantId,
+        'plant_id': plantId,
+        'type': type,
+        'base_interval_days': baseIntervalDays,
+        'current_interval_days': baseIntervalDays,
+        'next_due_at': firstDue.millisecondsSinceEpoch,
+        'enabled': 1,
+        'recent_events_json': '[]',
+        'snooze_count': 0,
+      };
+      final hlc = await opLog.recordCreate(
+        entity: 'care_schedules',
+        entityId: id,
+        value: value,
+      );
+      await db.into(db.careSchedules).insert(
+            CareSchedulesCompanion.insert(
+              id: id,
+              tenantId: opLog.tenantId,
+              plantId: plantId,
+              type: type,
+              baseIntervalDays: baseIntervalDays,
+              currentIntervalDays: baseIntervalDays,
+              nextDueAt: Value(firstDue.millisecondsSinceEpoch),
+              updatedHlc: hlc.encode(),
+              deviceId: opLog.clock.deviceId,
+            ),
+          );
+      return (await forPlantAndType(plantId, type))!;
+    });
+  }
+
+  /// Called by CareEventRepository after recording an event. Appends the
+  /// new sample to `recent_events_json`, runs the adaptive algorithm, and
+  /// updates `current_interval_days` / `next_due_at` / `last_done_at`.
+  /// [snoozedBeforeDone] counts how many snoozes the user tapped between
+  /// `next_due_at` and the actual completion.
+  Future<void> applyCareEvent({
+    required String plantId,
+    required String type,
+    required DateTime doneAt,
+    int snoozedBeforeDone = 0,
+  }) async {
+    final s = await forPlantAndType(plantId, type);
+    if (s == null) return; // no schedule → nothing to update
+
+    return db.transaction(() async {
+      final nowMs = doneAt.millisecondsSinceEpoch;
+      final events = _decodeWindow(s.recentEventsJson);
+      final actualInterval = s.lastDoneAt == null
+          ? null
+          : (nowMs - s.lastDoneAt!) / (86400.0 * 1000);
+      final newEvent = _EventSample(
+        doneAt: nowMs,
+        snoozed: snoozedBeforeDone > 0,
+        actualIntervalDays: actualInterval,
+      );
+      final updatedWindow = [newEvent, ...events].take(maxWindow).toList();
+
+      final decision = AdaptiveSchedule.adjust(
+        baseIntervalDays: s.baseIntervalDays,
+        currentIntervalDays: s.currentIntervalDays,
+        recentEvents: [
+          for (final e in updatedWindow)
+            CompletedCareEvent(
+              snoozed: e.snoozed,
+              actualIntervalDays: e.actualIntervalDays,
+            ),
+        ],
+        consecutiveHighSnoozeCycles: s.snoozeCount,
+      );
+
+      final nextDue = doneAt.add(Duration(
+        milliseconds: (decision.nextIntervalDays * 86400 * 1000).round(),
+      ));
+
+      final hlc = await opLog.recordFieldUpdate(
+        entity: 'care_schedules',
+        entityId: s.id,
+        field: '@applyCareEvent',
+        value: {
+          'last_done_at': nowMs,
+          'current_interval_days': decision.nextIntervalDays,
+          'next_due_at': nextDue.millisecondsSinceEpoch,
+          'snooze_count': decision.consecutiveHighSnoozeCycles,
+          'recent_events_json': _encodeWindow(updatedWindow),
+        },
+      );
+
+      await (db.update(db.careSchedules)..where((row) => row.id.equals(s.id))).write(
+        CareSchedulesCompanion(
+          lastDoneAt: Value(nowMs),
+          currentIntervalDays: Value(decision.nextIntervalDays),
+          nextDueAt: Value(nextDue.millisecondsSinceEpoch),
+          snoozeCount: Value(decision.consecutiveHighSnoozeCycles),
+          recentEventsJson: Value(_encodeWindow(updatedWindow)),
+          updatedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+  }
+
+  Future<void> snooze(String scheduleId, {Duration by = const Duration(days: 1)}) async {
+    await db.transaction(() async {
+      final s = await (db.select(db.careSchedules)..where((r) => r.id.equals(scheduleId))).getSingleOrNull();
+      if (s == null || s.nextDueAt == null) return;
+      final next = s.nextDueAt! + by.inMilliseconds;
+      final hlc = await opLog.recordFieldUpdate(
+        entity: 'care_schedules',
+        entityId: s.id,
+        field: 'next_due_at',
+        value: next,
+      );
+      await (db.update(db.careSchedules)..where((r) => r.id.equals(scheduleId))).write(
+        CareSchedulesCompanion(
+          nextDueAt: Value(next),
+          snoozeCount: Value(s.snoozeCount + 1),
+          updatedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+    try {
+      await reminderSync?.syncFromDatabase();
+    } catch (_) {
+      // Notification re-sync is best-effort.
+    }
+  }
+
+  List<_EventSample> _decodeWindow(String json_) {
+    try {
+      final list = (json.decode(json_) as List).cast<Map<String, dynamic>>();
+      return list.map(_EventSample.fromJson).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  String _encodeWindow(List<_EventSample> events) =>
+      json.encode([for (final e in events) e.toJson()]);
+}
+
+class _EventSample {
+  const _EventSample({
+    required this.doneAt,
+    required this.snoozed,
+    required this.actualIntervalDays,
+  });
+
+  final int doneAt;
+  final bool snoozed;
+  final double? actualIntervalDays;
+
+  factory _EventSample.fromJson(Map<String, dynamic> m) => _EventSample(
+        doneAt: m['done_at'] as int,
+        snoozed: m['snoozed'] as bool? ?? false,
+        actualIntervalDays: (m['actual_interval_days'] as num?)?.toDouble(),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'done_at': doneAt,
+        'snoozed': snoozed,
+        if (actualIntervalDays != null) 'actual_interval_days': actualIntervalDays,
+      };
+}

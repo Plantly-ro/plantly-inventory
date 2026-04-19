@@ -43,7 +43,7 @@ PlantlyInventory/
     └── visual.spec.ts-snapshots/   # committed baselines
 ```
 
-Phase 1 data-layer files (`lib/data/`, `lib/sync/`, `lib/features/*/...`, `integration_test/`, `l10n/`) land as the port progresses per PLAN.md §"Critical files".
+Phase 1 data-layer files (`lib/data/`, `lib/sync/`, `lib/domain/services/`, `lib/features/*/...`) landed via PRs #2 → #9 (2026-04-18). See the **"Phase 1 status"** section at the bottom of this file for the shipped / deferred breakdown.
 
 ## Running the Flutter app locally
 
@@ -85,11 +85,11 @@ CI runs the same thing on Linux Chromium; visual snapshots in `tests/e2e/visual.
 ## What is the prototype vs. what is "the product"
 
 - **The prototype** (`web/prototype/`) is **what the user approved**. It is the pixel-level reference for how the Phase 1 Flutter app should look. It was produced by claude.ai/design during an iterative session — the chat transcript is preserved at `web/prototype/DESIGN_CHAT.md`. The design bundle's own instructions for a coding agent are at `web/prototype/DESIGN_BUNDLE_README.md` — those instructions end with *"recreate them pixel-perfectly in whatever technology makes sense for the target codebase."* In our case, that target is **Flutter**.
-- **Phase 1 of the product** (per `PLAN.md`) is a Flutter + Drift offline MVP that ports the prototype's screens into native Flutter widgets. Phase 1 has not been scaffolded yet — this repository deliberately does **not** contain a `pubspec.yaml` until Flutter is installed on a dev machine and a human runs `flutter create` against this directory.
+- **Phase 1 of the product** (per `PLAN.md`) is a Flutter + Drift offline MVP that ports the prototype's screens into native Flutter widgets. Landed via PRs #2 → #9 on 2026-04-18 — see the **"Phase 1 status"** section at the bottom of this file for shipped vs. deferred items.
 
-## Widget → Flutter mapping (for when Phase 1 starts)
+## Widget → Flutter mapping (as landed)
 
-When the port begins, the prototype files map onto the Flutter feature tree like this:
+The prototype files were ported onto the Flutter feature tree like this (the table kept current for future design re-exports):
 
 | Prototype file | Flutter destination (see PLAN.md "Critical files") |
 |---|---|
@@ -141,3 +141,45 @@ Do not change these without re-reading the `DESIGN_CHAT.md` transcript:
   - Flutter integration: `flutter test integration_test/` on Chrome + Android emulator.
   - E2E sync (Phase 2): `docker compose up` on a clean VM → two devices → reconcile.
 - **Commits:** conventional (`feat:`, `fix:`, `docs:`). Include the Phase number in the body if the commit touches phased work.
+
+## Phase 1 status (as of 2026-04-18)
+
+Phase 1 (per `PLAN.md`) is **feature-complete** on `main` across PRs #2 → #22. What the app does today and what's explicitly deferred:
+
+### Shipped
+
+| PR | Area | Files |
+|---|---|---|
+| #2 | Flutter scaffold + tokens + greeting/stats | `pubspec.yaml`, `lib/theme/tokens.dart`, `lib/main.dart` |
+| #3 | Full prototype widget + screen port | `lib/features/{home,plant_detail,calendar,export}/**` |
+| #4 | **Drift schema + HLC + op-log** + Plant/CareEvent repos | `lib/data/database/app_database.dart`, `lib/sync/{hlc,op_log,device_id}.dart`, `lib/data/repositories/{plant,care_event}_repository.dart` |
+| #5 | UI ↔ Drift wiring + FAB + **adaptive scheduler** | `lib/data/providers.dart`, `lib/data/seed.dart`, `lib/features/home/add_plant_sheet.dart`, `lib/domain/services/adaptive_schedule.dart` |
+| #6 | **FTS5 search** + SearchScreen | `lib/data/repositories/search_repository.dart`, `lib/features/search/search_screen.dart` (schema v2 migration) |
+| #7 | **Locations hierarchy** + Spaces screen | `lib/data/repositories/location_repository.dart`, `lib/features/locations/locations_screen.dart` |
+| #8 | **HMAC JSON backup/import** | `lib/domain/services/backup_service.dart` |
+| #9 | **iCal export** + ReminderEngine | `lib/domain/services/{ical_export,reminder_engine}.dart` |
+| #11 | **CareSchedule runtime** — Overdue/Today widgets read real data | `lib/data/repositories/care_schedule_repository.dart`; Overdue/Today widgets are ConsumerWidgets now |
+| #12 | **Photos** — content-addressed store + OR-Set attach/detach + picker UI | `lib/data/repositories/photo_repository.dart`, `lib/data/photo_picker.dart`; Plant Detail AppBar "add photo" + hero image from attached sha |
+| #13 | **i18n** en + ro via `flutter gen-l10n` | `l10n.yaml`, `lib/l10n/{app_en,app_ro}.arb`, `lib/l10n/generated/` |
+| #14 | **`flutter_local_notifications`** plugin + NotificationService | `lib/notifications/notification_service.dart`; Android desugaring enabled in `android/app/build.gradle.kts` |
+| #16 | **Reminder pipeline glue** — ReminderEngine → NotificationService.syncAll on care-event record / snooze | `lib/notifications/reminder_sync.dart` |
+| #17 | **Filter chips** (All / Overdue / Due today) on plant grid | `lib/features/home/filter.dart` |
+| #18 | **ZIP-with-photos export** + import | `lib/domain/services/zip_backup_service.dart` |
+| #19 | **Inventory transactions** (schema v3) + propagation API | `lib/data/repositories/inventory_transaction_repository.dart` |
+| #20 | **Image compression** (1600px display / 320px thumb) on photo save | `lib/data/image_processor.dart` |
+| #21 | **Externalised strings** + locale-aware PlantFilter.label | `lib/l10n/app_{en,ro}.arb` |
+| #22 | **Propagate UI** on Plant Detail overflow menu | `lib/features/plant_detail/propagate_dialog.dart` |
+
+**96 Dart tests + 13 Playwright tests pass.** `flutter analyze` clean. Release APKs (v0.5.0-phase1) for all three ABIs ship at `http://wrk2.netbird.overlay:4173/`.
+
+### Still deferred (explicitly out of Phase 1 scope as scoped)
+
+- **Remaining English strings** — i18n plumbing is live; each of Plant Detail / Calendar / Export Dialog / SearchScreen is a small routine diff per surface.
+- **Location + tag filter chips** — the provider + enum pattern is established, adding more variants is mechanical.
+- **`.github/workflows/*.yml`** — blocked on PAT missing `workflow` scope. Workflow YAML exists locally at `.github/workflows/web-ci.yml`; needs either a PAT with `workflow` scope or a web-UI commit.
+- **Gift / sale / death inventory actions** — ledger + schema support all of them; only `propagate` has a UI so far.
+- **Web backend** — Phase 2's province.
+
+### Next phase (Phase 2 per PLAN.md)
+
+The Go sync server + MinIO + imgproxy + Caddy stack, and the plantly.ro `ExportPlugin` concrete implementation. The op-log wire format is already being written on every mutation, so a server push is a new data path rather than a schema change. Start with `POST /sync/push` + `GET /sync/pull` against the existing `sync_ops` table.
