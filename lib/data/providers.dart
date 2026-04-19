@@ -98,6 +98,19 @@ final careEventRepositoryProvider = Provider<CareEventRepository>((ref) {
   );
 });
 
+/// Live care schedules for a single plant — drives Plant Detail's
+/// "Upcoming Care" list, so users see real data and can tap Done/Snooze.
+final schedulesForPlantProvider =
+    StreamProvider.family<List<CareScheduleRow>, String>((ref, plantId) {
+  return ref.watch(careScheduleRepositoryProvider).watchForPlant(plantId);
+});
+
+/// Recent care events for a plant — drives Plant Detail's Timeline.
+final careEventsForPlantProvider =
+    StreamProvider.family<List<CareEventRow>, String>((ref, plantId) {
+  return ref.watch(careEventRepositoryProvider).watchForPlant(plantId);
+});
+
 /// "Due today or earlier" — everything OverdueWidget + TodayWidget need.
 final dueBeforeEodProvider = StreamProvider<List<CareScheduleRow>>((ref) {
   final repo = ref.watch(careScheduleRepositoryProvider);
