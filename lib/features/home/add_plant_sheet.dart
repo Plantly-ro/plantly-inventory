@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import '../../shared/location_picker.dart';
 import '../../theme/tokens.dart';
 import 'home_providers.dart';
 
@@ -15,6 +16,14 @@ class AddPlantSheet extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<AddPlantSheet> createState() => _AddPlantSheetState();
+}
+
+String _locationLabel(String? id, List<LocationRow> rows) {
+  if (id == null) return '— no location —';
+  for (final r in rows) {
+    if (r.id == id) return '${r.name} · ${r.kind}';
+  }
+  return 'Loading…';
 }
 
 class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
@@ -125,22 +134,39 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
                 ),
               ),
               const SizedBox(height: 6),
-              DropdownButtonFormField<String?>(
-                initialValue: _locationId,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  hintText: 'Optional',
-                  border: OutlineInputBorder(),
+              InkWell(
+                onTap: locations.isEmpty
+                    ? null
+                    : () async {
+                        final picked = await pickLocation(
+                          context,
+                          ref: ref,
+                          currentLocationId: _locationId,
+                        );
+                        if (picked != _locationId) setState(() => _locationId = picked);
+                      },
+                borderRadius: BorderRadius.circular(4),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: surface.border),
+                    borderRadius: BorderRadius.circular(4),
+                    color: surface.surface,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.place_outlined, size: 16, color: surface.muted),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _locationLabel(_locationId, locations),
+                          style: TextStyle(fontSize: 14, color: surface.text),
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: surface.muted),
+                    ],
+                  ),
                 ),
-                items: [
-                  const DropdownMenuItem<String?>(value: null, child: Text('— no location —')),
-                  for (final loc in locations)
-                    DropdownMenuItem<String?>(
-                      value: loc.id,
-                      child: Text('${loc.name} · ${loc.kind}', overflow: TextOverflow.ellipsis),
-                    ),
-                ],
-                onChanged: locations.isEmpty ? null : (v) => setState(() => _locationId = v),
               ),
               if (locations.isEmpty)
                 Padding(

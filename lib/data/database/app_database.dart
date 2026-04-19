@@ -165,6 +165,13 @@ class CareSchedules extends Table {
   IntColumn get snoozeCount => integer().named('snooze_count').withDefault(const Constant(0))();
   TextColumn get recentEventsJson => text().named('recent_events_json').withDefault(const Constant('[]'))();
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+  /// How the schedule advances after a care event:
+  ///   'after_completion' — `next_due_at = doneAt + currentIntervalDays`
+  ///   'fixed'            — `next_due_at = anchor + N × interval` for
+  ///                        smallest N making next_due_at > doneAt
+  ///   'once'             — disable the schedule after the first event
+  TextColumn get recurrenceMode =>
+      text().named('recurrence_mode').withDefault(const Constant('after_completion'))();
   TextColumn get updatedHlc => text().named('updated_hlc')();
   IntColumn get deletedAt => integer().named('deleted_at').nullable()();
   TextColumn get deviceId => text().named('device_id')();
@@ -234,7 +241,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -249,6 +256,9 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 3) {
             await m.createTable(inventoryTransactions);
+          }
+          if (from < 4) {
+            await m.addColumn(careSchedules, careSchedules.recurrenceMode);
           }
         },
       );

@@ -13,6 +13,7 @@ import '../../shared/plant_thumb.dart';
 import '../../theme/tokens.dart';
 import '../export/export_dialog.dart';
 import '../home/home_providers.dart';
+import '../../shared/location_picker.dart';
 import 'add_reminder_sheet.dart';
 import 'edit_plant_sheet.dart';
 import 'inventory_action_sheet.dart';
@@ -315,71 +316,20 @@ class _PlantDetailBody extends ConsumerWidget {
     WidgetRef ref,
     db.PlantRow plant,
   ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final picked = await pickLocation(context, ref: ref, currentLocationId: plant.locationId);
+    if (picked == plant.locationId) return;
+    await ref.read(plantRepositoryProvider).setLocation(plant.id, picked);
     final locations = ref.read(locationsStreamProvider).maybeWhen(
           data: (rows) => rows,
           orElse: () => const <db.LocationRow>[],
         );
-    await showDialog<void>(
-      context: context,
-      builder: (dialogCtx) {
-        return AlertDialog(
-          title: const Text('Move to space'),
-          content: SizedBox(
-            width: 320,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  dense: true,
-                  leading: const Icon(Icons.clear),
-                  title: const Text('— no location —'),
-                  selected: plant.locationId == null,
-                  onTap: () async {
-                    final nav = Navigator.of(dialogCtx);
-                    final messenger = ScaffoldMessenger.of(context);
-                    await ref.read(plantRepositoryProvider).setLocation(plant.id, null);
-                    nav.maybePop();
-                    messenger
-                      ..clearSnackBars()
-                      ..showSnackBar(const SnackBar(content: Text('Removed from any space')));
-                  },
-                ),
-                if (locations.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text('No spaces yet — add one from the Spaces tab.'),
-                  )
-                else
-                  Flexible(
-                    child: ListView(
-                      shrinkWrap: true,
-                      children: [
-                        for (final loc in locations)
-                          ListTile(
-                            dense: true,
-                            leading: const Icon(Icons.place_outlined),
-                            title: Text(loc.name),
-                            subtitle: Text(loc.kind),
-                            selected: plant.locationId == loc.id,
-                            onTap: () async {
-                              final nav = Navigator.of(dialogCtx);
-                              final messenger = ScaffoldMessenger.of(context);
-                              await ref.read(plantRepositoryProvider).setLocation(plant.id, loc.id);
-                              nav.maybePop();
-                              messenger
-                                ..clearSnackBars()
-                                ..showSnackBar(SnackBar(content: Text('Moved to ${loc.name}')));
-                            },
-                          ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+    final label = picked == null
+        ? 'Removed from any space'
+        : 'Moved to ${locations.where((l) => l.id == picked).map((l) => l.name).firstOrNull ?? 'that space'}';
+    messenger
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(label)));
   }
 
   static String _dateShort(DateTime d) {

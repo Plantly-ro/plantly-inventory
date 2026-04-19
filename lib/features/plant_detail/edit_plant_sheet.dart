@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import '../../shared/location_picker.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 
@@ -113,19 +114,37 @@ class _EditPlantSheetState extends ConsumerState<EditPlantSheet> {
             const SizedBox(height: 12),
             _label('SPACE', surface),
             const SizedBox(height: 6),
-            DropdownButtonFormField<String?>(
-              initialValue: _locationId,
-              isExpanded: true,
-              decoration: _dec(surface, hint: 'Optional'),
-              items: [
-                const DropdownMenuItem<String?>(value: null, child: Text('— no location —')),
-                for (final loc in locations)
-                  DropdownMenuItem<String?>(
-                    value: loc.id,
-                    child: Text('${loc.name} · ${loc.kind}', overflow: TextOverflow.ellipsis),
-                  ),
-              ],
-              onChanged: (v) => setState(() => _locationId = v),
+            InkWell(
+              onTap: () async {
+                final picked = await pickLocation(
+                  context,
+                  ref: ref,
+                  currentLocationId: _locationId,
+                );
+                if (picked != _locationId) setState(() => _locationId = picked);
+              },
+              borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                decoration: BoxDecoration(
+                  color: surface.surface,
+                  border: Border.all(color: surface.border),
+                  borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.place_outlined, size: 16, color: surface.muted),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _locSummary(_locationId, locations),
+                        style: TextStyle(fontSize: 14, color: surface.text),
+                      ),
+                    ),
+                    Icon(Icons.chevron_right, color: surface.muted),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 12),
             _label('SPECIES', surface),
@@ -197,6 +216,14 @@ class _EditPlantSheetState extends ConsumerState<EditPlantSheet> {
           letterSpacing: 0.08 * 11,
         ),
       );
+
+  String _locSummary(String? id, List<LocationRow> rows) {
+    if (id == null) return '— no location —';
+    for (final r in rows) {
+      if (r.id == id) return '${r.name} · ${r.kind}';
+    }
+    return 'Loading…';
+  }
 
   InputDecoration _dec(PlantlySurface s, {String? hint}) => InputDecoration(
         hintText: hint,
