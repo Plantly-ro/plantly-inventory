@@ -5,6 +5,8 @@ import '../../../data/database/app_database.dart' as db;
 import '../../../data/mock_plants.dart';
 import '../../../data/providers.dart';
 import '../../../theme/tokens.dart';
+import '../../../data/care_types.dart';
+import '../../../shared/care_feedback.dart';
 import 'plant_row.dart';
 import 'swipe_row.dart';
 import 'widget_shell.dart';
@@ -108,16 +110,20 @@ class OverdueWidget extends ConsumerWidget {
     final subtitle = daysLate > 0 ? '$daysLate d late · ${_verb(schedule.type)}' : '${_verb(schedule.type)} now';
     return Consumer(
       builder: (context, ref, _) {
+        final ct = resolveCareType(ref.watch(careTypesProvider), schedule.type);
+        Future<void> logDone() async {
+          await ref.read(careEventRepositoryProvider).record(
+                plantId: schedule.plantId,
+                type: schedule.type,
+              );
+          if (!context.mounted) return;
+          await showCareFeedback(context, type: ct, plantName: title, surface: surface);
+          onLogCare?.call(title);
+        }
         return SwipeRow(
           key: ValueKey('overdue-${schedule.id}'),
           surface: surface,
-          onDone: () async {
-            await ref.read(careEventRepositoryProvider).record(
-                  plantId: schedule.plantId,
-                  type: schedule.type,
-                );
-            if (context.mounted) onLogCare?.call(title);
-          },
+          onDone: logDone,
           onSnooze: () async {
             await ref
                 .read(careScheduleRepositoryProvider)
@@ -136,13 +142,7 @@ class OverdueWidget extends ConsumerWidget {
             onTap: () => onPlantTap?.call(schedule.plantId),
             trailing: _DoneButton(
               surface: surface,
-              onPressed: () async {
-                await ref.read(careEventRepositoryProvider).record(
-                      plantId: schedule.plantId,
-                      type: schedule.type,
-                    );
-                if (context.mounted) onLogCare?.call(title);
-              },
+              onPressed: logDone,
             ),
           ),
         );

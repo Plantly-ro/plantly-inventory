@@ -14,6 +14,7 @@ import '../../shared/plant_thumb.dart';
 import '../../theme/tokens.dart';
 import '../export/export_dialog.dart';
 import '../home/home_providers.dart';
+import '../../shared/care_feedback.dart';
 import '../../shared/location_picker.dart';
 import '../../shared/photo_source_sheet.dart';
 import 'add_reminder_sheet.dart';
@@ -123,14 +124,17 @@ class _PlantDetailBody extends ConsumerWidget {
           label: Text('${fabType.label} now'),
           tooltip: 'Long-press to change',
           onPressed: () async {
-            final messenger = ScaffoldMessenger.of(context);
             await ref.read(careEventRepositoryProvider).record(
                   plantId: plantRow.id,
                   type: fabKey,
                 );
-            messenger
-              ..clearSnackBars()
-              ..showSnackBar(SnackBar(content: Text('${fabType.pastTenseLabel} — event logged')));
+            if (!context.mounted) return;
+            await showCareFeedback(
+              context,
+              type: fabType,
+              plantName: plantRow.nickname,
+              surface: surface,
+            );
           },
         ),
       ),
@@ -866,7 +870,16 @@ class _UpcomingRowView extends ConsumerWidget {
                     plantId: plantId,
                     type: schedule.type,
                   );
-              if (context.mounted) _toast(context, '$label logged');
+              if (!context.mounted) return;
+              await showCareFeedback(
+                context,
+                type: ct,
+                plantName: ref.read(plantByIdProvider(plantId)).maybeWhen(
+                      data: (p) => p?.nickname ?? label,
+                      orElse: () => label,
+                    ),
+                surface: surface,
+              );
             },
             child: const Text('Done'),
           ),

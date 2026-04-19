@@ -5,6 +5,8 @@ import '../../../data/database/app_database.dart' as db;
 import '../../../data/mock_plants.dart';
 import '../../../data/providers.dart';
 import '../../../theme/tokens.dart';
+import '../../../data/care_types.dart';
+import '../../../shared/care_feedback.dart';
 import 'plant_row.dart';
 import 'swipe_row.dart';
 import 'widget_shell.dart';
@@ -100,16 +102,20 @@ class TodayWidget extends ConsumerWidget {
     final action = _verb(schedule.type);
     return Consumer(
       builder: (context, ref, _) {
+        final ct = resolveCareType(ref.watch(careTypesProvider), schedule.type);
+        Future<void> logDone() async {
+          await ref.read(careEventRepositoryProvider).record(
+                plantId: schedule.plantId,
+                type: schedule.type,
+              );
+          if (!context.mounted) return;
+          await showCareFeedback(context, type: ct, plantName: title, surface: surface);
+          onLogCare?.call(title, action);
+        }
         return SwipeRow(
           key: ValueKey('today-${schedule.id}'),
           surface: surface,
-          onDone: () async {
-            await ref.read(careEventRepositoryProvider).record(
-                  plantId: schedule.plantId,
-                  type: schedule.type,
-                );
-            if (context.mounted) onLogCare?.call(title, action);
-          },
+          onDone: logDone,
           onSnooze: () async {
             await ref
                 .read(careScheduleRepositoryProvider)
@@ -128,13 +134,7 @@ class TodayWidget extends ConsumerWidget {
             onTap: () => onPlantTap?.call(schedule.plantId),
             trailing: _CheckButton(
               surface: surface,
-              onPressed: () async {
-                await ref.read(careEventRepositoryProvider).record(
-                      plantId: schedule.plantId,
-                      type: schedule.type,
-                    );
-                if (context.mounted) onLogCare?.call(title, action);
-              },
+              onPressed: logDone,
             ),
           ),
         );

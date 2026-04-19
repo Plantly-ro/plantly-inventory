@@ -104,6 +104,15 @@ everything still open into `PLAN.md` Phase 2 and delete this file.
 
 ---
 
+## Fixed in v0.5.14-phase1 (2026-04-19, calendar interactivity + gestures + FAB config + richer feedback)
+
+- [x] **Richer care-action feedback.** New `showCareFeedback`
+      helper: a medium-impact haptic tick, a 120-px icon burst
+      overlay that scales up + fades out in ~700 ms, and a
+      floating SnackBar tinted with the care-type colour. Used
+      from the Plant Detail FAB, Upcoming Care Done buttons, and
+      the Overdue + Today widget swipe/done paths.
+
 ## Fixed in v0.5.14-phase1 (2026-04-19, calendar interactivity + home gesture + type colours + FAB)
 
 - [x] **Calendar fully interactive.** Tap a week day row → day
