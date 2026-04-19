@@ -6,6 +6,7 @@ import '../../../data/mock_plants.dart';
 import '../../../data/providers.dart';
 import '../../../theme/tokens.dart';
 import 'plant_row.dart';
+import 'swipe_row.dart';
 import 'widget_shell.dart';
 
 class TodayWidget extends ConsumerWidget {
@@ -97,29 +98,47 @@ class TodayWidget extends ConsumerWidget {
     final title = plant?.nickname ?? schedule.plantId;
     final swatch = MockPlants.byId(schedule.plantId);
     final action = _verb(schedule.type);
-    return PlantRow(
-      plantId: schedule.plantId,
-      title: title,
-      swatch: swatch,
-      surface: surface,
-      subtitle: action,
-      subtitleIcon: _iconFor(schedule.type),
-      subtitleColor: surface.muted,
-      first: false,
-      last: last,
-      onTap: () => onPlantTap?.call(schedule.plantId),
-      trailing: Consumer(
-        builder: (context, ref, _) => _CheckButton(
+    return Consumer(
+      builder: (context, ref, _) {
+        return SwipeRow(
+          key: ValueKey('today-${schedule.id}'),
           surface: surface,
-          onPressed: () async {
+          onDone: () async {
             await ref.read(careEventRepositoryProvider).record(
                   plantId: schedule.plantId,
                   type: schedule.type,
                 );
             if (context.mounted) onLogCare?.call(title, action);
           },
-        ),
-      ),
+          onSnooze: () async {
+            await ref
+                .read(careScheduleRepositoryProvider)
+                .snooze(schedule.id, by: const Duration(days: 1));
+          },
+          child: PlantRow(
+            plantId: schedule.plantId,
+            title: title,
+            swatch: swatch,
+            surface: surface,
+            subtitle: action,
+            subtitleIcon: _iconFor(schedule.type),
+            subtitleColor: surface.muted,
+            first: false,
+            last: last,
+            onTap: () => onPlantTap?.call(schedule.plantId),
+            trailing: _CheckButton(
+              surface: surface,
+              onPressed: () async {
+                await ref.read(careEventRepositoryProvider).record(
+                      plantId: schedule.plantId,
+                      type: schedule.type,
+                    );
+                if (context.mounted) onLogCare?.call(title, action);
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 

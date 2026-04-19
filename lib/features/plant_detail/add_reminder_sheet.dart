@@ -204,6 +204,20 @@ class _AddReminderSheetState extends ConsumerState<AddReminderSheet> {
                 ),
               ],
               const SizedBox(height: 14),
+              _label('PRESETS', surface),
+              const SizedBox(height: 8),
+              _Presets(
+                surface: surface,
+                onApply: (count, unit, mode, anchor) {
+                  setState(() {
+                    _intervalController.text = _format(count);
+                    _unit = unit;
+                    _recurrenceMode = mode;
+                    if (anchor != null) _firstDue = anchor;
+                  });
+                },
+              ),
+              const SizedBox(height: 14),
               _label('EVERY', surface),
               const SizedBox(height: 8),
               Row(
@@ -555,5 +569,113 @@ class _Preview extends StatelessWidget {
     final h = d.hour.toString().padLeft(2, '0');
     final m = d.minute.toString().padLeft(2, '0');
     return '$wd, ${months[d.month - 1]} ${d.day} · $h:$m';
+  }
+}
+
+class _Presets extends StatelessWidget {
+  const _Presets({required this.surface, required this.onApply});
+
+  final PlantlySurface surface;
+  final void Function(double count, _Unit unit, String mode, DateTime? anchor) onApply;
+
+  @override
+  Widget build(BuildContext context) {
+    DateTime nextWeekday(int targetWeekday, {int hour = 9}) {
+      final now = DateTime.now();
+      var d = DateTime(now.year, now.month, now.day, hour);
+      while (d.weekday != targetWeekday || !d.isAfter(now)) {
+        d = d.add(const Duration(days: 1));
+      }
+      return d;
+    }
+
+    final presets = <({String label, IconData icon, void Function() apply})>[
+      (
+        label: 'Daily',
+        icon: Icons.sunny,
+        apply: () => onApply(1, _Unit.days, 'after_completion', null),
+      ),
+      (
+        label: 'Every other day',
+        icon: Icons.today,
+        apply: () => onApply(2, _Unit.days, 'after_completion', null),
+      ),
+      (
+        label: 'Weekly',
+        icon: Icons.view_week_outlined,
+        apply: () => onApply(7, _Unit.days, 'after_completion', null),
+      ),
+      (
+        label: 'Mondays 09:00',
+        icon: Icons.calendar_month,
+        apply: () => onApply(7, _Unit.days, 'fixed', nextWeekday(DateTime.monday)),
+      ),
+      (
+        label: 'Bi-weekly',
+        icon: Icons.date_range_outlined,
+        apply: () => onApply(14, _Unit.days, 'after_completion', null),
+      ),
+      (
+        label: 'Monthly',
+        icon: Icons.calendar_view_month,
+        apply: () => onApply(1, _Unit.months, 'after_completion', null),
+      ),
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final p in presets)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: _PresetChip(
+                label: p.label,
+                icon: p.icon,
+                surface: surface,
+                onTap: p.apply,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PresetChip extends StatelessWidget {
+  const _PresetChip({
+    required this.label,
+    required this.icon,
+    required this.surface,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final PlantlySurface surface;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: surface.surface,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: surface.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: surface.muted),
+            const SizedBox(width: 5),
+            Text(label, style: TextStyle(fontSize: 11, color: surface.text, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
   }
 }

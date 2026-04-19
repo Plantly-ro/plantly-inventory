@@ -104,6 +104,21 @@ everything still open into `PLAN.md` Phase 2 and delete this file.
 
 ---
 
+## Fixed in v0.5.11-phase1 (2026-04-19, P1 finishing touches)
+
+- [x] **Swipe actions on Overdue/Today rows.**
+      New `SwipeRow` wrapper with Dismissible semantics but
+      `confirmDismiss: false` — swipe right logs the care event,
+      swipe left snoozes 1 day. Backgrounds colour-code the action.
+- [x] **Pull-to-refresh on Home.** `RefreshIndicator` wraps the
+      main ListView; onRefresh calls `ReminderSync.syncFromDatabase()`
+      to give users an explicit way to force-resync OS notifications.
+- [x] **Reminder presets in AddReminderSheet.** Horizontal chip row
+      with 6 one-tap templates (Daily / Every other day / Weekly /
+      Mondays 09:00 / Bi-weekly / Monthly). "Mondays 09:00" uses
+      the `fixed` recurrence mode + an anchor date for the next
+      Monday.
+
 ## Fixed in v0.5.10-phase1 (2026-04-19, P1 completion)
 
 - [x] **Location + tag filter chips on Home.** Compound filter:
