@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/care_types.dart';
+import '../../../data/database/app_database.dart';
 import '../../../data/mock_plants.dart';
 import '../../../data/providers.dart';
 import '../../../shared/plant_thumb.dart';
 import '../../../theme/tokens.dart';
 import '../../search/search_screen.dart';
 import '../filter.dart';
+import '../sort.dart';
 import 'widget_shell.dart';
 
 /// DB-backed plant grid. Streams `plants.watchAll()` from the repository
@@ -30,18 +33,31 @@ class GridWidget extends ConsumerWidget {
   final VoidCallback? onMoveDown;
   final VoidCallback? onRemove;
 
-  // Two plant ids that are still "overdue" until the schedule engine takes
-  // over — keeps the existing visual state so the prototype match holds.
-  static const _overdueIds = {'bob', 'green'};
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final filter = ref.watch(activeFilterProvider);
     final async = ref.watch(filteredPlantsProvider);
+    final sort = ref.watch(plantSortProvider);
+    final types = ref.watch(careTypesProvider);
     final locationsById = ref.watch(locationsStreamProvider).maybeWhen(
           data: (rows) => {for (final l in rows) l.id: l.name},
           orElse: () => const <String, String>{},
         );
+    final allSchedules = ref.watch(allSchedulesProvider).maybeWhen(
+          data: (rows) => rows,
+          orElse: () => const <CareScheduleRow>[],
+        );
+    final earliestDue = <String, int>{};
+    final nextTypeByPlant = <String, String>{};
+    for (final s in allSchedules) {
+      final due = s.nextDueAt;
+      if (due == null) continue;
+      final existing = earliestDue[s.plantId];
+      if (existing == null || due < existing) {
+        earliestDue[s.plantId] = due;
+        nextTypeByPlant[s.plantId] = s.type;
+      }
+    }
     return WidgetShell(
       surface: surface,
       editing: editing,
@@ -63,36 +79,56 @@ class GridWidget extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _FilterChipsRow(active: filter, surface: surface, ref: ref),
+          Row(
+            children: [
+              Expanded(child: _FilterChipsRow(active: filter, surface: surface, ref: ref)),
+              _SortMenu(surface: surface, value: sort, onChanged: (s) => ref.read(plantSortProvider.notifier).set(s)),
+            ],
+          ),
           const SizedBox(height: 10),
           async.when(
             loading: () => const SizedBox(height: 120, child: Center(child: CircularProgressIndicator())),
             error: (e, _) => _ErrorPlaceholder(message: '$e', surface: surface),
-            data: (rows) => rows.isEmpty
-                ? _EmptyPlaceholder(surface: surface, filter: filter)
-                : GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: 0.78,
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                    children: rows.map((row) {
-                      final swatch = MockPlants.byId(row.id);
-                      final locName = row.locationId == null
-                          ? null
-                          : locationsById[row.locationId];
-                      return _Card(
-                        plantId: row.id,
-                        swatch: swatch,
-                        label: row.nickname,
-                        locationName: locName,
-                        ok: !_overdueIds.contains(row.id),
-                        surface: surface,
-                        onTap: () => onPlantTap?.call(row.id),
-                      );
-                    }).toList(growable: false),
-                  ),
+            data: (rows) {
+              if (rows.isEmpty) return _EmptyPlaceholder(surface: surface, filter: filter);
+              final sorted = sortPlants(
+                plants: rows,
+                sort: sort,
+                earliestDueByPlantId: earliestDue,
+                locationNameById: locationsById,
+              );
+              return GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                childAspectRatio: 0.78,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                children: sorted.map((row) {
+                  final swatch = MockPlants.byId(row.id);
+                  final locName = row.locationId == null ? null : locationsById[row.locationId];
+                  final nowMs = DateTime.now().millisecondsSinceEpoch;
+                  final nextDueMs = earliestDue[row.id];
+                  final overdue = nextDueMs != null && nextDueMs < nowMs;
+                  final nextType = nextTypeByPlant[row.id];
+                  final dueLabel = nextDueMs == null
+                      ? null
+                      : _DueLabel.forMs(nextDueMs - nowMs);
+                  return _Card(
+                    plantId: row.id,
+                    swatch: swatch,
+                    label: row.nickname,
+                    locationName: locName,
+                    ok: !overdue,
+                    dueLabel: dueLabel,
+                    nextType: nextType,
+                    types: types,
+                    surface: surface,
+                    onTap: () => onPlantTap?.call(row.id),
+                  );
+                }).toList(growable: false),
+              );
+            },
           ),
         ],
       ),
@@ -107,6 +143,9 @@ class _Card extends StatelessWidget {
     required this.label,
     required this.locationName,
     required this.ok,
+    required this.dueLabel,
+    required this.nextType,
+    required this.types,
     required this.surface,
     required this.onTap,
   });
@@ -116,6 +155,9 @@ class _Card extends StatelessWidget {
   final String label;
   final String? locationName;
   final bool ok;
+  final String? dueLabel;
+  final String? nextType;
+  final List<CareType> types;
   final PlantlySurface surface;
   final VoidCallback onTap;
 
@@ -171,6 +213,33 @@ class _Card extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (dueLabel != null && nextType != null)
+                    Positioned(
+                      left: 6,
+                      bottom: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.55),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              resolveCareType(types, nextType!).icon,
+                              size: 10,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              dueLabel!,
+                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -333,3 +402,55 @@ class _ErrorPlaceholder extends StatelessWidget {
   }
 }
 
+
+class _SortMenu extends StatelessWidget {
+  const _SortMenu({required this.surface, required this.value, required this.onChanged});
+  final PlantlySurface surface;
+  final PlantSort value;
+  final ValueChanged<PlantSort> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<PlantSort>(
+      tooltip: 'Sort plants',
+      icon: Icon(Icons.sort, size: 18, color: surface.muted),
+      onSelected: onChanged,
+      itemBuilder: (_) => [
+        for (final s in PlantSort.values)
+          PopupMenuItem(
+            value: s,
+            child: Row(
+              children: [
+                Icon(s == value ? Icons.check : Icons.radio_button_unchecked,
+                    size: 14, color: s == value ? surface.green : surface.muted),
+                const SizedBox(width: 8),
+                Text(s.label),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Stand-alone short-form due-time formatter. Kept out of the `Card`
+/// widget so it's cheap to compute per item in the grid loop.
+class _DueLabel {
+  static String forMs(int diffMs) {
+    if (diffMs < 0) {
+      final late = (-diffMs / (86400 * 1000)).floor();
+      if (late >= 1) return '$late d late';
+      final h = (-diffMs / (3600 * 1000)).floor();
+      if (h >= 1) return '$h h late';
+      return 'now';
+    }
+    final days = (diffMs / (86400 * 1000)).round();
+    if (days == 0) {
+      final h = (diffMs / (3600 * 1000)).round();
+      if (h < 1) return '< 1h';
+      return 'in $h h';
+    }
+    if (days == 1) return 'tomorrow';
+    return 'in $days d';
+  }
+}

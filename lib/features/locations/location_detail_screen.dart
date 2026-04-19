@@ -9,6 +9,7 @@ import '../../data/image_processor.dart';
 import '../../data/mock_plants.dart';
 import '../../data/photo_picker.dart';
 import '../../data/providers.dart';
+import '../../shared/photo_source_sheet.dart';
 import '../../shared/plant_thumb.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
@@ -211,7 +212,9 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
 
   Future<void> _pickMap(BuildContext context, WidgetRef ref) async {
     final picker = ref.read(photoPickerProvider);
-    final picked = await picker.pickFromGallery();
+    final mode = ref.read(themeModeProvider);
+    final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final picked = await pickSinglePhotoWithSource(context, picker, surface);
     if (picked == null) return;
     final processor = ref.read(imageProcessorProvider);
     final shrunk = await processor.toDisplay(picked.bytes);

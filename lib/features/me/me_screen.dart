@@ -15,6 +15,7 @@ import '../../domain/services/zip_backup_service.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import 'care_types_screen.dart';
+import 'notifications_screen.dart';
 
 /// "Me" tab — settings + Phase-1 user-facing actions (backup / iCal /
 /// notification permission). Split into ApplianceRows grouped under
@@ -81,6 +82,18 @@ class MeScreen extends ConsumerWidget {
           _SectionLabel(text: 'NOTIFICATIONS', surface: surface),
           const SizedBox(height: 8),
           _NotificationRow(surface: surface),
+          const SizedBox(height: 6),
+          _ActionRow(
+            label: 'Muted reminders',
+            value: 'See what\'s silenced; unmute in one place.',
+            icon: Icons.notifications_off_outlined,
+            surface: surface,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              );
+            },
+          ),
           const SizedBox(height: 20),
           _SectionLabel(text: 'BACKUP', surface: surface),
           const SizedBox(height: 8),

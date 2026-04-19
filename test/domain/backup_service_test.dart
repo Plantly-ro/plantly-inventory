@@ -7,6 +7,7 @@ import 'package:plantly_inventory/data/repositories/plant_repository.dart';
 import 'package:plantly_inventory/domain/services/backup_service.dart';
 import 'package:plantly_inventory/sync/hlc.dart';
 import 'package:plantly_inventory/sync/op_log.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 const _secret = 'correct-horse-battery-staple';
 
@@ -23,6 +24,12 @@ Future<(AppDatabase, PlantRepository, OpLogWriter, BackupService)> _stack() asyn
 }
 
 void main() {
+  setUp(() {
+    // BackupService snapshots SharedPreferences into the payload; prime
+    // it empty so the plugin platform channel doesn't throw in tests.
+    SharedPreferences.setMockInitialValues({});
+  });
+
   test('export → import round-trips all plants', () async {
     final (db, plants, opLog, service) = await _stack();
     addTearDown(db.close);

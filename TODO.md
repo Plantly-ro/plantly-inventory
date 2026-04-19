@@ -104,6 +104,45 @@ everything still open into `PLAN.md` Phase 2 and delete this file.
 
 ---
 
+## Fixed in v0.5.8-phase1 (2026-04-19, P0 sweep + editing + polish)
+
+- [x] **Plant grid sort** — name A–Z / Z–A / next due / newest /
+      oldest / by space. Persisted in `plantly_plant_sort`.
+- [x] **Home first-run callout** when the user has zero plants:
+      "Tap the + button to add your first plant." Removes the
+      empty-screen confusion.
+- [x] **Home notification-permission banner** when the OS denied
+      the perm — tap to retry.
+- [x] **Next-due pill on every grid card.** Black 60% chip with
+      the care-type icon + short relative label (e.g. `💧 in 2d`).
+- [x] **Schedule editing.** Long-press an Upcoming Care row →
+      `EditReminderSheet`: interval + unit + recurrence mode +
+      next-due + delete. Resets adaptive window so the user's
+      change is authoritative.
+- [x] **Care-event editing.** Tap a Timeline row → `EditEventSheet`
+      (type / when / product / dose / notes).
+      `CareEventRepository.edit`.
+- [x] **Camera capture option.** `PhotoSourceSheet` chooser between
+      gallery and camera; wired into Plant Detail's add-photo button
+      and Location Detail's map picker.
+- [x] **Undo snackbars.** Delete plant → snackbar with Undo that
+      calls new `PlantRepository.restoreFromSoftDelete`. Delete
+      timeline event → snackbar with Undo that re-records the same
+      event verbatim.
+- [x] **Photo + tag cascade on plant soft-delete.** `plant_photos`
+      and `plant_tags` OR-set rows now get a `removed_hlc` stamp
+      when the plant is soft-deleted, so the gallery / chips drop
+      cleanly.
+- [x] **Backup includes `inventory_transactions`** — previously
+      silently omitted; restore would lose every
+      propagate/gift/sale/death record.
+- [x] **Backup includes user preferences** — `plantly_care_types`,
+      `plantly_layout`, `plantly_theme`, `plantly_plant_sort` —
+      so custom types + home layout + sort round-trip.
+- [x] **Notifications dashboard** — Me → Muted reminders: lists
+      every muted plant / schedule / location with an unmute
+      button per row. Plus a permission-status card at the top.
+
 ## Fixed in v0.5.7-phase1 (2026-04-19, locations + pins + mute)
 
 - [x] **Location expansion.** `LocationEditSheet` covers every
