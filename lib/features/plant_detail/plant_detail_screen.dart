@@ -415,9 +415,57 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
     super.dispose();
   }
 
+  Future<void> _editAnnotation(db.PlantPhotoRow row) async {
+    final controller = TextEditingController(text: row.caption ?? '');
+    final result = await showDialog<String?>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Caption this photo'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 200,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            hintText: 'e.g. yellow leaf spotted',
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (v) => Navigator.of(ctx).pop(v),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: const Text('Cancel')),
+          if ((row.caption ?? '').isNotEmpty)
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: widget.surface.terra),
+              onPressed: () => Navigator.of(ctx).pop(''),
+              child: const Text('Clear'),
+            ),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(controller.text), child: const Text('Save')),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (result == null) return;
+    await ref
+        .read(plantPhotoRepositoryProvider)
+        .setCaption(row.id, result.isEmpty ? null : result.trim());
+  }
+
+  Future<void> _openReorder(List<db.PlantPhotoRow> rows) async {
+    final reordered = await Navigator.of(context).push<List<db.PlantPhotoRow>>(
+      MaterialPageRoute(builder: (_) => _ReorderPhotosScreen(rows: rows, fallback: widget.fallback)),
+    );
+    if (reordered == null) return;
+    await ref.read(plantPhotoRepositoryProvider).reorder(reordered);
+  }
+
   @override
   Widget build(BuildContext context) {
     final attachedAsync = ref.watch(attachedPhotosProvider(widget.plantId));
+    final rows = ref.watch(plantPhotoRowsProvider(widget.plantId)).maybeWhen(
+          data: (r) => r,
+          orElse: () => const <db.PlantPhotoRow>[],
+        );
     return attachedAsync.when(
       loading: () => Center(child: PlantThumb(plant: widget.fallback, size: 280)),
       error: (_, _) => Center(child: PlantThumb(plant: widget.fallback, size: 280)),
@@ -485,21 +533,47 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Material(
-                    color: Colors.black.withValues(alpha: 0.45),
-                    shape: const CircleBorder(),
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: () => _confirmDetach(shas[_index]),
-                      child: const Padding(
-                        padding: EdgeInsets.all(6),
-                        child: Icon(Icons.delete_outline, size: 16, color: Colors.white),
-                      ),
+                  if (rows.length > 1)
+                    _CarouselIconBtn(
+                      icon: Icons.swap_vert,
+                      tooltip: 'Reorder',
+                      onTap: () => _openReorder(rows),
                     ),
+                  if (rows.length > 1) const SizedBox(width: 6),
+                  _CarouselIconBtn(
+                    icon: Icons.edit_note_outlined,
+                    tooltip: 'Caption',
+                    onTap: () {
+                      if (_index < rows.length) _editAnnotation(rows[_index]);
+                    },
+                  ),
+                  const SizedBox(width: 6),
+                  _CarouselIconBtn(
+                    icon: Icons.delete_outline,
+                    tooltip: 'Remove',
+                    onTap: () => _confirmDetach(shas[_index]),
                   ),
                 ],
               ),
             ),
+            // Show caption overlay at the bottom if the current row has one.
+            if (_index < rows.length && (rows[_index].caption ?? '').isNotEmpty)
+              Positioned(
+                left: 10,
+                right: 10,
+                bottom: shas.length > 1 ? 26 : 10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+                  ),
+                  child: Text(
+                    rows[_index].caption!,
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ),
           ],
         );
       },
@@ -1324,6 +1398,127 @@ class _StatCell extends StatelessWidget {
           style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: surface.muted, letterSpacing: 0.08 * 10),
         ),
       ],
+    );
+  }
+}
+
+class _CarouselIconBtn extends StatelessWidget {
+  const _CarouselIconBtn({required this.icon, required this.tooltip, required this.onTap});
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.45),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Tooltip(
+            message: tooltip,
+            child: Icon(icon, size: 16, color: Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Drag-to-reorder photo list. Pops with the new ordering (or null on
+/// cancel) so the caller can persist it via `PlantPhotoRepository.reorder`.
+class _ReorderPhotosScreen extends ConsumerStatefulWidget {
+  const _ReorderPhotosScreen({required this.rows, required this.fallback});
+  final List<db.PlantPhotoRow> rows;
+  final MockPlant fallback;
+
+  @override
+  ConsumerState<_ReorderPhotosScreen> createState() => _ReorderPhotosScreenState();
+}
+
+class _ReorderPhotosScreenState extends ConsumerState<_ReorderPhotosScreen> {
+  late List<db.PlantPhotoRow> _order;
+
+  @override
+  void initState() {
+    super.initState();
+    _order = [...widget.rows];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = ref.watch(themeModeProvider);
+    final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    return Scaffold(
+      backgroundColor: surface.bg,
+      appBar: AppBar(
+        backgroundColor: surface.bg,
+        elevation: 0,
+        title: Text('Reorder photos', style: TextStyle(color: surface.text)),
+        leading: IconButton(
+          icon: Icon(Icons.close, color: surface.text),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(_order),
+            child: Text('Save', style: TextStyle(color: surface.green, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+      body: ReorderableListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: _order.length,
+        onReorder: (oldIdx, newIdx) {
+          setState(() {
+            if (newIdx > oldIdx) newIdx -= 1;
+            final row = _order.removeAt(oldIdx);
+            _order.insert(newIdx, row);
+          });
+        },
+        itemBuilder: (_, i) {
+          final row = _order[i];
+          return Padding(
+            key: ValueKey(row.id),
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Container(
+              decoration: BoxDecoration(
+                color: surface.surface,
+                border: Border.all(color: surface.border),
+                borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+              ),
+              padding: const EdgeInsets.all(10),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(PlantlyTokens.radiusMd),
+                    child: SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: _PhotoView(sha: row.photoSha, fallback: widget.fallback),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Photo ${i + 1}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: surface.text)),
+                        if ((row.caption ?? '').isNotEmpty)
+                          Text(row.caption!, style: TextStyle(fontSize: 11.5, color: surface.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.drag_handle, color: surface.muted),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

@@ -115,6 +115,29 @@ class PlantPhotos extends Table {
   TextColumn get tenantId => text().named('tenant_id')();
   TextColumn get plantId => text().named('plant_id')();
   TextColumn get photoSha => text().named('photo_sha')();
+  /// Optional free-form annotation for this attachment — e.g. "yellow
+  /// leaf Apr 18". Stored per-attachment, not per-SHA, so the same
+  /// photo attached to two plants can carry different captions.
+  TextColumn get caption => text().nullable()();
+  IntColumn get displayOrder => integer().named('display_order').withDefault(const Constant(0))();
+  TextColumn get addedHlc => text().named('added_hlc')();
+  TextColumn get removedHlc => text().named('removed_hlc').nullable()();
+  TextColumn get deviceId => text().named('device_id')();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Photo attachments for a location (room layout, ambient shots,
+/// before/after comparisons). Same OR-set semantics as `plant_photos`;
+/// separate table so the two features evolve independently.
+@DataClassName('LocationPhotoRow')
+class LocationPhotos extends Table {
+  TextColumn get id => text()();
+  TextColumn get tenantId => text().named('tenant_id')();
+  TextColumn get locationId => text().named('location_id')();
+  TextColumn get photoSha => text().named('photo_sha')();
+  TextColumn get caption => text().nullable()();
   IntColumn get displayOrder => integer().named('display_order').withDefault(const Constant(0))();
   TextColumn get addedHlc => text().named('added_hlc')();
   TextColumn get removedHlc => text().named('removed_hlc').nullable()();
@@ -253,6 +276,7 @@ class SyncOps extends Table {
   Plants,
   Photos,
   PlantPhotos,
+  LocationPhotos,
   Tags,
   PlantTags,
   CareEvents,
@@ -265,7 +289,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -293,6 +317,11 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(plants, plants.pinY);
             await m.addColumn(plants, plants.notificationsMuted);
             await m.addColumn(careSchedules, careSchedules.notificationsMuted);
+          }
+          if (from < 6) {
+            // Photo annotations + location photo gallery.
+            await m.addColumn(plantPhotos, plantPhotos.caption);
+            await m.createTable(locationPhotos);
           }
         },
       );

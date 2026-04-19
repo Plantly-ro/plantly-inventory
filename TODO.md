@@ -104,6 +104,20 @@ everything still open into `PLAN.md` Phase 2 and delete this file.
 
 ---
 
+## Fixed in v0.5.12-phase1 (2026-04-19, photo annotations + reorder + location gallery schema)
+
+- [x] **Photo captions.** Schema v6 adds `plant_photos.caption`.
+      Pencil button on the Plant Detail carousel opens a dialog
+      (caption, clear, save). Overlay renders at the bottom of the
+      current slide.
+- [x] **Photo reorder.** Drag-to-reorder screen invoked from a
+      swap-vert button in the carousel (appears only when >1
+      photo). `PlantPhotoRepository.reorder` writes `display_order`
+      so the PageView picks up the new sequence on rebuild.
+- [x] **Location photo table** (schema v6). `LocationPhotos` OR-set
+      table + `LocationPhotoRepository` (attach / detach / set
+      caption / watch). Backed up via `BackupService`.
+
 ## Fixed in v0.5.11-phase1 (2026-04-19, P1 finishing touches)
 
 - [x] **Swipe actions on Overdue/Today rows.**

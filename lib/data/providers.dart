@@ -253,6 +253,23 @@ final plantPhotoRepositoryProvider = Provider<PlantPhotoRepository>((ref) {
   return PlantPhotoRepository(db: ctx.db, opLog: ctx.opLog);
 });
 
+final locationPhotoRepositoryProvider = Provider<LocationPhotoRepository>((ref) {
+  final ctx = ref.watch(appContextProvider).requireValue;
+  return LocationPhotoRepository(db: ctx.db, opLog: ctx.opLog);
+});
+
+/// Live full-row attachments for a plant (caption + displayOrder + sha).
+final plantPhotoRowsProvider =
+    StreamProvider.family<List<PlantPhotoRow>, String>((ref, plantId) {
+  return ref.watch(plantPhotoRepositoryProvider).watchAttachedRows(plantId);
+});
+
+/// Live attachments for a location.
+final locationPhotosProvider =
+    StreamProvider.family<List<LocationPhotoRow>, String>((ref, locationId) {
+  return ref.watch(locationPhotoRepositoryProvider).watchAttached(locationId);
+});
+
 final tagRepositoryProvider = Provider<TagRepository>((ref) {
   final ctx = ref.watch(appContextProvider).requireValue;
   return TagRepository(db: ctx.db, opLog: ctx.opLog);

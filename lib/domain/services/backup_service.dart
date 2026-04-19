@@ -48,6 +48,7 @@ class BackupService {
       'care_events': await _rows(db.careEvents),
       'care_schedules': await _rows(db.careSchedules),
       'inventory_transactions': await _rows(db.inventoryTransactions),
+      'location_photos': await _rows(db.locationPhotos),
       'prefs': prefSnapshot,
     };
     final canonical = json.encode(body);
@@ -110,6 +111,12 @@ class BackupService {
         payload['inventory_transactions'],
         opLog,
         'inventory_transactions',
+      );
+      counts['location_photos'] = await _restore(
+        db.locationPhotos,
+        payload['location_photos'],
+        opLog,
+        'location_photos',
       );
     });
     // Replay the user preferences blob (custom care types / layout /
