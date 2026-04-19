@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
+import 'package:path/path.dart' as p;
 
 import '../../data/database/app_database.dart';
 import '../../sync/op_log.dart';
@@ -82,10 +83,17 @@ class ZipBackupService {
     final jsonResult = await backup.import(blob: jsonBlob, secret: secret, opLog: opLog);
 
     var photoCount = 0;
+    final rootPath = p.normalize(photoStoreRoot.path);
     for (final f in decoded.files) {
       if (!f.name.startsWith('photos/')) continue;
       if (f.isDirectory) continue;
-      final file = File('${photoStoreRoot.path}/${f.name.substring('photos/'.length)}');
+      // Reject absolute paths and any entry whose normalised form escapes
+      // `photos/` via `..` segments — treating archive names as untrusted.
+      final rel = f.name.substring('photos/'.length);
+      if (rel.isEmpty || rel.startsWith('/') || rel.contains('\\')) continue;
+      final target = p.normalize(p.join(rootPath, rel));
+      if (target != rootPath && !p.isWithin(rootPath, target)) continue;
+      final file = File(target);
       await file.parent.create(recursive: true);
       await file.writeAsBytes(f.content as List<int>, flush: true);
       photoCount++;

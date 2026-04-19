@@ -63,7 +63,15 @@ class LocalNotificationService extends NotificationService {
   @override
   Future<void> schedule({required int id, required ICalEvent event}) async {
     await init();
-    final when = tz.TZDateTime.from(event.start, tz.local);
+    final nowTz = tz.TZDateTime.now(tz.local);
+    var when = tz.TZDateTime.from(event.start, tz.local);
+    // `zonedSchedule` throws ArgumentError on a past timestamp. ReminderEngine
+    // clamps overdue reminders to `now`, which can drift microseconds into
+    // the past by the time we reach this call — nudge it forward instead of
+    // losing the reminder altogether.
+    if (!when.isAfter(nowTz)) {
+      when = nowTz.add(const Duration(seconds: 1));
+    }
     await _plugin.zonedSchedule(
       id,
       event.summary,

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:archive/archive_io.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
@@ -100,6 +101,54 @@ void main() {
       ),
       throwsA(isA<BackupSignatureError>()),
     );
+  });
+
+  test('importZip rejects path-traversal entries outside the photo root', () async {
+    final a = await stack();
+    addTearDown(() async {
+      await a.db.close();
+      await a.tmp.delete(recursive: true);
+    });
+
+    // Produce a valid signed JSON document the importer will accept.
+    await a.plants.create(nickname: 'Monstera');
+    final legit = await a.zip.exportZip(secret: secret);
+    final legitArchive = ZipDecoder().decodeBytes(legit);
+    final jsonFile = legitArchive.files.firstWhere((f) => f.name == 'plantly.backup.json');
+
+    // Stitch a malicious archive: same JSON, plus a `photos/../../pwn` entry.
+    final malicious = Archive()
+      ..addFile(ArchiveFile.bytes(
+        'plantly.backup.json',
+        Uint8List.fromList(jsonFile.content as List<int>),
+      ))
+      ..addFile(ArchiveFile.bytes(
+        'photos/../../pwn.txt',
+        Uint8List.fromList('pwn'.codeUnits),
+      ));
+    final bytes = Uint8List.fromList(ZipEncoder().encode(malicious));
+
+    final b = await stack();
+    addTearDown(() async {
+      await b.db.close();
+      await b.tmp.delete(recursive: true);
+    });
+    final sibling = Directory('${b.tmp.path}/../pwn-target')..createSync();
+    addTearDown(() async {
+      if (sibling.existsSync()) await sibling.delete(recursive: true);
+    });
+
+    final r = await b.zip.importZip(
+      bytes: bytes,
+      secret: secret,
+      opLog: b.opLog,
+      photoStoreRoot: b.tmp,
+    );
+
+    expect(r.photosRestored, 0);
+    // The escape attempt must not have produced any file outside the root.
+    expect(File('${sibling.path}/pwn.txt').existsSync(), isFalse);
+    expect(File('${b.tmp.parent.path}/pwn.txt').existsSync(), isFalse);
   });
 
   test('export without photos still produces a valid zip', () async {
