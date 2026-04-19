@@ -3361,6 +3361,17 @@ class $PlantPhotosTable extends PlantPhotos
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _captionMeta = const VerificationMeta(
+    'caption',
+  );
+  @override
+  late final GeneratedColumn<String> caption = GeneratedColumn<String>(
+    'caption',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _displayOrderMeta = const VerificationMeta(
     'displayOrder',
   );
@@ -3412,6 +3423,7 @@ class $PlantPhotosTable extends PlantPhotos
     tenantId,
     plantId,
     photoSha,
+    caption,
     displayOrder,
     addedHlc,
     removedHlc,
@@ -3457,6 +3469,12 @@ class $PlantPhotosTable extends PlantPhotos
       );
     } else if (isInserting) {
       context.missing(_photoShaMeta);
+    }
+    if (data.containsKey('caption')) {
+      context.handle(
+        _captionMeta,
+        caption.isAcceptableOrUnknown(data['caption']!, _captionMeta),
+      );
     }
     if (data.containsKey('display_order')) {
       context.handle(
@@ -3514,6 +3532,10 @@ class $PlantPhotosTable extends PlantPhotos
         DriftSqlType.string,
         data['${effectivePrefix}photo_sha'],
       )!,
+      caption: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}caption'],
+      ),
       displayOrder: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}display_order'],
@@ -3544,6 +3566,11 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
   final String tenantId;
   final String plantId;
   final String photoSha;
+
+  /// Optional free-form annotation for this attachment — e.g. "yellow
+  /// leaf Apr 18". Stored per-attachment, not per-SHA, so the same
+  /// photo attached to two plants can carry different captions.
+  final String? caption;
   final int displayOrder;
   final String addedHlc;
   final String? removedHlc;
@@ -3553,6 +3580,7 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
     required this.tenantId,
     required this.plantId,
     required this.photoSha,
+    this.caption,
     required this.displayOrder,
     required this.addedHlc,
     this.removedHlc,
@@ -3565,6 +3593,9 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
     map['tenant_id'] = Variable<String>(tenantId);
     map['plant_id'] = Variable<String>(plantId);
     map['photo_sha'] = Variable<String>(photoSha);
+    if (!nullToAbsent || caption != null) {
+      map['caption'] = Variable<String>(caption);
+    }
     map['display_order'] = Variable<int>(displayOrder);
     map['added_hlc'] = Variable<String>(addedHlc);
     if (!nullToAbsent || removedHlc != null) {
@@ -3580,6 +3611,9 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
       tenantId: Value(tenantId),
       plantId: Value(plantId),
       photoSha: Value(photoSha),
+      caption: caption == null && nullToAbsent
+          ? const Value.absent()
+          : Value(caption),
       displayOrder: Value(displayOrder),
       addedHlc: Value(addedHlc),
       removedHlc: removedHlc == null && nullToAbsent
@@ -3599,6 +3633,7 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
       tenantId: serializer.fromJson<String>(json['tenantId']),
       plantId: serializer.fromJson<String>(json['plantId']),
       photoSha: serializer.fromJson<String>(json['photoSha']),
+      caption: serializer.fromJson<String?>(json['caption']),
       displayOrder: serializer.fromJson<int>(json['displayOrder']),
       addedHlc: serializer.fromJson<String>(json['addedHlc']),
       removedHlc: serializer.fromJson<String?>(json['removedHlc']),
@@ -3613,6 +3648,7 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
       'tenantId': serializer.toJson<String>(tenantId),
       'plantId': serializer.toJson<String>(plantId),
       'photoSha': serializer.toJson<String>(photoSha),
+      'caption': serializer.toJson<String?>(caption),
       'displayOrder': serializer.toJson<int>(displayOrder),
       'addedHlc': serializer.toJson<String>(addedHlc),
       'removedHlc': serializer.toJson<String?>(removedHlc),
@@ -3625,6 +3661,7 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
     String? tenantId,
     String? plantId,
     String? photoSha,
+    Value<String?> caption = const Value.absent(),
     int? displayOrder,
     String? addedHlc,
     Value<String?> removedHlc = const Value.absent(),
@@ -3634,6 +3671,7 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
     tenantId: tenantId ?? this.tenantId,
     plantId: plantId ?? this.plantId,
     photoSha: photoSha ?? this.photoSha,
+    caption: caption.present ? caption.value : this.caption,
     displayOrder: displayOrder ?? this.displayOrder,
     addedHlc: addedHlc ?? this.addedHlc,
     removedHlc: removedHlc.present ? removedHlc.value : this.removedHlc,
@@ -3645,6 +3683,7 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
       tenantId: data.tenantId.present ? data.tenantId.value : this.tenantId,
       plantId: data.plantId.present ? data.plantId.value : this.plantId,
       photoSha: data.photoSha.present ? data.photoSha.value : this.photoSha,
+      caption: data.caption.present ? data.caption.value : this.caption,
       displayOrder: data.displayOrder.present
           ? data.displayOrder.value
           : this.displayOrder,
@@ -3663,6 +3702,7 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
           ..write('tenantId: $tenantId, ')
           ..write('plantId: $plantId, ')
           ..write('photoSha: $photoSha, ')
+          ..write('caption: $caption, ')
           ..write('displayOrder: $displayOrder, ')
           ..write('addedHlc: $addedHlc, ')
           ..write('removedHlc: $removedHlc, ')
@@ -3677,6 +3717,7 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
     tenantId,
     plantId,
     photoSha,
+    caption,
     displayOrder,
     addedHlc,
     removedHlc,
@@ -3690,6 +3731,7 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
           other.tenantId == this.tenantId &&
           other.plantId == this.plantId &&
           other.photoSha == this.photoSha &&
+          other.caption == this.caption &&
           other.displayOrder == this.displayOrder &&
           other.addedHlc == this.addedHlc &&
           other.removedHlc == this.removedHlc &&
@@ -3701,6 +3743,7 @@ class PlantPhotosCompanion extends UpdateCompanion<PlantPhotoRow> {
   final Value<String> tenantId;
   final Value<String> plantId;
   final Value<String> photoSha;
+  final Value<String?> caption;
   final Value<int> displayOrder;
   final Value<String> addedHlc;
   final Value<String?> removedHlc;
@@ -3711,6 +3754,7 @@ class PlantPhotosCompanion extends UpdateCompanion<PlantPhotoRow> {
     this.tenantId = const Value.absent(),
     this.plantId = const Value.absent(),
     this.photoSha = const Value.absent(),
+    this.caption = const Value.absent(),
     this.displayOrder = const Value.absent(),
     this.addedHlc = const Value.absent(),
     this.removedHlc = const Value.absent(),
@@ -3722,6 +3766,7 @@ class PlantPhotosCompanion extends UpdateCompanion<PlantPhotoRow> {
     required String tenantId,
     required String plantId,
     required String photoSha,
+    this.caption = const Value.absent(),
     this.displayOrder = const Value.absent(),
     required String addedHlc,
     this.removedHlc = const Value.absent(),
@@ -3738,6 +3783,7 @@ class PlantPhotosCompanion extends UpdateCompanion<PlantPhotoRow> {
     Expression<String>? tenantId,
     Expression<String>? plantId,
     Expression<String>? photoSha,
+    Expression<String>? caption,
     Expression<int>? displayOrder,
     Expression<String>? addedHlc,
     Expression<String>? removedHlc,
@@ -3749,6 +3795,7 @@ class PlantPhotosCompanion extends UpdateCompanion<PlantPhotoRow> {
       if (tenantId != null) 'tenant_id': tenantId,
       if (plantId != null) 'plant_id': plantId,
       if (photoSha != null) 'photo_sha': photoSha,
+      if (caption != null) 'caption': caption,
       if (displayOrder != null) 'display_order': displayOrder,
       if (addedHlc != null) 'added_hlc': addedHlc,
       if (removedHlc != null) 'removed_hlc': removedHlc,
@@ -3762,6 +3809,7 @@ class PlantPhotosCompanion extends UpdateCompanion<PlantPhotoRow> {
     Value<String>? tenantId,
     Value<String>? plantId,
     Value<String>? photoSha,
+    Value<String?>? caption,
     Value<int>? displayOrder,
     Value<String>? addedHlc,
     Value<String?>? removedHlc,
@@ -3773,6 +3821,7 @@ class PlantPhotosCompanion extends UpdateCompanion<PlantPhotoRow> {
       tenantId: tenantId ?? this.tenantId,
       plantId: plantId ?? this.plantId,
       photoSha: photoSha ?? this.photoSha,
+      caption: caption ?? this.caption,
       displayOrder: displayOrder ?? this.displayOrder,
       addedHlc: addedHlc ?? this.addedHlc,
       removedHlc: removedHlc ?? this.removedHlc,
@@ -3795,6 +3844,9 @@ class PlantPhotosCompanion extends UpdateCompanion<PlantPhotoRow> {
     }
     if (photoSha.present) {
       map['photo_sha'] = Variable<String>(photoSha.value);
+    }
+    if (caption.present) {
+      map['caption'] = Variable<String>(caption.value);
     }
     if (displayOrder.present) {
       map['display_order'] = Variable<int>(displayOrder.value);
@@ -3821,6 +3873,577 @@ class PlantPhotosCompanion extends UpdateCompanion<PlantPhotoRow> {
           ..write('tenantId: $tenantId, ')
           ..write('plantId: $plantId, ')
           ..write('photoSha: $photoSha, ')
+          ..write('caption: $caption, ')
+          ..write('displayOrder: $displayOrder, ')
+          ..write('addedHlc: $addedHlc, ')
+          ..write('removedHlc: $removedHlc, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LocationPhotosTable extends LocationPhotos
+    with TableInfo<$LocationPhotosTable, LocationPhotoRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocationPhotosTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _tenantIdMeta = const VerificationMeta(
+    'tenantId',
+  );
+  @override
+  late final GeneratedColumn<String> tenantId = GeneratedColumn<String>(
+    'tenant_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _locationIdMeta = const VerificationMeta(
+    'locationId',
+  );
+  @override
+  late final GeneratedColumn<String> locationId = GeneratedColumn<String>(
+    'location_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _photoShaMeta = const VerificationMeta(
+    'photoSha',
+  );
+  @override
+  late final GeneratedColumn<String> photoSha = GeneratedColumn<String>(
+    'photo_sha',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _captionMeta = const VerificationMeta(
+    'caption',
+  );
+  @override
+  late final GeneratedColumn<String> caption = GeneratedColumn<String>(
+    'caption',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _displayOrderMeta = const VerificationMeta(
+    'displayOrder',
+  );
+  @override
+  late final GeneratedColumn<int> displayOrder = GeneratedColumn<int>(
+    'display_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _addedHlcMeta = const VerificationMeta(
+    'addedHlc',
+  );
+  @override
+  late final GeneratedColumn<String> addedHlc = GeneratedColumn<String>(
+    'added_hlc',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _removedHlcMeta = const VerificationMeta(
+    'removedHlc',
+  );
+  @override
+  late final GeneratedColumn<String> removedHlc = GeneratedColumn<String>(
+    'removed_hlc',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deviceIdMeta = const VerificationMeta(
+    'deviceId',
+  );
+  @override
+  late final GeneratedColumn<String> deviceId = GeneratedColumn<String>(
+    'device_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    tenantId,
+    locationId,
+    photoSha,
+    caption,
+    displayOrder,
+    addedHlc,
+    removedHlc,
+    deviceId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'location_photos';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocationPhotoRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('tenant_id')) {
+      context.handle(
+        _tenantIdMeta,
+        tenantId.isAcceptableOrUnknown(data['tenant_id']!, _tenantIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tenantIdMeta);
+    }
+    if (data.containsKey('location_id')) {
+      context.handle(
+        _locationIdMeta,
+        locationId.isAcceptableOrUnknown(data['location_id']!, _locationIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_locationIdMeta);
+    }
+    if (data.containsKey('photo_sha')) {
+      context.handle(
+        _photoShaMeta,
+        photoSha.isAcceptableOrUnknown(data['photo_sha']!, _photoShaMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_photoShaMeta);
+    }
+    if (data.containsKey('caption')) {
+      context.handle(
+        _captionMeta,
+        caption.isAcceptableOrUnknown(data['caption']!, _captionMeta),
+      );
+    }
+    if (data.containsKey('display_order')) {
+      context.handle(
+        _displayOrderMeta,
+        displayOrder.isAcceptableOrUnknown(
+          data['display_order']!,
+          _displayOrderMeta,
+        ),
+      );
+    }
+    if (data.containsKey('added_hlc')) {
+      context.handle(
+        _addedHlcMeta,
+        addedHlc.isAcceptableOrUnknown(data['added_hlc']!, _addedHlcMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_addedHlcMeta);
+    }
+    if (data.containsKey('removed_hlc')) {
+      context.handle(
+        _removedHlcMeta,
+        removedHlc.isAcceptableOrUnknown(data['removed_hlc']!, _removedHlcMeta),
+      );
+    }
+    if (data.containsKey('device_id')) {
+      context.handle(
+        _deviceIdMeta,
+        deviceId.isAcceptableOrUnknown(data['device_id']!, _deviceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deviceIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocationPhotoRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocationPhotoRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      tenantId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tenant_id'],
+      )!,
+      locationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}location_id'],
+      )!,
+      photoSha: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}photo_sha'],
+      )!,
+      caption: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}caption'],
+      ),
+      displayOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}display_order'],
+      )!,
+      addedHlc: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}added_hlc'],
+      )!,
+      removedHlc: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}removed_hlc'],
+      ),
+      deviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_id'],
+      )!,
+    );
+  }
+
+  @override
+  $LocationPhotosTable createAlias(String alias) {
+    return $LocationPhotosTable(attachedDatabase, alias);
+  }
+}
+
+class LocationPhotoRow extends DataClass
+    implements Insertable<LocationPhotoRow> {
+  final String id;
+  final String tenantId;
+  final String locationId;
+  final String photoSha;
+  final String? caption;
+  final int displayOrder;
+  final String addedHlc;
+  final String? removedHlc;
+  final String deviceId;
+  const LocationPhotoRow({
+    required this.id,
+    required this.tenantId,
+    required this.locationId,
+    required this.photoSha,
+    this.caption,
+    required this.displayOrder,
+    required this.addedHlc,
+    this.removedHlc,
+    required this.deviceId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['tenant_id'] = Variable<String>(tenantId);
+    map['location_id'] = Variable<String>(locationId);
+    map['photo_sha'] = Variable<String>(photoSha);
+    if (!nullToAbsent || caption != null) {
+      map['caption'] = Variable<String>(caption);
+    }
+    map['display_order'] = Variable<int>(displayOrder);
+    map['added_hlc'] = Variable<String>(addedHlc);
+    if (!nullToAbsent || removedHlc != null) {
+      map['removed_hlc'] = Variable<String>(removedHlc);
+    }
+    map['device_id'] = Variable<String>(deviceId);
+    return map;
+  }
+
+  LocationPhotosCompanion toCompanion(bool nullToAbsent) {
+    return LocationPhotosCompanion(
+      id: Value(id),
+      tenantId: Value(tenantId),
+      locationId: Value(locationId),
+      photoSha: Value(photoSha),
+      caption: caption == null && nullToAbsent
+          ? const Value.absent()
+          : Value(caption),
+      displayOrder: Value(displayOrder),
+      addedHlc: Value(addedHlc),
+      removedHlc: removedHlc == null && nullToAbsent
+          ? const Value.absent()
+          : Value(removedHlc),
+      deviceId: Value(deviceId),
+    );
+  }
+
+  factory LocationPhotoRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocationPhotoRow(
+      id: serializer.fromJson<String>(json['id']),
+      tenantId: serializer.fromJson<String>(json['tenantId']),
+      locationId: serializer.fromJson<String>(json['locationId']),
+      photoSha: serializer.fromJson<String>(json['photoSha']),
+      caption: serializer.fromJson<String?>(json['caption']),
+      displayOrder: serializer.fromJson<int>(json['displayOrder']),
+      addedHlc: serializer.fromJson<String>(json['addedHlc']),
+      removedHlc: serializer.fromJson<String?>(json['removedHlc']),
+      deviceId: serializer.fromJson<String>(json['deviceId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'tenantId': serializer.toJson<String>(tenantId),
+      'locationId': serializer.toJson<String>(locationId),
+      'photoSha': serializer.toJson<String>(photoSha),
+      'caption': serializer.toJson<String?>(caption),
+      'displayOrder': serializer.toJson<int>(displayOrder),
+      'addedHlc': serializer.toJson<String>(addedHlc),
+      'removedHlc': serializer.toJson<String?>(removedHlc),
+      'deviceId': serializer.toJson<String>(deviceId),
+    };
+  }
+
+  LocationPhotoRow copyWith({
+    String? id,
+    String? tenantId,
+    String? locationId,
+    String? photoSha,
+    Value<String?> caption = const Value.absent(),
+    int? displayOrder,
+    String? addedHlc,
+    Value<String?> removedHlc = const Value.absent(),
+    String? deviceId,
+  }) => LocationPhotoRow(
+    id: id ?? this.id,
+    tenantId: tenantId ?? this.tenantId,
+    locationId: locationId ?? this.locationId,
+    photoSha: photoSha ?? this.photoSha,
+    caption: caption.present ? caption.value : this.caption,
+    displayOrder: displayOrder ?? this.displayOrder,
+    addedHlc: addedHlc ?? this.addedHlc,
+    removedHlc: removedHlc.present ? removedHlc.value : this.removedHlc,
+    deviceId: deviceId ?? this.deviceId,
+  );
+  LocationPhotoRow copyWithCompanion(LocationPhotosCompanion data) {
+    return LocationPhotoRow(
+      id: data.id.present ? data.id.value : this.id,
+      tenantId: data.tenantId.present ? data.tenantId.value : this.tenantId,
+      locationId: data.locationId.present
+          ? data.locationId.value
+          : this.locationId,
+      photoSha: data.photoSha.present ? data.photoSha.value : this.photoSha,
+      caption: data.caption.present ? data.caption.value : this.caption,
+      displayOrder: data.displayOrder.present
+          ? data.displayOrder.value
+          : this.displayOrder,
+      addedHlc: data.addedHlc.present ? data.addedHlc.value : this.addedHlc,
+      removedHlc: data.removedHlc.present
+          ? data.removedHlc.value
+          : this.removedHlc,
+      deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocationPhotoRow(')
+          ..write('id: $id, ')
+          ..write('tenantId: $tenantId, ')
+          ..write('locationId: $locationId, ')
+          ..write('photoSha: $photoSha, ')
+          ..write('caption: $caption, ')
+          ..write('displayOrder: $displayOrder, ')
+          ..write('addedHlc: $addedHlc, ')
+          ..write('removedHlc: $removedHlc, ')
+          ..write('deviceId: $deviceId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    tenantId,
+    locationId,
+    photoSha,
+    caption,
+    displayOrder,
+    addedHlc,
+    removedHlc,
+    deviceId,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocationPhotoRow &&
+          other.id == this.id &&
+          other.tenantId == this.tenantId &&
+          other.locationId == this.locationId &&
+          other.photoSha == this.photoSha &&
+          other.caption == this.caption &&
+          other.displayOrder == this.displayOrder &&
+          other.addedHlc == this.addedHlc &&
+          other.removedHlc == this.removedHlc &&
+          other.deviceId == this.deviceId);
+}
+
+class LocationPhotosCompanion extends UpdateCompanion<LocationPhotoRow> {
+  final Value<String> id;
+  final Value<String> tenantId;
+  final Value<String> locationId;
+  final Value<String> photoSha;
+  final Value<String?> caption;
+  final Value<int> displayOrder;
+  final Value<String> addedHlc;
+  final Value<String?> removedHlc;
+  final Value<String> deviceId;
+  final Value<int> rowid;
+  const LocationPhotosCompanion({
+    this.id = const Value.absent(),
+    this.tenantId = const Value.absent(),
+    this.locationId = const Value.absent(),
+    this.photoSha = const Value.absent(),
+    this.caption = const Value.absent(),
+    this.displayOrder = const Value.absent(),
+    this.addedHlc = const Value.absent(),
+    this.removedHlc = const Value.absent(),
+    this.deviceId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocationPhotosCompanion.insert({
+    required String id,
+    required String tenantId,
+    required String locationId,
+    required String photoSha,
+    this.caption = const Value.absent(),
+    this.displayOrder = const Value.absent(),
+    required String addedHlc,
+    this.removedHlc = const Value.absent(),
+    required String deviceId,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       tenantId = Value(tenantId),
+       locationId = Value(locationId),
+       photoSha = Value(photoSha),
+       addedHlc = Value(addedHlc),
+       deviceId = Value(deviceId);
+  static Insertable<LocationPhotoRow> custom({
+    Expression<String>? id,
+    Expression<String>? tenantId,
+    Expression<String>? locationId,
+    Expression<String>? photoSha,
+    Expression<String>? caption,
+    Expression<int>? displayOrder,
+    Expression<String>? addedHlc,
+    Expression<String>? removedHlc,
+    Expression<String>? deviceId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (tenantId != null) 'tenant_id': tenantId,
+      if (locationId != null) 'location_id': locationId,
+      if (photoSha != null) 'photo_sha': photoSha,
+      if (caption != null) 'caption': caption,
+      if (displayOrder != null) 'display_order': displayOrder,
+      if (addedHlc != null) 'added_hlc': addedHlc,
+      if (removedHlc != null) 'removed_hlc': removedHlc,
+      if (deviceId != null) 'device_id': deviceId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocationPhotosCompanion copyWith({
+    Value<String>? id,
+    Value<String>? tenantId,
+    Value<String>? locationId,
+    Value<String>? photoSha,
+    Value<String?>? caption,
+    Value<int>? displayOrder,
+    Value<String>? addedHlc,
+    Value<String?>? removedHlc,
+    Value<String>? deviceId,
+    Value<int>? rowid,
+  }) {
+    return LocationPhotosCompanion(
+      id: id ?? this.id,
+      tenantId: tenantId ?? this.tenantId,
+      locationId: locationId ?? this.locationId,
+      photoSha: photoSha ?? this.photoSha,
+      caption: caption ?? this.caption,
+      displayOrder: displayOrder ?? this.displayOrder,
+      addedHlc: addedHlc ?? this.addedHlc,
+      removedHlc: removedHlc ?? this.removedHlc,
+      deviceId: deviceId ?? this.deviceId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (tenantId.present) {
+      map['tenant_id'] = Variable<String>(tenantId.value);
+    }
+    if (locationId.present) {
+      map['location_id'] = Variable<String>(locationId.value);
+    }
+    if (photoSha.present) {
+      map['photo_sha'] = Variable<String>(photoSha.value);
+    }
+    if (caption.present) {
+      map['caption'] = Variable<String>(caption.value);
+    }
+    if (displayOrder.present) {
+      map['display_order'] = Variable<int>(displayOrder.value);
+    }
+    if (addedHlc.present) {
+      map['added_hlc'] = Variable<String>(addedHlc.value);
+    }
+    if (removedHlc.present) {
+      map['removed_hlc'] = Variable<String>(removedHlc.value);
+    }
+    if (deviceId.present) {
+      map['device_id'] = Variable<String>(deviceId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocationPhotosCompanion(')
+          ..write('id: $id, ')
+          ..write('tenantId: $tenantId, ')
+          ..write('locationId: $locationId, ')
+          ..write('photoSha: $photoSha, ')
+          ..write('caption: $caption, ')
           ..write('displayOrder: $displayOrder, ')
           ..write('addedHlc: $addedHlc, ')
           ..write('removedHlc: $removedHlc, ')
@@ -7776,6 +8399,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PlantsTable plants = $PlantsTable(this);
   late final $PhotosTable photos = $PhotosTable(this);
   late final $PlantPhotosTable plantPhotos = $PlantPhotosTable(this);
+  late final $LocationPhotosTable locationPhotos = $LocationPhotosTable(this);
   late final $TagsTable tags = $TagsTable(this);
   late final $PlantTagsTable plantTags = $PlantTagsTable(this);
   late final $CareEventsTable careEvents = $CareEventsTable(this);
@@ -7793,6 +8417,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     plants,
     photos,
     plantPhotos,
+    locationPhotos,
     tags,
     plantTags,
     careEvents,
@@ -9326,6 +9951,7 @@ typedef $$PlantPhotosTableCreateCompanionBuilder =
       required String tenantId,
       required String plantId,
       required String photoSha,
+      Value<String?> caption,
       Value<int> displayOrder,
       required String addedHlc,
       Value<String?> removedHlc,
@@ -9338,6 +9964,7 @@ typedef $$PlantPhotosTableUpdateCompanionBuilder =
       Value<String> tenantId,
       Value<String> plantId,
       Value<String> photoSha,
+      Value<String?> caption,
       Value<int> displayOrder,
       Value<String> addedHlc,
       Value<String?> removedHlc,
@@ -9371,6 +9998,11 @@ class $$PlantPhotosTableFilterComposer
 
   ColumnFilters<String> get photoSha => $composableBuilder(
     column: $table.photoSha,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get caption => $composableBuilder(
+    column: $table.caption,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9424,6 +10056,11 @@ class $$PlantPhotosTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get caption => $composableBuilder(
+    column: $table.caption,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get displayOrder => $composableBuilder(
     column: $table.displayOrder,
     builder: (column) => ColumnOrderings(column),
@@ -9465,6 +10102,9 @@ class $$PlantPhotosTableAnnotationComposer
 
   GeneratedColumn<String> get photoSha =>
       $composableBuilder(column: $table.photoSha, builder: (column) => column);
+
+  GeneratedColumn<String> get caption =>
+      $composableBuilder(column: $table.caption, builder: (column) => column);
 
   GeneratedColumn<int> get displayOrder => $composableBuilder(
     column: $table.displayOrder,
@@ -9518,6 +10158,7 @@ class $$PlantPhotosTableTableManager
                 Value<String> tenantId = const Value.absent(),
                 Value<String> plantId = const Value.absent(),
                 Value<String> photoSha = const Value.absent(),
+                Value<String?> caption = const Value.absent(),
                 Value<int> displayOrder = const Value.absent(),
                 Value<String> addedHlc = const Value.absent(),
                 Value<String?> removedHlc = const Value.absent(),
@@ -9528,6 +10169,7 @@ class $$PlantPhotosTableTableManager
                 tenantId: tenantId,
                 plantId: plantId,
                 photoSha: photoSha,
+                caption: caption,
                 displayOrder: displayOrder,
                 addedHlc: addedHlc,
                 removedHlc: removedHlc,
@@ -9540,6 +10182,7 @@ class $$PlantPhotosTableTableManager
                 required String tenantId,
                 required String plantId,
                 required String photoSha,
+                Value<String?> caption = const Value.absent(),
                 Value<int> displayOrder = const Value.absent(),
                 required String addedHlc,
                 Value<String?> removedHlc = const Value.absent(),
@@ -9550,6 +10193,7 @@ class $$PlantPhotosTableTableManager
                 tenantId: tenantId,
                 plantId: plantId,
                 photoSha: photoSha,
+                caption: caption,
                 displayOrder: displayOrder,
                 addedHlc: addedHlc,
                 removedHlc: removedHlc,
@@ -9579,6 +10223,294 @@ typedef $$PlantPhotosTableProcessedTableManager =
         BaseReferences<_$AppDatabase, $PlantPhotosTable, PlantPhotoRow>,
       ),
       PlantPhotoRow,
+      PrefetchHooks Function()
+    >;
+typedef $$LocationPhotosTableCreateCompanionBuilder =
+    LocationPhotosCompanion Function({
+      required String id,
+      required String tenantId,
+      required String locationId,
+      required String photoSha,
+      Value<String?> caption,
+      Value<int> displayOrder,
+      required String addedHlc,
+      Value<String?> removedHlc,
+      required String deviceId,
+      Value<int> rowid,
+    });
+typedef $$LocationPhotosTableUpdateCompanionBuilder =
+    LocationPhotosCompanion Function({
+      Value<String> id,
+      Value<String> tenantId,
+      Value<String> locationId,
+      Value<String> photoSha,
+      Value<String?> caption,
+      Value<int> displayOrder,
+      Value<String> addedHlc,
+      Value<String?> removedHlc,
+      Value<String> deviceId,
+      Value<int> rowid,
+    });
+
+class $$LocationPhotosTableFilterComposer
+    extends Composer<_$AppDatabase, $LocationPhotosTable> {
+  $$LocationPhotosTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tenantId => $composableBuilder(
+    column: $table.tenantId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get locationId => $composableBuilder(
+    column: $table.locationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get photoSha => $composableBuilder(
+    column: $table.photoSha,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get caption => $composableBuilder(
+    column: $table.caption,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get displayOrder => $composableBuilder(
+    column: $table.displayOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get addedHlc => $composableBuilder(
+    column: $table.addedHlc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get removedHlc => $composableBuilder(
+    column: $table.removedHlc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocationPhotosTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocationPhotosTable> {
+  $$LocationPhotosTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tenantId => $composableBuilder(
+    column: $table.tenantId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get locationId => $composableBuilder(
+    column: $table.locationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get photoSha => $composableBuilder(
+    column: $table.photoSha,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get caption => $composableBuilder(
+    column: $table.caption,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get displayOrder => $composableBuilder(
+    column: $table.displayOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get addedHlc => $composableBuilder(
+    column: $table.addedHlc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get removedHlc => $composableBuilder(
+    column: $table.removedHlc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocationPhotosTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocationPhotosTable> {
+  $$LocationPhotosTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get tenantId =>
+      $composableBuilder(column: $table.tenantId, builder: (column) => column);
+
+  GeneratedColumn<String> get locationId => $composableBuilder(
+    column: $table.locationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get photoSha =>
+      $composableBuilder(column: $table.photoSha, builder: (column) => column);
+
+  GeneratedColumn<String> get caption =>
+      $composableBuilder(column: $table.caption, builder: (column) => column);
+
+  GeneratedColumn<int> get displayOrder => $composableBuilder(
+    column: $table.displayOrder,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get addedHlc =>
+      $composableBuilder(column: $table.addedHlc, builder: (column) => column);
+
+  GeneratedColumn<String> get removedHlc => $composableBuilder(
+    column: $table.removedHlc,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get deviceId =>
+      $composableBuilder(column: $table.deviceId, builder: (column) => column);
+}
+
+class $$LocationPhotosTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocationPhotosTable,
+          LocationPhotoRow,
+          $$LocationPhotosTableFilterComposer,
+          $$LocationPhotosTableOrderingComposer,
+          $$LocationPhotosTableAnnotationComposer,
+          $$LocationPhotosTableCreateCompanionBuilder,
+          $$LocationPhotosTableUpdateCompanionBuilder,
+          (
+            LocationPhotoRow,
+            BaseReferences<
+              _$AppDatabase,
+              $LocationPhotosTable,
+              LocationPhotoRow
+            >,
+          ),
+          LocationPhotoRow,
+          PrefetchHooks Function()
+        > {
+  $$LocationPhotosTableTableManager(
+    _$AppDatabase db,
+    $LocationPhotosTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocationPhotosTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocationPhotosTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocationPhotosTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> tenantId = const Value.absent(),
+                Value<String> locationId = const Value.absent(),
+                Value<String> photoSha = const Value.absent(),
+                Value<String?> caption = const Value.absent(),
+                Value<int> displayOrder = const Value.absent(),
+                Value<String> addedHlc = const Value.absent(),
+                Value<String?> removedHlc = const Value.absent(),
+                Value<String> deviceId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocationPhotosCompanion(
+                id: id,
+                tenantId: tenantId,
+                locationId: locationId,
+                photoSha: photoSha,
+                caption: caption,
+                displayOrder: displayOrder,
+                addedHlc: addedHlc,
+                removedHlc: removedHlc,
+                deviceId: deviceId,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String tenantId,
+                required String locationId,
+                required String photoSha,
+                Value<String?> caption = const Value.absent(),
+                Value<int> displayOrder = const Value.absent(),
+                required String addedHlc,
+                Value<String?> removedHlc = const Value.absent(),
+                required String deviceId,
+                Value<int> rowid = const Value.absent(),
+              }) => LocationPhotosCompanion.insert(
+                id: id,
+                tenantId: tenantId,
+                locationId: locationId,
+                photoSha: photoSha,
+                caption: caption,
+                displayOrder: displayOrder,
+                addedHlc: addedHlc,
+                removedHlc: removedHlc,
+                deviceId: deviceId,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocationPhotosTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocationPhotosTable,
+      LocationPhotoRow,
+      $$LocationPhotosTableFilterComposer,
+      $$LocationPhotosTableOrderingComposer,
+      $$LocationPhotosTableAnnotationComposer,
+      $$LocationPhotosTableCreateCompanionBuilder,
+      $$LocationPhotosTableUpdateCompanionBuilder,
+      (
+        LocationPhotoRow,
+        BaseReferences<_$AppDatabase, $LocationPhotosTable, LocationPhotoRow>,
+      ),
+      LocationPhotoRow,
       PrefetchHooks Function()
     >;
 typedef $$TagsTableCreateCompanionBuilder =
@@ -11491,6 +12423,8 @@ class $AppDatabaseManager {
       $$PhotosTableTableManager(_db, _db.photos);
   $$PlantPhotosTableTableManager get plantPhotos =>
       $$PlantPhotosTableTableManager(_db, _db.plantPhotos);
+  $$LocationPhotosTableTableManager get locationPhotos =>
+      $$LocationPhotosTableTableManager(_db, _db.locationPhotos);
   $$TagsTableTableManager get tags => $$TagsTableTableManager(_db, _db.tags);
   $$PlantTagsTableTableManager get plantTags =>
       $$PlantTagsTableTableManager(_db, _db.plantTags);
