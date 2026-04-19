@@ -3,6 +3,7 @@ import 'package:ulid/ulid.dart';
 
 import '../../sync/op_log.dart';
 import '../database/app_database.dart';
+import 'plant_repository.dart' show cascadeDeleteSchedules;
 
 /// Ledger over `inventory_transactions` (PLAN.md §"Schema non-negotiables").
 ///
@@ -174,6 +175,9 @@ class InventoryTransactionRepository {
           deviceId: Value(opLog.clock.deviceId),
         ),
       );
+      // Cascade: schedules stop firing reminders, stop showing on Home /
+      // Calendar, drop out of ReminderSync.
+      await cascadeDeleteSchedules(db, opLog, plantId, ts);
       return (await (db.select(db.inventoryTransactions)
                 ..where((r) => r.id.equals(txId)))
               .getSingle());

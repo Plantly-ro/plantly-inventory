@@ -59,8 +59,11 @@ class WidgetRegistry {
     ),
     'weather': WidgetEntry(
       key: 'weather',
-      label: 'Weather',
-      icon: Icons.wb_sunny_outlined,
+      // The key stays `weather` for layout-serialisation compatibility;
+      // the widget now shows a rotating care tip until a real weather
+      // provider lands in Phase 2.
+      label: 'Tip of the day',
+      icon: Icons.lightbulb_outline,
       render: (p) => WeatherWidget(
         surface: p.surface,
         editing: p.editing,

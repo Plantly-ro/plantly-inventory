@@ -176,6 +176,31 @@ class _PlantDetailBody extends ConsumerWidget {
                     navigator.maybePop();
                   }
                   break;
+                case 'delete':
+                  final nav = Navigator.of(context);
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (dctx) => AlertDialog(
+                      title: const Text('Delete plant?'),
+                      content: Text(
+                        'Removes "${plantRow.nickname}" from your collection. '
+                        'Use Gave away / Sold / Marked dead if you want a ledger entry.',
+                      ),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: const Text('Cancel')),
+                        FilledButton(
+                          style: FilledButton.styleFrom(backgroundColor: surface.terra),
+                          onPressed: () => Navigator.of(dctx).pop(true),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirm == true) {
+                    await ref.read(plantRepositoryProvider).softDelete(plantRow.id);
+                    if (context.mounted) nav.maybePop();
+                  }
+                  break;
               }
             },
             itemBuilder: (_) => const [
@@ -185,6 +210,8 @@ class _PlantDetailBody extends ConsumerWidget {
               PopupMenuItem(value: 'gift', child: Text('Gave away…')),
               PopupMenuItem(value: 'sale', child: Text('Sold…')),
               PopupMenuItem(value: 'death', child: Text('Marked dead…')),
+              PopupMenuDivider(),
+              PopupMenuItem(value: 'delete', child: Text('Delete plant…')),
             ],
           ),
         ],
@@ -205,6 +232,8 @@ class _PlantDetailBody extends ConsumerWidget {
               children: [
                 Text(
                   plantRow.nickname,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: PlantlyTokens.text2xl,
                     fontWeight: FontWeight.w800,
@@ -216,6 +245,8 @@ class _PlantDetailBody extends ConsumerWidget {
                   const SizedBox(height: 2),
                   Text(
                     plantRow.speciesId!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 13, color: surface.muted, fontStyle: FontStyle.italic),
                   ),
                 ],
@@ -236,7 +267,12 @@ class _PlantDetailBody extends ConsumerWidget {
                 ),
                 if (plantRow.notes != null && plantRow.notes!.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Text(plantRow.notes!, style: TextStyle(fontSize: 13, color: surface.text)),
+                  Text(
+                    plantRow.notes!,
+                    maxLines: 6,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 13, color: surface.text),
+                  ),
                 ],
                 const SizedBox(height: 12),
                 TagChipInput(plantId: plantId, surface: surface),
@@ -254,6 +290,7 @@ class _PlantDetailBody extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: _Timeline(surface: surface, plantId: plantId),
           ),
+          _InventoryLedger(surface: surface, plantId: plantId),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
             child: _ExportCTA(
@@ -299,8 +336,12 @@ class _PlantDetailBody extends ConsumerWidget {
                   selected: plant.locationId == null,
                   onTap: () async {
                     final nav = Navigator.of(dialogCtx);
+                    final messenger = ScaffoldMessenger.of(context);
                     await ref.read(plantRepositoryProvider).setLocation(plant.id, null);
                     nav.maybePop();
+                    messenger
+                      ..clearSnackBars()
+                      ..showSnackBar(const SnackBar(content: Text('Removed from any space')));
                   },
                 ),
                 if (locations.isEmpty)
@@ -322,8 +363,12 @@ class _PlantDetailBody extends ConsumerWidget {
                             selected: plant.locationId == loc.id,
                             onTap: () async {
                               final nav = Navigator.of(dialogCtx);
+                              final messenger = ScaffoldMessenger.of(context);
                               await ref.read(plantRepositoryProvider).setLocation(plant.id, loc.id);
                               nav.maybePop();
+                              messenger
+                                ..clearSnackBars()
+                                ..showSnackBar(SnackBar(content: Text('Moved to ${loc.name}')));
                             },
                           ),
                       ],
@@ -419,16 +464,33 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
             Positioned(
               top: 10,
               right: 10,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.45),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  '${_index + 1} / ${shas.length}',
-                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
-                ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '${_index + 1} / ${shas.length}',
+                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Material(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () => _confirmDetach(shas[_index]),
+                      child: const Padding(
+                        padding: EdgeInsets.all(6),
+                        child: Icon(Icons.delete_outline, size: 16, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -803,7 +865,7 @@ class _Timeline extends ConsumerWidget {
                 child: Column(
                   children: [
                     for (var i = 0; i < events.length; i++)
-                      _timelineRow(events[i], i == events.length - 1),
+                      _timelineRow(context, ref, events[i], i == events.length - 1),
                   ],
                 ),
               ),
@@ -815,26 +877,54 @@ class _Timeline extends ConsumerWidget {
     );
   }
 
-  Widget _timelineRow(db.CareEventRow event, bool last) {
+  Widget _timelineRow(BuildContext context, WidgetRef ref, db.CareEventRow event, bool last) {
     final when = _formatDate(DateTime.fromMillisecondsSinceEpoch(event.doneAt, isUtc: true).toLocal());
     final text = _describe(event);
-    return Container(
-      decoration: BoxDecoration(
-        border: last ? null : Border(bottom: BorderSide(color: surface.border)),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(color: surface.greenSoft, shape: BoxShape.circle),
-            child: Icon(_iconFor(event.type), size: 14, color: surface.green),
-          ),
-          const SizedBox(width: 11),
-          Expanded(child: Text(text, style: TextStyle(fontSize: 13, color: surface.text))),
-          Text(when, style: TextStyle(fontSize: 11, color: surface.muted, fontWeight: FontWeight.w500)),
-        ],
+    Future<void> delete() async {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (dctx) => AlertDialog(
+          title: const Text('Delete this event?'),
+          content: Text('Removes this "$text" record from the timeline.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.of(dctx).pop(true), child: const Text('Delete')),
+          ],
+        ),
+      );
+      if (confirm == true) {
+        await ref.read(careEventRepositoryProvider).undo(event.id);
+      }
+    }
+
+    return InkWell(
+      onLongPress: delete,
+      child: Container(
+        decoration: BoxDecoration(
+          border: last ? null : Border(bottom: BorderSide(color: surface.border)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(color: surface.greenSoft, shape: BoxShape.circle),
+              child: Icon(_iconFor(event.type), size: 14, color: surface.green),
+            ),
+            const SizedBox(width: 11),
+            Expanded(child: Text(text, style: TextStyle(fontSize: 13, color: surface.text))),
+            Text(when, style: TextStyle(fontSize: 11, color: surface.muted, fontWeight: FontWeight.w500)),
+            const SizedBox(width: 4),
+            IconButton(
+              icon: Icon(Icons.delete_outline, size: 16, color: surface.muted),
+              tooltip: 'Delete event',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              onPressed: delete,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -933,6 +1023,109 @@ class _LogEventButton extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Compact transaction ledger (propagations, gifts, sales, deaths).
+/// Hidden when the plant has no history so new plants aren't greeted
+/// with a giant empty card.
+class _InventoryLedger extends ConsumerWidget {
+  const _InventoryLedger({required this.surface, required this.plantId});
+  final PlantlySurface surface;
+  final String plantId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(inventoryForPlantProvider(plantId));
+    return async.maybeWhen(
+      data: (txs) {
+        if (txs.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SectionLabel(text: 'LEDGER', surface: surface),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: surface.surface,
+                  border: Border.all(color: surface.border),
+                  borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Column(
+                  children: [
+                    for (var i = 0; i < txs.length; i++)
+                      _ledgerRow(txs[i], i == txs.length - 1),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
+
+  Widget _ledgerRow(db.InventoryTransactionRow tx, bool last) {
+    final when = DateTime.fromMillisecondsSinceEpoch(tx.at, isUtc: true).toLocal();
+    final dateLabel = _dateLabel(when);
+    final (label, icon, color) = _descriptor(tx);
+    return Container(
+      decoration: BoxDecoration(
+        border: last ? null : Border(bottom: BorderSide(color: surface.border)),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.15), shape: BoxShape.circle),
+            child: Icon(icon, size: 14, color: color),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(fontSize: 13, color: surface.text, fontWeight: FontWeight.w600)),
+                if (tx.notes != null && tx.notes!.isNotEmpty)
+                  Text(tx.notes!, style: TextStyle(fontSize: 11.5, color: surface.muted)),
+              ],
+            ),
+          ),
+          Text(dateLabel, style: TextStyle(fontSize: 11, color: surface.muted, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
+  (String label, IconData icon, Color color) _descriptor(db.InventoryTransactionRow tx) {
+    switch (tx.type) {
+      case 'propagation':
+        final from = tx.parentPlantId == plantId ? 'out' : 'in';
+        return (from == 'out' ? 'Propagated off this plant' : 'Propagated from a parent', Icons.content_copy_outlined, surface.green);
+      case 'gift':
+        final who = tx.counterparty == null || tx.counterparty!.isEmpty ? 'someone' : tx.counterparty!;
+        return ('Gave to $who', Icons.card_giftcard_outlined, surface.green);
+      case 'sale':
+        final buyer = tx.counterparty == null || tx.counterparty!.isEmpty ? null : ' to ${tx.counterparty}';
+        final price = tx.amountMinor == null || tx.currency == null
+            ? ''
+            : ' · ${(tx.amountMinor! / 100).toStringAsFixed(2)} ${tx.currency}';
+        return ('Sold${buyer ?? ''}$price', Icons.sell_outlined, surface.terra);
+      case 'death':
+        return ('Marked dead', Icons.local_fire_department_outlined, surface.terra);
+      default:
+        return (tx.type, Icons.history_toggle_off, surface.muted);
+    }
+  }
+
+  String _dateLabel(DateTime d) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[d.month - 1]} ${d.day.toString().padLeft(2, '0')}';
   }
 }
 

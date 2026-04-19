@@ -163,14 +163,42 @@ class PlantRepository {
 
   Future<void> softDelete(String id) async {
     return db.transaction(() async {
+      final ts = DateTime.now().toUtc().millisecondsSinceEpoch;
       final hlc = await opLog.recordTombstone(entity: 'plants', entityId: id);
       await (db.update(db.plants)..where((p) => p.id.equals(id))).write(
         PlantsCompanion(
-          deletedAt: Value(DateTime.now().toUtc().millisecondsSinceEpoch),
+          deletedAt: Value(ts),
           updatedHlc: Value(hlc.encode()),
           deviceId: Value(opLog.clock.deviceId),
         ),
       );
+      await cascadeDeleteSchedules(db, opLog, id, ts);
     });
+  }
+}
+
+/// Soft-deletes every schedule for [plantId]. Exposed so the inventory
+/// repo can call it inside its own transaction without nesting.
+Future<void> cascadeDeleteSchedules(
+  AppDatabase db,
+  OpLogWriter opLog,
+  String plantId,
+  int ts,
+) async {
+  final schedules = await (db.select(db.careSchedules)
+        ..where((s) =>
+            s.tenantId.equals(opLog.tenantId) &
+            s.plantId.equals(plantId) &
+            s.deletedAt.isNull()))
+      .get();
+  for (final s in schedules) {
+    final hlc = await opLog.recordTombstone(entity: 'care_schedules', entityId: s.id);
+    await (db.update(db.careSchedules)..where((r) => r.id.equals(s.id))).write(
+      CareSchedulesCompanion(
+        deletedAt: Value(ts),
+        updatedHlc: Value(hlc.encode()),
+        deviceId: Value(opLog.clock.deviceId),
+      ),
+    );
   }
 }

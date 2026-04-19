@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/database/app_database.dart';
+import '../../../data/mock_plants.dart';
+import '../../../data/providers.dart';
+import '../../../shared/plant_thumb.dart';
 import '../../../theme/tokens.dart';
 import 'widget_shell.dart';
 
-class QuickLogWidget extends StatelessWidget {
+/// "Quick log" — shortcut to record Water / Fertilize / Mist across any
+/// plant in the collection in two taps. Each tile opens a plant picker;
+/// picking a plant writes a `care_events` row of the chosen type.
+class QuickLogWidget extends ConsumerWidget {
   const QuickLogWidget({
     super.key,
     required this.surface,
@@ -15,19 +23,19 @@ class QuickLogWidget extends StatelessWidget {
   });
 
   final PlantlySurface surface;
-  final void Function(String action)? onLog;
+  final void Function(String message)? onLog;
   final bool editing;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
   final VoidCallback? onRemove;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final actions = <_Action>[
-      _Action('Water', Icons.water_drop_outlined, surface.green, surface.greenSoft),
-      _Action('Fertilize', Icons.eco_outlined, surface.green, surface.greenSoft),
-      _Action('Mist', Icons.water_drop_outlined, surface.terra, surface.terraSoft),
-      _Action('Photo', Icons.camera_alt_outlined, surface.terra, surface.terraSoft),
+      _Action('Water', 'water', Icons.water_drop_outlined, surface.green, surface.greenSoft),
+      _Action('Fertilize', 'fertilize', Icons.eco_outlined, surface.green, surface.greenSoft),
+      _Action('Mist', 'mist', Icons.bubble_chart_outlined, surface.terra, surface.terraSoft),
+      _Action('Rotate', 'rotate', Icons.light_mode_outlined, surface.terra, surface.terraSoft),
     ];
     return WidgetShell(
       surface: surface,
@@ -43,15 +51,37 @@ class QuickLogWidget extends StatelessWidget {
         childAspectRatio: 0.85,
         mainAxisSpacing: 8,
         crossAxisSpacing: 8,
-        children: actions.map((a) => _Btn(action: a, surface: surface, onTap: () => onLog?.call(a.label))).toList(growable: false),
+        children: actions.map((a) {
+          return _Btn(
+            action: a,
+            surface: surface,
+            onTap: () => _pickPlant(context, ref, a),
+          );
+        }).toList(growable: false),
       ),
     );
+  }
+
+  Future<void> _pickPlant(BuildContext context, WidgetRef ref, _Action action) async {
+    final plant = await showModalBottomSheet<PlantRow>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _PlantPickerSheet(surface: surface, action: action),
+    );
+    if (plant == null) return;
+    await ref.read(careEventRepositoryProvider).record(
+          plantId: plant.id,
+          type: action.type,
+        );
+    onLog?.call('${action.label}ed ${plant.nickname}');
   }
 }
 
 class _Action {
-  const _Action(this.label, this.icon, this.color, this.soft);
+  const _Action(this.label, this.type, this.icon, this.color, this.soft);
   final String label;
+  final String type;
   final IconData icon;
   final Color color;
   final Color soft;
@@ -98,6 +128,112 @@ class _Btn extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _PlantPickerSheet extends ConsumerWidget {
+  const _PlantPickerSheet({required this.surface, required this.action});
+  final PlantlySurface surface;
+  final _Action action;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final plants = ref.watch(plantsStreamProvider).maybeWhen(
+          data: (r) => r,
+          orElse: () => const <PlantRow>[],
+        );
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollCtrl) {
+        return Container(
+          decoration: BoxDecoration(
+            color: surface.bg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(PlantlyTokens.radius2xl)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                height: 4,
+                width: 40,
+                decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Icon(action.icon, color: action.color),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${action.label} which plant?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: surface.text)),
+                          Text('Records a care event immediately.', style: TextStyle(fontSize: 12, color: surface.muted)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: plants.isEmpty
+                    ? Center(
+                        child: Text('No plants yet — add one from Home.', style: TextStyle(color: surface.muted)),
+                      )
+                    : ListView.separated(
+                        controller: scrollCtrl,
+                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
+                        itemCount: plants.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 4),
+                        itemBuilder: (_, i) {
+                          final p = plants[i];
+                          return Material(
+                            color: surface.surface,
+                            borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+                              onTap: () => Navigator.of(context).pop(p),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: surface.border),
+                                  borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                child: Row(
+                                  children: [
+                                    PlantPhotoThumb(
+                                      plantId: p.id,
+                                      fallback: MockPlants.byId(p.id),
+                                      size: 40,
+                                      borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        p.nickname,
+                                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text),
+                                      ),
+                                    ),
+                                    Icon(Icons.chevron_right, color: surface.muted),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
