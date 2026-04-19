@@ -14,6 +14,7 @@ import '../notifications/reminder_sync.dart';
 import '../sync/device_id.dart';
 import '../sync/hlc.dart';
 import '../sync/op_log.dart';
+import 'care_types.dart';
 import 'database/app_database.dart';
 import 'repositories/care_event_repository.dart';
 import 'repositories/care_schedule_repository.dart';
@@ -142,6 +143,7 @@ final reminderSyncProvider = Provider<ReminderSync>((ref) {
     db: ctx.db,
     notifications: ref.watch(notificationServiceProvider),
     tenantId: ctx.opLog.tenantId,
+    mutedTypesSnapshot: () => ref.read(mutedCareTypesProvider),
   );
 });
 

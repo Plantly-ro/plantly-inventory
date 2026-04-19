@@ -72,9 +72,13 @@ class CareTypesScreen extends ConsumerWidget {
         separatorBuilder: (_, _) => const SizedBox(height: 6),
         itemBuilder: (_, i) {
           final t = types[i];
+          final muted = ref.watch(mutedCareTypesProvider).contains(t.key);
           return _Row(
             type: t,
             surface: surface,
+            muted: muted,
+            onToggleMute: () =>
+                ref.read(mutedCareTypesProvider.notifier).setMuted(t.key, !muted),
             onEdit: () => _edit(context, ref, surface, t),
             onDelete: t.builtin ? null : () => ref.read(careTypesProvider.notifier).remove(t.key),
           );
@@ -269,11 +273,15 @@ class _Row extends StatelessWidget {
   const _Row({
     required this.type,
     required this.surface,
+    required this.muted,
+    required this.onToggleMute,
     required this.onEdit,
     required this.onDelete,
   });
   final CareType type;
   final PlantlySurface surface;
+  final bool muted;
+  final VoidCallback onToggleMute;
   final VoidCallback onEdit;
   final VoidCallback? onDelete;
 
@@ -326,6 +334,14 @@ class _Row extends StatelessWidget {
                         style: TextStyle(fontSize: 11.5, color: surface.muted)),
                   ],
                 ),
+              ),
+              IconButton(
+                icon: Icon(
+                  muted ? Icons.notifications_off_outlined : Icons.notifications_outlined,
+                  color: muted ? surface.terra : surface.muted,
+                ),
+                tooltip: muted ? 'Unmute this care type everywhere' : 'Mute this care type everywhere',
+                onPressed: onToggleMute,
               ),
               if (onDelete != null)
                 IconButton(

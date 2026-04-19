@@ -16,6 +16,7 @@ import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import 'care_types_screen.dart';
 import 'notifications_screen.dart';
+import 'stats_screen.dart';
 
 /// "Me" tab — settings + Phase-1 user-facing actions (backup / iCal /
 /// notification permission). Split into ApplianceRows grouped under
@@ -60,6 +61,18 @@ class MeScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         children: [
           _StatCard(surface: surface, plants: plants, locations: locations),
+          const SizedBox(height: 12),
+          _ActionRow(
+            label: 'Stats',
+            value: 'Activity by care type, top plants, last 30 days.',
+            icon: Icons.insert_chart_outlined,
+            surface: surface,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const StatsScreen()),
+              );
+            },
+          ),
           const SizedBox(height: 20),
           _SectionLabel(text: 'APPEARANCE', surface: surface),
           const SizedBox(height: 8),

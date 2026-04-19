@@ -85,6 +85,7 @@ class GridWidget extends ConsumerWidget {
               _SortMenu(surface: surface, value: sort, onChanged: (s) => ref.read(plantSortProvider.notifier).set(s)),
             ],
           ),
+          _LocationTagChipsRow(surface: surface),
           const SizedBox(height: 10),
           async.when(
             loading: () => const SizedBox(height: 120, child: Center(child: CircularProgressIndicator())),
@@ -452,5 +453,108 @@ class _DueLabel {
     }
     if (days == 1) return 'tomorrow';
     return 'in $days d';
+  }
+}
+
+class _LocationTagChipsRow extends ConsumerWidget {
+  const _LocationTagChipsRow({required this.surface});
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locations = ref.watch(locationsStreamProvider).maybeWhen(
+          data: (rows) => rows,
+          orElse: () => const <LocationRow>[],
+        );
+    final tags = ref.watch(allTagsProvider).maybeWhen(
+          data: (rows) => rows,
+          orElse: () => const <TagRow>[],
+        );
+    final locId = ref.watch(activeLocationFilterProvider);
+    final tagId = ref.watch(activeTagFilterProvider);
+    if (locations.isEmpty && tags.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (final l in locations)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: _SecondaryChip(
+                  label: l.name,
+                  icon: Icons.place_outlined,
+                  selected: locId == l.id,
+                  surface: surface,
+                  onTap: () => ref.read(activeLocationFilterProvider.notifier).state =
+                      locId == l.id ? null : l.id,
+                ),
+              ),
+            for (final t in tags)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: _SecondaryChip(
+                  label: '#${t.name}',
+                  icon: Icons.label_outline,
+                  selected: tagId == t.id,
+                  surface: surface,
+                  onTap: () => ref.read(activeTagFilterProvider.notifier).state =
+                      tagId == t.id ? null : t.id,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SecondaryChip extends StatelessWidget {
+  const _SecondaryChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.surface,
+    required this.onTap,
+  });
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final PlantlySurface surface;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? surface.green : surface.surface,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: selected ? surface.green : surface.border),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 11, color: selected ? Colors.white : surface.muted),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: selected ? Colors.white : surface.text,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

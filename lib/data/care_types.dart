@@ -205,3 +205,38 @@ final careTypesProvider =
     StateNotifierProvider<CareTypesController, List<CareType>>((ref) {
   return CareTypesController(ref.watch(sharedPreferencesProvider.future));
 });
+
+/// Global per-type mute — a set of care-type keys whose reminders never
+/// hit the OS notification tray. Useful for "mute all fertilize
+/// reminders while I'm on vacation" without touching per-plant /
+/// per-schedule flags.
+class MutedTypesController extends StateNotifier<Set<String>> {
+  MutedTypesController(this._prefs) : super(const <String>{}) {
+    _load();
+  }
+  static const _key = 'plantly_muted_type_keys';
+  final Future<SharedPreferences> _prefs;
+
+  Future<void> _load() async {
+    final p = await _prefs;
+    final list = p.getStringList(_key);
+    if (list != null) state = list.toSet();
+  }
+
+  Future<void> setMuted(String key, bool muted) async {
+    final next = {...state};
+    if (muted) {
+      next.add(key);
+    } else {
+      next.remove(key);
+    }
+    state = next;
+    final p = await _prefs;
+    await p.setStringList(_key, next.toList());
+  }
+}
+
+final mutedCareTypesProvider =
+    StateNotifierProvider<MutedTypesController, Set<String>>((ref) {
+  return MutedTypesController(ref.watch(sharedPreferencesProvider.future));
+});
