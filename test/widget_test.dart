@@ -72,8 +72,10 @@ void main() {
     await tester.tap(find.text('Dashboard'));
     await tester.pumpAndSettle();
 
-    // Weather widget is in the Dashboard preset; its label is hardcoded.
-    expect(find.text('TIMIȘOARA · 19°C'), findsOneWidget);
+    // "Weather" widget is now a rotating tip card (phase-1 — no weather
+    // provider yet); we assert the shared header instead of any specific
+    // tip string, which changes daily by design.
+    expect(find.text('TIP OF THE DAY'), findsOneWidget);
 
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('plantly_layout'), contains('weather'));

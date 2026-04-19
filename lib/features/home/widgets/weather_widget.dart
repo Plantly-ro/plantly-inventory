@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import '../../../theme/tokens.dart';
 import 'widget_shell.dart';
 
+/// Phase-1 "tip of the day" card. Previously hardcoded "TIMIȘOARA · 19°C"
+/// with a fake rain forecast — honest weather needs a provider (Phase 2).
+/// The key in `WidgetRegistry` is still `weather` so saved layouts that
+/// reference it keep working.
 class WeatherWidget extends StatelessWidget {
   const WeatherWidget({
     super.key,
@@ -19,8 +23,30 @@ class WeatherWidget extends StatelessWidget {
   final VoidCallback? onMoveDown;
   final VoidCallback? onRemove;
 
+  // Deterministic pick per day — using the day-of-year modulo the tip
+  // count keeps the card stable all day, then rotates at midnight.
+  static const _tips = <_Tip>[
+    _Tip(Icons.water_drop_outlined, 'Check soil moisture before watering',
+        'Most houseplants prefer the top 2–3 cm to dry out between waterings.'),
+    _Tip(Icons.wb_sunny_outlined, 'Rotate toward the light',
+        'A quarter turn each week keeps growth even and upright.'),
+    _Tip(Icons.eco_outlined, 'Feed lightly in growing season',
+        'Dilute fertiliser to half-strength to avoid root burn on sensitive species.'),
+    _Tip(Icons.air, 'Watch for pests after seasonal change',
+        'Thrips and spider mites love warm, dry indoor air — check leaf undersides.'),
+    _Tip(Icons.local_florist_outlined, 'Repot when roots circle the pot',
+        'Go up one pot size only — oversized pots hold too much moisture.'),
+    _Tip(Icons.cleaning_services_outlined, 'Wipe dust off leaves',
+        'Clean leaves photosynthesise better and let you spot pests early.'),
+    _Tip(Icons.bubble_chart_outlined, 'Humidity helps aroids + calatheas',
+        'Group plants or run a pebble tray — easier than misting all day.'),
+  ];
+
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final dayOfYear = _dayOfYear(now);
+    final tip = _tips[dayOfYear % _tips.length];
     return WidgetShell(
       surface: surface,
       editing: editing,
@@ -46,29 +72,39 @@ class WeatherWidget extends StatelessWidget {
                 color: Colors.white.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(PlantlyTokens.radius + 2),
               ),
-              child: const Icon(Icons.wb_sunny, size: 22, color: Colors.white),
+              child: Icon(tip.icon, size: 22, color: Colors.white),
             ),
             const SizedBox(width: PlantlyTokens.space3),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'TIMIȘOARA · 19°C',
+                    'TIP OF THE DAY',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
-                      color: Colors.white,
+                      color: Colors.white.withValues(alpha: 0.85),
                       letterSpacing: 0.08 * 11,
                     ),
                   ),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text(
-                    "Rain Saturday — skip outdoor watering.",
-                    style: TextStyle(
+                    tip.title,
+                    style: const TextStyle(
                       fontSize: 13,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w700,
                       color: Colors.white,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    tip.body,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withValues(alpha: 0.9),
                       height: 1.35,
                     ),
                   ),
@@ -80,4 +116,15 @@ class WeatherWidget extends StatelessWidget {
       ),
     );
   }
+
+  static int _dayOfYear(DateTime d) {
+    return d.difference(DateTime(d.year)).inDays;
+  }
+}
+
+class _Tip {
+  const _Tip(this.icon, this.title, this.body);
+  final IconData icon;
+  final String title;
+  final String body;
 }

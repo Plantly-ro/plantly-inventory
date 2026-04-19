@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/database/app_database.dart' as db;
 import '../../data/mock_plants.dart';
@@ -38,7 +40,51 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
     _title = TextEditingController(text: widget.plantRow.nickname);
     _desc = TextEditingController(text: widget.plantRow.notes ?? '');
     _price = TextEditingController();
+    // Fire-and-forget: if a draft exists for this plant, prefill — lets
+    // the user resume a half-filled listing instead of re-typing.
+    _loadDraft();
   }
+
+  Future<void> _loadDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('plantly_export_draft/${widget.plantRow.id}');
+    if (raw == null || !mounted) return;
+    try {
+      final m = json.decode(raw) as Map<String, dynamic>;
+      setState(() {
+        _title.text = (m['title'] as String?) ?? _title.text;
+        _desc.text = (m['description'] as String?) ?? _desc.text;
+        _price.text = (m['price'] as String?) ?? _price.text;
+        final photos = (m['photos'] as List?)?.cast<String>();
+        if (photos != null) {
+          _selected
+            ..clear()
+            ..addAll(photos);
+          _selectionInitialised = true;
+        }
+        _posted = (m['posted_at'] as String?);
+      });
+    } catch (_) {
+      // Malformed draft — ignore and continue with the defaults.
+    }
+  }
+
+  String _draftKey() => 'plantly_export_draft/${widget.plantRow.id}';
+
+  Future<void> _persistDraft({bool posted = false}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final payload = {
+      'title': _title.text,
+      'description': _desc.text,
+      'price': _price.text,
+      'photos': _selected.toList(),
+      if (posted) 'posted_at': DateTime.now().toUtc().toIso8601String(),
+      if (!posted && _posted != null) 'posted_at': _posted,
+    };
+    await prefs.setString(_draftKey(), json.encode(payload));
+  }
+
+  String? _posted;
 
   @override
   void dispose() {
@@ -218,7 +264,10 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius + 2)),
                             textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                           ),
-                          onPressed: () => _finish('Draft saved'),
+                          onPressed: () async {
+                            await _persistDraft();
+                            if (context.mounted) _finish('Draft saved');
+                          },
                           child: const Text('Save draft'),
                         ),
                       ),
@@ -233,7 +282,10 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius + 2)),
                             textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                           ),
-                          onPressed: () => _finish('Draft queued — sync lands in Phase 2'),
+                          onPressed: () async {
+                            await _persistDraft(posted: true);
+                            if (context.mounted) _finish('Saved locally — plantly.ro sync lands in Phase 2');
+                          },
                           child: const Text('Post now'),
                         ),
                       ),

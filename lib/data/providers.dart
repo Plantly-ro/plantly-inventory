@@ -4,6 +4,10 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../domain/services/backup_service.dart';
+import '../domain/services/ical_export.dart';
+import '../domain/services/reminder_engine.dart';
+import '../domain/services/zip_backup_service.dart';
 import '../notifications/notification_service.dart';
 import '../notifications/reminder_sync.dart';
 import '../sync/device_id.dart';
@@ -60,8 +64,16 @@ final appContextProvider = FutureProvider<AppContext>((ref) async {
   final opLog = OpLogWriter(db: db, clock: clock, tenantId: kDefaultTenantId);
   await seedIfEmpty(db: db, opLog: opLog);
   // Ask once at bootstrap so reminders can fire from day 1. Failures are
-  // non-fatal — the user can deny and still use the rest of the app.
-  unawaited(ref.read(notificationServiceProvider).requestPermissions().catchError((_) => false));
+  // non-fatal — the user can deny and still use the rest of the app; the
+  // Me screen surfaces the result + a retry button.
+  unawaited(ref
+      .read(notificationServiceProvider)
+      .requestPermissions()
+      .then((ok) => ref.read(notificationPermissionProvider.notifier).state = ok)
+      .catchError((_) {
+    ref.read(notificationPermissionProvider.notifier).state = false;
+    return false;
+  }));
   return AppContext(db: db, clock: clock, opLog: opLog, deviceId: deviceId);
 });
 
@@ -75,6 +87,48 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
   // Best-effort init — failures here shouldn't block the app opening.
   svc.init().catchError((_) {});
   return svc;
+});
+
+/// Tracks whether the OS notification permission is granted. Updated by
+/// `requestPermissions` calls — `null` while the first request is in
+/// flight. Observers (Me screen) can react to changes.
+final notificationPermissionProvider = StateProvider<bool?>((ref) => null);
+
+final backupServiceProvider = Provider<BackupService>((ref) {
+  final ctx = ref.watch(appContextProvider).requireValue;
+  return BackupService(db: ctx.db);
+});
+
+final zipBackupServiceProvider = Provider<ZipBackupService>((ref) {
+  final ctx = ref.watch(appContextProvider).requireValue;
+  return ZipBackupService(db: ctx.db, backup: BackupService(db: ctx.db));
+});
+
+/// Build ICS bytes for the next 30 days of reminders against the current DB.
+final iCalFutureProvider = FutureProvider.autoDispose<String>((ref) async {
+  final ctx = ref.watch(appContextProvider).requireValue;
+  final schedules = await (ctx.db.select(ctx.db.careSchedules)
+        ..where((s) =>
+            s.tenantId.equals(ctx.opLog.tenantId) &
+            s.deletedAt.isNull() &
+            s.enabled.equals(true)))
+      .get();
+  final plants = await (ctx.db.select(ctx.db.plants)
+        ..where((p) => p.tenantId.equals(ctx.opLog.tenantId) & p.deletedAt.isNull()))
+      .get();
+  final locations = await (ctx.db.select(ctx.db.locations)
+        ..where((l) => l.tenantId.equals(ctx.opLog.tenantId) & l.deletedAt.isNull()))
+      .get();
+  final events = ReminderEngine.buildUpcoming(
+    schedules: schedules,
+    plantsById: {for (final p in plants) p.id: p},
+    locationsById: {for (final l in locations) l.id: l},
+    now: DateTime.now().toUtc(),
+  );
+  return ICalExport.fromEvents(
+    productId: '-//PlantlyInventory//Phase1//EN',
+    events: events,
+  );
 });
 
 final reminderSyncProvider = Provider<ReminderSync>((ref) {
