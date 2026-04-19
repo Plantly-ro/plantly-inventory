@@ -94,6 +94,40 @@ class PlantRepository {
     });
   }
 
+  /// Move a plant into [locationId] (or clear, when null).
+  Future<void> setLocation(String id, String? locationId) async {
+    return db.transaction(() async {
+      final hlc = await opLog.recordFieldUpdate(
+        entity: 'plants',
+        entityId: id,
+        field: 'location_id',
+        value: locationId,
+      );
+      await (db.update(db.plants)..where((p) => p.id.equals(id))).write(
+        PlantsCompanion(
+          locationId: Value(locationId),
+          updatedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+  }
+
+  Stream<PlantRow?> watchById(String id) {
+    return (db.select(db.plants)..where((p) => p.id.equals(id)))
+        .watchSingleOrNull();
+  }
+
+  Stream<List<PlantRow>> watchByLocation(String locationId) {
+    return (db.select(db.plants)
+          ..where((p) =>
+              p.tenantId.equals(opLog.tenantId) &
+              p.deletedAt.isNull() &
+              p.locationId.equals(locationId))
+          ..orderBy([(p) => OrderingTerm(expression: p.nickname)]))
+        .watch();
+  }
+
   Future<void> softDelete(String id) async {
     return db.transaction(() async {
       final hlc = await opLog.recordTombstone(entity: 'plants', entityId: id);

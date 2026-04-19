@@ -3,13 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/database/app_database.dart';
+import '../../data/mock_plants.dart';
 import '../../data/providers.dart';
 import '../../data/repositories/location_repository.dart';
+import '../../shared/plant_thumb.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
+import 'assign_plants_sheet.dart';
 
-/// Hierarchical locations list + add dialog. Matches the prototype's
-/// "Spaces" tab-bar entry.
+/// Hierarchical Spaces list + add-dialog + assign-plants flow.
 class LocationsScreen extends ConsumerWidget {
   const LocationsScreen({super.key});
 
@@ -81,14 +83,19 @@ class LocationsScreen extends ConsumerWidget {
   }
 }
 
-class _LocationTile extends StatelessWidget {
+class _LocationTile extends ConsumerWidget {
   const _LocationTile({required this.node, required this.depth, required this.surface});
   final LocationNode node;
   final int depth;
   final PlantlySurface surface;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final plants = ref.watch(plantsByLocationProvider(node.row.id)).maybeWhen(
+          data: (rows) => rows,
+          orElse: () => const <PlantRow>[],
+        );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -101,25 +108,93 @@ class _LocationTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(PlantlyTokens.radius),
             ),
             padding: const EdgeInsets.all(12),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(_iconFor(node.row.kind), size: 18, color: surface.green),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        node.row.name,
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text),
+                Row(
+                  children: [
+                    Icon(_iconFor(node.row.kind), size: 18, color: surface.green),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            node.row.name,
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text),
+                          ),
+                          Text(
+                            '${node.row.kind}${plants.isEmpty ? '' : ' · ${plants.length} plant${plants.length == 1 ? '' : 's'}'}',
+                            style: TextStyle(fontSize: 11, color: surface.muted),
+                          ),
+                        ],
                       ),
-                      Text(
-                        node.row.kind,
-                        style: TextStyle(fontSize: 11, color: surface.muted),
+                    ),
+                    TextButton.icon(
+                      icon: Icon(Icons.eco_outlined, size: 14, color: surface.green),
+                      label: Text(
+                        plants.isEmpty ? 'Add plants' : 'Manage',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: surface.green),
                       ),
-                    ],
-                  ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          side: BorderSide(color: surface.green, width: 1),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                      onPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (_) => AssignPlantsSheet(location: node.row),
+                        );
+                      },
+                    ),
+                  ],
                 ),
+                if (plants.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 44,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: plants.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 6),
+                      itemBuilder: (_, i) {
+                        final p = plants[i];
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: surface.surfaceAlt,
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(color: surface.border),
+                          ),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 28,
+                                height: 28,
+                                child: PlantPhotoThumb(
+                                  plantId: p.id,
+                                  fallback: MockPlants.byId(p.id),
+                                  size: 28,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(p.nickname, style: TextStyle(fontSize: 12, color: surface.text)),
+                              const SizedBox(width: 6),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -223,3 +298,4 @@ class _AddLocationDialogState extends ConsumerState<_AddLocationDialog> {
     );
   }
 }
+

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
 import 'package:plantly_inventory/data/mock_plants.dart';
 import 'package:plantly_inventory/data/providers.dart';
+import 'package:plantly_inventory/notifications/notification_service.dart';
 import 'package:plantly_inventory/sync/hlc.dart';
 
 /// Widget-test helper: wraps the given widget in a `ProviderScope` whose
@@ -24,6 +25,20 @@ Widget buildTestApp({
       // providers here as they get wired into widgets.
       dueBeforeEodProvider.overrideWith((ref) => Stream.value(const <CareScheduleRow>[])),
       locationsStreamProvider.overrideWith((ref) => Stream.value(const <LocationRow>[])),
+      recentCareEventsProvider.overrideWith((ref) => Stream.value(const <CareEventRow>[])),
+      allSchedulesProvider.overrideWith((ref) => Stream.value(const <CareScheduleRow>[])),
+      // Swap the real flutter_local_notifications-backed service for a
+      // no-op fake so bootstrap's unawaited `requestPermissions()` call
+      // doesn't leave a Future pending past widget-tree disposal.
+      notificationServiceProvider.overrideWith((ref) => FakeNotificationService()),
+      // Family providers emit via Drift's `watch()` which leaves a Timer
+      // pending past dispose. Return empty streams in tests.
+      attachedPhotosProvider.overrideWith((ref, plantId) => Stream.value(const <String>[])),
+      schedulesForPlantProvider.overrideWith((ref, plantId) => Stream.value(const <CareScheduleRow>[])),
+      careEventsForPlantProvider.overrideWith((ref, plantId) => Stream.value(const <CareEventRow>[])),
+      plantsByLocationProvider.overrideWith((ref, locationId) => Stream.value(const <PlantRow>[])),
+      inventoryForPlantProvider.overrideWith((ref, plantId) => Stream.value(const <InventoryTransactionRow>[])),
+      plantByIdProvider.overrideWith((ref, plantId) => Stream.value(null)),
       ...overrides,
     ],
     child: child,

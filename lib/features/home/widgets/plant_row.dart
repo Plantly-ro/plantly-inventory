@@ -44,9 +44,11 @@ class PlantRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            ClipRRect(
+            PlantPhotoThumb(
+              plantId: plant.id,
+              fallback: plant,
+              size: 44,
               borderRadius: BorderRadius.circular(PlantlyTokens.radius),
-              child: PlantThumb(plant: plant, size: 44),
             ),
             const SizedBox(width: PlantlyTokens.space3),
             Expanded(

@@ -105,6 +105,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     final row = _results[i];
                     final mock = MockPlants.byId(row.id);
                     return _ResultRow(
+                      plantId: row.id,
                       plant: mock,
                       label: row.nickname,
                       notes: row.notes,
@@ -145,6 +146,7 @@ class _Empty extends StatelessWidget {
 
 class _ResultRow extends StatelessWidget {
   const _ResultRow({
+    required this.plantId,
     required this.plant,
     required this.label,
     required this.notes,
@@ -152,6 +154,7 @@ class _ResultRow extends StatelessWidget {
     required this.onTap,
   });
 
+  final String plantId;
   final MockPlant plant;
   final String label;
   final String? notes;
@@ -174,9 +177,11 @@ class _ResultRow extends StatelessWidget {
           ),
           child: Row(
             children: [
-              ClipRRect(
+              PlantPhotoThumb(
+                plantId: plantId,
+                fallback: plant,
+                size: 44,
                 borderRadius: BorderRadius.circular(PlantlyTokens.radius),
-                child: PlantThumb(plant: plant, size: 44),
               ),
               const SizedBox(width: 12),
               Expanded(

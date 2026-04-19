@@ -4,8 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../theme/tokens.dart';
 import 'widget_shell.dart';
 
-/// Port of `widgetRegistry.greeting.render` in
-/// `web/prototype/components/widgets.jsx`.
+/// Greeting header — shows today's date, a time-of-day-aware salutation,
+/// and a notification dot. The "AM" avatar is a placeholder until a real
+/// account surface lands.
 class GreetingWidget extends StatelessWidget {
   const GreetingWidget({
     super.key,
@@ -24,6 +25,9 @@ class GreetingWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final date = _formatDate(now);
+    final greeting = _timeOfDayGreeting(now.hour);
     return WidgetShell(
       surface: surface,
       editing: editing,
@@ -42,14 +46,7 @@ class GreetingWidget extends StatelessWidget {
                 borderRadius: BorderRadius.circular(PlantlyTokens.radius3xl),
               ),
               alignment: Alignment.center,
-              child: Text(
-                'AM',
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 17,
-                  color: surface.green,
-                ),
-              ),
+              child: Icon(Icons.person_outline, color: surface.green),
             ),
             const SizedBox(width: PlantlyTokens.space3),
             Expanded(
@@ -57,7 +54,7 @@ class GreetingWidget extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Friday · April 18',
+                    date,
                     style: TextStyle(
                       fontSize: PlantlyTokens.textXs,
                       color: surface.muted,
@@ -65,7 +62,7 @@ class GreetingWidget extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'Good morning, Ana',
+                    greeting,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: PlantlyTokens.text2xl,
                       fontWeight: FontWeight.w800,
@@ -84,28 +81,35 @@ class GreetingWidget extends StatelessWidget {
                 border: Border.all(color: surface.border),
                 borderRadius: BorderRadius.circular(PlantlyTokens.radius),
               ),
-              child: Stack(
-                children: [
-                  Center(child: Icon(Icons.notifications_outlined, size: 18, color: surface.text)),
-                  Positioned(
-                    top: 6,
-                    right: 7,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: surface.terra,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: surface.surface, width: 2),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              child: Icon(Icons.notifications_outlined, size: 18, color: surface.text),
             ),
           ],
         ),
       ),
     );
+  }
+
+  String _formatDate(DateTime d) {
+    const days = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    return '${days[d.weekday - DateTime.monday]} · ${months[d.month - 1]} ${d.day}';
+  }
+
+  String _timeOfDayGreeting(int hour) {
+    if (hour < 5) return 'Still up?';
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
   }
 }

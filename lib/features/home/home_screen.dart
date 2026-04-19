@@ -10,6 +10,7 @@ import '../plant_detail/plant_detail_screen.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../locations/locations_screen.dart';
 import '../search/search_screen.dart';
+import '../me/me_screen.dart';
 import 'add_plant_sheet.dart';
 import 'home_providers.dart';
 import 'widget_registry.dart';
@@ -52,6 +53,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: const Icon(Icons.add),
             )
           : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: bootstrap.hasValue
+          ? _TabBar(
+              surface: surface,
+              onCalendar: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CalendarScreen()),
+                );
+              },
+              onMe: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MeScreen()),
+                );
+              },
+            )
+          : null,
       body: SafeArea(
         child: bootstrap.when(
           loading: () => Center(
@@ -80,21 +97,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.only(top: 6, bottom: 24),
+                  padding: const EdgeInsets.only(top: 6, bottom: 96),
                   children: [
                     for (var i = 0; i < layout.length; i++)
                       _renderWidget(layout[i], i, layout.length, surface),
                     if (_editing) _EditPanel(surface: surface, current: layout),
                   ],
                 ),
-              ),
-              _TabBar(
-                surface: surface,
-                onCalendar: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const CalendarScreen()),
-                  );
-                },
               ),
             ],
           ),
@@ -190,6 +199,7 @@ class _EditPanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Every widget that isn't currently on the home screen.
     final available = WidgetRegistry.entries.entries
         .where((e) => !current.contains(e.key))
         .toList(growable: false);
@@ -197,32 +207,29 @@ class _EditPanel extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(PlantlyTokens.space5, 0, PlantlyTokens.space5, 20),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _sectionLabel('ADD WIDGET', surface.green, surface),
           const SizedBox(height: 8),
           if (available.isEmpty)
-            Text(
-              'All widgets are on the home screen.',
-              style: TextStyle(fontSize: 12, color: surface.muted),
-            )
+            _FullPanel(surface: surface)
           else
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              childAspectRatio: 4.2,
+            // Single-column list of full-width taps — was a 2-col grid before
+            // with a 4.2 aspect ratio which made hit-targets tiny on phones.
+            Column(
               children: [
-                for (final e in available)
-                  _AddButton(entry: e.value, surface: surface, onTap: () {
-                    ref.read(homeLayoutProvider.notifier).add(e.key);
-                  }),
+                for (final e in available) ...[
+                  _AddButton(
+                    entry: e.value,
+                    surface: surface,
+                    onTap: () => ref.read(homeLayoutProvider.notifier).add(e.key),
+                  ),
+                  const SizedBox(height: 6),
+                ],
               ],
             ),
           const SizedBox(height: 16),
-          _sectionLabel('OR START FROM A PRESET', surface.muted, surface),
+          _sectionLabel('PRESETS', surface.muted, surface),
           const SizedBox(height: 8),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -240,6 +247,24 @@ class _EditPanel extends ConsumerWidget {
               ],
             ),
           ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              style: TextButton.styleFrom(
+                foregroundColor: surface.muted,
+                padding: EdgeInsets.zero,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              icon: Icon(Icons.restart_alt, size: 14, color: surface.muted),
+              label: Text(
+                'Reset to default',
+                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: surface.muted),
+              ),
+              onPressed: () => ref.read(homeLayoutProvider.notifier).reset(),
+            ),
+          ),
         ],
       ),
     );
@@ -253,6 +278,35 @@ class _EditPanel extends ConsumerWidget {
         fontWeight: FontWeight.w700,
         color: color,
         letterSpacing: 0.1 * 11,
+      ),
+    );
+  }
+}
+
+class _FullPanel extends StatelessWidget {
+  const _FullPanel({required this.surface});
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: surface.surface,
+        border: Border.all(color: surface.border),
+        borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.check_circle_outline, size: 16, color: surface.green),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Every widget is already on your home screen. Apply a preset below to reshuffle.',
+              style: TextStyle(fontSize: 12, color: surface.muted),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -277,18 +331,27 @@ class _AddButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(PlantlyTokens.radius),
             border: Border.all(color: surface.border, style: BorderStyle.solid),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           child: Row(
             children: [
-              Icon(entry.icon, size: 14, color: surface.green),
-              const SizedBox(width: 8),
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: surface.greenSoft,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(entry.icon, size: 14, color: surface.green),
+              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   entry.label,
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: surface.text),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: surface.text),
                 ),
               ),
-              Text('+', style: TextStyle(color: surface.green, fontSize: 16, fontWeight: FontWeight.w800)),
+              Text('+ Add',
+                  style: TextStyle(color: surface.green, fontSize: 12, fontWeight: FontWeight.w700)),
             ],
           ),
         ),
@@ -328,32 +391,40 @@ class _PresetChip extends StatelessWidget {
 }
 
 class _TabBar extends StatelessWidget {
-  const _TabBar({required this.surface, required this.onCalendar});
+  const _TabBar({required this.surface, required this.onCalendar, required this.onMe});
   final PlantlySurface surface;
   final VoidCallback onCalendar;
+  final VoidCallback onMe;
 
   @override
   Widget build(BuildContext context) {
+    // Leaves a gap in the middle so the docked FAB doesn't sit on any tab.
     return Container(
       decoration: BoxDecoration(
         color: surface.surface,
         border: Border(top: BorderSide(color: surface.border)),
       ),
       padding: const EdgeInsets.fromLTRB(0, 8, 0, 10),
-      child: Row(
-        children: [
-          _TabIcon(icon: Icons.home_outlined, label: 'Home', active: true, surface: surface),
-          _TabIcon(icon: Icons.calendar_today_outlined, label: 'Calendar', onTap: onCalendar, surface: surface),
-          _TabIcon(
-            icon: Icons.place_outlined,
-            label: 'Spaces',
-            surface: surface,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const LocationsScreen()),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            Expanded(child: _TabIcon(icon: Icons.home_outlined, label: 'Home', active: true, surface: surface)),
+            Expanded(child: _TabIcon(icon: Icons.calendar_today_outlined, label: 'Calendar', onTap: onCalendar, surface: surface)),
+            const SizedBox(width: 72),
+            Expanded(
+              child: _TabIcon(
+                icon: Icons.place_outlined,
+                label: 'Spaces',
+                surface: surface,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LocationsScreen()),
+                ),
+              ),
             ),
-          ),
-          _TabIcon(icon: Icons.person_outline, label: 'Me', surface: surface),
-        ],
+            Expanded(child: _TabIcon(icon: Icons.person_outline, label: 'Me', surface: surface, onTap: onMe)),
+          ],
+        ),
       ),
     );
   }
@@ -376,24 +447,22 @@ class _TabIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = active ? surface.green : surface.muted;
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 22, color: color),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 10,
-                fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                color: color,
-              ),
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 22, color: color),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+              color: color,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

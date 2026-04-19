@@ -65,6 +65,121 @@ class InventoryTransactionRepository {
     });
   }
 
+  /// Gift a plant away. Records a `gift` transaction and soft-deletes the
+  /// plant (so it disappears from the user's active collection but the
+  /// ledger still has a row).
+  Future<InventoryTransactionRow> gift({
+    required String plantId,
+    String? counterparty,
+    String? notes,
+    int? atMs,
+  }) async {
+    return _close(
+      plantId: plantId,
+      type: 'gift',
+      counterparty: counterparty,
+      notes: notes,
+      atMs: atMs,
+    );
+  }
+
+  /// Record a sale. `amountMinor` is cents/bani; `currency` ISO-4217.
+  Future<InventoryTransactionRow> sell({
+    required String plantId,
+    int? amountMinor,
+    String? currency,
+    String? counterparty,
+    String? notes,
+    int? atMs,
+  }) async {
+    return _close(
+      plantId: plantId,
+      type: 'sale',
+      amountMinor: amountMinor,
+      currency: currency,
+      counterparty: counterparty,
+      notes: notes,
+      atMs: atMs,
+    );
+  }
+
+  /// Mark a plant dead. Sets `plants.status = 'dead'` and soft-deletes
+  /// the plant row alongside the ledger entry.
+  Future<InventoryTransactionRow> markDead({
+    required String plantId,
+    String? notes,
+    int? atMs,
+  }) async {
+    return _close(
+      plantId: plantId,
+      type: 'death',
+      notes: notes,
+      atMs: atMs,
+    );
+  }
+
+  /// Shared "close the book on a plant" path. Records a ledger entry in
+  /// the same transaction as the soft-delete so we can't end up with a
+  /// ledger row pointing at a still-active plant.
+  Future<InventoryTransactionRow> _close({
+    required String plantId,
+    required String type,
+    String? counterparty,
+    String? notes,
+    int? amountMinor,
+    String? currency,
+    int? atMs,
+  }) async {
+    final ts = atMs ?? DateTime.now().toUtc().millisecondsSinceEpoch;
+    return db.transaction(() async {
+      final txId = Ulid().toString();
+      final hlc = await opLog.recordCreate(
+        entity: 'inventory_transactions',
+        entityId: txId,
+        value: {
+          'id': txId,
+          'tenant_id': opLog.tenantId,
+          'type': type,
+          'plant_id': plantId,
+          'at': ts,
+          'notes': notes,
+          'counterparty': counterparty,
+          'amount_minor': amountMinor,
+          'currency': currency,
+        },
+      );
+      await db.into(db.inventoryTransactions).insert(
+            InventoryTransactionsCompanion.insert(
+              id: txId,
+              tenantId: opLog.tenantId,
+              type: type,
+              at: ts,
+              plantId: Value(plantId),
+              notes: Value(notes),
+              counterparty: Value(counterparty),
+              amountMinor: Value(amountMinor),
+              currency: Value(currency),
+              updatedHlc: hlc.encode(),
+              deviceId: opLog.clock.deviceId,
+            ),
+          );
+      // Soft-delete the plant so it leaves the main grid, plus flip
+      // `status` to 'dead' for death events (useful reporting signal).
+      final plantHlc = await opLog.recordTombstone(entity: 'plants', entityId: plantId);
+      await (db.update(db.plants)..where((p) => p.id.equals(plantId))).write(
+        PlantsCompanion(
+          status: type == 'death' ? const Value('dead') : const Value.absent(),
+          deletedAt: Value(ts),
+          updatedHlc: Value(plantHlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+      return (await (db.select(db.inventoryTransactions)
+                ..where((r) => r.id.equals(txId)))
+              .getSingle());
+    });
+  }
+
   Stream<List<InventoryTransactionRow>> watchForPlant(String plantId) {
     return (db.select(db.inventoryTransactions)
           ..where((r) =>

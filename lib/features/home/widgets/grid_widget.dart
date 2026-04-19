@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/mock_plants.dart';
 import '../../../shared/plant_thumb.dart';
 import '../../../theme/tokens.dart';
+import '../../search/search_screen.dart';
 import '../filter.dart';
 import 'widget_shell.dart';
 
@@ -48,7 +49,12 @@ class GridWidget extends ConsumerWidget {
         orElse: () => null,
       ),
       accentColor: surface.muted,
-      action: 'See all',
+      action: editing ? null : 'Search',
+      onAction: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const SearchScreen()),
+        );
+      },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -123,7 +129,12 @@ class _Card extends StatelessWidget {
                   Positioned.fill(
                     child: Container(
                       color: surface.surfaceAlt,
-                      child: PlantThumb(plant: plant, size: 160),
+                      child: PlantPhotoThumb(
+                        plantId: plant.id,
+                        fallback: plant,
+                        stubSize: 120,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                   Positioned(

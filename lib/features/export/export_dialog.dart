@@ -1,18 +1,25 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../data/database/app_database.dart' as db;
 import '../../data/mock_plants.dart';
+import '../../data/providers.dart';
 import '../../shared/plant_thumb.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 
-/// Port of `ExportDialog` in `web/prototype/components/screens.jsx`.
-/// The dialog mirrors plantly.ro's post fields exactly:
-/// title ≤64, description ≤2000, price in lei, category, location, ≤6 photos.
+/// Draft a plantly.ro listing. Reads live data from the DB:
+///   - Title/description seeded from the plant row (nickname + notes).
+///   - Photos come from the plant's attached OR-set (max 6).
+///
+/// Phase 1 is still "draft" only — "Post now" writes to the draft store
+/// and surfaces a confirmation; the actual network plugin lands in Phase 2.
 class ExportDialog extends ConsumerStatefulWidget {
-  const ExportDialog({super.key, required this.plant});
-  final MockPlant plant;
+  const ExportDialog({super.key, required this.plantRow});
+  final db.PlantRow plantRow;
 
   @override
   ConsumerState<ExportDialog> createState() => _ExportDialogState();
@@ -22,17 +29,15 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
   late final TextEditingController _title;
   late final TextEditingController _desc;
   late final TextEditingController _price;
-  final _photos = <bool>[true, true, true, false, false];
+  final _selected = <String>{};
+  bool _selectionInitialised = false;
 
   @override
   void initState() {
     super.initState();
-    _title = TextEditingController(text: 'Monstera deliciosa variegata');
-    _desc = TextEditingController(
-      text:
-          'Mature Monstera, 5 leaves, propagated from my mother plant in 2024. Healthy and ready to re-home.',
-    );
-    _price = TextEditingController(text: '250');
+    _title = TextEditingController(text: widget.plantRow.nickname);
+    _desc = TextEditingController(text: widget.plantRow.notes ?? '');
+    _price = TextEditingController();
   }
 
   @override
@@ -47,7 +52,18 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
   Widget build(BuildContext context) {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
-    final selectedCount = _photos.where((x) => x).length;
+    final plant = widget.plantRow;
+    final swatch = MockPlants.byId(plant.id);
+    final shas = ref.watch(attachedPhotosProvider(plant.id)).maybeWhen(
+          data: (list) => list,
+          orElse: () => const <String>[],
+        );
+    // First time we see photos, preselect up to 6 so the user isn't greeted
+    // with a zero-selected export.
+    if (!_selectionInitialised && shas.isNotEmpty) {
+      _selectionInitialised = true;
+      _selected.addAll(shas.take(6));
+    }
 
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
@@ -66,10 +82,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                 height: 4,
                 width: 40,
                 margin: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: surface.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+                decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
@@ -89,7 +102,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                             ),
                           ),
                           Text(
-                            'Post "${widget.plant.name}"',
+                            'Post "${plant.nickname}"',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 19,
                               fontWeight: FontWeight.w800,
@@ -113,11 +126,11 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                   children: [
                     _Label(text: 'TITLE', surface: surface),
-                    _Field(controller: _title, maxLength: 64, surface: surface),
+                    _Field(controller: _title, maxLength: 64, surface: surface, onChanged: (_) => setState(() {})),
                     _CharCount(value: _title.text.length, max: 64, surface: surface),
                     const SizedBox(height: 10),
                     _Label(text: 'DESCRIPTION', surface: surface),
-                    _Field(controller: _desc, maxLength: 2000, surface: surface, maxLines: 3),
+                    _Field(controller: _desc, maxLength: 2000, surface: surface, maxLines: 3, onChanged: (_) => setState(() {})),
                     _CharCount(value: _desc.text.length, max: 2000, surface: surface),
                     const SizedBox(height: 10),
                     Row(
@@ -155,7 +168,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _Label(text: 'CATEGORY', surface: surface),
-                              _FakeInput(text: 'Indoor › Monsteras', surface: surface, trailingIcon: Icons.expand_more),
+                              _FakeInput(text: 'Indoor plant', surface: surface, trailingIcon: Icons.expand_more),
                             ],
                           ),
                         ),
@@ -165,13 +178,22 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                     _Label(text: 'LOCATION', surface: surface),
                     _FakeInput(text: 'Timiș County · Timișoara', surface: surface, leadingIcon: Icons.place_outlined),
                     const SizedBox(height: 14),
-                    _Label(text: 'PHOTOS ($selectedCount/6)', surface: surface),
+                    _Label(text: 'PHOTOS (${_selected.length}/6)', surface: surface),
                     const SizedBox(height: 8),
                     _PhotoGrid(
-                      photos: _photos,
-                      plant: widget.plant,
+                      shas: shas,
+                      selected: _selected,
+                      swatch: swatch,
                       surface: surface,
-                      onToggle: (i) => setState(() => _photos[i] = !_photos[i]),
+                      onToggle: (sha) {
+                        setState(() {
+                          if (_selected.contains(sha)) {
+                            _selected.remove(sha);
+                          } else if (_selected.length < 6) {
+                            _selected.add(sha);
+                          }
+                        });
+                      },
                     ),
                   ],
                 ),
@@ -211,7 +233,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius + 2)),
                             textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                           ),
-                          onPressed: () => _finish('Posted to plantly.ro ✓'),
+                          onPressed: () => _finish('Draft queued — sync lands in Phase 2'),
                           child: const Text('Post now'),
                         ),
                       ),
@@ -264,6 +286,7 @@ class _Field extends StatelessWidget {
     this.maxLines = 1,
     this.keyboardType,
     this.suffixPadding = 12,
+    this.onChanged,
   });
   final TextEditingController controller;
   final PlantlySurface surface;
@@ -271,6 +294,7 @@ class _Field extends StatelessWidget {
   final int maxLines;
   final TextInputType? keyboardType;
   final double suffixPadding;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -279,6 +303,7 @@ class _Field extends StatelessWidget {
       maxLength: maxLength,
       maxLines: maxLines,
       keyboardType: keyboardType,
+      onChanged: onChanged,
       style: TextStyle(fontSize: 14, color: surface.text),
       buildCounter: (_, {required currentLength, required isFocused, maxLength}) => const SizedBox.shrink(),
       decoration: InputDecoration(
@@ -315,10 +340,7 @@ class _CharCount extends StatelessWidget {
       padding: const EdgeInsets.only(top: 4),
       child: Align(
         alignment: Alignment.centerRight,
-        child: Text(
-          '$value/$max',
-          style: TextStyle(fontSize: 10.5, color: surface.muted),
-        ),
+        child: Text('$value/$max', style: TextStyle(fontSize: 10.5, color: surface.muted)),
       ),
     );
   }
@@ -351,31 +373,46 @@ class _FakeInput extends StatelessWidget {
             Icon(leadingIcon, size: 13, color: surface.muted),
             const SizedBox(width: 6),
           ],
-          Expanded(
-            child: Text(text, style: TextStyle(fontSize: 13, color: surface.text)),
-          ),
-          if (trailingIcon != null)
-            Icon(trailingIcon, size: 14, color: surface.muted),
+          Expanded(child: Text(text, style: TextStyle(fontSize: 13, color: surface.text))),
+          if (trailingIcon != null) Icon(trailingIcon, size: 14, color: surface.muted),
         ],
       ),
     );
   }
 }
 
-class _PhotoGrid extends StatelessWidget {
+class _PhotoGrid extends ConsumerWidget {
   const _PhotoGrid({
-    required this.photos,
-    required this.plant,
+    required this.shas,
+    required this.selected,
+    required this.swatch,
     required this.surface,
     required this.onToggle,
   });
-  final List<bool> photos;
-  final MockPlant plant;
+  final List<String> shas;
+  final Set<String> selected;
+  final MockPlant swatch;
   final PlantlySurface surface;
-  final ValueChanged<int> onToggle;
+  final ValueChanged<String> onToggle;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (shas.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: surface.surface,
+          border: Border.all(color: surface.border),
+          borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          'No photos attached. Add some on the plant detail screen first.',
+          style: TextStyle(fontSize: 12, color: surface.muted),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
     return GridView.count(
       crossAxisCount: 5,
       shrinkWrap: true,
@@ -383,26 +420,26 @@ class _PhotoGrid extends StatelessWidget {
       mainAxisSpacing: 6,
       crossAxisSpacing: 6,
       children: [
-        for (var i = 0; i < photos.length; i++)
+        for (final sha in shas)
           GestureDetector(
-            onTap: () => onToggle(i),
+            onTap: () => onToggle(sha),
             child: Stack(
               children: [
                 Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(PlantlyTokens.radius),
                     border: Border.all(
-                      color: photos[i] ? surface.green : surface.border,
+                      color: selected.contains(sha) ? surface.green : surface.border,
                       width: 2,
                     ),
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: Opacity(
-                    opacity: photos[i] ? 1 : 0.45,
-                    child: PlantThumb(plant: plant, size: 80),
+                    opacity: selected.contains(sha) ? 1 : 0.45,
+                    child: _GridPhoto(sha: sha, fallback: swatch),
                   ),
                 ),
-                if (photos[i])
+                if (selected.contains(sha))
                   Positioned(
                     top: 3,
                     right: 3,
@@ -417,6 +454,27 @@ class _PhotoGrid extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _GridPhoto extends ConsumerWidget {
+  const _GridPhoto({required this.sha, required this.fallback});
+  final String sha;
+  final MockPlant fallback;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final repo = ref.watch(photoRepositoryProvider);
+    return FutureBuilder(
+      future: repo.byHash(sha),
+      builder: (_, snap) {
+        final path = snap.data?.localPath;
+        if (path != null && File(path).existsSync()) {
+          return Image.file(File(path), fit: BoxFit.cover, width: 80, height: 80);
+        }
+        return PlantThumb(plant: fallback, size: 80);
+      },
     );
   }
 }

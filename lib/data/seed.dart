@@ -2,6 +2,7 @@ import '../sync/op_log.dart';
 import 'database/app_database.dart';
 import 'mock_plants.dart';
 import 'repositories/care_schedule_repository.dart';
+import 'repositories/location_repository.dart';
 
 /// Populates an empty database with the prototype's fixture plants so the
 /// app is immediately demonstrable on first launch. No-op once the plants
@@ -18,6 +19,12 @@ Future<void> seedIfEmpty({
   if (count > 0) return;
 
   final schedules = CareScheduleRepository(db: db, opLog: opLog);
+  final locations = LocationRepository(db: db, opLog: opLog);
+  // Seed a small location tree so the Spaces tab + "move plant" dialogs
+  // aren't empty on first launch. Users can rename or delete these.
+  final home = await locations.create(name: 'Home', kind: 'home');
+  await locations.create(name: 'Living room', kind: 'room', parentId: home.id);
+  await locations.create(name: 'Balcony', kind: 'outdoor_bed', parentId: home.id, isOutdoor: true);
   final now = DateTime.now().toUtc();
   // Anchor the mock data so Overdue/Today widgets match the prototype
   // regardless of wall-clock time.
