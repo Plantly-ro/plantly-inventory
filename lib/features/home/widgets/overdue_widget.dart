@@ -6,6 +6,7 @@ import '../../../data/mock_plants.dart';
 import '../../../data/providers.dart';
 import '../../../theme/tokens.dart';
 import 'plant_row.dart';
+import 'swipe_row.dart';
 import 'widget_shell.dart';
 
 class OverdueWidget extends ConsumerWidget {
@@ -105,29 +106,47 @@ class OverdueWidget extends ConsumerWidget {
     final swatch = MockPlants.byId(schedule.plantId);
     final daysLate = ((now.millisecondsSinceEpoch - schedule.nextDueAt!) / (86400 * 1000)).floor();
     final subtitle = daysLate > 0 ? '$daysLate d late · ${_verb(schedule.type)}' : '${_verb(schedule.type)} now';
-    return PlantRow(
-      plantId: schedule.plantId,
-      title: title,
-      swatch: swatch,
-      surface: surface,
-      subtitle: subtitle,
-      subtitleIcon: _iconFor(schedule.type),
-      subtitleColor: surface.terra,
-      first: false,
-      last: last,
-      onTap: () => onPlantTap?.call(schedule.plantId),
-      trailing: Consumer(
-        builder: (context, ref, _) => _DoneButton(
+    return Consumer(
+      builder: (context, ref, _) {
+        return SwipeRow(
+          key: ValueKey('overdue-${schedule.id}'),
           surface: surface,
-          onPressed: () async {
+          onDone: () async {
             await ref.read(careEventRepositoryProvider).record(
                   plantId: schedule.plantId,
                   type: schedule.type,
                 );
             if (context.mounted) onLogCare?.call(title);
           },
-        ),
-      ),
+          onSnooze: () async {
+            await ref
+                .read(careScheduleRepositoryProvider)
+                .snooze(schedule.id, by: const Duration(days: 1));
+          },
+          child: PlantRow(
+            plantId: schedule.plantId,
+            title: title,
+            swatch: swatch,
+            surface: surface,
+            subtitle: subtitle,
+            subtitleIcon: _iconFor(schedule.type),
+            subtitleColor: surface.terra,
+            first: false,
+            last: last,
+            onTap: () => onPlantTap?.call(schedule.plantId),
+            trailing: _DoneButton(
+              surface: surface,
+              onPressed: () async {
+                await ref.read(careEventRepositoryProvider).record(
+                      plantId: schedule.plantId,
+                      type: schedule.type,
+                    );
+                if (context.mounted) onLogCare?.call(title);
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 

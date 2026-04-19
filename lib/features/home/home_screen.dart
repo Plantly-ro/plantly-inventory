@@ -102,14 +102,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 if (permDenied) _NotificationPermissionBanner(surface: surface),
                 Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.only(top: 6, bottom: 96),
-                    children: [
-                      if (!hasPlants) _FirstRunCallout(surface: surface),
-                      for (var i = 0; i < layout.length; i++)
-                        _renderWidget(layout[i], i, layout.length, surface),
-                      if (_editing) _EditPanel(surface: surface, current: layout),
-                    ],
+                  child: RefreshIndicator(
+                    onRefresh: () async {
+                      // Drift streams are already live; the pull gesture
+                      // is a UX affordance, not a data fetch. Hold for a
+                      // short tick so the spinner is visible.
+                      await ref.read(reminderSyncProvider).syncFromDatabase();
+                      await Future<void>.delayed(const Duration(milliseconds: 250));
+                    },
+                    color: surface.green,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.only(top: 6, bottom: 96),
+                      children: [
+                        if (!hasPlants) _FirstRunCallout(surface: surface),
+                        for (var i = 0; i < layout.length; i++)
+                          _renderWidget(layout[i], i, layout.length, surface),
+                        if (_editing) _EditPanel(surface: surface, current: layout),
+                      ],
+                    ),
                   ),
                 ),
               ],
