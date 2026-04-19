@@ -92,6 +92,7 @@ class CareTypesScreen extends ConsumerWidget {
     final labelCtrl = TextEditingController(text: existing?.label ?? '');
     var days = existing?.defaultIntervalDays ?? 7.0;
     var iconCode = existing?.iconCode ?? Icons.notifications_active_outlined.codePoint;
+    int? colorValue = existing?.colorValue;
 
     await showModalBottomSheet(
       context: context,
@@ -153,6 +154,14 @@ class CareTypesScreen extends ConsumerWidget {
                     surface: surface,
                     onChanged: (code) => setLocal(() => iconCode = code),
                   ),
+                  const SizedBox(height: 12),
+                  _label('COLOUR', surface),
+                  const SizedBox(height: 6),
+                  _ColorPicker(
+                    value: colorValue,
+                    surface: surface,
+                    onChanged: (v) => setLocal(() => colorValue = v),
+                  ),
                   const SizedBox(height: 18),
                   Row(
                     children: [
@@ -189,6 +198,7 @@ class CareTypesScreen extends ConsumerWidget {
                                 label: label,
                                 iconCode: iconCode,
                                 defaultIntervalDays: days,
+                                colorValue: colorValue,
                               ));
                             } else {
                               await notifier.update(
@@ -197,6 +207,8 @@ class CareTypesScreen extends ConsumerWidget {
                                   label: label,
                                   iconCode: iconCode,
                                   defaultIntervalDays: days,
+                                  colorValue: colorValue,
+                                  clearColor: colorValue == null,
                                 ),
                               );
                             }
@@ -367,6 +379,60 @@ class _IconPicker extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _ColorPicker extends StatelessWidget {
+  const _ColorPicker({required this.value, required this.surface, required this.onChanged});
+  final int? value;
+  final PlantlySurface surface;
+  final ValueChanged<int?> onChanged;
+
+  static const _palette = <int>[
+    0xFF3D7A5F, // botanical green
+    0xFFC26A3A, // terra
+    0xFF2E86AB, // deep blue
+    0xFF9B5DE5, // violet
+    0xFFE56B6F, // rose
+    0xFFF2C14E, // mustard
+    0xFF6C757D, // slate
+    0xFF4F772D, // forest
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _swatch(null, 'Default'),
+        for (final c in _palette) _swatch(c, null),
+      ],
+    );
+  }
+
+  Widget _swatch(int? v, String? label) {
+    final selected = value == v;
+    final color = v == null ? null : Color(v);
+    return InkWell(
+      onTap: () => onChanged(v),
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        height: 32,
+        width: label == null ? 32 : null,
+        padding: EdgeInsets.symmetric(horizontal: label == null ? 0 : 10),
+        decoration: BoxDecoration(
+          color: color ?? surface.surface,
+          shape: label == null ? BoxShape.circle : BoxShape.rectangle,
+          borderRadius: label == null ? null : BorderRadius.circular(999),
+          border: Border.all(color: selected ? surface.green : surface.border, width: selected ? 2 : 1),
+        ),
+        alignment: Alignment.center,
+        child: label == null
+            ? (selected ? const Icon(Icons.check, color: Colors.white, size: 16) : null)
+            : Text(label, style: TextStyle(fontSize: 11, color: surface.muted, fontWeight: FontWeight.w600)),
+      ),
     );
   }
 }

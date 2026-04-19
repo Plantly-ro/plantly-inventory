@@ -20,6 +20,7 @@ class CareType {
     required this.label,
     required this.iconCode,
     required this.defaultIntervalDays,
+    this.colorValue,
     this.builtin = false,
   });
 
@@ -30,9 +31,14 @@ class CareType {
   /// Starting interval when the user adds a reminder of this type. Stored
   /// as days — UI lets the user re-express as minutes/hours/days/months.
   final double defaultIntervalDays;
+  /// ARGB32 colour used as the chip fill for this type in Upcoming Care,
+  /// Calendar dots, Timeline icons. Null falls back to the per-theme
+  /// green/terra palette.
+  final int? colorValue;
   final bool builtin;
 
   IconData get icon => kCareIconByCodePoint[iconCode] ?? Icons.notifications_active_outlined;
+  Color? get color => colorValue == null ? null : Color(colorValue!);
 
   /// Past-tense verb for Timeline / Activity rendering. For custom types
   /// the label itself is the best we can do.
@@ -60,12 +66,15 @@ class CareType {
     String? label,
     int? iconCode,
     double? defaultIntervalDays,
+    int? colorValue,
+    bool? clearColor,
   }) =>
       CareType(
         key: key,
         label: label ?? this.label,
         iconCode: iconCode ?? this.iconCode,
         defaultIntervalDays: defaultIntervalDays ?? this.defaultIntervalDays,
+        colorValue: (clearColor ?? false) ? null : (colorValue ?? this.colorValue),
         builtin: builtin,
       );
 
@@ -75,6 +84,7 @@ class CareType {
         'icon': iconCode,
         'days': defaultIntervalDays,
         'builtin': builtin,
+        if (colorValue != null) 'color': colorValue,
       };
 
   factory CareType.fromJson(Map<String, dynamic> m) => CareType(
@@ -82,6 +92,7 @@ class CareType {
         label: m['label'] as String,
         iconCode: (m['icon'] as num).toInt(),
         defaultIntervalDays: (m['days'] as num).toDouble(),
+        colorValue: (m['color'] as num?)?.toInt(),
         builtin: (m['builtin'] as bool?) ?? false,
       );
 }

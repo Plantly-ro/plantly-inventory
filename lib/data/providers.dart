@@ -8,6 +8,7 @@ import '../domain/services/backup_service.dart';
 import '../domain/services/ical_export.dart';
 import '../domain/services/reminder_engine.dart';
 import '../domain/services/zip_backup_service.dart';
+import '../notifications/dnd_settings.dart';
 import '../notifications/notification_service.dart';
 import '../notifications/reminder_sync.dart';
 import '../sync/device_id.dart';
@@ -86,6 +87,10 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
   final svc = LocalNotificationService();
   // Best-effort init — failures here shouldn't block the app opening.
   svc.init().catchError((_) {});
+  // Keep the service's DND settings in sync with the prefs-backed
+  // provider. ReminderSync's sync path reads `svc.dnd` directly so we
+  // only have to propagate the value, not the whole provider tree.
+  ref.listen<DndSettings>(dndSettingsProvider, (_, next) => svc.dnd = next, fireImmediately: true);
   return svc;
 });
 
@@ -259,6 +264,31 @@ final plantTagRepositoryProvider = Provider<PlantTagRepository>((ref) {
 /// All tags in the tenant — for autocomplete on the tag chip input.
 final allTagsProvider = StreamProvider<List<TagRow>>((ref) {
   return ref.watch(tagRepositoryProvider).watchAll();
+});
+
+/// Recently-used `product` values across every care event — feeds the
+/// Log-event sheet's autocomplete so users don't re-type product names.
+/// Dedup + trimmed; newest first, max 10.
+final recentProductsProvider = FutureProvider.autoDispose<List<String>>((ref) async {
+  final ctx = ref.watch(appContextProvider).requireValue;
+  final events = await (ctx.db.select(ctx.db.careEvents)
+        ..where((e) =>
+            e.tenantId.equals(ctx.opLog.tenantId) &
+            e.deletedAt.isNull() &
+            e.product.isNotNull())
+        ..orderBy([(e) => OrderingTerm(expression: e.doneAt, mode: OrderingMode.desc)])
+        ..limit(100))
+      .get();
+  final seen = <String>{};
+  final out = <String>[];
+  for (final e in events) {
+    final p = e.product?.trim();
+    if (p == null || p.isEmpty) continue;
+    final key = p.toLowerCase();
+    if (seen.add(key)) out.add(p);
+    if (out.length >= 10) break;
+  }
+  return out;
 });
 
 /// Tag ids currently attached to a plant.

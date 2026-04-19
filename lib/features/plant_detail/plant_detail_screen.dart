@@ -110,6 +110,22 @@ class _PlantDetailBody extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: surface.bg,
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: surface.green,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.water_drop_outlined),
+        label: const Text('Water now'),
+        onPressed: () async {
+          final messenger = ScaffoldMessenger.of(context);
+          await ref.read(careEventRepositoryProvider).record(
+                plantId: plantRow.id,
+                type: 'water',
+              );
+          messenger
+            ..clearSnackBars()
+            ..showSnackBar(const SnackBar(content: Text('Watered — event logged')));
+        },
+      ),
       appBar: AppBar(
         backgroundColor: surface.bg,
         elevation: 0,
@@ -165,6 +181,14 @@ class _PlantDetailBody extends ConsumerWidget {
                   break;
                 case 'move':
                   await _pickLocationDialog(context, ref, plantRow);
+                  break;
+                case 'duplicate':
+                  final child = await ref.read(plantRepositoryProvider).duplicate(plantRow.id);
+                  if (context.mounted) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: child.id)),
+                    );
+                  }
                   break;
                 case 'mute':
                   await ref
@@ -226,6 +250,7 @@ class _PlantDetailBody extends ConsumerWidget {
             },
             itemBuilder: (_) => [
               const PopupMenuItem(value: 'move', child: Text('Move to space…')),
+              const PopupMenuItem(value: 'duplicate', child: Text('Duplicate plant')),
               const PopupMenuItem(value: 'propagate', child: Text('Propagate…')),
               PopupMenuItem(
                 value: 'mute',
@@ -306,6 +331,12 @@ class _PlantDetailBody extends ConsumerWidget {
               ],
             ),
           ),
+          _SectionLabel(text: 'STATS', surface: surface),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: _StatsCard(plantId: plantId, surface: surface),
+          ),
+          const SizedBox(height: 4),
           _SectionLabel(text: 'UPCOMING CARE', surface: surface),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1198,6 +1229,101 @@ class _ExportCTA extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _StatsCard extends ConsumerWidget {
+  const _StatsCard({required this.plantId, required this.surface});
+  final String plantId;
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final events = ref.watch(careEventsForPlantProvider(plantId)).maybeWhen(
+          data: (rows) => rows,
+          orElse: () => const <db.CareEventRow>[],
+        );
+    if (events.isEmpty) return const SizedBox.shrink();
+    final total = events.length;
+    // events is newest-first — the first entry is the last action.
+    final last = events.first;
+    final lastType = last.type;
+    final lastWhen = DateTime.fromMillisecondsSinceEpoch(last.doneAt, isUtc: true).toLocal();
+    final daysAgo = DateTime.now().difference(lastWhen).inDays;
+    // Average interval for the most-common type.
+    final byType = <String, List<int>>{};
+    for (final e in events) {
+      byType.putIfAbsent(e.type, () => []).add(e.doneAt);
+    }
+    MapEntry<String, List<int>>? mostFrequent;
+    for (final entry in byType.entries) {
+      if (mostFrequent == null || entry.value.length > mostFrequent.value.length) {
+        mostFrequent = entry;
+      }
+    }
+    double? avgDays;
+    if (mostFrequent != null && mostFrequent.value.length >= 2) {
+      final sorted = [...mostFrequent.value]..sort();
+      var sum = 0;
+      for (var i = 1; i < sorted.length; i++) {
+        sum += sorted[i] - sorted[i - 1];
+      }
+      avgDays = (sum / (sorted.length - 1)) / (86400 * 1000);
+    }
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: surface.surface,
+        border: Border.all(color: surface.border),
+        borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
+      ),
+      child: Row(
+        children: [
+          Expanded(child: _StatCell(label: 'EVENTS', value: '$total', surface: surface)),
+          Container(width: 1, height: 32, color: surface.border),
+          Expanded(
+            child: _StatCell(
+              label: 'LAST $lastType'.toUpperCase(),
+              value: daysAgo == 0 ? 'today' : '${daysAgo}d',
+              surface: surface,
+            ),
+          ),
+          if (avgDays != null) ...[
+            Container(width: 1, height: 32, color: surface.border),
+            Expanded(
+              child: _StatCell(
+                label: 'AVG ${mostFrequent!.key}'.toUpperCase(),
+                value: '~${avgDays.toStringAsFixed(avgDays >= 10 ? 0 : 1)}d',
+                surface: surface,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StatCell extends StatelessWidget {
+  const _StatCell({required this.label, required this.value, required this.surface});
+  final String label;
+  final String value;
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: surface.text)),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: surface.muted, letterSpacing: 0.08 * 10),
+        ),
+      ],
     );
   }
 }
