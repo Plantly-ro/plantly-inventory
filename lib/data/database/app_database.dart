@@ -119,6 +119,11 @@ class PlantPhotos extends Table {
   /// leaf Apr 18". Stored per-attachment, not per-SHA, so the same
   /// photo attached to two plants can carry different captions.
   TextColumn get caption => text().nullable()();
+  /// User-visible "date this photo was taken/added" — display-only metadata
+  /// distinct from [addedHlc] (which is load-bearing for OR-set merge).
+  /// Nullable; when null, the UI falls back to the physicalMs component of
+  /// [addedHlc]. Editing this does not perturb CRDT ordering.
+  IntColumn get capturedAt => integer().named('captured_at').nullable()();
   IntColumn get displayOrder => integer().named('display_order').withDefault(const Constant(0))();
   TextColumn get addedHlc => text().named('added_hlc')();
   TextColumn get removedHlc => text().named('removed_hlc').nullable()();
@@ -138,6 +143,7 @@ class LocationPhotos extends Table {
   TextColumn get locationId => text().named('location_id')();
   TextColumn get photoSha => text().named('photo_sha')();
   TextColumn get caption => text().nullable()();
+  IntColumn get capturedAt => integer().named('captured_at').nullable()();
   IntColumn get displayOrder => integer().named('display_order').withDefault(const Constant(0))();
   TextColumn get addedHlc => text().named('added_hlc')();
   TextColumn get removedHlc => text().named('removed_hlc').nullable()();
@@ -289,7 +295,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -322,6 +328,11 @@ class AppDatabase extends _$AppDatabase {
             // Photo annotations + location photo gallery.
             await m.addColumn(plantPhotos, plantPhotos.caption);
             await m.createTable(locationPhotos);
+          }
+          if (from < 7) {
+            // User-editable capture date per photo attachment.
+            await m.addColumn(plantPhotos, plantPhotos.capturedAt);
+            await m.addColumn(locationPhotos, locationPhotos.capturedAt);
           }
         },
       );

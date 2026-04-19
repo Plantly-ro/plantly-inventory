@@ -11,6 +11,7 @@ import '../../data/mock_plants.dart';
 import '../../data/photo_picker.dart';
 import '../../data/providers.dart';
 import '../../shared/plant_thumb.dart';
+import '../../sync/hlc.dart';
 import '../../theme/tokens.dart';
 import '../export/export_dialog.dart';
 import '../home/home_providers.dart';
@@ -522,6 +523,40 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
         .setCaption(row.id, result.isEmpty ? null : result.trim());
   }
 
+  /// Edit the display-only "date added" for a photo attachment. Defaults to
+  /// the current captured_at if set, otherwise the HLC physicalMs.
+  Future<void> _editCapturedAt(db.PlantPhotoRow row) async {
+    final initial = _photoDate(row);
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime.now().subtract(const Duration(days: 365 * 20)),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+    );
+    if (time == null || !mounted) return;
+    final picked = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    await ref
+        .read(plantPhotoRepositoryProvider)
+        .setCapturedAt(row.id, picked.toUtc().millisecondsSinceEpoch);
+  }
+
+  /// Resolve the visible "date added" for a photo — user override wins,
+  /// else fall back to the HLC's physicalMs component.
+  DateTime _photoDate(db.PlantPhotoRow row) {
+    final ms = row.capturedAt ?? Hlc.parse(row.addedHlc).physicalMs;
+    return DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toLocal();
+  }
+
+  String _fmtPhotoDate(DateTime d) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[d.month - 1]} ${d.day}, ${d.year}';
+  }
+
   Future<void> _openReorder(List<db.PlantPhotoRow> rows) async {
     final reordered = await Navigator.of(context).push<List<db.PlantPhotoRow>>(
       MaterialPageRoute(builder: (_) => _ReorderPhotosScreen(rows: rows, fallback: widget.fallback)),
@@ -612,6 +647,14 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
                     ),
                   if (rows.length > 1) const SizedBox(width: 6),
                   _CarouselIconBtn(
+                    icon: Icons.edit_calendar_outlined,
+                    tooltip: 'Edit date',
+                    onTap: () {
+                      if (_index < rows.length) _editCapturedAt(rows[_index]);
+                    },
+                  ),
+                  const SizedBox(width: 6),
+                  _CarouselIconBtn(
                     icon: Icons.edit_note_outlined,
                     tooltip: 'Caption',
                     onTap: () {
@@ -627,6 +670,32 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
                 ],
               ),
             ),
+            if (_index < rows.length)
+              Positioned(
+                top: 10,
+                left: 10,
+                child: GestureDetector(
+                  onTap: () => _editCapturedAt(rows[_index]),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.event_outlined, size: 11, color: Colors.white),
+                        const SizedBox(width: 4),
+                        Text(
+                          _fmtPhotoDate(_photoDate(rows[_index])),
+                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             // Show caption overlay at the bottom if the current row has one.
             if (_index < rows.length && (rows[_index].caption ?? '').isNotEmpty)
               Positioned(

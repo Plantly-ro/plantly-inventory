@@ -11,6 +11,7 @@ import '../../data/photo_picker.dart';
 import '../../data/providers.dart';
 import '../../shared/photo_source_sheet.dart';
 import '../../shared/plant_thumb.dart';
+import '../../sync/hlc.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../plant_detail/plant_detail_screen.dart';
@@ -668,6 +669,11 @@ class _LocationGallery extends ConsumerWidget {
             ),
             const SizedBox(height: 14),
             ListTile(
+              leading: Icon(Icons.edit_calendar_outlined, color: surface.green),
+              title: const Text('Edit date'),
+              onTap: () => Navigator.of(ctx).pop('date'),
+            ),
+            ListTile(
               leading: Icon(Icons.edit_note_outlined, color: surface.green),
               title: const Text('Edit caption'),
               onTap: () => Navigator.of(ctx).pop('caption'),
@@ -712,10 +718,38 @@ class _LocationGallery extends ConsumerWidget {
             .read(locationPhotoRepositoryProvider)
             .setCaption(row.id, result.isEmpty ? null : result.trim());
       }
+    } else if (choice == 'date' && context.mounted) {
+      final initial = _photoDate(row);
+      final date = await showDatePicker(
+        context: context,
+        initialDate: initial,
+        firstDate: DateTime.now().subtract(const Duration(days: 365 * 20)),
+        lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+      );
+      if (date == null || !context.mounted) return;
+      final time = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(initial),
+      );
+      if (time == null) return;
+      final picked = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+      await ref
+          .read(locationPhotoRepositoryProvider)
+          .setCapturedAt(row.id, picked.toUtc().millisecondsSinceEpoch);
     } else if (choice == 'remove') {
       await ref.read(locationPhotoRepositoryProvider).detach(row.locationId, row.photoSha);
     }
   }
+}
+
+DateTime _photoDate(LocationPhotoRow row) {
+  final ms = row.capturedAt ?? Hlc.parse(row.addedHlc).physicalMs;
+  return DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toLocal();
+}
+
+String _fmtPhotoDate(DateTime d) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return '${months[d.month - 1]} ${d.day}, ${d.year}';
 }
 
 class _GalleryTile extends ConsumerWidget {
@@ -743,6 +777,21 @@ class _GalleryTile extends ConsumerWidget {
                 }
                 return Container(color: surface.surfaceAlt);
               },
+            ),
+            Positioned(
+              top: 4,
+              left: 4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  _fmtPhotoDate(_photoDate(row)),
+                  style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600),
+                ),
+              ),
             ),
             if ((row.caption ?? '').isNotEmpty)
               Positioned(

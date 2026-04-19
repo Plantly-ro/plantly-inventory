@@ -3372,6 +3372,17 @@ class $PlantPhotosTable extends PlantPhotos
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _capturedAtMeta = const VerificationMeta(
+    'capturedAt',
+  );
+  @override
+  late final GeneratedColumn<int> capturedAt = GeneratedColumn<int>(
+    'captured_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _displayOrderMeta = const VerificationMeta(
     'displayOrder',
   );
@@ -3424,6 +3435,7 @@ class $PlantPhotosTable extends PlantPhotos
     plantId,
     photoSha,
     caption,
+    capturedAt,
     displayOrder,
     addedHlc,
     removedHlc,
@@ -3474,6 +3486,12 @@ class $PlantPhotosTable extends PlantPhotos
       context.handle(
         _captionMeta,
         caption.isAcceptableOrUnknown(data['caption']!, _captionMeta),
+      );
+    }
+    if (data.containsKey('captured_at')) {
+      context.handle(
+        _capturedAtMeta,
+        capturedAt.isAcceptableOrUnknown(data['captured_at']!, _capturedAtMeta),
       );
     }
     if (data.containsKey('display_order')) {
@@ -3536,6 +3554,10 @@ class $PlantPhotosTable extends PlantPhotos
         DriftSqlType.string,
         data['${effectivePrefix}caption'],
       ),
+      capturedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}captured_at'],
+      ),
       displayOrder: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}display_order'],
@@ -3571,6 +3593,12 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
   /// leaf Apr 18". Stored per-attachment, not per-SHA, so the same
   /// photo attached to two plants can carry different captions.
   final String? caption;
+
+  /// User-visible "date this photo was taken/added" — display-only metadata
+  /// distinct from [addedHlc] (which is load-bearing for OR-set merge).
+  /// Nullable; when null, the UI falls back to the physicalMs component of
+  /// [addedHlc]. Editing this does not perturb CRDT ordering.
+  final int? capturedAt;
   final int displayOrder;
   final String addedHlc;
   final String? removedHlc;
@@ -3581,6 +3609,7 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
     required this.plantId,
     required this.photoSha,
     this.caption,
+    this.capturedAt,
     required this.displayOrder,
     required this.addedHlc,
     this.removedHlc,
@@ -3595,6 +3624,9 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
     map['photo_sha'] = Variable<String>(photoSha);
     if (!nullToAbsent || caption != null) {
       map['caption'] = Variable<String>(caption);
+    }
+    if (!nullToAbsent || capturedAt != null) {
+      map['captured_at'] = Variable<int>(capturedAt);
     }
     map['display_order'] = Variable<int>(displayOrder);
     map['added_hlc'] = Variable<String>(addedHlc);
@@ -3614,6 +3646,9 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
       caption: caption == null && nullToAbsent
           ? const Value.absent()
           : Value(caption),
+      capturedAt: capturedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(capturedAt),
       displayOrder: Value(displayOrder),
       addedHlc: Value(addedHlc),
       removedHlc: removedHlc == null && nullToAbsent
@@ -3634,6 +3669,7 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
       plantId: serializer.fromJson<String>(json['plantId']),
       photoSha: serializer.fromJson<String>(json['photoSha']),
       caption: serializer.fromJson<String?>(json['caption']),
+      capturedAt: serializer.fromJson<int?>(json['capturedAt']),
       displayOrder: serializer.fromJson<int>(json['displayOrder']),
       addedHlc: serializer.fromJson<String>(json['addedHlc']),
       removedHlc: serializer.fromJson<String?>(json['removedHlc']),
@@ -3649,6 +3685,7 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
       'plantId': serializer.toJson<String>(plantId),
       'photoSha': serializer.toJson<String>(photoSha),
       'caption': serializer.toJson<String?>(caption),
+      'capturedAt': serializer.toJson<int?>(capturedAt),
       'displayOrder': serializer.toJson<int>(displayOrder),
       'addedHlc': serializer.toJson<String>(addedHlc),
       'removedHlc': serializer.toJson<String?>(removedHlc),
@@ -3662,6 +3699,7 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
     String? plantId,
     String? photoSha,
     Value<String?> caption = const Value.absent(),
+    Value<int?> capturedAt = const Value.absent(),
     int? displayOrder,
     String? addedHlc,
     Value<String?> removedHlc = const Value.absent(),
@@ -3672,6 +3710,7 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
     plantId: plantId ?? this.plantId,
     photoSha: photoSha ?? this.photoSha,
     caption: caption.present ? caption.value : this.caption,
+    capturedAt: capturedAt.present ? capturedAt.value : this.capturedAt,
     displayOrder: displayOrder ?? this.displayOrder,
     addedHlc: addedHlc ?? this.addedHlc,
     removedHlc: removedHlc.present ? removedHlc.value : this.removedHlc,
@@ -3684,6 +3723,9 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
       plantId: data.plantId.present ? data.plantId.value : this.plantId,
       photoSha: data.photoSha.present ? data.photoSha.value : this.photoSha,
       caption: data.caption.present ? data.caption.value : this.caption,
+      capturedAt: data.capturedAt.present
+          ? data.capturedAt.value
+          : this.capturedAt,
       displayOrder: data.displayOrder.present
           ? data.displayOrder.value
           : this.displayOrder,
@@ -3703,6 +3745,7 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
           ..write('plantId: $plantId, ')
           ..write('photoSha: $photoSha, ')
           ..write('caption: $caption, ')
+          ..write('capturedAt: $capturedAt, ')
           ..write('displayOrder: $displayOrder, ')
           ..write('addedHlc: $addedHlc, ')
           ..write('removedHlc: $removedHlc, ')
@@ -3718,6 +3761,7 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
     plantId,
     photoSha,
     caption,
+    capturedAt,
     displayOrder,
     addedHlc,
     removedHlc,
@@ -3732,6 +3776,7 @@ class PlantPhotoRow extends DataClass implements Insertable<PlantPhotoRow> {
           other.plantId == this.plantId &&
           other.photoSha == this.photoSha &&
           other.caption == this.caption &&
+          other.capturedAt == this.capturedAt &&
           other.displayOrder == this.displayOrder &&
           other.addedHlc == this.addedHlc &&
           other.removedHlc == this.removedHlc &&
@@ -3744,6 +3789,7 @@ class PlantPhotosCompanion extends UpdateCompanion<PlantPhotoRow> {
   final Value<String> plantId;
   final Value<String> photoSha;
   final Value<String?> caption;
+  final Value<int?> capturedAt;
   final Value<int> displayOrder;
   final Value<String> addedHlc;
   final Value<String?> removedHlc;
@@ -3755,6 +3801,7 @@ class PlantPhotosCompanion extends UpdateCompanion<PlantPhotoRow> {
     this.plantId = const Value.absent(),
     this.photoSha = const Value.absent(),
     this.caption = const Value.absent(),
+    this.capturedAt = const Value.absent(),
     this.displayOrder = const Value.absent(),
     this.addedHlc = const Value.absent(),
     this.removedHlc = const Value.absent(),
@@ -3767,6 +3814,7 @@ class PlantPhotosCompanion extends UpdateCompanion<PlantPhotoRow> {
     required String plantId,
     required String photoSha,
     this.caption = const Value.absent(),
+    this.capturedAt = const Value.absent(),
     this.displayOrder = const Value.absent(),
     required String addedHlc,
     this.removedHlc = const Value.absent(),
@@ -3784,6 +3832,7 @@ class PlantPhotosCompanion extends UpdateCompanion<PlantPhotoRow> {
     Expression<String>? plantId,
     Expression<String>? photoSha,
     Expression<String>? caption,
+    Expression<int>? capturedAt,
     Expression<int>? displayOrder,
     Expression<String>? addedHlc,
     Expression<String>? removedHlc,
@@ -3796,6 +3845,7 @@ class PlantPhotosCompanion extends UpdateCompanion<PlantPhotoRow> {
       if (plantId != null) 'plant_id': plantId,
       if (photoSha != null) 'photo_sha': photoSha,
       if (caption != null) 'caption': caption,
+      if (capturedAt != null) 'captured_at': capturedAt,
       if (displayOrder != null) 'display_order': displayOrder,
       if (addedHlc != null) 'added_hlc': addedHlc,
       if (removedHlc != null) 'removed_hlc': removedHlc,
@@ -3810,6 +3860,7 @@ class PlantPhotosCompanion extends UpdateCompanion<PlantPhotoRow> {
     Value<String>? plantId,
     Value<String>? photoSha,
     Value<String?>? caption,
+    Value<int?>? capturedAt,
     Value<int>? displayOrder,
     Value<String>? addedHlc,
     Value<String?>? removedHlc,
@@ -3822,6 +3873,7 @@ class PlantPhotosCompanion extends UpdateCompanion<PlantPhotoRow> {
       plantId: plantId ?? this.plantId,
       photoSha: photoSha ?? this.photoSha,
       caption: caption ?? this.caption,
+      capturedAt: capturedAt ?? this.capturedAt,
       displayOrder: displayOrder ?? this.displayOrder,
       addedHlc: addedHlc ?? this.addedHlc,
       removedHlc: removedHlc ?? this.removedHlc,
@@ -3847,6 +3899,9 @@ class PlantPhotosCompanion extends UpdateCompanion<PlantPhotoRow> {
     }
     if (caption.present) {
       map['caption'] = Variable<String>(caption.value);
+    }
+    if (capturedAt.present) {
+      map['captured_at'] = Variable<int>(capturedAt.value);
     }
     if (displayOrder.present) {
       map['display_order'] = Variable<int>(displayOrder.value);
@@ -3874,6 +3929,7 @@ class PlantPhotosCompanion extends UpdateCompanion<PlantPhotoRow> {
           ..write('plantId: $plantId, ')
           ..write('photoSha: $photoSha, ')
           ..write('caption: $caption, ')
+          ..write('capturedAt: $capturedAt, ')
           ..write('displayOrder: $displayOrder, ')
           ..write('addedHlc: $addedHlc, ')
           ..write('removedHlc: $removedHlc, ')
@@ -3943,6 +3999,17 @@ class $LocationPhotosTable extends LocationPhotos
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _capturedAtMeta = const VerificationMeta(
+    'capturedAt',
+  );
+  @override
+  late final GeneratedColumn<int> capturedAt = GeneratedColumn<int>(
+    'captured_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _displayOrderMeta = const VerificationMeta(
     'displayOrder',
   );
@@ -3995,6 +4062,7 @@ class $LocationPhotosTable extends LocationPhotos
     locationId,
     photoSha,
     caption,
+    capturedAt,
     displayOrder,
     addedHlc,
     removedHlc,
@@ -4045,6 +4113,12 @@ class $LocationPhotosTable extends LocationPhotos
       context.handle(
         _captionMeta,
         caption.isAcceptableOrUnknown(data['caption']!, _captionMeta),
+      );
+    }
+    if (data.containsKey('captured_at')) {
+      context.handle(
+        _capturedAtMeta,
+        capturedAt.isAcceptableOrUnknown(data['captured_at']!, _capturedAtMeta),
       );
     }
     if (data.containsKey('display_order')) {
@@ -4107,6 +4181,10 @@ class $LocationPhotosTable extends LocationPhotos
         DriftSqlType.string,
         data['${effectivePrefix}caption'],
       ),
+      capturedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}captured_at'],
+      ),
       displayOrder: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}display_order'],
@@ -4139,6 +4217,7 @@ class LocationPhotoRow extends DataClass
   final String locationId;
   final String photoSha;
   final String? caption;
+  final int? capturedAt;
   final int displayOrder;
   final String addedHlc;
   final String? removedHlc;
@@ -4149,6 +4228,7 @@ class LocationPhotoRow extends DataClass
     required this.locationId,
     required this.photoSha,
     this.caption,
+    this.capturedAt,
     required this.displayOrder,
     required this.addedHlc,
     this.removedHlc,
@@ -4163,6 +4243,9 @@ class LocationPhotoRow extends DataClass
     map['photo_sha'] = Variable<String>(photoSha);
     if (!nullToAbsent || caption != null) {
       map['caption'] = Variable<String>(caption);
+    }
+    if (!nullToAbsent || capturedAt != null) {
+      map['captured_at'] = Variable<int>(capturedAt);
     }
     map['display_order'] = Variable<int>(displayOrder);
     map['added_hlc'] = Variable<String>(addedHlc);
@@ -4182,6 +4265,9 @@ class LocationPhotoRow extends DataClass
       caption: caption == null && nullToAbsent
           ? const Value.absent()
           : Value(caption),
+      capturedAt: capturedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(capturedAt),
       displayOrder: Value(displayOrder),
       addedHlc: Value(addedHlc),
       removedHlc: removedHlc == null && nullToAbsent
@@ -4202,6 +4288,7 @@ class LocationPhotoRow extends DataClass
       locationId: serializer.fromJson<String>(json['locationId']),
       photoSha: serializer.fromJson<String>(json['photoSha']),
       caption: serializer.fromJson<String?>(json['caption']),
+      capturedAt: serializer.fromJson<int?>(json['capturedAt']),
       displayOrder: serializer.fromJson<int>(json['displayOrder']),
       addedHlc: serializer.fromJson<String>(json['addedHlc']),
       removedHlc: serializer.fromJson<String?>(json['removedHlc']),
@@ -4217,6 +4304,7 @@ class LocationPhotoRow extends DataClass
       'locationId': serializer.toJson<String>(locationId),
       'photoSha': serializer.toJson<String>(photoSha),
       'caption': serializer.toJson<String?>(caption),
+      'capturedAt': serializer.toJson<int?>(capturedAt),
       'displayOrder': serializer.toJson<int>(displayOrder),
       'addedHlc': serializer.toJson<String>(addedHlc),
       'removedHlc': serializer.toJson<String?>(removedHlc),
@@ -4230,6 +4318,7 @@ class LocationPhotoRow extends DataClass
     String? locationId,
     String? photoSha,
     Value<String?> caption = const Value.absent(),
+    Value<int?> capturedAt = const Value.absent(),
     int? displayOrder,
     String? addedHlc,
     Value<String?> removedHlc = const Value.absent(),
@@ -4240,6 +4329,7 @@ class LocationPhotoRow extends DataClass
     locationId: locationId ?? this.locationId,
     photoSha: photoSha ?? this.photoSha,
     caption: caption.present ? caption.value : this.caption,
+    capturedAt: capturedAt.present ? capturedAt.value : this.capturedAt,
     displayOrder: displayOrder ?? this.displayOrder,
     addedHlc: addedHlc ?? this.addedHlc,
     removedHlc: removedHlc.present ? removedHlc.value : this.removedHlc,
@@ -4254,6 +4344,9 @@ class LocationPhotoRow extends DataClass
           : this.locationId,
       photoSha: data.photoSha.present ? data.photoSha.value : this.photoSha,
       caption: data.caption.present ? data.caption.value : this.caption,
+      capturedAt: data.capturedAt.present
+          ? data.capturedAt.value
+          : this.capturedAt,
       displayOrder: data.displayOrder.present
           ? data.displayOrder.value
           : this.displayOrder,
@@ -4273,6 +4366,7 @@ class LocationPhotoRow extends DataClass
           ..write('locationId: $locationId, ')
           ..write('photoSha: $photoSha, ')
           ..write('caption: $caption, ')
+          ..write('capturedAt: $capturedAt, ')
           ..write('displayOrder: $displayOrder, ')
           ..write('addedHlc: $addedHlc, ')
           ..write('removedHlc: $removedHlc, ')
@@ -4288,6 +4382,7 @@ class LocationPhotoRow extends DataClass
     locationId,
     photoSha,
     caption,
+    capturedAt,
     displayOrder,
     addedHlc,
     removedHlc,
@@ -4302,6 +4397,7 @@ class LocationPhotoRow extends DataClass
           other.locationId == this.locationId &&
           other.photoSha == this.photoSha &&
           other.caption == this.caption &&
+          other.capturedAt == this.capturedAt &&
           other.displayOrder == this.displayOrder &&
           other.addedHlc == this.addedHlc &&
           other.removedHlc == this.removedHlc &&
@@ -4314,6 +4410,7 @@ class LocationPhotosCompanion extends UpdateCompanion<LocationPhotoRow> {
   final Value<String> locationId;
   final Value<String> photoSha;
   final Value<String?> caption;
+  final Value<int?> capturedAt;
   final Value<int> displayOrder;
   final Value<String> addedHlc;
   final Value<String?> removedHlc;
@@ -4325,6 +4422,7 @@ class LocationPhotosCompanion extends UpdateCompanion<LocationPhotoRow> {
     this.locationId = const Value.absent(),
     this.photoSha = const Value.absent(),
     this.caption = const Value.absent(),
+    this.capturedAt = const Value.absent(),
     this.displayOrder = const Value.absent(),
     this.addedHlc = const Value.absent(),
     this.removedHlc = const Value.absent(),
@@ -4337,6 +4435,7 @@ class LocationPhotosCompanion extends UpdateCompanion<LocationPhotoRow> {
     required String locationId,
     required String photoSha,
     this.caption = const Value.absent(),
+    this.capturedAt = const Value.absent(),
     this.displayOrder = const Value.absent(),
     required String addedHlc,
     this.removedHlc = const Value.absent(),
@@ -4354,6 +4453,7 @@ class LocationPhotosCompanion extends UpdateCompanion<LocationPhotoRow> {
     Expression<String>? locationId,
     Expression<String>? photoSha,
     Expression<String>? caption,
+    Expression<int>? capturedAt,
     Expression<int>? displayOrder,
     Expression<String>? addedHlc,
     Expression<String>? removedHlc,
@@ -4366,6 +4466,7 @@ class LocationPhotosCompanion extends UpdateCompanion<LocationPhotoRow> {
       if (locationId != null) 'location_id': locationId,
       if (photoSha != null) 'photo_sha': photoSha,
       if (caption != null) 'caption': caption,
+      if (capturedAt != null) 'captured_at': capturedAt,
       if (displayOrder != null) 'display_order': displayOrder,
       if (addedHlc != null) 'added_hlc': addedHlc,
       if (removedHlc != null) 'removed_hlc': removedHlc,
@@ -4380,6 +4481,7 @@ class LocationPhotosCompanion extends UpdateCompanion<LocationPhotoRow> {
     Value<String>? locationId,
     Value<String>? photoSha,
     Value<String?>? caption,
+    Value<int?>? capturedAt,
     Value<int>? displayOrder,
     Value<String>? addedHlc,
     Value<String?>? removedHlc,
@@ -4392,6 +4494,7 @@ class LocationPhotosCompanion extends UpdateCompanion<LocationPhotoRow> {
       locationId: locationId ?? this.locationId,
       photoSha: photoSha ?? this.photoSha,
       caption: caption ?? this.caption,
+      capturedAt: capturedAt ?? this.capturedAt,
       displayOrder: displayOrder ?? this.displayOrder,
       addedHlc: addedHlc ?? this.addedHlc,
       removedHlc: removedHlc ?? this.removedHlc,
@@ -4417,6 +4520,9 @@ class LocationPhotosCompanion extends UpdateCompanion<LocationPhotoRow> {
     }
     if (caption.present) {
       map['caption'] = Variable<String>(caption.value);
+    }
+    if (capturedAt.present) {
+      map['captured_at'] = Variable<int>(capturedAt.value);
     }
     if (displayOrder.present) {
       map['display_order'] = Variable<int>(displayOrder.value);
@@ -4444,6 +4550,7 @@ class LocationPhotosCompanion extends UpdateCompanion<LocationPhotoRow> {
           ..write('locationId: $locationId, ')
           ..write('photoSha: $photoSha, ')
           ..write('caption: $caption, ')
+          ..write('capturedAt: $capturedAt, ')
           ..write('displayOrder: $displayOrder, ')
           ..write('addedHlc: $addedHlc, ')
           ..write('removedHlc: $removedHlc, ')
@@ -9952,6 +10059,7 @@ typedef $$PlantPhotosTableCreateCompanionBuilder =
       required String plantId,
       required String photoSha,
       Value<String?> caption,
+      Value<int?> capturedAt,
       Value<int> displayOrder,
       required String addedHlc,
       Value<String?> removedHlc,
@@ -9965,6 +10073,7 @@ typedef $$PlantPhotosTableUpdateCompanionBuilder =
       Value<String> plantId,
       Value<String> photoSha,
       Value<String?> caption,
+      Value<int?> capturedAt,
       Value<int> displayOrder,
       Value<String> addedHlc,
       Value<String?> removedHlc,
@@ -10003,6 +10112,11 @@ class $$PlantPhotosTableFilterComposer
 
   ColumnFilters<String> get caption => $composableBuilder(
     column: $table.caption,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get capturedAt => $composableBuilder(
+    column: $table.capturedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10061,6 +10175,11 @@ class $$PlantPhotosTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get capturedAt => $composableBuilder(
+    column: $table.capturedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get displayOrder => $composableBuilder(
     column: $table.displayOrder,
     builder: (column) => ColumnOrderings(column),
@@ -10105,6 +10224,11 @@ class $$PlantPhotosTableAnnotationComposer
 
   GeneratedColumn<String> get caption =>
       $composableBuilder(column: $table.caption, builder: (column) => column);
+
+  GeneratedColumn<int> get capturedAt => $composableBuilder(
+    column: $table.capturedAt,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get displayOrder => $composableBuilder(
     column: $table.displayOrder,
@@ -10159,6 +10283,7 @@ class $$PlantPhotosTableTableManager
                 Value<String> plantId = const Value.absent(),
                 Value<String> photoSha = const Value.absent(),
                 Value<String?> caption = const Value.absent(),
+                Value<int?> capturedAt = const Value.absent(),
                 Value<int> displayOrder = const Value.absent(),
                 Value<String> addedHlc = const Value.absent(),
                 Value<String?> removedHlc = const Value.absent(),
@@ -10170,6 +10295,7 @@ class $$PlantPhotosTableTableManager
                 plantId: plantId,
                 photoSha: photoSha,
                 caption: caption,
+                capturedAt: capturedAt,
                 displayOrder: displayOrder,
                 addedHlc: addedHlc,
                 removedHlc: removedHlc,
@@ -10183,6 +10309,7 @@ class $$PlantPhotosTableTableManager
                 required String plantId,
                 required String photoSha,
                 Value<String?> caption = const Value.absent(),
+                Value<int?> capturedAt = const Value.absent(),
                 Value<int> displayOrder = const Value.absent(),
                 required String addedHlc,
                 Value<String?> removedHlc = const Value.absent(),
@@ -10194,6 +10321,7 @@ class $$PlantPhotosTableTableManager
                 plantId: plantId,
                 photoSha: photoSha,
                 caption: caption,
+                capturedAt: capturedAt,
                 displayOrder: displayOrder,
                 addedHlc: addedHlc,
                 removedHlc: removedHlc,
@@ -10232,6 +10360,7 @@ typedef $$LocationPhotosTableCreateCompanionBuilder =
       required String locationId,
       required String photoSha,
       Value<String?> caption,
+      Value<int?> capturedAt,
       Value<int> displayOrder,
       required String addedHlc,
       Value<String?> removedHlc,
@@ -10245,6 +10374,7 @@ typedef $$LocationPhotosTableUpdateCompanionBuilder =
       Value<String> locationId,
       Value<String> photoSha,
       Value<String?> caption,
+      Value<int?> capturedAt,
       Value<int> displayOrder,
       Value<String> addedHlc,
       Value<String?> removedHlc,
@@ -10283,6 +10413,11 @@ class $$LocationPhotosTableFilterComposer
 
   ColumnFilters<String> get caption => $composableBuilder(
     column: $table.caption,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get capturedAt => $composableBuilder(
+    column: $table.capturedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10341,6 +10476,11 @@ class $$LocationPhotosTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get capturedAt => $composableBuilder(
+    column: $table.capturedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get displayOrder => $composableBuilder(
     column: $table.displayOrder,
     builder: (column) => ColumnOrderings(column),
@@ -10387,6 +10527,11 @@ class $$LocationPhotosTableAnnotationComposer
 
   GeneratedColumn<String> get caption =>
       $composableBuilder(column: $table.caption, builder: (column) => column);
+
+  GeneratedColumn<int> get capturedAt => $composableBuilder(
+    column: $table.capturedAt,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get displayOrder => $composableBuilder(
     column: $table.displayOrder,
@@ -10447,6 +10592,7 @@ class $$LocationPhotosTableTableManager
                 Value<String> locationId = const Value.absent(),
                 Value<String> photoSha = const Value.absent(),
                 Value<String?> caption = const Value.absent(),
+                Value<int?> capturedAt = const Value.absent(),
                 Value<int> displayOrder = const Value.absent(),
                 Value<String> addedHlc = const Value.absent(),
                 Value<String?> removedHlc = const Value.absent(),
@@ -10458,6 +10604,7 @@ class $$LocationPhotosTableTableManager
                 locationId: locationId,
                 photoSha: photoSha,
                 caption: caption,
+                capturedAt: capturedAt,
                 displayOrder: displayOrder,
                 addedHlc: addedHlc,
                 removedHlc: removedHlc,
@@ -10471,6 +10618,7 @@ class $$LocationPhotosTableTableManager
                 required String locationId,
                 required String photoSha,
                 Value<String?> caption = const Value.absent(),
+                Value<int?> capturedAt = const Value.absent(),
                 Value<int> displayOrder = const Value.absent(),
                 required String addedHlc,
                 Value<String?> removedHlc = const Value.absent(),
@@ -10482,6 +10630,7 @@ class $$LocationPhotosTableTableManager
                 locationId: locationId,
                 photoSha: photoSha,
                 caption: caption,
+                capturedAt: capturedAt,
                 displayOrder: displayOrder,
                 addedHlc: addedHlc,
                 removedHlc: removedHlc,

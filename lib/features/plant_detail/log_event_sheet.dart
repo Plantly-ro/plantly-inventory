@@ -23,6 +23,7 @@ class _LogEventSheetState extends ConsumerState<LogEventSheet> {
   final _customTypeController = TextEditingController();
   final _productController = TextEditingController();
   final _notesController = TextEditingController();
+  DateTime _when = DateTime.now();
   bool _saving = false;
   String? _error;
 
@@ -35,6 +36,27 @@ class _LogEventSheetState extends ConsumerState<LogEventSheet> {
   }
 
   bool get _isCustom => _selectedType == '__custom__';
+
+  Future<void> _pickWhen() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _when,
+      // Allow backdating up to 10 years and forward-dating up to 2
+      // years — broad enough for "I forgot to log last April" and
+      // "I'll do this next weekend" without showing a crazy range.
+      firstDate: DateTime.now().subtract(const Duration(days: 365 * 10)),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_when),
+    );
+    if (time == null || !mounted) return;
+    setState(() {
+      _when = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    });
+  }
 
   Future<void> _save() async {
     final type = _isCustom ? _customTypeController.text.trim().toLowerCase() : _selectedType;
@@ -52,6 +74,7 @@ class _LogEventSheetState extends ConsumerState<LogEventSheet> {
       await ref.read(careEventRepositoryProvider).record(
             plantId: widget.plantId,
             type: type,
+            doneAt: _when.toUtc().millisecondsSinceEpoch,
             product: product.isEmpty ? null : product,
             notes: notes.isEmpty ? null : notes,
           );
@@ -131,6 +154,31 @@ class _LogEventSheetState extends ConsumerState<LogEventSheet> {
                 decoration: _inputDecoration(surface, hint: 'e.g. spider-mite treatment'),
               ),
             ],
+            const SizedBox(height: 14),
+            Text('WHEN', style: _labelStyle(surface)),
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: _pickWhen,
+              borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                decoration: BoxDecoration(
+                  color: surface.surface,
+                  border: Border.all(color: surface.border),
+                  borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.event_outlined, size: 16, color: surface.muted),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(_fmtDate(_when), style: TextStyle(fontSize: 14, color: surface.text)),
+                    ),
+                    Icon(Icons.chevron_right, color: surface.muted),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 14),
             Text('PRODUCT (OPTIONAL)', style: _labelStyle(surface)),
             const SizedBox(height: 8),
@@ -212,6 +260,13 @@ class _LogEventSheetState extends ConsumerState<LogEventSheet> {
         ),
       ),
     );
+  }
+
+  String _fmtDate(DateTime d) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final h = d.hour.toString().padLeft(2, '0');
+    final m = d.minute.toString().padLeft(2, '0');
+    return '${months[d.month - 1]} ${d.day}, ${d.year} · $h:$m';
   }
 
   TextStyle _labelStyle(PlantlySurface s) => TextStyle(

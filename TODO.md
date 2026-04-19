@@ -104,6 +104,20 @@ everything still open into `PLAN.md` Phase 2 and delete this file.
 
 ---
 
+## Fixed in v0.5.15-phase1 (2026-04-19, backdating + photo dates)
+
+- [x] **Log care events in the past or future.** `LogEventSheet`
+      gets a tappable WHEN row (10 y back / 2 y forward via
+      `showDatePicker` + `showTimePicker`). The chosen moment
+      round-trips to `CareEventRepository.record(doneAt:)`.
+- [x] **Photo "date added" pill — editable.** Schema v7 adds a
+      nullable `captured_at` int on `plant_photos` and
+      `location_photos`. Plant Detail carousel gets a small black
+      date pill top-left + pencil-calendar icon to edit; Location
+      gallery tiles show the same pill + "Edit date" bottom-sheet
+      option. When `captured_at` is null the UI falls back to the
+      HLC `physicalMs` so legacy rows still show a sensible date.
+
 ## Fixed in v0.5.14-phase1 (2026-04-19, calendar interactivity + gestures + FAB config + richer feedback)
 
 - [x] **Richer care-action feedback.** New `showCareFeedback`

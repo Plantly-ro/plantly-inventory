@@ -241,6 +241,26 @@ class PlantPhotoRepository {
     });
   }
 
+  /// Override the display-only "date added" for an attachment. Pass null to
+  /// fall back to the HLC physicalMs.
+  Future<void> setCapturedAt(String plantPhotoRowId, int? capturedAtMs) async {
+    return db.transaction(() async {
+      final hlc = await opLog.recordFieldUpdate(
+        entity: 'plant_photos',
+        entityId: plantPhotoRowId,
+        field: 'captured_at',
+        value: capturedAtMs,
+      );
+      await (db.update(db.plantPhotos)..where((r) => r.id.equals(plantPhotoRowId))).write(
+        PlantPhotosCompanion(
+          capturedAt: Value(capturedAtMs),
+          addedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+  }
+
   /// Reorder a plant's attachments. Writes the supplied list's index as
   /// `display_order` for each row so the UI's PageView picks up the new
   /// sequence on its next rebuild.
@@ -371,6 +391,24 @@ class LocationPhotoRepository {
       await (db.update(db.locationPhotos)..where((r) => r.id.equals(rowId))).write(
         LocationPhotosCompanion(
           caption: Value(caption),
+          addedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+  }
+
+  Future<void> setCapturedAt(String rowId, int? capturedAtMs) async {
+    return db.transaction(() async {
+      final hlc = await opLog.recordFieldUpdate(
+        entity: 'location_photos',
+        entityId: rowId,
+        field: 'captured_at',
+        value: capturedAtMs,
+      );
+      await (db.update(db.locationPhotos)..where((r) => r.id.equals(rowId))).write(
+        LocationPhotosCompanion(
+          capturedAt: Value(capturedAtMs),
           addedHlc: Value(hlc.encode()),
           deviceId: Value(opLog.clock.deviceId),
         ),
