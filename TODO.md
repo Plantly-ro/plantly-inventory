@@ -104,6 +104,18 @@ everything still open into `PLAN.md` Phase 2 and delete this file.
 
 ---
 
+## Fixed in v0.5.13-phase1 (2026-04-19, P1 finish — gallery UI + bulk ops)
+
+- [x] **Location photo gallery UI.** New GALLERY section on
+      LocationDetailScreen — 3-col grid of attached photos with
+      caption overlays, an Add tile that opens the camera/gallery
+      chooser, and a long-press sheet to edit caption or remove.
+- [x] **Multi-select bulk ops.** Long-press any grid card enters
+      selection mode (checkbox overlay + green border).
+      `BulkActionBar` slides in above the tab bar with
+      Move / Mute / Unmute / Delete. Delete includes Undo via
+      `PlantRepository.restoreFromSoftDelete`.
+
 ## Fixed in v0.5.12-phase1 (2026-04-19, photo annotations + reorder + location gallery schema)
 
 - [x] **Photo captions.** Schema v6 adds `plant_photos.caption`.

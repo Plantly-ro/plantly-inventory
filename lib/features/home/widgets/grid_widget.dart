@@ -9,6 +9,7 @@ import '../../../shared/plant_thumb.dart';
 import '../../../theme/tokens.dart';
 import '../../search/search_screen.dart';
 import '../filter.dart';
+import '../selection.dart';
 import '../sort.dart';
 import 'widget_shell.dart';
 
@@ -115,6 +116,9 @@ class GridWidget extends ConsumerWidget {
                   final dueLabel = nextDueMs == null
                       ? null
                       : _DueLabel.forMs(nextDueMs - nowMs);
+                  final selection = ref.watch(plantSelectionProvider);
+                  final selected = selection.contains(row.id);
+                  final inSelectionMode = selection.isNotEmpty;
                   return _Card(
                     plantId: row.id,
                     swatch: swatch,
@@ -124,8 +128,14 @@ class GridWidget extends ConsumerWidget {
                     dueLabel: dueLabel,
                     nextType: nextType,
                     types: types,
+                    selected: selected,
+                    selectionMode: inSelectionMode,
                     surface: surface,
-                    onTap: () => onPlantTap?.call(row.id),
+                    onTap: inSelectionMode
+                        ? () => ref.read(plantSelectionProvider.notifier).toggle(row.id)
+                        : () => onPlantTap?.call(row.id),
+                    onLongPress: () =>
+                        ref.read(plantSelectionProvider.notifier).toggle(row.id),
                   );
                 }).toList(growable: false),
               );
@@ -147,8 +157,11 @@ class _Card extends StatelessWidget {
     required this.dueLabel,
     required this.nextType,
     required this.types,
+    required this.selected,
+    required this.selectionMode,
     required this.surface,
     required this.onTap,
+    required this.onLongPress,
   });
 
   final String plantId;
@@ -159,8 +172,11 @@ class _Card extends StatelessWidget {
   final String? dueLabel;
   final String? nextType;
   final List<CareType> types;
+  final bool selected;
+  final bool selectionMode;
   final PlantlySurface surface;
   final VoidCallback onTap;
+  final VoidCallback onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -168,12 +184,16 @@ class _Card extends StatelessWidget {
     final soft = ok ? surface.greenSoft : surface.terraSoft;
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
       borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: surface.surface,
-          border: Border.all(color: surface.border),
+          border: Border.all(
+            color: selected ? surface.green : surface.border,
+            width: selected ? 2 : 1,
+          ),
           borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
         ),
         child: Column(
@@ -194,6 +214,23 @@ class _Card extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (selectionMode)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: selected ? surface.green : Colors.black.withValues(alpha: 0.45),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: selected
+                            ? const Icon(Icons.check, size: 14, color: Colors.white)
+                            : null,
+                      ),
+                    ),
                   Positioned(
                     top: 8,
                     right: 8,
