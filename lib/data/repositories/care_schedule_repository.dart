@@ -221,6 +221,28 @@ class CareScheduleRepository {
     });
   }
 
+  /// Toggle per-schedule notification mute. ReminderSync reads this.
+  Future<void> setNotificationsMuted(String scheduleId, bool muted) async {
+    await db.transaction(() async {
+      final hlc = await opLog.recordFieldUpdate(
+        entity: 'care_schedules',
+        entityId: scheduleId,
+        field: 'notifications_muted',
+        value: muted,
+      );
+      await (db.update(db.careSchedules)..where((r) => r.id.equals(scheduleId))).write(
+        CareSchedulesCompanion(
+          notificationsMuted: Value(muted),
+          updatedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+    try {
+      await reminderSync?.syncFromDatabase();
+    } catch (_) {}
+  }
+
   Future<void> snooze(String scheduleId, {Duration by = const Duration(days: 1)}) async {
     await db.transaction(() async {
       final s = await (db.select(db.careSchedules)..where((r) => r.id.equals(scheduleId))).getSingleOrNull();

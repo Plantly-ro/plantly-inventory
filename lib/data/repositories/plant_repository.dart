@@ -151,6 +151,43 @@ class PlantRepository {
         .watchSingleOrNull();
   }
 
+  /// Update the plant's pin coordinates on its current location map.
+  /// Pass (null, null) to unplace the pin.
+  Future<void> setPin(String id, double? x, double? y) async {
+    return db.transaction(() async {
+      await opLog.recordFieldUpdate(entity: 'plants', entityId: id, field: 'pin_x', value: x);
+      final hlc = await opLog.recordFieldUpdate(entity: 'plants', entityId: id, field: 'pin_y', value: y);
+      await (db.update(db.plants)..where((p) => p.id.equals(id))).write(
+        PlantsCompanion(
+          pinX: Value(x),
+          pinY: Value(y),
+          updatedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+  }
+
+  /// Toggle per-plant notification mute. ReminderSync reads this flag
+  /// and skips every schedule for this plant when true.
+  Future<void> setNotificationsMuted(String id, bool muted) async {
+    return db.transaction(() async {
+      final hlc = await opLog.recordFieldUpdate(
+        entity: 'plants',
+        entityId: id,
+        field: 'notifications_muted',
+        value: muted,
+      );
+      await (db.update(db.plants)..where((p) => p.id.equals(id))).write(
+        PlantsCompanion(
+          notificationsMuted: Value(muted),
+          updatedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+  }
+
   Stream<List<PlantRow>> watchByLocation(String locationId) {
     return (db.select(db.plants)
           ..where((p) =>

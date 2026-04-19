@@ -104,6 +104,34 @@ everything still open into `PLAN.md` Phase 2 and delete this file.
 
 ---
 
+## Fixed in v0.5.7-phase1 (2026-04-19, locations + pins + mute)
+
+- [x] **Location expansion.** `LocationEditSheet` covers every
+      user-editable field: name, kind, parent (with cycle guard),
+      outdoor flag, light level (4-option dropdown), humidity
+      min/max, temp min/max, notes. Replaces the old minimal
+      create-only dialog.
+- [x] **Location detail screen.** Tapping a Spaces tile opens it;
+      shows metadata chips (kind, outdoor, light, humidity, temp,
+      muted), notes, the plants-in-this-space list, and the map
+      card.
+- [x] **Map + plant pins.** Schema v5 adds
+      `locations.map_photo_sha` + `plants.pin_x / pin_y`. Users can
+      attach any image as a room layout; tap to place the next
+      unplaced plant, drag to reposition, long-press a pin to
+      remove. Tapping a pin outside of edit mode goes to the plant
+      detail. Map box locks to a 4:3 aspect so the image never
+      takes up the whole screen.
+- [x] **Per-plant / per-schedule / per-location notification mute.**
+      Schema v5 adds `notifications_muted` on `plants`,
+      `care_schedules`, and `locations`. `ReminderSync` now filters
+      each axis. UI:
+        * Bell icon on every Upcoming Care row (per-schedule).
+        * Plant Detail overflow → "Mute all notifications"
+          (per-plant).
+        * Location Detail overflow → "Mute notifications"
+          (per-location — applies to every plant in that space).
+
 ## Fixed in v0.5.6-phase1 (2026-04-19, reminders + search + calendar + settings)
 
 - [x] **Search by tags.** `SearchRepository.search` now unions FTS5

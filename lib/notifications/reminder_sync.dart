@@ -34,7 +34,8 @@ class ReminderSync {
               s.tenantId.equals(tenantId) &
               s.deletedAt.isNull() &
               s.enabled.equals(true) &
-              s.nextDueAt.isNotNull()))
+              s.nextDueAt.isNotNull() &
+              s.notificationsMuted.equals(false)))
         .get();
     final plantRows = await (db.select(db.plants)
           ..where((p) => p.tenantId.equals(tenantId) & p.deletedAt.isNull()))
@@ -45,8 +46,17 @@ class ReminderSync {
     final plantsById = {for (final p in plantRows) p.id: p};
     final locationsById = {for (final l in locationRows) l.id: l};
 
+    // Drop schedules whose plant is muted, or whose location is muted.
+    final activeSchedules = [
+      for (final s in schedules)
+        if (!(plantsById[s.plantId]?.notificationsMuted ?? false) &&
+            !((plantsById[s.plantId]?.locationId != null &&
+                (locationsById[plantsById[s.plantId]!.locationId]?.notificationsMuted ?? false))))
+          s
+    ];
+
     final events = ReminderEngine.buildUpcoming(
-      schedules: schedules,
+      schedules: activeSchedules,
       plantsById: plantsById,
       locationsById: locationsById,
       now: nowUtc,

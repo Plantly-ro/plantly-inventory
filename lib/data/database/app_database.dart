@@ -39,6 +39,15 @@ class Locations extends Table {
   BoolColumn get isOutdoor => boolean().named('is_outdoor').withDefault(const Constant(false))();
   RealColumn get lat => real().nullable()();
   RealColumn get lon => real().nullable()();
+  TextColumn get notes => text().nullable()();
+  /// SHA-256 of a user-supplied image used as a "room layout" map for
+  /// positioning plant pins. Lives in the same content-addressed
+  /// `photos` store as plant photos — share the infrastructure.
+  TextColumn get mapPhotoSha => text().named('map_photo_sha').nullable()();
+  /// If true, every schedule whose plant sits in this location stops
+  /// firing OS notifications. Does not affect the in-app reminder UI.
+  BoolColumn get notificationsMuted =>
+      boolean().named('notifications_muted').withDefault(const Constant(false))();
   TextColumn get updatedHlc => text().named('updated_hlc')();
   IntColumn get deletedAt => integer().named('deleted_at').nullable()();
   TextColumn get deviceId => text().named('device_id')();
@@ -54,6 +63,16 @@ class Plants extends Table {
   TextColumn get nickname => text()();
   TextColumn get speciesId => text().named('species_id').nullable()();
   TextColumn get locationId => text().named('location_id').nullable()();
+  /// Pin coordinates on the current location's `map_photo_sha`, stored
+  /// as fractions 0..1 relative to the map image so the pin stays put
+  /// if the user re-exports the map at a different resolution. Null
+  /// when the plant isn't placed.
+  RealColumn get pinX => real().named('pin_x').nullable()();
+  RealColumn get pinY => real().named('pin_y').nullable()();
+  /// Per-plant notification mute (applies to every schedule for this
+  /// plant). Users can also mute per-schedule — see `care_schedules`.
+  BoolColumn get notificationsMuted =>
+      boolean().named('notifications_muted').withDefault(const Constant(false))();
   TextColumn get status => text()();
   IntColumn get acquiredAt => integer().named('acquired_at').nullable()();
   TextColumn get source => text().nullable()();
@@ -172,6 +191,11 @@ class CareSchedules extends Table {
   ///   'once'             — disable the schedule after the first event
   TextColumn get recurrenceMode =>
       text().named('recurrence_mode').withDefault(const Constant('after_completion'))();
+  /// Suppresses OS notifications for just this schedule (e.g. mute the
+  /// weekly fertilize reminder but keep the daily mist reminder firing).
+  /// The schedule still shows up on Home / Calendar / Upcoming Care.
+  BoolColumn get notificationsMuted =>
+      boolean().named('notifications_muted').withDefault(const Constant(false))();
   TextColumn get updatedHlc => text().named('updated_hlc')();
   IntColumn get deletedAt => integer().named('deleted_at').nullable()();
   TextColumn get deviceId => text().named('device_id')();
@@ -241,7 +265,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -259,6 +283,16 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 4) {
             await m.addColumn(careSchedules, careSchedules.recurrenceMode);
+          }
+          if (from < 5) {
+            // Location expansion + pins + per-row mute flags.
+            await m.addColumn(locations, locations.notes);
+            await m.addColumn(locations, locations.mapPhotoSha);
+            await m.addColumn(locations, locations.notificationsMuted);
+            await m.addColumn(plants, plants.pinX);
+            await m.addColumn(plants, plants.pinY);
+            await m.addColumn(plants, plants.notificationsMuted);
+            await m.addColumn(careSchedules, careSchedules.notificationsMuted);
           }
         },
       );

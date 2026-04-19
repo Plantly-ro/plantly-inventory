@@ -723,6 +723,40 @@ class $LocationsTable extends Locations
     type: DriftSqlType.double,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _mapPhotoShaMeta = const VerificationMeta(
+    'mapPhotoSha',
+  );
+  @override
+  late final GeneratedColumn<String> mapPhotoSha = GeneratedColumn<String>(
+    'map_photo_sha',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _notificationsMutedMeta =
+      const VerificationMeta('notificationsMuted');
+  @override
+  late final GeneratedColumn<bool> notificationsMuted = GeneratedColumn<bool>(
+    'notifications_muted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("notifications_muted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _updatedHlcMeta = const VerificationMeta(
     'updatedHlc',
   );
@@ -771,6 +805,9 @@ class $LocationsTable extends Locations
     isOutdoor,
     lat,
     lon,
+    notes,
+    mapPhotoSha,
+    notificationsMuted,
     updatedHlc,
     deletedAt,
     deviceId,
@@ -876,6 +913,30 @@ class $LocationsTable extends Locations
         lon.isAcceptableOrUnknown(data['lon']!, _lonMeta),
       );
     }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('map_photo_sha')) {
+      context.handle(
+        _mapPhotoShaMeta,
+        mapPhotoSha.isAcceptableOrUnknown(
+          data['map_photo_sha']!,
+          _mapPhotoShaMeta,
+        ),
+      );
+    }
+    if (data.containsKey('notifications_muted')) {
+      context.handle(
+        _notificationsMutedMeta,
+        notificationsMuted.isAcceptableOrUnknown(
+          data['notifications_muted']!,
+          _notificationsMutedMeta,
+        ),
+      );
+    }
     if (data.containsKey('updated_hlc')) {
       context.handle(
         _updatedHlcMeta,
@@ -959,6 +1020,18 @@ class $LocationsTable extends Locations
         DriftSqlType.double,
         data['${effectivePrefix}lon'],
       ),
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      mapPhotoSha: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}map_photo_sha'],
+      ),
+      notificationsMuted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}notifications_muted'],
+      )!,
       updatedHlc: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}updated_hlc'],
@@ -994,6 +1067,16 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
   final bool isOutdoor;
   final double? lat;
   final double? lon;
+  final String? notes;
+
+  /// SHA-256 of a user-supplied image used as a "room layout" map for
+  /// positioning plant pins. Lives in the same content-addressed
+  /// `photos` store as plant photos — share the infrastructure.
+  final String? mapPhotoSha;
+
+  /// If true, every schedule whose plant sits in this location stops
+  /// firing OS notifications. Does not affect the in-app reminder UI.
+  final bool notificationsMuted;
   final String updatedHlc;
   final int? deletedAt;
   final String deviceId;
@@ -1011,6 +1094,9 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
     required this.isOutdoor,
     this.lat,
     this.lon,
+    this.notes,
+    this.mapPhotoSha,
+    required this.notificationsMuted,
     required this.updatedHlc,
     this.deletedAt,
     required this.deviceId,
@@ -1047,6 +1133,13 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
     if (!nullToAbsent || lon != null) {
       map['lon'] = Variable<double>(lon);
     }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    if (!nullToAbsent || mapPhotoSha != null) {
+      map['map_photo_sha'] = Variable<String>(mapPhotoSha);
+    }
+    map['notifications_muted'] = Variable<bool>(notificationsMuted);
     map['updated_hlc'] = Variable<String>(updatedHlc);
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<int>(deletedAt);
@@ -1082,6 +1175,13 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
       isOutdoor: Value(isOutdoor),
       lat: lat == null && nullToAbsent ? const Value.absent() : Value(lat),
       lon: lon == null && nullToAbsent ? const Value.absent() : Value(lon),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      mapPhotoSha: mapPhotoSha == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mapPhotoSha),
+      notificationsMuted: Value(notificationsMuted),
       updatedHlc: Value(updatedHlc),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
@@ -1109,6 +1209,9 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
       isOutdoor: serializer.fromJson<bool>(json['isOutdoor']),
       lat: serializer.fromJson<double?>(json['lat']),
       lon: serializer.fromJson<double?>(json['lon']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      mapPhotoSha: serializer.fromJson<String?>(json['mapPhotoSha']),
+      notificationsMuted: serializer.fromJson<bool>(json['notificationsMuted']),
       updatedHlc: serializer.fromJson<String>(json['updatedHlc']),
       deletedAt: serializer.fromJson<int?>(json['deletedAt']),
       deviceId: serializer.fromJson<String>(json['deviceId']),
@@ -1131,6 +1234,9 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
       'isOutdoor': serializer.toJson<bool>(isOutdoor),
       'lat': serializer.toJson<double?>(lat),
       'lon': serializer.toJson<double?>(lon),
+      'notes': serializer.toJson<String?>(notes),
+      'mapPhotoSha': serializer.toJson<String?>(mapPhotoSha),
+      'notificationsMuted': serializer.toJson<bool>(notificationsMuted),
       'updatedHlc': serializer.toJson<String>(updatedHlc),
       'deletedAt': serializer.toJson<int?>(deletedAt),
       'deviceId': serializer.toJson<String>(deviceId),
@@ -1151,6 +1257,9 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
     bool? isOutdoor,
     Value<double?> lat = const Value.absent(),
     Value<double?> lon = const Value.absent(),
+    Value<String?> notes = const Value.absent(),
+    Value<String?> mapPhotoSha = const Value.absent(),
+    bool? notificationsMuted,
     String? updatedHlc,
     Value<int?> deletedAt = const Value.absent(),
     String? deviceId,
@@ -1168,6 +1277,9 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
     isOutdoor: isOutdoor ?? this.isOutdoor,
     lat: lat.present ? lat.value : this.lat,
     lon: lon.present ? lon.value : this.lon,
+    notes: notes.present ? notes.value : this.notes,
+    mapPhotoSha: mapPhotoSha.present ? mapPhotoSha.value : this.mapPhotoSha,
+    notificationsMuted: notificationsMuted ?? this.notificationsMuted,
     updatedHlc: updatedHlc ?? this.updatedHlc,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
     deviceId: deviceId ?? this.deviceId,
@@ -1191,6 +1303,13 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
       isOutdoor: data.isOutdoor.present ? data.isOutdoor.value : this.isOutdoor,
       lat: data.lat.present ? data.lat.value : this.lat,
       lon: data.lon.present ? data.lon.value : this.lon,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      mapPhotoSha: data.mapPhotoSha.present
+          ? data.mapPhotoSha.value
+          : this.mapPhotoSha,
+      notificationsMuted: data.notificationsMuted.present
+          ? data.notificationsMuted.value
+          : this.notificationsMuted,
       updatedHlc: data.updatedHlc.present
           ? data.updatedHlc.value
           : this.updatedHlc,
@@ -1215,6 +1334,9 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
           ..write('isOutdoor: $isOutdoor, ')
           ..write('lat: $lat, ')
           ..write('lon: $lon, ')
+          ..write('notes: $notes, ')
+          ..write('mapPhotoSha: $mapPhotoSha, ')
+          ..write('notificationsMuted: $notificationsMuted, ')
           ..write('updatedHlc: $updatedHlc, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('deviceId: $deviceId')
@@ -1237,6 +1359,9 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
     isOutdoor,
     lat,
     lon,
+    notes,
+    mapPhotoSha,
+    notificationsMuted,
     updatedHlc,
     deletedAt,
     deviceId,
@@ -1258,6 +1383,9 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
           other.isOutdoor == this.isOutdoor &&
           other.lat == this.lat &&
           other.lon == this.lon &&
+          other.notes == this.notes &&
+          other.mapPhotoSha == this.mapPhotoSha &&
+          other.notificationsMuted == this.notificationsMuted &&
           other.updatedHlc == this.updatedHlc &&
           other.deletedAt == this.deletedAt &&
           other.deviceId == this.deviceId);
@@ -1277,6 +1405,9 @@ class LocationsCompanion extends UpdateCompanion<LocationRow> {
   final Value<bool> isOutdoor;
   final Value<double?> lat;
   final Value<double?> lon;
+  final Value<String?> notes;
+  final Value<String?> mapPhotoSha;
+  final Value<bool> notificationsMuted;
   final Value<String> updatedHlc;
   final Value<int?> deletedAt;
   final Value<String> deviceId;
@@ -1295,6 +1426,9 @@ class LocationsCompanion extends UpdateCompanion<LocationRow> {
     this.isOutdoor = const Value.absent(),
     this.lat = const Value.absent(),
     this.lon = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.mapPhotoSha = const Value.absent(),
+    this.notificationsMuted = const Value.absent(),
     this.updatedHlc = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.deviceId = const Value.absent(),
@@ -1314,6 +1448,9 @@ class LocationsCompanion extends UpdateCompanion<LocationRow> {
     this.isOutdoor = const Value.absent(),
     this.lat = const Value.absent(),
     this.lon = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.mapPhotoSha = const Value.absent(),
+    this.notificationsMuted = const Value.absent(),
     required String updatedHlc,
     this.deletedAt = const Value.absent(),
     required String deviceId,
@@ -1338,6 +1475,9 @@ class LocationsCompanion extends UpdateCompanion<LocationRow> {
     Expression<bool>? isOutdoor,
     Expression<double>? lat,
     Expression<double>? lon,
+    Expression<String>? notes,
+    Expression<String>? mapPhotoSha,
+    Expression<bool>? notificationsMuted,
     Expression<String>? updatedHlc,
     Expression<int>? deletedAt,
     Expression<String>? deviceId,
@@ -1357,6 +1497,9 @@ class LocationsCompanion extends UpdateCompanion<LocationRow> {
       if (isOutdoor != null) 'is_outdoor': isOutdoor,
       if (lat != null) 'lat': lat,
       if (lon != null) 'lon': lon,
+      if (notes != null) 'notes': notes,
+      if (mapPhotoSha != null) 'map_photo_sha': mapPhotoSha,
+      if (notificationsMuted != null) 'notifications_muted': notificationsMuted,
       if (updatedHlc != null) 'updated_hlc': updatedHlc,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (deviceId != null) 'device_id': deviceId,
@@ -1378,6 +1521,9 @@ class LocationsCompanion extends UpdateCompanion<LocationRow> {
     Value<bool>? isOutdoor,
     Value<double?>? lat,
     Value<double?>? lon,
+    Value<String?>? notes,
+    Value<String?>? mapPhotoSha,
+    Value<bool>? notificationsMuted,
     Value<String>? updatedHlc,
     Value<int?>? deletedAt,
     Value<String>? deviceId,
@@ -1397,6 +1543,9 @@ class LocationsCompanion extends UpdateCompanion<LocationRow> {
       isOutdoor: isOutdoor ?? this.isOutdoor,
       lat: lat ?? this.lat,
       lon: lon ?? this.lon,
+      notes: notes ?? this.notes,
+      mapPhotoSha: mapPhotoSha ?? this.mapPhotoSha,
+      notificationsMuted: notificationsMuted ?? this.notificationsMuted,
       updatedHlc: updatedHlc ?? this.updatedHlc,
       deletedAt: deletedAt ?? this.deletedAt,
       deviceId: deviceId ?? this.deviceId,
@@ -1446,6 +1595,15 @@ class LocationsCompanion extends UpdateCompanion<LocationRow> {
     if (lon.present) {
       map['lon'] = Variable<double>(lon.value);
     }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (mapPhotoSha.present) {
+      map['map_photo_sha'] = Variable<String>(mapPhotoSha.value);
+    }
+    if (notificationsMuted.present) {
+      map['notifications_muted'] = Variable<bool>(notificationsMuted.value);
+    }
     if (updatedHlc.present) {
       map['updated_hlc'] = Variable<String>(updatedHlc.value);
     }
@@ -1477,6 +1635,9 @@ class LocationsCompanion extends UpdateCompanion<LocationRow> {
           ..write('isOutdoor: $isOutdoor, ')
           ..write('lat: $lat, ')
           ..write('lon: $lon, ')
+          ..write('notes: $notes, ')
+          ..write('mapPhotoSha: $mapPhotoSha, ')
+          ..write('notificationsMuted: $notificationsMuted, ')
           ..write('updatedHlc: $updatedHlc, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('deviceId: $deviceId, ')
@@ -1543,6 +1704,38 @@ class $PlantsTable extends Plants with TableInfo<$PlantsTable, PlantRow> {
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
+  );
+  static const VerificationMeta _pinXMeta = const VerificationMeta('pinX');
+  @override
+  late final GeneratedColumn<double> pinX = GeneratedColumn<double>(
+    'pin_x',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _pinYMeta = const VerificationMeta('pinY');
+  @override
+  late final GeneratedColumn<double> pinY = GeneratedColumn<double>(
+    'pin_y',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _notificationsMutedMeta =
+      const VerificationMeta('notificationsMuted');
+  @override
+  late final GeneratedColumn<bool> notificationsMuted = GeneratedColumn<bool>(
+    'notifications_muted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("notifications_muted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
   );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
@@ -1633,6 +1826,9 @@ class $PlantsTable extends Plants with TableInfo<$PlantsTable, PlantRow> {
     nickname,
     speciesId,
     locationId,
+    pinX,
+    pinY,
+    notificationsMuted,
     status,
     acquiredAt,
     source,
@@ -1685,6 +1881,27 @@ class $PlantsTable extends Plants with TableInfo<$PlantsTable, PlantRow> {
       context.handle(
         _locationIdMeta,
         locationId.isAcceptableOrUnknown(data['location_id']!, _locationIdMeta),
+      );
+    }
+    if (data.containsKey('pin_x')) {
+      context.handle(
+        _pinXMeta,
+        pinX.isAcceptableOrUnknown(data['pin_x']!, _pinXMeta),
+      );
+    }
+    if (data.containsKey('pin_y')) {
+      context.handle(
+        _pinYMeta,
+        pinY.isAcceptableOrUnknown(data['pin_y']!, _pinYMeta),
+      );
+    }
+    if (data.containsKey('notifications_muted')) {
+      context.handle(
+        _notificationsMutedMeta,
+        notificationsMuted.isAcceptableOrUnknown(
+          data['notifications_muted']!,
+          _notificationsMutedMeta,
+        ),
       );
     }
     if (data.containsKey('status')) {
@@ -1770,6 +1987,18 @@ class $PlantsTable extends Plants with TableInfo<$PlantsTable, PlantRow> {
         DriftSqlType.string,
         data['${effectivePrefix}location_id'],
       ),
+      pinX: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}pin_x'],
+      ),
+      pinY: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}pin_y'],
+      ),
+      notificationsMuted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}notifications_muted'],
+      )!,
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}status'],
@@ -1817,6 +2046,17 @@ class PlantRow extends DataClass implements Insertable<PlantRow> {
   final String nickname;
   final String? speciesId;
   final String? locationId;
+
+  /// Pin coordinates on the current location's `map_photo_sha`, stored
+  /// as fractions 0..1 relative to the map image so the pin stays put
+  /// if the user re-exports the map at a different resolution. Null
+  /// when the plant isn't placed.
+  final double? pinX;
+  final double? pinY;
+
+  /// Per-plant notification mute (applies to every schedule for this
+  /// plant). Users can also mute per-schedule — see `care_schedules`.
+  final bool notificationsMuted;
   final String status;
   final int? acquiredAt;
   final String? source;
@@ -1831,6 +2071,9 @@ class PlantRow extends DataClass implements Insertable<PlantRow> {
     required this.nickname,
     this.speciesId,
     this.locationId,
+    this.pinX,
+    this.pinY,
+    required this.notificationsMuted,
     required this.status,
     this.acquiredAt,
     this.source,
@@ -1852,6 +2095,13 @@ class PlantRow extends DataClass implements Insertable<PlantRow> {
     if (!nullToAbsent || locationId != null) {
       map['location_id'] = Variable<String>(locationId);
     }
+    if (!nullToAbsent || pinX != null) {
+      map['pin_x'] = Variable<double>(pinX);
+    }
+    if (!nullToAbsent || pinY != null) {
+      map['pin_y'] = Variable<double>(pinY);
+    }
+    map['notifications_muted'] = Variable<bool>(notificationsMuted);
     map['status'] = Variable<String>(status);
     if (!nullToAbsent || acquiredAt != null) {
       map['acquired_at'] = Variable<int>(acquiredAt);
@@ -1884,6 +2134,9 @@ class PlantRow extends DataClass implements Insertable<PlantRow> {
       locationId: locationId == null && nullToAbsent
           ? const Value.absent()
           : Value(locationId),
+      pinX: pinX == null && nullToAbsent ? const Value.absent() : Value(pinX),
+      pinY: pinY == null && nullToAbsent ? const Value.absent() : Value(pinY),
+      notificationsMuted: Value(notificationsMuted),
       status: Value(status),
       acquiredAt: acquiredAt == null && nullToAbsent
           ? const Value.absent()
@@ -1916,6 +2169,9 @@ class PlantRow extends DataClass implements Insertable<PlantRow> {
       nickname: serializer.fromJson<String>(json['nickname']),
       speciesId: serializer.fromJson<String?>(json['speciesId']),
       locationId: serializer.fromJson<String?>(json['locationId']),
+      pinX: serializer.fromJson<double?>(json['pinX']),
+      pinY: serializer.fromJson<double?>(json['pinY']),
+      notificationsMuted: serializer.fromJson<bool>(json['notificationsMuted']),
       status: serializer.fromJson<String>(json['status']),
       acquiredAt: serializer.fromJson<int?>(json['acquiredAt']),
       source: serializer.fromJson<String?>(json['source']),
@@ -1935,6 +2191,9 @@ class PlantRow extends DataClass implements Insertable<PlantRow> {
       'nickname': serializer.toJson<String>(nickname),
       'speciesId': serializer.toJson<String?>(speciesId),
       'locationId': serializer.toJson<String?>(locationId),
+      'pinX': serializer.toJson<double?>(pinX),
+      'pinY': serializer.toJson<double?>(pinY),
+      'notificationsMuted': serializer.toJson<bool>(notificationsMuted),
       'status': serializer.toJson<String>(status),
       'acquiredAt': serializer.toJson<int?>(acquiredAt),
       'source': serializer.toJson<String?>(source),
@@ -1952,6 +2211,9 @@ class PlantRow extends DataClass implements Insertable<PlantRow> {
     String? nickname,
     Value<String?> speciesId = const Value.absent(),
     Value<String?> locationId = const Value.absent(),
+    Value<double?> pinX = const Value.absent(),
+    Value<double?> pinY = const Value.absent(),
+    bool? notificationsMuted,
     String? status,
     Value<int?> acquiredAt = const Value.absent(),
     Value<String?> source = const Value.absent(),
@@ -1966,6 +2228,9 @@ class PlantRow extends DataClass implements Insertable<PlantRow> {
     nickname: nickname ?? this.nickname,
     speciesId: speciesId.present ? speciesId.value : this.speciesId,
     locationId: locationId.present ? locationId.value : this.locationId,
+    pinX: pinX.present ? pinX.value : this.pinX,
+    pinY: pinY.present ? pinY.value : this.pinY,
+    notificationsMuted: notificationsMuted ?? this.notificationsMuted,
     status: status ?? this.status,
     acquiredAt: acquiredAt.present ? acquiredAt.value : this.acquiredAt,
     source: source.present ? source.value : this.source,
@@ -1984,6 +2249,11 @@ class PlantRow extends DataClass implements Insertable<PlantRow> {
       locationId: data.locationId.present
           ? data.locationId.value
           : this.locationId,
+      pinX: data.pinX.present ? data.pinX.value : this.pinX,
+      pinY: data.pinY.present ? data.pinY.value : this.pinY,
+      notificationsMuted: data.notificationsMuted.present
+          ? data.notificationsMuted.value
+          : this.notificationsMuted,
       status: data.status.present ? data.status.value : this.status,
       acquiredAt: data.acquiredAt.present
           ? data.acquiredAt.value
@@ -2007,6 +2277,9 @@ class PlantRow extends DataClass implements Insertable<PlantRow> {
           ..write('nickname: $nickname, ')
           ..write('speciesId: $speciesId, ')
           ..write('locationId: $locationId, ')
+          ..write('pinX: $pinX, ')
+          ..write('pinY: $pinY, ')
+          ..write('notificationsMuted: $notificationsMuted, ')
           ..write('status: $status, ')
           ..write('acquiredAt: $acquiredAt, ')
           ..write('source: $source, ')
@@ -2026,6 +2299,9 @@ class PlantRow extends DataClass implements Insertable<PlantRow> {
     nickname,
     speciesId,
     locationId,
+    pinX,
+    pinY,
+    notificationsMuted,
     status,
     acquiredAt,
     source,
@@ -2044,6 +2320,9 @@ class PlantRow extends DataClass implements Insertable<PlantRow> {
           other.nickname == this.nickname &&
           other.speciesId == this.speciesId &&
           other.locationId == this.locationId &&
+          other.pinX == this.pinX &&
+          other.pinY == this.pinY &&
+          other.notificationsMuted == this.notificationsMuted &&
           other.status == this.status &&
           other.acquiredAt == this.acquiredAt &&
           other.source == this.source &&
@@ -2060,6 +2339,9 @@ class PlantsCompanion extends UpdateCompanion<PlantRow> {
   final Value<String> nickname;
   final Value<String?> speciesId;
   final Value<String?> locationId;
+  final Value<double?> pinX;
+  final Value<double?> pinY;
+  final Value<bool> notificationsMuted;
   final Value<String> status;
   final Value<int?> acquiredAt;
   final Value<String?> source;
@@ -2075,6 +2357,9 @@ class PlantsCompanion extends UpdateCompanion<PlantRow> {
     this.nickname = const Value.absent(),
     this.speciesId = const Value.absent(),
     this.locationId = const Value.absent(),
+    this.pinX = const Value.absent(),
+    this.pinY = const Value.absent(),
+    this.notificationsMuted = const Value.absent(),
     this.status = const Value.absent(),
     this.acquiredAt = const Value.absent(),
     this.source = const Value.absent(),
@@ -2091,6 +2376,9 @@ class PlantsCompanion extends UpdateCompanion<PlantRow> {
     required String nickname,
     this.speciesId = const Value.absent(),
     this.locationId = const Value.absent(),
+    this.pinX = const Value.absent(),
+    this.pinY = const Value.absent(),
+    this.notificationsMuted = const Value.absent(),
     required String status,
     this.acquiredAt = const Value.absent(),
     this.source = const Value.absent(),
@@ -2112,6 +2400,9 @@ class PlantsCompanion extends UpdateCompanion<PlantRow> {
     Expression<String>? nickname,
     Expression<String>? speciesId,
     Expression<String>? locationId,
+    Expression<double>? pinX,
+    Expression<double>? pinY,
+    Expression<bool>? notificationsMuted,
     Expression<String>? status,
     Expression<int>? acquiredAt,
     Expression<String>? source,
@@ -2128,6 +2419,9 @@ class PlantsCompanion extends UpdateCompanion<PlantRow> {
       if (nickname != null) 'nickname': nickname,
       if (speciesId != null) 'species_id': speciesId,
       if (locationId != null) 'location_id': locationId,
+      if (pinX != null) 'pin_x': pinX,
+      if (pinY != null) 'pin_y': pinY,
+      if (notificationsMuted != null) 'notifications_muted': notificationsMuted,
       if (status != null) 'status': status,
       if (acquiredAt != null) 'acquired_at': acquiredAt,
       if (source != null) 'source': source,
@@ -2146,6 +2440,9 @@ class PlantsCompanion extends UpdateCompanion<PlantRow> {
     Value<String>? nickname,
     Value<String?>? speciesId,
     Value<String?>? locationId,
+    Value<double?>? pinX,
+    Value<double?>? pinY,
+    Value<bool>? notificationsMuted,
     Value<String>? status,
     Value<int?>? acquiredAt,
     Value<String?>? source,
@@ -2162,6 +2459,9 @@ class PlantsCompanion extends UpdateCompanion<PlantRow> {
       nickname: nickname ?? this.nickname,
       speciesId: speciesId ?? this.speciesId,
       locationId: locationId ?? this.locationId,
+      pinX: pinX ?? this.pinX,
+      pinY: pinY ?? this.pinY,
+      notificationsMuted: notificationsMuted ?? this.notificationsMuted,
       status: status ?? this.status,
       acquiredAt: acquiredAt ?? this.acquiredAt,
       source: source ?? this.source,
@@ -2191,6 +2491,15 @@ class PlantsCompanion extends UpdateCompanion<PlantRow> {
     }
     if (locationId.present) {
       map['location_id'] = Variable<String>(locationId.value);
+    }
+    if (pinX.present) {
+      map['pin_x'] = Variable<double>(pinX.value);
+    }
+    if (pinY.present) {
+      map['pin_y'] = Variable<double>(pinY.value);
+    }
+    if (notificationsMuted.present) {
+      map['notifications_muted'] = Variable<bool>(notificationsMuted.value);
     }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
@@ -2230,6 +2539,9 @@ class PlantsCompanion extends UpdateCompanion<PlantRow> {
           ..write('nickname: $nickname, ')
           ..write('speciesId: $speciesId, ')
           ..write('locationId: $locationId, ')
+          ..write('pinX: $pinX, ')
+          ..write('pinY: $pinY, ')
+          ..write('notificationsMuted: $notificationsMuted, ')
           ..write('status: $status, ')
           ..write('acquiredAt: $acquiredAt, ')
           ..write('source: $source, ')
@@ -5275,6 +5587,20 @@ class $CareSchedulesTable extends CareSchedules
     requiredDuringInsert: false,
     defaultValue: const Constant('after_completion'),
   );
+  static const VerificationMeta _notificationsMutedMeta =
+      const VerificationMeta('notificationsMuted');
+  @override
+  late final GeneratedColumn<bool> notificationsMuted = GeneratedColumn<bool>(
+    'notifications_muted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("notifications_muted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _updatedHlcMeta = const VerificationMeta(
     'updatedHlc',
   );
@@ -5322,6 +5648,7 @@ class $CareSchedulesTable extends CareSchedules
     recentEventsJson,
     enabled,
     recurrenceMode,
+    notificationsMuted,
     updatedHlc,
     deletedAt,
     deviceId,
@@ -5437,6 +5764,15 @@ class $CareSchedulesTable extends CareSchedules
         ),
       );
     }
+    if (data.containsKey('notifications_muted')) {
+      context.handle(
+        _notificationsMutedMeta,
+        notificationsMuted.isAcceptableOrUnknown(
+          data['notifications_muted']!,
+          _notificationsMutedMeta,
+        ),
+      );
+    }
     if (data.containsKey('updated_hlc')) {
       context.handle(
         _updatedHlcMeta,
@@ -5516,6 +5852,10 @@ class $CareSchedulesTable extends CareSchedules
         DriftSqlType.string,
         data['${effectivePrefix}recurrence_mode'],
       )!,
+      notificationsMuted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}notifications_muted'],
+      )!,
       updatedHlc: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}updated_hlc'],
@@ -5556,6 +5896,11 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
   ///                        smallest N making next_due_at > doneAt
   ///   'once'             — disable the schedule after the first event
   final String recurrenceMode;
+
+  /// Suppresses OS notifications for just this schedule (e.g. mute the
+  /// weekly fertilize reminder but keep the daily mist reminder firing).
+  /// The schedule still shows up on Home / Calendar / Upcoming Care.
+  final bool notificationsMuted;
   final String updatedHlc;
   final int? deletedAt;
   final String deviceId;
@@ -5572,6 +5917,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     required this.recentEventsJson,
     required this.enabled,
     required this.recurrenceMode,
+    required this.notificationsMuted,
     required this.updatedHlc,
     this.deletedAt,
     required this.deviceId,
@@ -5595,6 +5941,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     map['recent_events_json'] = Variable<String>(recentEventsJson);
     map['enabled'] = Variable<bool>(enabled);
     map['recurrence_mode'] = Variable<String>(recurrenceMode);
+    map['notifications_muted'] = Variable<bool>(notificationsMuted);
     map['updated_hlc'] = Variable<String>(updatedHlc);
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<int>(deletedAt);
@@ -5621,6 +5968,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
       recentEventsJson: Value(recentEventsJson),
       enabled: Value(enabled),
       recurrenceMode: Value(recurrenceMode),
+      notificationsMuted: Value(notificationsMuted),
       updatedHlc: Value(updatedHlc),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
@@ -5649,6 +5997,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
       recentEventsJson: serializer.fromJson<String>(json['recentEventsJson']),
       enabled: serializer.fromJson<bool>(json['enabled']),
       recurrenceMode: serializer.fromJson<String>(json['recurrenceMode']),
+      notificationsMuted: serializer.fromJson<bool>(json['notificationsMuted']),
       updatedHlc: serializer.fromJson<String>(json['updatedHlc']),
       deletedAt: serializer.fromJson<int?>(json['deletedAt']),
       deviceId: serializer.fromJson<String>(json['deviceId']),
@@ -5670,6 +6019,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
       'recentEventsJson': serializer.toJson<String>(recentEventsJson),
       'enabled': serializer.toJson<bool>(enabled),
       'recurrenceMode': serializer.toJson<String>(recurrenceMode),
+      'notificationsMuted': serializer.toJson<bool>(notificationsMuted),
       'updatedHlc': serializer.toJson<String>(updatedHlc),
       'deletedAt': serializer.toJson<int?>(deletedAt),
       'deviceId': serializer.toJson<String>(deviceId),
@@ -5689,6 +6039,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     String? recentEventsJson,
     bool? enabled,
     String? recurrenceMode,
+    bool? notificationsMuted,
     String? updatedHlc,
     Value<int?> deletedAt = const Value.absent(),
     String? deviceId,
@@ -5705,6 +6056,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     recentEventsJson: recentEventsJson ?? this.recentEventsJson,
     enabled: enabled ?? this.enabled,
     recurrenceMode: recurrenceMode ?? this.recurrenceMode,
+    notificationsMuted: notificationsMuted ?? this.notificationsMuted,
     updatedHlc: updatedHlc ?? this.updatedHlc,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
     deviceId: deviceId ?? this.deviceId,
@@ -5735,6 +6087,9 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
       recurrenceMode: data.recurrenceMode.present
           ? data.recurrenceMode.value
           : this.recurrenceMode,
+      notificationsMuted: data.notificationsMuted.present
+          ? data.notificationsMuted.value
+          : this.notificationsMuted,
       updatedHlc: data.updatedHlc.present
           ? data.updatedHlc.value
           : this.updatedHlc,
@@ -5758,6 +6113,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
           ..write('recentEventsJson: $recentEventsJson, ')
           ..write('enabled: $enabled, ')
           ..write('recurrenceMode: $recurrenceMode, ')
+          ..write('notificationsMuted: $notificationsMuted, ')
           ..write('updatedHlc: $updatedHlc, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('deviceId: $deviceId')
@@ -5779,6 +6135,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     recentEventsJson,
     enabled,
     recurrenceMode,
+    notificationsMuted,
     updatedHlc,
     deletedAt,
     deviceId,
@@ -5799,6 +6156,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
           other.recentEventsJson == this.recentEventsJson &&
           other.enabled == this.enabled &&
           other.recurrenceMode == this.recurrenceMode &&
+          other.notificationsMuted == this.notificationsMuted &&
           other.updatedHlc == this.updatedHlc &&
           other.deletedAt == this.deletedAt &&
           other.deviceId == this.deviceId);
@@ -5817,6 +6175,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
   final Value<String> recentEventsJson;
   final Value<bool> enabled;
   final Value<String> recurrenceMode;
+  final Value<bool> notificationsMuted;
   final Value<String> updatedHlc;
   final Value<int?> deletedAt;
   final Value<String> deviceId;
@@ -5834,6 +6193,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     this.recentEventsJson = const Value.absent(),
     this.enabled = const Value.absent(),
     this.recurrenceMode = const Value.absent(),
+    this.notificationsMuted = const Value.absent(),
     this.updatedHlc = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.deviceId = const Value.absent(),
@@ -5852,6 +6212,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     this.recentEventsJson = const Value.absent(),
     this.enabled = const Value.absent(),
     this.recurrenceMode = const Value.absent(),
+    this.notificationsMuted = const Value.absent(),
     required String updatedHlc,
     this.deletedAt = const Value.absent(),
     required String deviceId,
@@ -5877,6 +6238,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     Expression<String>? recentEventsJson,
     Expression<bool>? enabled,
     Expression<String>? recurrenceMode,
+    Expression<bool>? notificationsMuted,
     Expression<String>? updatedHlc,
     Expression<int>? deletedAt,
     Expression<String>? deviceId,
@@ -5896,6 +6258,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
       if (recentEventsJson != null) 'recent_events_json': recentEventsJson,
       if (enabled != null) 'enabled': enabled,
       if (recurrenceMode != null) 'recurrence_mode': recurrenceMode,
+      if (notificationsMuted != null) 'notifications_muted': notificationsMuted,
       if (updatedHlc != null) 'updated_hlc': updatedHlc,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (deviceId != null) 'device_id': deviceId,
@@ -5916,6 +6279,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     Value<String>? recentEventsJson,
     Value<bool>? enabled,
     Value<String>? recurrenceMode,
+    Value<bool>? notificationsMuted,
     Value<String>? updatedHlc,
     Value<int?>? deletedAt,
     Value<String>? deviceId,
@@ -5934,6 +6298,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
       recentEventsJson: recentEventsJson ?? this.recentEventsJson,
       enabled: enabled ?? this.enabled,
       recurrenceMode: recurrenceMode ?? this.recurrenceMode,
+      notificationsMuted: notificationsMuted ?? this.notificationsMuted,
       updatedHlc: updatedHlc ?? this.updatedHlc,
       deletedAt: deletedAt ?? this.deletedAt,
       deviceId: deviceId ?? this.deviceId,
@@ -5982,6 +6347,9 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     if (recurrenceMode.present) {
       map['recurrence_mode'] = Variable<String>(recurrenceMode.value);
     }
+    if (notificationsMuted.present) {
+      map['notifications_muted'] = Variable<bool>(notificationsMuted.value);
+    }
     if (updatedHlc.present) {
       map['updated_hlc'] = Variable<String>(updatedHlc.value);
     }
@@ -6012,6 +6380,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
           ..write('recentEventsJson: $recentEventsJson, ')
           ..write('enabled: $enabled, ')
           ..write('recurrenceMode: $recurrenceMode, ')
+          ..write('notificationsMuted: $notificationsMuted, ')
           ..write('updatedHlc: $updatedHlc, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('deviceId: $deviceId, ')
@@ -7729,6 +8098,9 @@ typedef $$LocationsTableCreateCompanionBuilder =
       Value<bool> isOutdoor,
       Value<double?> lat,
       Value<double?> lon,
+      Value<String?> notes,
+      Value<String?> mapPhotoSha,
+      Value<bool> notificationsMuted,
       required String updatedHlc,
       Value<int?> deletedAt,
       required String deviceId,
@@ -7749,6 +8121,9 @@ typedef $$LocationsTableUpdateCompanionBuilder =
       Value<bool> isOutdoor,
       Value<double?> lat,
       Value<double?> lon,
+      Value<String?> notes,
+      Value<String?> mapPhotoSha,
+      Value<bool> notificationsMuted,
       Value<String> updatedHlc,
       Value<int?> deletedAt,
       Value<String> deviceId,
@@ -7826,6 +8201,21 @@ class $$LocationsTableFilterComposer
 
   ColumnFilters<double> get lon => $composableBuilder(
     column: $table.lon,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mapPhotoSha => $composableBuilder(
+    column: $table.mapPhotoSha,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get notificationsMuted => $composableBuilder(
+    column: $table.notificationsMuted,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7919,6 +8309,21 @@ class $$LocationsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mapPhotoSha => $composableBuilder(
+    column: $table.mapPhotoSha,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get notificationsMuted => $composableBuilder(
+    column: $table.notificationsMuted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get updatedHlc => $composableBuilder(
     column: $table.updatedHlc,
     builder: (column) => ColumnOrderings(column),
@@ -7987,6 +8392,19 @@ class $$LocationsTableAnnotationComposer
   GeneratedColumn<double> get lon =>
       $composableBuilder(column: $table.lon, builder: (column) => column);
 
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get mapPhotoSha => $composableBuilder(
+    column: $table.mapPhotoSha,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get notificationsMuted => $composableBuilder(
+    column: $table.notificationsMuted,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get updatedHlc => $composableBuilder(
     column: $table.updatedHlc,
     builder: (column) => column,
@@ -8043,6 +8461,9 @@ class $$LocationsTableTableManager
                 Value<bool> isOutdoor = const Value.absent(),
                 Value<double?> lat = const Value.absent(),
                 Value<double?> lon = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<String?> mapPhotoSha = const Value.absent(),
+                Value<bool> notificationsMuted = const Value.absent(),
                 Value<String> updatedHlc = const Value.absent(),
                 Value<int?> deletedAt = const Value.absent(),
                 Value<String> deviceId = const Value.absent(),
@@ -8061,6 +8482,9 @@ class $$LocationsTableTableManager
                 isOutdoor: isOutdoor,
                 lat: lat,
                 lon: lon,
+                notes: notes,
+                mapPhotoSha: mapPhotoSha,
+                notificationsMuted: notificationsMuted,
                 updatedHlc: updatedHlc,
                 deletedAt: deletedAt,
                 deviceId: deviceId,
@@ -8081,6 +8505,9 @@ class $$LocationsTableTableManager
                 Value<bool> isOutdoor = const Value.absent(),
                 Value<double?> lat = const Value.absent(),
                 Value<double?> lon = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<String?> mapPhotoSha = const Value.absent(),
+                Value<bool> notificationsMuted = const Value.absent(),
                 required String updatedHlc,
                 Value<int?> deletedAt = const Value.absent(),
                 required String deviceId,
@@ -8099,6 +8526,9 @@ class $$LocationsTableTableManager
                 isOutdoor: isOutdoor,
                 lat: lat,
                 lon: lon,
+                notes: notes,
+                mapPhotoSha: mapPhotoSha,
+                notificationsMuted: notificationsMuted,
                 updatedHlc: updatedHlc,
                 deletedAt: deletedAt,
                 deviceId: deviceId,
@@ -8136,6 +8566,9 @@ typedef $$PlantsTableCreateCompanionBuilder =
       required String nickname,
       Value<String?> speciesId,
       Value<String?> locationId,
+      Value<double?> pinX,
+      Value<double?> pinY,
+      Value<bool> notificationsMuted,
       required String status,
       Value<int?> acquiredAt,
       Value<String?> source,
@@ -8153,6 +8586,9 @@ typedef $$PlantsTableUpdateCompanionBuilder =
       Value<String> nickname,
       Value<String?> speciesId,
       Value<String?> locationId,
+      Value<double?> pinX,
+      Value<double?> pinY,
+      Value<bool> notificationsMuted,
       Value<String> status,
       Value<int?> acquiredAt,
       Value<String?> source,
@@ -8195,6 +8631,21 @@ class $$PlantsTableFilterComposer
 
   ColumnFilters<String> get locationId => $composableBuilder(
     column: $table.locationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get pinX => $composableBuilder(
+    column: $table.pinX,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get pinY => $composableBuilder(
+    column: $table.pinY,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get notificationsMuted => $composableBuilder(
+    column: $table.notificationsMuted,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8273,6 +8724,21 @@ class $$PlantsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get pinX => $composableBuilder(
+    column: $table.pinX,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get pinY => $composableBuilder(
+    column: $table.pinY,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get notificationsMuted => $composableBuilder(
+    column: $table.notificationsMuted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -8340,6 +8806,17 @@ class $$PlantsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<double> get pinX =>
+      $composableBuilder(column: $table.pinX, builder: (column) => column);
+
+  GeneratedColumn<double> get pinY =>
+      $composableBuilder(column: $table.pinY, builder: (column) => column);
+
+  GeneratedColumn<bool> get notificationsMuted => $composableBuilder(
+    column: $table.notificationsMuted,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
 
@@ -8402,6 +8879,9 @@ class $$PlantsTableTableManager
                 Value<String> nickname = const Value.absent(),
                 Value<String?> speciesId = const Value.absent(),
                 Value<String?> locationId = const Value.absent(),
+                Value<double?> pinX = const Value.absent(),
+                Value<double?> pinY = const Value.absent(),
+                Value<bool> notificationsMuted = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<int?> acquiredAt = const Value.absent(),
                 Value<String?> source = const Value.absent(),
@@ -8417,6 +8897,9 @@ class $$PlantsTableTableManager
                 nickname: nickname,
                 speciesId: speciesId,
                 locationId: locationId,
+                pinX: pinX,
+                pinY: pinY,
+                notificationsMuted: notificationsMuted,
                 status: status,
                 acquiredAt: acquiredAt,
                 source: source,
@@ -8434,6 +8917,9 @@ class $$PlantsTableTableManager
                 required String nickname,
                 Value<String?> speciesId = const Value.absent(),
                 Value<String?> locationId = const Value.absent(),
+                Value<double?> pinX = const Value.absent(),
+                Value<double?> pinY = const Value.absent(),
+                Value<bool> notificationsMuted = const Value.absent(),
                 required String status,
                 Value<int?> acquiredAt = const Value.absent(),
                 Value<String?> source = const Value.absent(),
@@ -8449,6 +8935,9 @@ class $$PlantsTableTableManager
                 nickname: nickname,
                 speciesId: speciesId,
                 locationId: locationId,
+                pinX: pinX,
+                pinY: pinY,
+                notificationsMuted: notificationsMuted,
                 status: status,
                 acquiredAt: acquiredAt,
                 source: source,
@@ -9913,6 +10402,7 @@ typedef $$CareSchedulesTableCreateCompanionBuilder =
       Value<String> recentEventsJson,
       Value<bool> enabled,
       Value<String> recurrenceMode,
+      Value<bool> notificationsMuted,
       required String updatedHlc,
       Value<int?> deletedAt,
       required String deviceId,
@@ -9932,6 +10422,7 @@ typedef $$CareSchedulesTableUpdateCompanionBuilder =
       Value<String> recentEventsJson,
       Value<bool> enabled,
       Value<String> recurrenceMode,
+      Value<bool> notificationsMuted,
       Value<String> updatedHlc,
       Value<int?> deletedAt,
       Value<String> deviceId,
@@ -10004,6 +10495,11 @@ class $$CareSchedulesTableFilterComposer
 
   ColumnFilters<String> get recurrenceMode => $composableBuilder(
     column: $table.recurrenceMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get notificationsMuted => $composableBuilder(
+    column: $table.notificationsMuted,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10092,6 +10588,11 @@ class $$CareSchedulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get notificationsMuted => $composableBuilder(
+    column: $table.notificationsMuted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get updatedHlc => $composableBuilder(
     column: $table.updatedHlc,
     builder: (column) => ColumnOrderings(column),
@@ -10165,6 +10666,11 @@ class $$CareSchedulesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get notificationsMuted => $composableBuilder(
+    column: $table.notificationsMuted,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get updatedHlc => $composableBuilder(
     column: $table.updatedHlc,
     builder: (column) => column,
@@ -10220,6 +10726,7 @@ class $$CareSchedulesTableTableManager
                 Value<String> recentEventsJson = const Value.absent(),
                 Value<bool> enabled = const Value.absent(),
                 Value<String> recurrenceMode = const Value.absent(),
+                Value<bool> notificationsMuted = const Value.absent(),
                 Value<String> updatedHlc = const Value.absent(),
                 Value<int?> deletedAt = const Value.absent(),
                 Value<String> deviceId = const Value.absent(),
@@ -10237,6 +10744,7 @@ class $$CareSchedulesTableTableManager
                 recentEventsJson: recentEventsJson,
                 enabled: enabled,
                 recurrenceMode: recurrenceMode,
+                notificationsMuted: notificationsMuted,
                 updatedHlc: updatedHlc,
                 deletedAt: deletedAt,
                 deviceId: deviceId,
@@ -10256,6 +10764,7 @@ class $$CareSchedulesTableTableManager
                 Value<String> recentEventsJson = const Value.absent(),
                 Value<bool> enabled = const Value.absent(),
                 Value<String> recurrenceMode = const Value.absent(),
+                Value<bool> notificationsMuted = const Value.absent(),
                 required String updatedHlc,
                 Value<int?> deletedAt = const Value.absent(),
                 required String deviceId,
@@ -10273,6 +10782,7 @@ class $$CareSchedulesTableTableManager
                 recentEventsJson: recentEventsJson,
                 enabled: enabled,
                 recurrenceMode: recurrenceMode,
+                notificationsMuted: notificationsMuted,
                 updatedHlc: updatedHlc,
                 deletedAt: deletedAt,
                 deviceId: deviceId,
