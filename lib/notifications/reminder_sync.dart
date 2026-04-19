@@ -15,11 +15,16 @@ class ReminderSync {
     required this.db,
     required this.notifications,
     required this.tenantId,
-  });
+    Set<String> Function()? mutedTypesSnapshot,
+  }) : _mutedTypesSnapshot = mutedTypesSnapshot;
 
   final AppDatabase db;
   final NotificationService notifications;
   final String tenantId;
+  /// Returns the current set of globally-muted care-type keys. Called
+  /// per sync so toggles in the Me screen take effect on the next write
+  /// without wiring a listener into this class.
+  final Set<String> Function()? _mutedTypesSnapshot;
 
   /// Rebuild the entire reminder set from the current schedule rows and
   /// hand it to the platform plugin. Called on care-event record /
@@ -46,10 +51,13 @@ class ReminderSync {
     final plantsById = {for (final p in plantRows) p.id: p};
     final locationsById = {for (final l in locationRows) l.id: l};
 
-    // Drop schedules whose plant is muted, or whose location is muted.
+    final mutedTypes = _mutedTypesSnapshot?.call() ?? const <String>{};
+    // Drop schedules whose plant is muted, whose location is muted, or
+    // whose care-type is globally silenced.
     final activeSchedules = [
       for (final s in schedules)
-        if (!(plantsById[s.plantId]?.notificationsMuted ?? false) &&
+        if (!mutedTypes.contains(s.type) &&
+            !(plantsById[s.plantId]?.notificationsMuted ?? false) &&
             !((plantsById[s.plantId]?.locationId != null &&
                 (locationsById[plantsById[s.plantId]!.locationId]?.notificationsMuted ?? false))))
           s

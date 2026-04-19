@@ -104,6 +104,22 @@ everything still open into `PLAN.md` Phase 2 and delete this file.
 
 ---
 
+## Fixed in v0.5.10-phase1 (2026-04-19, P1 completion)
+
+- [x] **Location + tag filter chips on Home.** Compound filter:
+      status (All/Overdue/Due today) × location × tag. Each chip
+      toggles its dimension independently. Implementation uses
+      the existing `PlantFilter` enum plus two new
+      `StateProvider<String?>` for location and tag.
+- [x] **Global per-care-type mute.** Prefs-backed
+      `mutedCareTypesProvider` (set of type keys). `ReminderSync`
+      now takes a snapshot callback that reads the set on every
+      sync. Toggle exposed on each row in the Care Types screen.
+- [x] **Stats dashboard (Me → Stats).** Headline card (plants /
+      total events / last 30d), activity by care type (bar list),
+      top 5 plants in the last 30 days. Derived purely in-memory
+      from already-streamed providers.
+
 ## Fixed in v0.5.9-phase1 (2026-04-19, P1 sweep)
 
 - [x] **Plant duplication.** Overflow → "Duplicate plant" copies
