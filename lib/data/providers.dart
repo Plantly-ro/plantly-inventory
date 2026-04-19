@@ -17,6 +17,7 @@ import 'repositories/location_repository.dart';
 import 'repositories/photo_repository.dart';
 import 'repositories/plant_repository.dart';
 import 'repositories/search_repository.dart';
+import 'repositories/tag_repository.dart';
 import 'seed.dart';
 
 /// App-wide dependencies. Everything downstream of [appBootstrapProvider]
@@ -189,6 +190,27 @@ final photoRepositoryProvider = Provider<PhotoRepository>((ref) {
 final plantPhotoRepositoryProvider = Provider<PlantPhotoRepository>((ref) {
   final ctx = ref.watch(appContextProvider).requireValue;
   return PlantPhotoRepository(db: ctx.db, opLog: ctx.opLog);
+});
+
+final tagRepositoryProvider = Provider<TagRepository>((ref) {
+  final ctx = ref.watch(appContextProvider).requireValue;
+  return TagRepository(db: ctx.db, opLog: ctx.opLog);
+});
+
+final plantTagRepositoryProvider = Provider<PlantTagRepository>((ref) {
+  final ctx = ref.watch(appContextProvider).requireValue;
+  return PlantTagRepository(db: ctx.db, opLog: ctx.opLog);
+});
+
+/// All tags in the tenant — for autocomplete on the tag chip input.
+final allTagsProvider = StreamProvider<List<TagRow>>((ref) {
+  return ref.watch(tagRepositoryProvider).watchAll();
+});
+
+/// Tag ids currently attached to a plant.
+final tagsForPlantProvider =
+    StreamProvider.family<List<String>, String>((ref, plantId) {
+  return ref.watch(plantTagRepositoryProvider).watchAttached(plantId);
 });
 
 /// Live set of SHA-256 hashes currently attached to a given plant — drives

@@ -1,3 +1,5 @@
+import 'package:drift/drift.dart';
+
 import '../sync/op_log.dart';
 import 'database/app_database.dart';
 import 'mock_plants.dart';
@@ -15,16 +17,24 @@ Future<void> seedIfEmpty({
   required AppDatabase db,
   required OpLogWriter opLog,
 }) async {
+  final locations = LocationRepository(db: db, opLog: opLog);
+
+  // Seed a small location tree whenever the tenant has none — runs
+  // independently of the plants seed so users upgrading from a build that
+  // shipped before `locations` were seeded still get starter spaces.
+  final locRows = await db.managers.locations
+      .filter((l) => l.tenantId(opLog.tenantId) & l.deletedAt.isNull())
+      .get();
+  if (locRows.isEmpty) {
+    final home = await locations.create(name: 'Home', kind: 'home');
+    await locations.create(name: 'Living room', kind: 'room', parentId: home.id);
+    await locations.create(name: 'Balcony', kind: 'outdoor_bed', parentId: home.id, isOutdoor: true);
+  }
+
   final count = await db.managers.plants.count();
   if (count > 0) return;
 
   final schedules = CareScheduleRepository(db: db, opLog: opLog);
-  final locations = LocationRepository(db: db, opLog: opLog);
-  // Seed a small location tree so the Spaces tab + "move plant" dialogs
-  // aren't empty on first launch. Users can rename or delete these.
-  final home = await locations.create(name: 'Home', kind: 'home');
-  await locations.create(name: 'Living room', kind: 'room', parentId: home.id);
-  await locations.create(name: 'Balcony', kind: 'outdoor_bed', parentId: home.id, isOutdoor: true);
   final now = DateTime.now().toUtc();
   // Anchor the mock data so Overdue/Today widgets match the prototype
   // regardless of wall-clock time.

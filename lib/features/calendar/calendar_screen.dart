@@ -50,10 +50,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     ];
     final weekEnd = _weekStart.add(const Duration(days: 7));
 
-    // Populate buckets with schedules due this week.
+    // Populate buckets with schedules due this week. Skip schedules whose
+    // plant was soft-deleted — the calendar should mirror the active
+    // collection.
     schedulesAsync.whenData((schedules) {
       for (final s in schedules) {
         if (s.nextDueAt == null) continue;
+        if (!plantsById.containsKey(s.plantId)) continue;
         final due = DateTime.fromMillisecondsSinceEpoch(s.nextDueAt!, isUtc: true).toLocal();
         final day = DateTime(due.year, due.month, due.day);
         if (day.isBefore(_weekStart) || !day.isBefore(weekEnd)) continue;

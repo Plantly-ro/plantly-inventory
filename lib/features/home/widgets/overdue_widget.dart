@@ -21,8 +21,10 @@ class OverdueWidget extends ConsumerWidget {
   });
 
   final PlantlySurface surface;
-  final void Function(MockPlant)? onPlantTap;
-  final void Function(MockPlant)? onLogCare;
+  /// Navigates to the detail screen. Receives the real `plants.id`.
+  final void Function(String plantId)? onPlantTap;
+  /// Called after a care event is recorded, with the plant's display name.
+  final void Function(String name)? onLogCare;
   final bool editing;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
@@ -42,7 +44,12 @@ class OverdueWidget extends ConsumerWidget {
       data: (rows) => rows
           .where((s) =>
               s.nextDueAt != null &&
-              s.nextDueAt! < now.millisecondsSinceEpoch)
+              s.nextDueAt! < now.millisecondsSinceEpoch &&
+              // Drop schedules whose plant got soft-deleted (gift / sale /
+              // death) — the plant is gone from plantsById so the row
+              // would render as a bare ULID and tap through to "plant no
+              // longer in your collection".
+              plantsById.containsKey(s.plantId))
           .toList(),
       orElse: () => const <db.CareScheduleRow>[],
     );
@@ -93,18 +100,22 @@ class OverdueWidget extends ConsumerWidget {
     DateTime now,
     bool last,
   ) {
-    final mock = MockPlants.byId(schedule.plantId);
+    final plant = plantsById[schedule.plantId];
+    final title = plant?.nickname ?? schedule.plantId;
+    final swatch = MockPlants.byId(schedule.plantId);
     final daysLate = ((now.millisecondsSinceEpoch - schedule.nextDueAt!) / (86400 * 1000)).floor();
     final subtitle = daysLate > 0 ? '$daysLate d late · ${_verb(schedule.type)}' : '${_verb(schedule.type)} now';
     return PlantRow(
-      plant: mock,
+      plantId: schedule.plantId,
+      title: title,
+      swatch: swatch,
       surface: surface,
       subtitle: subtitle,
       subtitleIcon: _iconFor(schedule.type),
       subtitleColor: surface.terra,
       first: false,
       last: last,
-      onTap: () => onPlantTap?.call(mock),
+      onTap: () => onPlantTap?.call(schedule.plantId),
       trailing: Consumer(
         builder: (context, ref, _) => _DoneButton(
           surface: surface,
@@ -113,7 +124,7 @@ class OverdueWidget extends ConsumerWidget {
                   plantId: schedule.plantId,
                   type: schedule.type,
                 );
-            if (context.mounted) onLogCare?.call(mock);
+            if (context.mounted) onLogCare?.call(title);
           },
         ),
       ),

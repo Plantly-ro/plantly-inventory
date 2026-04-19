@@ -14,9 +14,11 @@ import '../../theme/tokens.dart';
 import '../export/export_dialog.dart';
 import '../home/home_providers.dart';
 import 'add_reminder_sheet.dart';
+import 'edit_plant_sheet.dart';
 import 'inventory_action_sheet.dart';
 import 'log_event_sheet.dart';
 import 'propagate_dialog.dart';
+import 'tag_chip_input.dart';
 
 /// Live Plant Detail screen. Reads everything from Drift; `MockPlants` is
 /// only consulted for the decorative colour swatch used by the photo
@@ -113,6 +115,18 @@ class _PlantDetailBody extends ConsumerWidget {
         ),
         actions: [
           IconButton(
+            icon: Icon(Icons.edit_outlined, color: surface.text),
+            tooltip: 'Edit plant',
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => EditPlantSheet(plantRow: plantRow),
+              );
+            },
+          ),
+          IconButton(
             icon: Icon(Icons.add_a_photo_outlined, color: surface.text),
             tooltip: 'Add photos',
             onPressed: () async {
@@ -198,10 +212,10 @@ class _PlantDetailBody extends ConsumerWidget {
                     letterSpacing: -0.02 * PlantlyTokens.text2xl,
                   ),
                 ),
-                if (swatch.latin.isNotEmpty) ...[
+                if (plantRow.speciesId != null && plantRow.speciesId!.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
-                    swatch.latin,
+                    plantRow.speciesId!,
                     style: TextStyle(fontSize: 13, color: surface.muted, fontStyle: FontStyle.italic),
                   ),
                 ],
@@ -224,6 +238,8 @@ class _PlantDetailBody extends ConsumerWidget {
                   const SizedBox(height: 8),
                   Text(plantRow.notes!, style: TextStyle(fontSize: 13, color: surface.text)),
                 ],
+                const SizedBox(height: 12),
+                TagChipInput(plantId: plantId, surface: surface),
               ],
             ),
           ),

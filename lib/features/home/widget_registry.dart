@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../data/mock_plants.dart';
 import '../../theme/tokens.dart';
 import 'widgets/activity_widget.dart';
 import 'widgets/greeting_widget.dart';
@@ -81,7 +80,7 @@ class WidgetRegistry {
         onMoveDown: p.onMoveDown,
         onRemove: p.onRemove,
         onPlantTap: p.onPlantTap,
-        onLogCare: (plant) => p.onToast?.call('Logged care for ${plant.name}'),
+        onLogCare: (name) => p.onToast?.call('Logged care for $name'),
       ),
     ),
     'today': WidgetEntry(
@@ -95,7 +94,7 @@ class WidgetRegistry {
         onMoveDown: p.onMoveDown,
         onRemove: p.onRemove,
         onPlantTap: p.onPlantTap,
-        onLogCare: (plant, action) => p.onToast?.call('${action}ed ${plant.name}'),
+        onLogCare: (name, action) => p.onToast?.call('${action}ed $name'),
       ),
     ),
     'grid': WidgetEntry(
@@ -154,7 +153,9 @@ class WidgetRenderParams {
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
   final VoidCallback? onRemove;
-  final void Function(MockPlant)? onPlantTap;
+  /// Navigates to the plant detail screen for [plantId]. Must be the real
+  /// `plants.id`, never a MockPlant stand-in's id.
+  final void Function(String plantId)? onPlantTap;
   final void Function(String)? onToast;
 }
 

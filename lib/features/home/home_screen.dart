@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../data/mock_plants.dart';
 import '../../data/providers.dart';
 import '../../theme/tokens.dart';
 import '../calendar/calendar_screen.dart';
@@ -128,9 +127,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  void _openPlantDetail(MockPlant plant) {
+  void _openPlantDetail(String plantId) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: plant.id)),
+      MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: plantId)),
     );
   }
 
