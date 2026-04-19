@@ -12,6 +12,7 @@ class WidgetShell extends StatelessWidget {
     this.accentLabel,
     this.accentColor,
     this.action,
+    this.onAction,
     this.editing = false,
     this.onMoveUp,
     this.onMoveDown,
@@ -25,6 +26,7 @@ class WidgetShell extends StatelessWidget {
   final String? accentLabel;
   final Color? accentColor;
   final String? action;
+  final VoidCallback? onAction;
   final bool editing;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
@@ -52,6 +54,7 @@ class WidgetShell extends StatelessWidget {
                   accentLabel: accentLabel,
                   accentColor: accentColor,
                   action: action,
+                  onAction: onAction,
                   editing: editing,
                   surface: surface,
                 ),
@@ -82,6 +85,7 @@ class _Header extends StatelessWidget {
     required this.accentLabel,
     required this.accentColor,
     required this.action,
+    required this.onAction,
     required this.editing,
     required this.surface,
   });
@@ -90,6 +94,7 @@ class _Header extends StatelessWidget {
   final String? accentLabel;
   final Color? accentColor;
   final String? action;
+  final VoidCallback? onAction;
   final bool editing;
   final PlantlySurface surface;
 
@@ -123,13 +128,20 @@ class _Header extends StatelessWidget {
           ],
           const Spacer(),
           if (action != null && !editing)
-            Text(
-              action!.toUpperCase(),
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: surface.green,
-                letterSpacing: 0.08 * 11,
+            InkWell(
+              onTap: onAction,
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                child: Text(
+                  action!.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: surface.green,
+                    letterSpacing: 0.08 * 11,
+                  ),
+                ),
               ),
             ),
         ],

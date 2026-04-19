@@ -2,43 +2,88 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../data/database/app_database.dart' as db;
+import '../../data/providers.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
+import '../plant_detail/plant_detail_screen.dart';
 
-/// Port of `CalendarScreen` in `web/prototype/components/screens.jsx`.
-class CalendarScreen extends ConsumerWidget {
+/// Weekly calendar — upcoming schedules + care events already recorded,
+/// pivoted by the day they fall on (Mon → Sun of the currently-visible week).
+/// Swipe the top chevrons to move between weeks.
+class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CalendarScreen> createState() => _CalendarScreenState();
+}
+
+class _CalendarScreenState extends ConsumerState<CalendarScreen> {
+  // Anchor = Monday of the currently-displayed week.
+  late DateTime _weekStart;
+
+  @override
+  void initState() {
+    super.initState();
+    _weekStart = _mondayOf(DateTime.now());
+  }
+
+  static DateTime _mondayOf(DateTime d) {
+    final stripped = DateTime(d.year, d.month, d.day);
+    return stripped.subtract(Duration(days: stripped.weekday - DateTime.monday));
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
 
-    final days = <_Day>[
-      _Day(name: 'Mon', number: '14', events: [
-        _Event(name: 'Bob', icon: Icons.water_drop_outlined),
-        _Event(name: 'Ivy', icon: Icons.eco_outlined),
-      ]),
-      _Day(name: 'Tue', number: '15', events: [
-        _Event(name: 'Fern', icon: Icons.water_drop_outlined),
-        _Event(name: 'Oak', icon: Icons.water_drop_outlined),
-      ]),
-      _Day(name: 'Wed', number: '16', events: []),
-      _Day(name: 'Thu', number: '17', events: [
-        _Event(name: 'Bob', icon: Icons.water_drop_outlined),
-        _Event(name: 'Rose', icon: Icons.local_florist_outlined),
-      ]),
-      _Day(name: 'Fri', number: '18', today: true, events: [
-        _Event(name: 'Monty', icon: Icons.water_drop_outlined),
-      ]),
-      _Day(name: 'Sat', number: '19', events: [
-        _Event(name: 'Ivy', icon: Icons.water_drop_outlined, skip: true),
-        _Event(name: 'Oak', icon: Icons.eco_outlined),
-      ]),
-      _Day(name: 'Sun', number: '20', events: [
-        _Event(name: 'Fern', icon: Icons.water_drop_outlined),
-      ]),
+    final schedulesAsync = ref.watch(allSchedulesProvider);
+    final eventsAsync = ref.watch(recentCareEventsProvider);
+    final plantsById = ref.watch(plantsStreamProvider).maybeWhen(
+          data: (rows) => {for (final p in rows) p.id: p},
+          orElse: () => const <String, db.PlantRow>{},
+        );
+
+    final weekDays = <_DayBucket>[
+      for (var i = 0; i < 7; i++) _DayBucket(date: _weekStart.add(Duration(days: i))),
     ];
+    final weekEnd = _weekStart.add(const Duration(days: 7));
+
+    // Populate buckets with schedules due this week.
+    schedulesAsync.whenData((schedules) {
+      for (final s in schedules) {
+        if (s.nextDueAt == null) continue;
+        final due = DateTime.fromMillisecondsSinceEpoch(s.nextDueAt!, isUtc: true).toLocal();
+        final day = DateTime(due.year, due.month, due.day);
+        if (day.isBefore(_weekStart) || !day.isBefore(weekEnd)) continue;
+        final idx = day.difference(_weekStart).inDays;
+        weekDays[idx].scheduled.add(s);
+      }
+    });
+
+    // And any events already recorded this week, so the user can see "oh,
+    // I already did that on Tuesday."
+    eventsAsync.whenData((events) {
+      for (final e in events) {
+        final done = DateTime.fromMillisecondsSinceEpoch(e.doneAt, isUtc: true).toLocal();
+        final day = DateTime(done.year, done.month, done.day);
+        if (day.isBefore(_weekStart) || !day.isBefore(weekEnd)) continue;
+        final idx = day.difference(_weekStart).inDays;
+        weekDays[idx].done.add(e);
+      }
+    });
+
+    final today = DateTime.now();
+    final todayStripped = DateTime(today.year, today.month, today.day);
+    final isCurrentWeek =
+        !todayStripped.isBefore(_weekStart) && todayStripped.isBefore(weekEnd);
+    final rangeLabel = _rangeLabel(_weekStart, weekEnd.subtract(const Duration(days: 1)));
+    final titleLabel = isCurrentWeek
+        ? 'This week'
+        : todayStripped.isBefore(_weekStart)
+            ? 'Upcoming week'
+            : 'Past week';
 
     return Scaffold(
       backgroundColor: surface.bg,
@@ -53,11 +98,11 @@ class CalendarScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'APR 14 – 20',
+              rangeLabel.toUpperCase(),
               style: TextStyle(fontSize: 11, color: surface.muted, fontWeight: FontWeight.w500, letterSpacing: 0.08 * 11),
             ),
             Text(
-              'This week',
+              titleLabel,
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
@@ -67,12 +112,28 @@ class CalendarScreen extends ConsumerWidget {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Previous week',
+            onPressed: () => setState(() => _weekStart = _weekStart.subtract(const Duration(days: 7))),
+            icon: Icon(Icons.arrow_back_ios_new, size: 18, color: surface.text),
+          ),
+          if (!isCurrentWeek)
+            IconButton(
+              tooltip: 'This week',
+              onPressed: () => setState(() => _weekStart = _mondayOf(DateTime.now())),
+              icon: Icon(Icons.today_outlined, color: surface.text),
+            ),
+          IconButton(
+            tooltip: 'Next week',
+            onPressed: () => setState(() => _weekStart = _weekStart.add(const Duration(days: 7))),
+            icon: Icon(Icons.arrow_forward_ios, size: 18, color: surface.text),
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         children: [
-          _RainBanner(surface: surface),
-          const SizedBox(height: 16),
           Container(
             decoration: BoxDecoration(
               color: surface.surface,
@@ -82,115 +143,60 @@ class CalendarScreen extends ConsumerWidget {
             clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
-                for (var i = 0; i < days.length; i++)
-                  _DayRow(day: days[i], surface: surface, last: i == days.length - 1),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Day {
-  _Day({required this.name, required this.number, required this.events, this.today = false});
-  final String name;
-  final String number;
-  final bool today;
-  final List<_Event> events;
-}
-
-class _Event {
-  const _Event({required this.name, required this.icon, this.skip = false});
-  final String name;
-  final IconData icon;
-  final bool skip;
-}
-
-class _RainBanner extends StatelessWidget {
-  const _RainBanner({required this.surface});
-  final PlantlySurface surface;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
-        gradient: LinearGradient(
-          colors: [surface.greenDeep, surface.green],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(PlantlyTokens.radius),
-            ),
-            child: const Icon(Icons.water_drop_outlined, size: 18, color: Colors.white),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'SAT · RAIN EXPECTED',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                    letterSpacing: 0.08 * 11,
+                for (var i = 0; i < weekDays.length; i++)
+                  _DayRow(
+                    bucket: weekDays[i],
+                    isToday: weekDays[i].date == todayStripped,
+                    plantsById: plantsById,
+                    surface: surface,
+                    last: i == weekDays.length - 1,
                   ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  "Skip outdoor watering — we'll reschedule.",
-                  style: TextStyle(fontSize: 13, color: Colors.white),
-                ),
               ],
             ),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(
-              backgroundColor: Colors.white.withValues(alpha: 0.22),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radiusMd)),
-            ),
-            onPressed: () {
-              ScaffoldMessenger.of(context)
-                ..clearSnackBars()
-                ..showSnackBar(const SnackBar(content: Text('Applied rain-day schedule skip')));
-            },
-            child: const Text('Apply'),
           ),
         ],
       ),
     );
   }
+
+  String _rangeLabel(DateTime from, DateTime to) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (from.month == to.month) {
+      return '${months[from.month - 1]} ${from.day}–${to.day}';
+    }
+    return '${months[from.month - 1]} ${from.day} – ${months[to.month - 1]} ${to.day}';
+  }
+}
+
+class _DayBucket {
+  _DayBucket({required this.date});
+  final DateTime date;
+  final List<db.CareScheduleRow> scheduled = [];
+  final List<db.CareEventRow> done = [];
 }
 
 class _DayRow extends StatelessWidget {
-  const _DayRow({required this.day, required this.surface, required this.last});
-  final _Day day;
+  const _DayRow({
+    required this.bucket,
+    required this.isToday,
+    required this.plantsById,
+    required this.surface,
+    required this.last,
+  });
+  final _DayBucket bucket;
+  final bool isToday;
+  final Map<String, db.PlantRow> plantsById;
   final PlantlySurface surface;
   final bool last;
 
   @override
   Widget build(BuildContext context) {
+    const weekdayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final weekday = weekdayNames[bucket.date.weekday - DateTime.monday];
+
     return Container(
       decoration: BoxDecoration(
-        color: day.today ? surface.greenSoft : null,
+        color: isToday ? surface.greenSoft : null,
         border: last ? null : Border(bottom: BorderSide(color: surface.border)),
       ),
       padding: const EdgeInsets.all(14),
@@ -203,25 +209,25 @@ class _DayRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  day.name.toUpperCase(),
+                  weekday.toUpperCase(),
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: day.today ? surface.green : surface.muted,
+                    color: isToday ? surface.green : surface.muted,
                     letterSpacing: 0.1 * 11,
                   ),
                 ),
                 Text(
-                  day.number,
+                  bucket.date.day.toString(),
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
-                    color: day.today ? surface.green : surface.text,
+                    color: isToday ? surface.green : surface.text,
                     letterSpacing: -0.02 * 22,
                     height: 1,
                   ),
                 ),
-                if (day.today)
+                if (isToday)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
@@ -237,13 +243,27 @@ class _DayRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (day.events.isEmpty)
+                if (bucket.scheduled.isEmpty && bucket.done.isEmpty)
                   Text(
                     'Clear',
                     style: TextStyle(fontSize: 12, color: surface.muted, fontStyle: FontStyle.italic),
                   ),
-                for (final e in day.events) ...[
-                  _EventRow(event: e, surface: surface),
+                for (final s in bucket.scheduled) ...[
+                  _ScheduleRow(
+                    schedule: s,
+                    plantName: plantsById[s.plantId]?.nickname ?? s.plantId,
+                    plantId: s.plantId,
+                    surface: surface,
+                  ),
+                  const SizedBox(height: 5),
+                ],
+                for (final e in bucket.done) ...[
+                  _DoneRow(
+                    event: e,
+                    plantName: plantsById[e.plantId]?.nickname ?? e.plantId,
+                    plantId: e.plantId,
+                    surface: surface,
+                  ),
                   const SizedBox(height: 5),
                 ],
               ],
@@ -255,47 +275,157 @@ class _DayRow extends StatelessWidget {
   }
 }
 
-class _EventRow extends StatelessWidget {
-  const _EventRow({required this.event, required this.surface});
-  final _Event event;
+class _ScheduleRow extends StatelessWidget {
+  const _ScheduleRow({
+    required this.schedule,
+    required this.plantName,
+    required this.plantId,
+    required this.surface,
+  });
+  final db.CareScheduleRow schedule;
+  final String plantName;
+  final String plantId;
   final PlantlySurface surface;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: event.skip ? surface.terraSoft : surface.surfaceAlt,
-        borderRadius: BorderRadius.circular(PlantlyTokens.radius),
-        border: Border.all(color: surface.border),
-      ),
-      child: Row(
-        children: [
-          Icon(event.icon, size: 13, color: event.skip ? surface.terra : surface.green),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              event.name,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: surface.text,
-                decoration: event.skip ? TextDecoration.lineThrough : null,
+    return InkWell(
+      borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: plantId)),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: surface.surfaceAlt,
+          borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+          border: Border.all(color: surface.border),
+        ),
+        child: Row(
+          children: [
+            Icon(_iconFor(schedule.type), size: 13, color: surface.green),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                plantName,
+                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: surface.text),
               ),
             ),
-          ),
-          if (event.skip)
             Text(
-              'SKIP',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: surface.terra,
-                letterSpacing: 0.06 * 10,
-              ),
+              _verb(schedule.type).toLowerCase(),
+              style: TextStyle(fontSize: 11, color: surface.muted),
             ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+}
+
+class _DoneRow extends StatelessWidget {
+  const _DoneRow({
+    required this.event,
+    required this.plantName,
+    required this.plantId,
+    required this.surface,
+  });
+  final db.CareEventRow event;
+  final String plantName;
+  final String plantId;
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: plantId)),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: surface.greenSoft,
+          borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+          border: Border.all(color: surface.border),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.check_circle_outline, size: 13, color: surface.green),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                plantName,
+                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: surface.text),
+              ),
+            ),
+            Text(
+              _pastTense(event.type).toLowerCase(),
+              style: TextStyle(fontSize: 11, color: surface.muted),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+IconData _iconFor(String type) {
+  switch (type) {
+    case 'fertilize':
+      return Icons.eco_outlined;
+    case 'rotate':
+      return Icons.light_mode_outlined;
+    case 'mist':
+      return Icons.bubble_chart_outlined;
+    case 'repot':
+      return Icons.local_florist_outlined;
+    case 'prune':
+      return Icons.content_cut_outlined;
+    case 'water':
+      return Icons.water_drop_outlined;
+    default:
+      return Icons.notifications_active_outlined;
+  }
+}
+
+String _verb(String type) {
+  switch (type) {
+    case 'water':
+      return 'Water';
+    case 'fertilize':
+      return 'Fertilize';
+    case 'mist':
+      return 'Mist';
+    case 'repot':
+      return 'Repot';
+    case 'prune':
+      return 'Prune';
+    case 'rotate':
+      return 'Rotate';
+    default:
+      return type.isEmpty ? 'Care' : '${type[0].toUpperCase()}${type.substring(1)}';
+  }
+}
+
+String _pastTense(String type) {
+  switch (type) {
+    case 'water':
+      return 'Watered';
+    case 'fertilize':
+      return 'Fertilized';
+    case 'mist':
+      return 'Misted';
+    case 'repot':
+      return 'Repotted';
+    case 'prune':
+      return 'Pruned';
+    case 'rotate':
+      return 'Rotated';
+    default:
+      return type.isEmpty ? 'Logged' : '${type[0].toUpperCase()}${type.substring(1)}';
   }
 }

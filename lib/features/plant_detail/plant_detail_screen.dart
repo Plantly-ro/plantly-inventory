@@ -14,10 +14,13 @@ import '../../theme/tokens.dart';
 import '../export/export_dialog.dart';
 import '../home/home_providers.dart';
 import 'add_reminder_sheet.dart';
+import 'inventory_action_sheet.dart';
 import 'log_event_sheet.dart';
 import 'propagate_dialog.dart';
 
-/// Port of `PlantDetail` in `web/prototype/components/screens.jsx`.
+/// Live Plant Detail screen. Reads everything from Drift; `MockPlants` is
+/// only consulted for the decorative colour swatch used by the photo
+/// fallback stub.
 class PlantDetailScreen extends ConsumerWidget {
   const PlantDetailScreen({super.key, required this.plantId});
   final String plantId;
@@ -26,9 +29,78 @@ class PlantDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
-    final plant = MockPlants.byId(plantId);
+    final plantAsync = ref.watch(plantByIdProvider(plantId));
+    final swatch = MockPlants.byId(plantId);
 
-    final attachedAsync = ref.watch(attachedPhotosProvider(plantId));
+    return plantAsync.when(
+      loading: () => Scaffold(
+        backgroundColor: surface.bg,
+        body: Center(child: CircularProgressIndicator(color: surface.green)),
+      ),
+      error: (e, _) => Scaffold(
+        backgroundColor: surface.bg,
+        appBar: AppBar(backgroundColor: surface.bg, elevation: 0),
+        body: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text('Failed to load plant.\n$e', style: TextStyle(color: surface.terra)),
+        ),
+      ),
+      data: (plantRow) {
+        if (plantRow == null || plantRow.deletedAt != null) {
+          return Scaffold(
+            backgroundColor: surface.bg,
+            appBar: AppBar(
+              backgroundColor: surface.bg,
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(Icons.chevron_left, color: surface.text),
+                onPressed: () => Navigator.of(context).maybePop(),
+              ),
+            ),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'This plant is no longer in your collection.',
+                  style: TextStyle(color: surface.muted),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          );
+        }
+        return _PlantDetailBody(
+          plantRow: plantRow,
+          surface: surface,
+          swatch: swatch,
+        );
+      },
+    );
+  }
+}
+
+class _PlantDetailBody extends ConsumerWidget {
+  const _PlantDetailBody({
+    required this.plantRow,
+    required this.surface,
+    required this.swatch,
+  });
+
+  final db.PlantRow plantRow;
+  final PlantlySurface surface;
+  final MockPlant swatch;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final plantId = plantRow.id;
+    final locationAsync = plantRow.locationId == null
+        ? null
+        : ref.watch(locationByIdProvider(plantRow.locationId!));
+    final locationName = locationAsync?.maybeWhen(
+          data: (loc) => loc?.name,
+          orElse: () => null,
+        ) ??
+        (plantRow.locationId == null ? 'No location set' : 'Loading location…');
 
     return Scaffold(
       backgroundColor: surface.bg,
@@ -47,10 +119,6 @@ class PlantDetailScreen extends ConsumerWidget {
               final picker = ref.read(photoPickerProvider);
               final picked = await picker.pickMultipleFromGallery();
               if (picked.isEmpty) return;
-              // Shrink before hashing: the hash changes after compression,
-              // which is the desired behaviour — a 20 MB camera capture
-              // and its 600 KB display-resize are semantically different
-              // images as far as the content-addressed store is concerned.
               final processor = ref.read(imageProcessorProvider);
               final photos = ref.read(photoRepositoryProvider);
               final joins = ref.read(plantPhotoRepositoryProvider);
@@ -64,21 +132,45 @@ class PlantDetailScreen extends ConsumerWidget {
           PopupMenuButton<String>(
             icon: Icon(Icons.more_horiz, color: surface.text),
             onSelected: (value) async {
-              if (value == 'propagate') {
-                final child = await PropagateDialog.show(
-                  context,
-                  parentId: plantId,
-                  parentName: plant.name,
-                );
-                if (child != null && context.mounted) {
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: child.id)),
+              switch (value) {
+                case 'propagate':
+                  final child = await PropagateDialog.show(
+                    context,
+                    parentId: plantId,
+                    parentName: plantRow.nickname,
                   );
-                }
+                  if (child != null && context.mounted) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: child.id)),
+                    );
+                  }
+                  break;
+                case 'move':
+                  await _pickLocationDialog(context, ref, plantRow);
+                  break;
+                case 'gift':
+                case 'sale':
+                case 'death':
+                  final navigator = Navigator.of(context);
+                  final closed = await showModalBottomSheet<bool>(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => InventoryActionSheet(plantRow: plantRow, type: value),
+                  );
+                  if (closed == true && context.mounted) {
+                    navigator.maybePop();
+                  }
+                  break;
               }
             },
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'propagate', child: Text('Propagate')),
+              PopupMenuItem(value: 'move', child: Text('Move to space…')),
+              PopupMenuItem(value: 'propagate', child: Text('Propagate…')),
+              PopupMenuDivider(),
+              PopupMenuItem(value: 'gift', child: Text('Gave away…')),
+              PopupMenuItem(value: 'sale', child: Text('Sold…')),
+              PopupMenuItem(value: 'death', child: Text('Marked dead…')),
             ],
           ),
         ],
@@ -89,13 +181,7 @@ class PlantDetailScreen extends ConsumerWidget {
             aspectRatio: 1.3,
             child: Container(
               color: surface.surfaceAlt,
-              child: attachedAsync.when(
-                loading: () => Center(child: PlantThumb(plant: plant, size: 280)),
-                error: (_, _) => Center(child: PlantThumb(plant: plant, size: 280)),
-                data: (shas) => shas.isEmpty
-                    ? Center(child: PlantThumb(plant: plant, size: 280))
-                    : _HeroPhoto(sha: shas.first, ref: ref, fallback: plant),
-              ),
+              child: _HeroCarousel(plantId: plantId, fallback: swatch, surface: surface),
             ),
           ),
           Padding(
@@ -104,7 +190,7 @@ class PlantDetailScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  plant.name,
+                  plantRow.nickname,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: PlantlyTokens.text2xl,
                     fontWeight: FontWeight.w800,
@@ -112,57 +198,31 @@ class PlantDetailScreen extends ConsumerWidget {
                     letterSpacing: -0.02 * PlantlyTokens.text2xl,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  plant.latin,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: surface.muted,
-                    fontStyle: FontStyle.italic,
+                if (swatch.latin.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    swatch.latin,
+                    style: TextStyle(fontSize: 13, color: surface.muted, fontStyle: FontStyle.italic),
                   ),
-                ),
+                ],
                 const SizedBox(height: 10),
                 Row(
                   children: [
                     Icon(Icons.place_outlined, size: 12, color: surface.muted),
                     const SizedBox(width: 5),
-                    Flexible(
-                      child: Text(
-                        plant.location,
-                        style: TextStyle(fontSize: 12, color: surface.muted),
-                      ),
-                    ),
+                    Flexible(child: Text(locationName, style: TextStyle(fontSize: 12, color: surface.muted))),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Acquired ${plant.acquired}',
+                  plantRow.acquiredAt == null
+                      ? 'Added ${_dateShort(DateTime.now())}'
+                      : 'Acquired ${_dateShort(DateTime.fromMillisecondsSinceEpoch(plantRow.acquiredAt!, isUtc: true).toLocal())}',
                   style: TextStyle(fontSize: 12, color: surface.muted),
                 ),
-                if (plant.tags.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      for (final tag in plant.tags)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: surface.greenSoft,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            '#$tag',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: surface.green,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+                if (plantRow.notes != null && plantRow.notes!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(plantRow.notes!, style: TextStyle(fontSize: 13, color: surface.text)),
                 ],
               ],
             ),
@@ -187,7 +247,7 @@ class PlantDetailScreen extends ConsumerWidget {
                   context: context,
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
-                  builder: (_) => ExportDialog(plant: plant),
+                  builder: (_) => ExportDialog(plantRow: plantRow),
                 );
               },
             ),
@@ -196,26 +256,203 @@ class PlantDetailScreen extends ConsumerWidget {
       ),
     );
   }
+
+  Future<void> _pickLocationDialog(
+    BuildContext context,
+    WidgetRef ref,
+    db.PlantRow plant,
+  ) async {
+    final locations = ref.read(locationsStreamProvider).maybeWhen(
+          data: (rows) => rows,
+          orElse: () => const <db.LocationRow>[],
+        );
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          title: const Text('Move to space'),
+          content: SizedBox(
+            width: 320,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.clear),
+                  title: const Text('— no location —'),
+                  selected: plant.locationId == null,
+                  onTap: () async {
+                    final nav = Navigator.of(dialogCtx);
+                    await ref.read(plantRepositoryProvider).setLocation(plant.id, null);
+                    nav.maybePop();
+                  },
+                ),
+                if (locations.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text('No spaces yet — add one from the Spaces tab.'),
+                  )
+                else
+                  Flexible(
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: [
+                        for (final loc in locations)
+                          ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.place_outlined),
+                            title: Text(loc.name),
+                            subtitle: Text(loc.kind),
+                            selected: plant.locationId == loc.id,
+                            onTap: () async {
+                              final nav = Navigator.of(dialogCtx);
+                              await ref.read(plantRepositoryProvider).setLocation(plant.id, loc.id);
+                              nav.maybePop();
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  static String _dateShort(DateTime d) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[d.month - 1]} ${d.day}, ${d.year}';
+  }
 }
 
-class _HeroPhoto extends StatelessWidget {
-  const _HeroPhoto({required this.sha, required this.ref, required this.fallback});
-  final String sha;
-  final WidgetRef ref;
+class _HeroCarousel extends ConsumerStatefulWidget {
+  const _HeroCarousel({required this.plantId, required this.fallback, required this.surface});
+  final String plantId;
   final MockPlant fallback;
+  final PlantlySurface surface;
+
+  @override
+  ConsumerState<_HeroCarousel> createState() => _HeroCarouselState();
+}
+
+class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
+  final _pageController = PageController();
+  int _index = 0;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final repo = ref.read(photoRepositoryProvider);
+    final attachedAsync = ref.watch(attachedPhotosProvider(widget.plantId));
+    return attachedAsync.when(
+      loading: () => Center(child: PlantThumb(plant: widget.fallback, size: 280)),
+      error: (_, _) => Center(child: PlantThumb(plant: widget.fallback, size: 280)),
+      data: (shas) {
+        if (shas.isEmpty) {
+          return Center(child: PlantThumb(plant: widget.fallback, size: 280));
+        }
+        // Clamp page index if the user detached the current photo.
+        final current = _index.clamp(0, shas.length - 1);
+        if (current != _index) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            if (_pageController.hasClients) _pageController.jumpToPage(current);
+            setState(() => _index = current);
+          });
+        }
+        return Stack(
+          children: [
+            PageView.builder(
+              controller: _pageController,
+              itemCount: shas.length,
+              onPageChanged: (i) => setState(() => _index = i),
+              itemBuilder: (_, i) => GestureDetector(
+                onLongPress: () => _confirmDetach(shas[i]),
+                child: _PhotoView(sha: shas[i], fallback: widget.fallback),
+              ),
+            ),
+            if (shas.length > 1)
+              Positioned(
+                bottom: 10,
+                left: 0,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (var i = 0; i < shas.length; i++)
+                      Container(
+                        width: 7,
+                        height: 7,
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: i == _index
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.45),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${_index + 1} / ${shas.length}',
+                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmDetach(String sha) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove photo?'),
+        content: const Text('The file stays on disk (other plants may use it) — it just detaches from this plant.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Remove')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await ref.read(plantPhotoRepositoryProvider).detach(widget.plantId, sha);
+    }
+  }
+}
+
+class _PhotoView extends ConsumerWidget {
+  const _PhotoView({required this.sha, required this.fallback});
+  final String sha;
+  final MockPlant fallback;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final repo = ref.watch(photoRepositoryProvider);
     return FutureBuilder(
       future: repo.byHash(sha),
       builder: (context, snap) {
         final path = snap.data?.localPath;
-        if (path != null) {
-          final file = File(path);
-          if (file.existsSync()) {
-            return Image.file(file, fit: BoxFit.cover, width: double.infinity);
-          }
+        if (path != null && File(path).existsSync()) {
+          return Image.file(File(path), fit: BoxFit.cover, width: double.infinity);
         }
         return Center(child: PlantThumb(plant: fallback, size: 280));
       },
@@ -489,11 +726,7 @@ class _AddReminderButton extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 'Add reminder',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: surface.green,
-                ),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: surface.green),
               ),
             ],
           ),
@@ -677,11 +910,7 @@ class _LogEventButton extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 'Log event',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: surface.green,
-                ),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: surface.green),
               ),
             ],
           ),
@@ -717,11 +946,7 @@ class _ExportCTA extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 'Post on plantly.ro',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: surface.terra,
-                ),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: surface.terra),
               ),
             ],
           ),

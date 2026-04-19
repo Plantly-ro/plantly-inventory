@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import '../../theme/tokens.dart';
 import 'home_providers.dart';
@@ -20,6 +21,7 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
   final _nickname = TextEditingController();
   final _notes = TextEditingController();
   bool _saving = false;
+  String? _locationId;
 
   @override
   void dispose() {
@@ -33,6 +35,10 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
     final repo = ref.watch(plantRepositoryProvider);
+    final locations = ref.watch(locationsStreamProvider).maybeWhen(
+          data: (rows) => rows,
+          orElse: () => const <LocationRow>[],
+        );
 
     Future<void> submit() async {
       final name = _nickname.text.trim();
@@ -45,6 +51,7 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
         await repo.create(
           nickname: name,
           notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+          locationId: _locationId,
         );
         if (!mounted) return;
         navigator.maybePop();
@@ -107,6 +114,42 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
                   border: OutlineInputBorder(),
                 ),
               ),
+              const SizedBox(height: 12),
+              Text(
+                'SPACE',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: surface.muted,
+                  letterSpacing: 0.08 * 11,
+                ),
+              ),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<String?>(
+                initialValue: _locationId,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  hintText: 'Optional',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  const DropdownMenuItem<String?>(value: null, child: Text('— no location —')),
+                  for (final loc in locations)
+                    DropdownMenuItem<String?>(
+                      value: loc.id,
+                      child: Text('${loc.name} · ${loc.kind}', overflow: TextOverflow.ellipsis),
+                    ),
+                ],
+                onChanged: locations.isEmpty ? null : (v) => setState(() => _locationId = v),
+              ),
+              if (locations.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    'Add a space from the Spaces tab first.',
+                    style: TextStyle(fontSize: 11, color: surface.muted),
+                  ),
+                ),
               const SizedBox(height: 12),
               Text(
                 'NOTES',

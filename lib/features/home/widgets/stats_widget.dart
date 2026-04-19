@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../data/providers.dart';
 import '../../../theme/tokens.dart';
 import 'widget_shell.dart';
 
-/// Port of `widgetRegistry.stats.render` — four tiles in a 2×2 grid.
-class StatsWidget extends StatelessWidget {
+/// Live 2×2 stats grid: overdue, due today, plants, spaces.
+class StatsWidget extends ConsumerWidget {
   const StatsWidget({
     super.key,
     required this.surface,
@@ -21,15 +23,30 @@ class StatsWidget extends StatelessWidget {
   final VoidCallback? onMoveDown;
   final VoidCallback? onRemove;
 
-  static const _tiles = <_Stat>[
-    _Stat('2', 'Overdue', Icons.water_drop_outlined, urgent: true),
-    _Stat('3', 'Due today', Icons.check, urgent: false),
-    _Stat('24', 'Plants', Icons.eco_outlined, urgent: false),
-    _Stat('6', 'Spaces', Icons.place_outlined, urgent: false),
-  ];
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dueAsync = ref.watch(dueBeforeEodProvider);
+    final plantsAsync = ref.watch(plantsStreamProvider);
+    final locsAsync = ref.watch(locationsStreamProvider);
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final overdue = dueAsync.maybeWhen(
+      data: (rows) => rows.where((s) => s.nextDueAt != null && s.nextDueAt! < nowMs).length,
+      orElse: () => null,
+    );
+    final today = dueAsync.maybeWhen(
+      data: (rows) => rows.where((s) => s.nextDueAt != null && s.nextDueAt! >= nowMs).length,
+      orElse: () => null,
+    );
+    final plants = plantsAsync.maybeWhen(data: (r) => r.length, orElse: () => null);
+    final spaces = locsAsync.maybeWhen(data: (r) => r.length, orElse: () => null);
+
+    final tiles = <_Stat>[
+      _Stat(_fmt(overdue), 'Overdue', Icons.water_drop_outlined, urgent: (overdue ?? 0) > 0),
+      _Stat(_fmt(today), 'Due today', Icons.check, urgent: false),
+      _Stat(_fmt(plants), 'Plants', Icons.eco_outlined, urgent: false),
+      _Stat(_fmt(spaces), 'Spaces', Icons.place_outlined, urgent: false),
+    ];
+
     return WidgetShell(
       surface: surface,
       editing: editing,
@@ -43,10 +60,12 @@ class StatsWidget extends StatelessWidget {
         childAspectRatio: 1.75,
         mainAxisSpacing: 10,
         crossAxisSpacing: 10,
-        children: _tiles.map((t) => _TileView(t, surface)).toList(growable: false),
+        children: tiles.map((t) => _TileView(t, surface)).toList(growable: false),
       ),
     );
   }
+
+  String _fmt(int? v) => v == null ? '…' : '$v';
 }
 
 class _Stat {

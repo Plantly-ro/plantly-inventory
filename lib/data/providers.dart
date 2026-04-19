@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -55,6 +58,9 @@ final appContextProvider = FutureProvider<AppContext>((ref) async {
   final clock = HlcClock(deviceId: deviceId);
   final opLog = OpLogWriter(db: db, clock: clock, tenantId: kDefaultTenantId);
   await seedIfEmpty(db: db, opLog: opLog);
+  // Ask once at bootstrap so reminders can fire from day 1. Failures are
+  // non-fatal — the user can deny and still use the rest of the app.
+  unawaited(ref.read(notificationServiceProvider).requestPermissions().catchError((_) => false));
   return AppContext(db: db, clock: clock, opLog: opLog, deviceId: deviceId);
 });
 
@@ -109,6 +115,50 @@ final schedulesForPlantProvider =
 final careEventsForPlantProvider =
     StreamProvider.family<List<CareEventRow>, String>((ref, plantId) {
   return ref.watch(careEventRepositoryProvider).watchForPlant(plantId);
+});
+
+/// Live single-plant row — lets Plant Detail read current nickname /
+/// location / species without falling back to MockPlants.
+final plantByIdProvider =
+    StreamProvider.family<PlantRow?, String>((ref, plantId) {
+  return ref.watch(plantRepositoryProvider).watchById(plantId);
+});
+
+/// Live single-location row by id. Used by Plant Detail header.
+final locationByIdProvider =
+    FutureProvider.family<LocationRow?, String>((ref, locationId) async {
+  return ref.watch(locationRepositoryProvider).byId(locationId);
+});
+
+/// Plants currently assigned to a given location.
+final plantsByLocationProvider =
+    StreamProvider.family<List<PlantRow>, String>((ref, locationId) {
+  return ref.watch(plantRepositoryProvider).watchByLocation(locationId);
+});
+
+/// Every non-deleted care event in the database, newest first. Feeds the
+/// Home screen's Recent Activity widget + the "View all" activity screen.
+/// Small app, small dataset — no pagination needed in Phase 1.
+final recentCareEventsProvider = StreamProvider<List<CareEventRow>>((ref) {
+  final ctx = ref.watch(appContextProvider).requireValue;
+  return (ctx.db.select(ctx.db.careEvents)
+        ..where((e) => e.tenantId.equals(ctx.opLog.tenantId) & e.deletedAt.isNull())
+        ..orderBy([(e) => OrderingTerm(expression: e.doneAt, mode: OrderingMode.desc)]))
+      .watch();
+});
+
+/// Every non-deleted schedule across every plant, ordered by next_due_at.
+/// Feeds the Calendar's weekly pivot.
+final allSchedulesProvider = StreamProvider<List<CareScheduleRow>>((ref) {
+  final ctx = ref.watch(appContextProvider).requireValue;
+  return (ctx.db.select(ctx.db.careSchedules)
+        ..where((s) =>
+            s.tenantId.equals(ctx.opLog.tenantId) &
+            s.deletedAt.isNull() &
+            s.enabled.equals(true) &
+            s.nextDueAt.isNotNull())
+        ..orderBy([(s) => OrderingTerm(expression: s.nextDueAt)]))
+      .watch();
 });
 
 /// "Due today or earlier" — everything OverdueWidget + TodayWidget need.
