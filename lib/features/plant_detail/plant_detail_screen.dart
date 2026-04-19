@@ -16,6 +16,7 @@ import '../home/home_providers.dart';
 import '../../shared/location_picker.dart';
 import 'add_reminder_sheet.dart';
 import 'edit_plant_sheet.dart';
+import 'edit_reminder_sheet.dart';
 import 'inventory_action_sheet.dart';
 import 'log_event_sheet.dart';
 import 'propagate_dialog.dart';
@@ -595,7 +596,16 @@ class _UpcomingRowView extends ConsumerWidget {
     final (label, whenText, urgent) = _describe(schedule);
     final icon = _iconFor(schedule.type);
     final muted = schedule.notificationsMuted;
-    return Container(
+    return InkWell(
+      onLongPress: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => EditReminderSheet(schedule: schedule),
+        );
+      },
+      child: Container(
       decoration: BoxDecoration(
         border: last ? null : Border(bottom: BorderSide(color: surface.border)),
       ),
@@ -689,6 +699,7 @@ class _UpcomingRowView extends ConsumerWidget {
             child: const Text('Snooze'),
           ),
         ],
+      ),
       ),
     );
   }

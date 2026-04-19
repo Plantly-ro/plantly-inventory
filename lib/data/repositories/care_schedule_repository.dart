@@ -221,6 +221,80 @@ class CareScheduleRepository {
     });
   }
 
+  /// In-place edit of an existing schedule. Updates interval, recurrence
+  /// mode, and next_due_at atomically so the adaptive algorithm picks
+  /// up the new baseline on the next care event.
+  Future<void> edit(
+    String scheduleId, {
+    required double baseIntervalDays,
+    required String recurrenceMode,
+    required DateTime nextDueAt,
+  }) async {
+    await db.transaction(() async {
+      await opLog.recordFieldUpdate(
+        entity: 'care_schedules',
+        entityId: scheduleId,
+        field: 'base_interval_days',
+        value: baseIntervalDays,
+      );
+      await opLog.recordFieldUpdate(
+        entity: 'care_schedules',
+        entityId: scheduleId,
+        field: 'current_interval_days',
+        value: baseIntervalDays,
+      );
+      await opLog.recordFieldUpdate(
+        entity: 'care_schedules',
+        entityId: scheduleId,
+        field: 'recurrence_mode',
+        value: recurrenceMode,
+      );
+      final hlc = await opLog.recordFieldUpdate(
+        entity: 'care_schedules',
+        entityId: scheduleId,
+        field: 'next_due_at',
+        value: nextDueAt.millisecondsSinceEpoch,
+      );
+      await (db.update(db.careSchedules)..where((r) => r.id.equals(scheduleId))).write(
+        CareSchedulesCompanion(
+          baseIntervalDays: Value(baseIntervalDays),
+          // Reset the adaptive window — a manual edit is an authoritative
+          // signal from the user that overrides past snooze/early data.
+          currentIntervalDays: Value(baseIntervalDays),
+          recurrenceMode: Value(recurrenceMode),
+          nextDueAt: Value(nextDueAt.millisecondsSinceEpoch),
+          enabled: const Value(true),
+          snoozeCount: const Value(0),
+          recentEventsJson: const Value('[]'),
+          updatedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+    try {
+      await reminderSync?.syncFromDatabase();
+    } catch (_) {}
+  }
+
+  /// Remove a schedule entirely (tombstone). For one-off reminders the
+  /// "once" recurrence mode handles auto-disable; this is the explicit
+  /// user-pulled-the-plug path.
+  Future<void> softDelete(String scheduleId) async {
+    await db.transaction(() async {
+      final hlc = await opLog.recordTombstone(entity: 'care_schedules', entityId: scheduleId);
+      await (db.update(db.careSchedules)..where((r) => r.id.equals(scheduleId))).write(
+        CareSchedulesCompanion(
+          deletedAt: Value(DateTime.now().toUtc().millisecondsSinceEpoch),
+          updatedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+    try {
+      await reminderSync?.syncFromDatabase();
+    } catch (_) {}
+  }
+
   /// Toggle per-schedule notification mute. ReminderSync reads this.
   Future<void> setNotificationsMuted(String scheduleId, bool muted) async {
     await db.transaction(() async {

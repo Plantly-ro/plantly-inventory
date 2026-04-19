@@ -39,6 +39,7 @@ class BackupService {
       'plant_tags': await _rows(db.plantTags),
       'care_events': await _rows(db.careEvents),
       'care_schedules': await _rows(db.careSchedules),
+      'inventory_transactions': await _rows(db.inventoryTransactions),
     };
     final canonical = json.encode(body);
     final mac = _hmac(canonical, secret);
@@ -95,6 +96,12 @@ class BackupService {
       counts['plant_tags'] = await _restore(db.plantTags, payload['plant_tags'], opLog, 'plant_tags');
       counts['care_events'] = await _restore(db.careEvents, payload['care_events'], opLog, 'care_events');
       counts['care_schedules'] = await _restore(db.careSchedules, payload['care_schedules'], opLog, 'care_schedules');
+      counts['inventory_transactions'] = await _restore(
+        db.inventoryTransactions,
+        payload['inventory_transactions'],
+        opLog,
+        'inventory_transactions',
+      );
     });
     return BackupImportResult(rowsImported: counts);
   }
