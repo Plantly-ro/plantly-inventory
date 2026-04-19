@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../data/care_types.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import '../../notifications/dnd_settings.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../plant_detail/plant_detail_screen.dart';
@@ -88,6 +89,8 @@ class NotificationsScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         children: [
           _PermissionCard(surface: surface, granted: granted),
+          const SizedBox(height: 14),
+          _DndCard(surface: surface),
           const SizedBox(height: 20),
           if (plants.isEmpty && schedules.isEmpty && locations.isEmpty)
             _EmptyState(surface: surface)
@@ -305,6 +308,114 @@ class _MutedRow extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DndCard extends ConsumerWidget {
+  const _DndCard({required this.surface});
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dnd = ref.watch(dndSettingsProvider);
+    return Container(
+      decoration: BoxDecoration(
+        color: surface.surface,
+        border: Border.all(color: surface.border),
+        borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
+      ),
+      child: Column(
+        children: [
+          SwitchListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            title: Row(
+              children: [
+                Icon(Icons.bedtime_outlined, color: surface.green),
+                const SizedBox(width: 10),
+                Text('Do not disturb', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text)),
+              ],
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(left: 34, top: 2),
+              child: Text(
+                dnd.enabled
+                    ? 'Quiet between ${_fmt(dnd.start)} and ${_fmt(dnd.end)} (reminders delayed)'
+                    : 'Fire reminders whenever they\'re due',
+                style: TextStyle(fontSize: 12, color: surface.muted),
+              ),
+            ),
+            value: dnd.enabled,
+            activeThumbColor: surface.green,
+            onChanged: (v) => ref.read(dndSettingsProvider.notifier).setEnabled(v),
+          ),
+          if (dnd.enabled)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _TimeField(
+                      label: 'Start',
+                      value: dnd.start,
+                      surface: surface,
+                      onChanged: (t) => ref.read(dndSettingsProvider.notifier).setStart(t),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _TimeField(
+                      label: 'End',
+                      value: dnd.end,
+                      surface: surface,
+                      onChanged: (t) => ref.read(dndSettingsProvider.notifier).setEnd(t),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _fmt(TimeOfDay t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+}
+
+class _TimeField extends StatelessWidget {
+  const _TimeField({required this.label, required this.value, required this.surface, required this.onChanged});
+  final String label;
+  final TimeOfDay value;
+  final PlantlySurface surface;
+  final ValueChanged<TimeOfDay> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+      onTap: () async {
+        final picked = await showTimePicker(context: context, initialTime: value);
+        if (picked != null) onChanged(picked);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: surface.bg,
+          border: Border.all(color: surface.border),
+          borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: surface.muted, letterSpacing: 1.1)),
+            const SizedBox(height: 2),
+            Text(
+              '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text),
+            ),
+          ],
         ),
       ),
     );

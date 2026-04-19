@@ -139,6 +139,27 @@ class _LogEventSheetState extends ConsumerState<LogEventSheet> {
               textCapitalization: TextCapitalization.sentences,
               decoration: _inputDecoration(surface, hint: 'e.g. Fern spray'),
             ),
+            Consumer(builder: (ctx, cref, _) {
+              final recent = cref.watch(recentProductsProvider).maybeWhen(
+                    data: (list) => list,
+                    orElse: () => const <String>[],
+                  );
+              if (recent.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final p in recent)
+                      ActionChip(
+                        label: Text(p, style: const TextStyle(fontSize: 11)),
+                        onPressed: () => setState(() => _productController.text = p),
+                      ),
+                  ],
+                ),
+              );
+            }),
             const SizedBox(height: 14),
             Text('NOTES (OPTIONAL)', style: _labelStyle(surface)),
             const SizedBox(height: 8),

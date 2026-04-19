@@ -102,6 +102,8 @@ class MeScreen extends ConsumerWidget {
           _BackupRow(surface: surface, withPhotos: true),
           const SizedBox(height: 6),
           _ImportRow(surface: surface),
+          const SizedBox(height: 6),
+          _CsvExportRow(surface: surface),
           const SizedBox(height: 20),
           _SectionLabel(text: 'CALENDAR', surface: surface),
           const SizedBox(height: 8),
@@ -570,6 +572,84 @@ class _ReadOnlyRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CsvExportRow extends ConsumerWidget {
+  const _CsvExportRow({required this.surface});
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return _ActionRow(
+      label: 'Export CSV',
+      value: 'Plants + care events as a spreadsheet-friendly dump.',
+      icon: Icons.table_chart_outlined,
+      surface: surface,
+      onTap: () async {
+        final messenger = ScaffoldMessenger.of(context);
+        try {
+          final ctx = ref.read(appContextProvider).requireValue;
+          final plants = await ctx.db.select(ctx.db.plants).get();
+          final events = await ctx.db.select(ctx.db.careEvents).get();
+          final locations = await ctx.db.select(ctx.db.locations).get();
+          final byLoc = {for (final l in locations) l.id: l.name};
+          final buf = StringBuffer();
+          buf.writeln('type,plant_id,nickname,species,location,status,acquired_at,notes,done_at,care_type,product,dose,care_notes');
+          String esc(String? v) {
+            if (v == null) return '';
+            if (v.contains(',') || v.contains('"') || v.contains('\n')) {
+              return '"${v.replaceAll('"', '""')}"';
+            }
+            return v;
+          }
+          for (final p in plants) {
+            if (p.deletedAt != null) continue;
+            buf.writeln([
+              'plant',
+              esc(p.id),
+              esc(p.nickname),
+              esc(p.speciesId),
+              esc(p.locationId == null ? null : byLoc[p.locationId]),
+              esc(p.status),
+              p.acquiredAt == null ? '' : DateTime.fromMillisecondsSinceEpoch(p.acquiredAt!, isUtc: true).toIso8601String(),
+              esc(p.notes),
+              '', '', '', '', '',
+            ].join(','));
+          }
+          for (final e in events) {
+            if (e.deletedAt != null) continue;
+            final nickname = plants.where((p) => p.id == e.plantId).map((p) => p.nickname).firstOrNull;
+            buf.writeln([
+              'event',
+              esc(e.plantId),
+              esc(nickname),
+              '', '', '', '', '',
+              DateTime.fromMillisecondsSinceEpoch(e.doneAt, isUtc: true).toIso8601String(),
+              esc(e.type),
+              esc(e.product),
+              esc(e.dose),
+              esc(e.notes),
+            ].join(','));
+          }
+          final docs = await getApplicationDocumentsDirectory();
+          final stamp = DateTime.now().toUtc().toIso8601String().replaceAll(':', '-').substring(0, 19);
+          final file = File(p.join(docs.path, 'plantly-export-$stamp.csv'));
+          await file.writeAsString(buf.toString(), flush: true);
+          await SharePlus.instance.share(ShareParams(
+            files: [XFile(file.path)],
+            text: 'PlantlyInventory CSV',
+          ));
+          messenger
+            ..clearSnackBars()
+            ..showSnackBar(SnackBar(content: Text('CSV saved: ${file.path}')));
+        } catch (e) {
+          messenger
+            ..clearSnackBars()
+            ..showSnackBar(SnackBar(content: Text('CSV export failed: $e')));
+        }
+      },
     );
   }
 }

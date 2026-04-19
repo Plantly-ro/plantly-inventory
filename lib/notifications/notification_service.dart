@@ -4,6 +4,7 @@ import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../domain/services/ical_export.dart';
+import 'dnd_settings.dart';
 
 /// Tiny surface over `flutter_local_notifications` so the rest of the app
 /// can schedule/cancel reminders without depending on the plugin directly.
@@ -15,13 +16,27 @@ abstract class NotificationService {
   Future<void> cancel(int id);
   Future<void> cancelAll();
 
+  DndSettings get dnd;
+  set dnd(DndSettings value);
+
   /// Replace the whole schedule in one call — easiest way to keep the OS
-  /// in sync with [ReminderEngine.buildUpcoming].
+  /// in sync with [ReminderEngine.buildUpcoming]. Applies the DND window
+  /// if set, shifting each event out of the quiet hours.
   Future<void> syncAll(Iterable<ICalEvent> events) async {
     await cancelAll();
     var i = 0;
     for (final e in events) {
-      await schedule(id: i++, event: e);
+      final shifted = dnd.enabled
+          ? ICalEvent(
+              uid: e.uid,
+              summary: e.summary,
+              description: e.description,
+              location: e.location,
+              start: dnd.pushPastWindow(e.start.toLocal()).toUtc(),
+              end: e.end == null ? null : dnd.pushPastWindow(e.end!.toLocal()).toUtc(),
+            )
+          : e;
+      await schedule(id: i++, event: shifted);
     }
   }
 }
@@ -31,6 +46,9 @@ class LocalNotificationService extends NotificationService {
 
   final FlutterLocalNotificationsPlugin _plugin;
   bool _ready = false;
+
+  @override
+  DndSettings dnd = DndSettings.disabled;
 
   @override
   Future<void> init() async {
@@ -113,6 +131,9 @@ class FakeNotificationService extends NotificationService {
   bool cancelAllCalled = false;
 
   @override
+  DndSettings dnd = DndSettings.disabled;
+
+  @override
   Future<void> init() async {
     initCalled = true;
   }
@@ -141,7 +162,17 @@ class FakeNotificationService extends NotificationService {
     await cancelAll();
     var i = 0;
     for (final e in events) {
-      await schedule(id: i++, event: e);
+      final shifted = dnd.enabled
+          ? ICalEvent(
+              uid: e.uid,
+              summary: e.summary,
+              description: e.description,
+              location: e.location,
+              start: dnd.pushPastWindow(e.start.toLocal()).toUtc(),
+              end: e.end == null ? null : dnd.pushPastWindow(e.end!.toLocal()).toUtc(),
+            )
+          : e;
+      await schedule(id: i++, event: shifted);
     }
   }
 }

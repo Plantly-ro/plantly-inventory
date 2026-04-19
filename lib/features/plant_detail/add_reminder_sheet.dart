@@ -291,6 +291,14 @@ class _AddReminderSheetState extends ConsumerState<AddReminderSheet> {
                   ),
                 ),
               ),
+              const SizedBox(height: 12),
+              _Preview(
+                unit: _unit,
+                intervalText: _intervalController.text,
+                mode: _recurrenceMode,
+                firstDue: _firstDue,
+                surface: surface,
+              ),
               if (_error != null) ...[
                 const SizedBox(height: 10),
                 Text(_error!, style: TextStyle(color: surface.terra, fontSize: 12)),
@@ -484,5 +492,68 @@ class _ModeChip extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _Preview extends StatelessWidget {
+  const _Preview({
+    required this.unit,
+    required this.intervalText,
+    required this.mode,
+    required this.firstDue,
+    required this.surface,
+  });
+
+  final _Unit unit;
+  final String intervalText;
+  final String mode;
+  final DateTime firstDue;
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = double.tryParse(intervalText.replaceAll(',', '.'));
+    if (count == null || count <= 0) return const SizedBox.shrink();
+    final intervalMs = (unit.toDays(count) * 86400 * 1000).round();
+    final firings = <DateTime>[];
+    var at = firstDue;
+    final limit = mode == 'once' ? 1 : 3;
+    for (var i = 0; i < limit; i++) {
+      firings.add(at);
+      if (mode == 'once') break;
+      at = at.add(Duration(milliseconds: intervalMs));
+    }
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: surface.greenSoft,
+        borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+        border: Border.all(color: surface.green.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            mode == 'once' ? 'FIRES ONCE' : 'NEXT ${firings.length} REMINDERS',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: surface.green, letterSpacing: 1.1),
+          ),
+          const SizedBox(height: 4),
+          for (final d in firings)
+            Text(
+              _formatFull(d),
+              style: TextStyle(fontSize: 12, color: surface.text),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _formatFull(DateTime d) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final wd = weekdays[d.weekday - DateTime.monday];
+    final h = d.hour.toString().padLeft(2, '0');
+    final m = d.minute.toString().padLeft(2, '0');
+    return '$wd, ${months[d.month - 1]} ${d.day} · $h:$m';
   }
 }

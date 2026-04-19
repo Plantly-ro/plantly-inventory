@@ -104,6 +104,30 @@ everything still open into `PLAN.md` Phase 2 and delete this file.
 
 ---
 
+## Fixed in v0.5.9-phase1 (2026-04-19, P1 sweep)
+
+- [x] **Plant duplication.** Overflow → "Duplicate plant" copies
+      nickname, species, location, notes, tags, and care schedules
+      (with fresh first-due dates).
+- [x] **"Water now" FAB on Plant Detail.** One-tap most-common action.
+- [x] **Reminder preview.** AddReminderSheet shows the next 1–3
+      firings before Save so the user can sanity-check the
+      interval + mode combination.
+- [x] **Do-not-disturb window.** Me → Notifications: toggle with
+      start + end time pickers. `NotificationService.syncAll`
+      pushes any event falling inside the quiet hours to the
+      window's end.
+- [x] **Recently-used products.** LogEventSheet surfaces the last
+      10 product values as tappable chips that fill the Product
+      field.
+- [x] **Care-type colour.** `CareType.colorValue` (prefs-backed);
+      8-colour palette + "Default" in the Care Types edit sheet.
+- [x] **CSV export.** Me → Backup: single CSV with both plants
+      and care events, share-sheeted out.
+- [x] **Per-plant stats card.** Plant Detail gets a STATS section
+      showing total events, last care-type + days-ago, and average
+      interval for the most-frequent type.
+
 ## Fixed in v0.5.8-phase1 (2026-04-19, P0 sweep + editing + polish)
 
 - [x] **Plant grid sort** — name A–Z / Z–A / next due / newest /
