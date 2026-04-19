@@ -163,6 +163,11 @@ class _PlantDetailBody extends ConsumerWidget {
                 case 'move':
                   await _pickLocationDialog(context, ref, plantRow);
                   break;
+                case 'mute':
+                  await ref
+                      .read(plantRepositoryProvider)
+                      .setNotificationsMuted(plantRow.id, !plantRow.notificationsMuted);
+                  break;
                 case 'gift':
                 case 'sale':
                 case 'death':
@@ -204,15 +209,21 @@ class _PlantDetailBody extends ConsumerWidget {
                   break;
               }
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'move', child: Text('Move to space…')),
-              PopupMenuItem(value: 'propagate', child: Text('Propagate…')),
-              PopupMenuDivider(),
-              PopupMenuItem(value: 'gift', child: Text('Gave away…')),
-              PopupMenuItem(value: 'sale', child: Text('Sold…')),
-              PopupMenuItem(value: 'death', child: Text('Marked dead…')),
-              PopupMenuDivider(),
-              PopupMenuItem(value: 'delete', child: Text('Delete plant…')),
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'move', child: Text('Move to space…')),
+              const PopupMenuItem(value: 'propagate', child: Text('Propagate…')),
+              PopupMenuItem(
+                value: 'mute',
+                child: Text(plantRow.notificationsMuted
+                    ? 'Unmute notifications'
+                    : 'Mute all notifications'),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(value: 'gift', child: Text('Gave away…')),
+              const PopupMenuItem(value: 'sale', child: Text('Sold…')),
+              const PopupMenuItem(value: 'death', child: Text('Marked dead…')),
+              const PopupMenuDivider(),
+              const PopupMenuItem(value: 'delete', child: Text('Delete plant…')),
             ],
           ),
         ],
@@ -583,6 +594,7 @@ class _UpcomingRowView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final (label, whenText, urgent) = _describe(schedule);
     final icon = _iconFor(schedule.type);
+    final muted = schedule.notificationsMuted;
     return Container(
       decoration: BoxDecoration(
         border: last ? null : Border(bottom: BorderSide(color: surface.border)),
@@ -604,7 +616,15 @@ class _UpcomingRowView extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text)),
+                Row(
+                  children: [
+                    Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text)),
+                    if (muted) ...[
+                      const SizedBox(width: 4),
+                      Icon(Icons.notifications_off_outlined, size: 13, color: surface.muted),
+                    ],
+                  ],
+                ),
                 Text(
                   whenText,
                   style: TextStyle(
@@ -615,6 +635,19 @@ class _UpcomingRowView extends ConsumerWidget {
                 ),
               ],
             ),
+          ),
+          IconButton(
+            tooltip: muted ? 'Unmute this reminder' : 'Mute this reminder',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            icon: Icon(
+              muted ? Icons.notifications_off_outlined : Icons.notifications_outlined,
+              size: 16,
+              color: surface.muted,
+            ),
+            onPressed: () {
+              ref.read(careScheduleRepositoryProvider).setNotificationsMuted(schedule.id, !muted);
+            },
           ),
           TextButton(
             style: TextButton.styleFrom(

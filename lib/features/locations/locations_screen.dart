@@ -10,6 +10,8 @@ import '../../shared/plant_thumb.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import 'assign_plants_sheet.dart';
+import 'location_detail_screen.dart';
+import 'location_edit_sheet.dart';
 
 /// Hierarchical Spaces list + add-dialog + assign-plants flow.
 class LocationsScreen extends ConsumerWidget {
@@ -44,9 +46,11 @@ class LocationsScreen extends ConsumerWidget {
         backgroundColor: surface.green,
         foregroundColor: Colors.white,
         onPressed: () {
-          showDialog(
+          showModalBottomSheet(
             context: context,
-            builder: (_) => const _AddLocationDialog(),
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => const LocationEditSheet(),
           );
         },
         child: const Icon(Icons.add),
@@ -101,14 +105,23 @@ class _LocationTile extends ConsumerWidget {
       children: [
         Padding(
           padding: EdgeInsets.only(left: depth * 20.0, bottom: 4, top: depth == 0 ? 12 : 4),
-          child: Container(
-            decoration: BoxDecoration(
-              color: surface.surface,
-              border: Border.all(color: surface.border),
+          child: Material(
+            color: surface.surface,
+            borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+            child: InkWell(
               borderRadius: BorderRadius.circular(PlantlyTokens.radius),
-            ),
-            padding: const EdgeInsets.all(12),
-            child: Column(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => LocationDetailScreen(locationId: node.row.id)),
+                );
+              },
+              child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: surface.border),
+                borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
@@ -197,6 +210,8 @@ class _LocationTile extends ConsumerWidget {
                 ],
               ],
             ),
+              ),
+            ),
           ),
         ),
         for (final child in node.children) _LocationTile(node: child, depth: depth + 1, surface: surface),
@@ -217,85 +232,6 @@ class _LocationTile extends ConsumerWidget {
       default:
         return Icons.place_outlined;
     }
-  }
-}
-
-class _AddLocationDialog extends ConsumerStatefulWidget {
-  const _AddLocationDialog();
-
-  @override
-  ConsumerState<_AddLocationDialog> createState() => _AddLocationDialogState();
-}
-
-class _AddLocationDialogState extends ConsumerState<_AddLocationDialog> {
-  final _name = TextEditingController();
-  String _kind = 'room';
-  String? _parentId;
-
-  static const _kinds = ['home', 'room', 'zone', 'shelf', 'outdoor_bed'];
-
-  @override
-  void dispose() {
-    _name.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final async = ref.watch(locationsStreamProvider);
-    final parents = async.maybeWhen(data: (r) => r, orElse: () => const <LocationRow>[]);
-    return AlertDialog(
-      title: const Text('Add a space'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _name,
-              autofocus: true,
-              decoration: const InputDecoration(labelText: 'Name', hintText: 'e.g. Living room'),
-            ),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String>(
-              initialValue: _kind,
-              decoration: const InputDecoration(labelText: 'Kind'),
-              items: [for (final k in _kinds) DropdownMenuItem(value: k, child: Text(k))],
-              onChanged: (v) => setState(() => _kind = v ?? 'room'),
-            ),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String?>(
-              initialValue: _parentId,
-              decoration: const InputDecoration(labelText: 'Inside (optional)'),
-              items: [
-                const DropdownMenuItem<String?>(value: null, child: Text('— top level —')),
-                for (final p in parents)
-                  DropdownMenuItem<String?>(value: p.id, child: Text(p.name)),
-              ],
-              onChanged: (v) => setState(() => _parentId = v),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(context).maybePop(), child: const Text('Cancel')),
-        FilledButton(
-          onPressed: () async {
-            final name = _name.text.trim();
-            if (name.isEmpty) return;
-            final nav = Navigator.of(context);
-            await ref.read(locationRepositoryProvider).create(
-                  name: name,
-                  kind: _kind,
-                  parentId: _parentId,
-                  isOutdoor: _kind == 'outdoor_bed',
-                );
-            if (!mounted) return;
-            nav.maybePop();
-          },
-          child: const Text('Add'),
-        ),
-      ],
-    );
   }
 }
 
