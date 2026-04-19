@@ -73,16 +73,6 @@ class GreetingWidget extends StatelessWidget {
                 ],
               ),
             ),
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: surface.surface,
-                border: Border.all(color: surface.border),
-                borderRadius: BorderRadius.circular(PlantlyTokens.radius),
-              ),
-              child: Icon(Icons.notifications_outlined, size: 18, color: surface.text),
-            ),
           ],
         ),
       ),

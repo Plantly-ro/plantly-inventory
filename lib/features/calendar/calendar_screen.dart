@@ -8,6 +8,16 @@ import '../../data/providers.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../plant_detail/plant_detail_screen.dart';
+import 'day_detail_sheet.dart';
+
+void showDayDetail(BuildContext context, DateTime day) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => DayDetailSheet(day: day),
+  );
+}
 
 enum CalendarView { week, month, year }
 
@@ -420,7 +430,17 @@ class _MonthCell extends StatelessWidget {
     final doneCount = done[day - 1];
     return AspectRatio(
       aspectRatio: 1,
-      child: Container(
+      child: InkWell(
+        onTap: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => DayDetailSheet(day: DateTime(anchor.year, anchor.month, day)),
+          );
+        },
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
         margin: const EdgeInsets.all(2),
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
@@ -466,6 +486,7 @@ class _MonthCell extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -659,7 +680,9 @@ class _DayRow extends StatelessWidget {
     const weekdayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final weekday = weekdayNames[bucket.date.weekday - DateTime.monday];
 
-    return Container(
+    return InkWell(
+      onTap: () => showDayDetail(context, bucket.date),
+      child: Container(
       decoration: BoxDecoration(
         color: isToday ? surface.greenSoft : null,
         border: last ? null : Border(bottom: BorderSide(color: surface.border)),
@@ -735,6 +758,7 @@ class _DayRow extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }

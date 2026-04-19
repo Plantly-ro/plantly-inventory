@@ -107,11 +107,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 _EditToggleBar(
                   editing: _editing,
                   surface: surface,
-                  onTap: () => setState(() => _editing = !_editing),
+                  onDone: () => setState(() => _editing = false),
                 ),
                 if (permDenied) _NotificationPermissionBanner(surface: surface),
                 Expanded(
-                  child: RefreshIndicator(
+                  child: GestureDetector(
+                    // Long-pressing the home body toggles edit mode —
+                    // replaces the old "✎ Customize home" button.
+                    onLongPress: () => setState(() => _editing = !_editing),
+                    behavior: HitTestBehavior.deferToChild,
+                    child: RefreshIndicator(
                     onRefresh: () async {
                       // Drift streams are already live; the pull gesture
                       // is a UX affordance, not a data fetch. Hold for a
@@ -125,11 +130,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       padding: const EdgeInsets.only(top: 6, bottom: 96),
                       children: [
                         if (!hasPlants) _FirstRunCallout(surface: surface),
+                        if (!_editing) _EditHint(surface: surface),
                         for (var i = 0; i < layout.length; i++)
                           _renderWidget(layout[i], i, layout.length, surface),
                         if (_editing) _EditPanel(surface: surface, current: layout),
                       ],
                     ),
+                  ),
                   ),
                 ),
               ],
@@ -170,10 +177,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 }
 
 class _EditToggleBar extends StatelessWidget {
-  const _EditToggleBar({required this.editing, required this.surface, required this.onTap});
+  const _EditToggleBar({required this.editing, required this.surface, required this.onDone});
   final bool editing;
   final PlantlySurface surface;
-  final VoidCallback onTap;
+  final VoidCallback onDone;
 
   @override
   Widget build(BuildContext context) {
@@ -192,26 +199,51 @@ class _EditToggleBar extends StatelessWidget {
             },
           ),
           const Spacer(),
-          InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(999),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: editing ? surface.green : surface.surface,
-                border: Border.all(color: editing ? surface.green : surface.border),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                editing
-                    ? '✓ ${AppLocalizations.of(context).doneBtn}'
-                    : '✎ ${AppLocalizations.of(context).customizeHome}',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: editing ? Colors.white : surface.muted,
+          if (editing)
+            InkWell(
+              onTap: onDone,
+              borderRadius: BorderRadius.circular(999),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: surface.green,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '✓ ${AppLocalizations.of(context).doneBtn}',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
                 ),
               ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Subtle first-time hint. Shown on Home when not in edit mode so
+/// users discover the long-press-to-customize gesture. Vanishes once
+/// they've tried it.
+class _EditHint extends StatelessWidget {
+  const _EditHint({required this.surface});
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context) {
+    // Would be nicer stored in prefs and dismissed after first long-press,
+    // but this is fine for now — low-contrast, not obstructive.
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
+      child: Row(
+        children: [
+          Icon(Icons.touch_app_outlined, size: 12, color: surface.muted),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              'Long-press to customise your home',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 10.5, color: surface.muted, fontStyle: FontStyle.italic),
             ),
           ),
         ],
