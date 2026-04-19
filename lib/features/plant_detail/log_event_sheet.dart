@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/care_types.dart';
 import '../../data/providers.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
@@ -18,15 +19,6 @@ class LogEventSheet extends ConsumerStatefulWidget {
 }
 
 class _LogEventSheetState extends ConsumerState<LogEventSheet> {
-  static const _presets = <({String type, String label, IconData icon})>[
-    (type: 'water', label: 'Watered', icon: Icons.water_drop_outlined),
-    (type: 'fertilize', label: 'Fertilized', icon: Icons.eco_outlined),
-    (type: 'mist', label: 'Misted', icon: Icons.bubble_chart_outlined),
-    (type: 'repot', label: 'Repotted', icon: Icons.local_florist_outlined),
-    (type: 'prune', label: 'Pruned', icon: Icons.content_cut_outlined),
-    (type: 'rotate', label: 'Rotated', icon: Icons.light_mode_outlined),
-  ];
-
   String _selectedType = 'water';
   final _customTypeController = TextEditingController();
   final _productController = TextEditingController();
@@ -78,6 +70,7 @@ class _LogEventSheetState extends ConsumerState<LogEventSheet> {
   Widget build(BuildContext context) {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final types = ref.watch(careTypesProvider);
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -113,13 +106,13 @@ class _LogEventSheetState extends ConsumerState<LogEventSheet> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final p in _presets)
+                for (final t in types)
                   _TypeChip(
-                    label: p.label,
-                    icon: p.icon,
-                    selected: _selectedType == p.type,
+                    label: t.pastTenseLabel,
+                    icon: t.icon,
+                    selected: _selectedType == t.key,
                     surface: surface,
-                    onTap: () => setState(() => _selectedType = p.type),
+                    onTap: () => setState(() => _selectedType = t.key),
                   ),
                 _TypeChip(
                   label: 'Other',

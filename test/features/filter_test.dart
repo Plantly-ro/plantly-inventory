@@ -36,6 +36,7 @@ CareScheduleRow _sched(String id, String plantId, int dueAtMs) => CareScheduleRo
       snoozeCount: 0,
       recentEventsJson: '[]',
       enabled: true,
+      recurrenceMode: 'after_completion',
       updatedHlc: '0-0-t',
       deletedAt: null,
       deviceId: 't',

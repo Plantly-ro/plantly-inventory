@@ -104,6 +104,40 @@ everything still open into `PLAN.md` Phase 2 and delete this file.
 
 ---
 
+## Fixed in v0.5.6-phase1 (2026-04-19, reminders + search + calendar + settings)
+
+- [x] **Search by tags.** `SearchRepository.search` now unions FTS5
+      matches on nickname+notes with a tag-name prefix scan joined via
+      `plant_tags`. Typing `variegated` finds every plant with that tag.
+- [x] **Reminder units.** `AddReminderSheet` gets a
+      SegmentedButton for **min / hr / day / mo**; intervals are stored
+      as fractional days so EWMA stays numeric.
+- [x] **Recurrence mode.** Schema v4 adds `recurrence_mode` to
+      `care_schedules`. Options: **After I mark it done** (existing
+      adaptive reschedule), **On a fixed schedule** (anchored cadence —
+      completion doesn't shift the next date), **Just once**
+      (auto-disables after first event).
+- [x] **Editable care types for reminders + events.** New
+      `CareTypesController` persists a user-editable list in
+      SharedPreferences; Built-ins (water / fertilize / mist / repot /
+      prune / rotate) can be renamed, have their default interval or
+      icon changed, or hidden. Users can add custom types that show up
+      everywhere: Add reminder, Log event, Calendar, Activity,
+      Quick-log.
+- [x] **Settings → Care types** screen reached from Me tab.
+- [x] **Hierarchical location picker.** Unified `pickLocation()` from
+      `lib/shared/location_picker.dart` renders the location tree
+      indented by depth. Wired into Add-plant sheet, Edit-plant sheet,
+      and Plant Detail's "Move to space" overflow action.
+- [x] **Calendar Week / Month / Year views** with an always-visible
+      "UPCOMING" strip at the top so users never see an empty screen.
+      Month view is a dot-grid (terra dot = scheduled, green dot =
+      done). Year view = 12 month tiles with per-month counts; tap a
+      month to zoom in.
+- [x] **Stats tiles are interactable.** Overdue / Due today / Plants
+      route to Search (with pre-applied filter); Spaces opens the
+      Locations tab. Every Home tap target now does something.
+
 ## Fixed in v0.5.5-phase1 (2026-04-19, mock cleanup sweep)
 
 - [x] **Weather widget** was hardcoded `"TIMIȘOARA · 19°C / Rain

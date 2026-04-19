@@ -4,6 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../data/providers.dart';
 import '../../../theme/tokens.dart';
+import '../../locations/locations_screen.dart';
+import '../../search/search_screen.dart';
+import '../filter.dart';
 import 'widget_shell.dart';
 
 /// Live 2×2 stats grid: overdue, due today, plants, spaces.
@@ -55,9 +58,9 @@ class StatsWidget extends ConsumerWidget {
     final spaces = locsAsync.maybeWhen(data: (r) => r.length, orElse: () => null);
 
     final tiles = <_Stat>[
-      _Stat(_fmt(overdue), 'Overdue', Icons.water_drop_outlined, urgent: (overdue ?? 0) > 0),
-      _Stat(_fmt(today), 'Due today', Icons.check, urgent: false),
-      _Stat(_fmt(plants), 'Plants', Icons.eco_outlined, urgent: false),
+      _Stat(_fmt(overdue), 'Overdue', Icons.water_drop_outlined, urgent: (overdue ?? 0) > 0, filter: PlantFilter.overdue),
+      _Stat(_fmt(today), 'Due today', Icons.check, urgent: false, filter: PlantFilter.dueToday),
+      _Stat(_fmt(plants), 'Plants', Icons.eco_outlined, urgent: false, filter: PlantFilter.all),
       _Stat(_fmt(spaces), 'Spaces', Icons.place_outlined, urgent: false),
     ];
 
@@ -74,7 +77,24 @@ class StatsWidget extends ConsumerWidget {
         childAspectRatio: 1.75,
         mainAxisSpacing: 10,
         crossAxisSpacing: 10,
-        children: tiles.map((t) => _TileView(t, surface)).toList(growable: false),
+        children: tiles
+            .map((t) => _TileView(
+                  t,
+                  surface,
+                  onTap: () {
+                    if (t.label == 'Spaces') {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const LocationsScreen()),
+                      );
+                    } else if (t.filter != null) {
+                      ref.read(activeFilterProvider.notifier).state = t.filter!;
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const SearchScreen()),
+                      );
+                    }
+                  },
+                ))
+            .toList(growable: false),
       ),
     );
   }
@@ -83,60 +103,69 @@ class StatsWidget extends ConsumerWidget {
 }
 
 class _Stat {
-  const _Stat(this.value, this.label, this.icon, {required this.urgent});
+  const _Stat(this.value, this.label, this.icon, {required this.urgent, this.filter});
   final String value;
   final String label;
   final IconData icon;
   final bool urgent;
+  final PlantFilter? filter;
 }
 
 class _TileView extends StatelessWidget {
-  const _TileView(this.tile, this.surface);
+  const _TileView(this.tile, this.surface, {required this.onTap});
   final _Stat tile;
   final PlantlySurface surface;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final accent = tile.urgent ? surface.terra : surface.green;
     final soft = tile.urgent ? surface.terraSoft : surface.greenSoft;
-    return Container(
-      padding: const EdgeInsets.all(PlantlyTokens.space3),
-      decoration: BoxDecoration(
-        color: surface.surface,
+    return Material(
+      color: surface.surface,
+      borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
-        border: Border.all(color: surface.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: soft,
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Icon(tile.icon, size: 15, color: accent),
+        child: Container(
+          padding: const EdgeInsets.all(PlantlyTokens.space3),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
+            border: Border.all(color: surface.border),
           ),
-          const Spacer(),
-          Text(
-            tile.value,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: PlantlyTokens.text2xl,
-              fontWeight: FontWeight.w800,
-              color: surface.text,
-              height: 1,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: soft,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(tile.icon, size: 15, color: accent),
+              ),
+              const Spacer(),
+              Text(
+                tile.value,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: PlantlyTokens.text2xl,
+                  fontWeight: FontWeight.w800,
+                  color: surface.text,
+                  height: 1,
+                ),
+              ),
+              Text(
+                tile.label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: surface.muted,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
-          Text(
-            tile.label,
-            style: TextStyle(
-              fontSize: 11,
-              color: surface.muted,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

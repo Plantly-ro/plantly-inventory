@@ -5263,6 +5263,18 @@ class $CareSchedulesTable extends CareSchedules
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _recurrenceModeMeta = const VerificationMeta(
+    'recurrenceMode',
+  );
+  @override
+  late final GeneratedColumn<String> recurrenceMode = GeneratedColumn<String>(
+    'recurrence_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('after_completion'),
+  );
   static const VerificationMeta _updatedHlcMeta = const VerificationMeta(
     'updatedHlc',
   );
@@ -5309,6 +5321,7 @@ class $CareSchedulesTable extends CareSchedules
     snoozeCount,
     recentEventsJson,
     enabled,
+    recurrenceMode,
     updatedHlc,
     deletedAt,
     deviceId,
@@ -5415,6 +5428,15 @@ class $CareSchedulesTable extends CareSchedules
         enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
       );
     }
+    if (data.containsKey('recurrence_mode')) {
+      context.handle(
+        _recurrenceModeMeta,
+        recurrenceMode.isAcceptableOrUnknown(
+          data['recurrence_mode']!,
+          _recurrenceModeMeta,
+        ),
+      );
+    }
     if (data.containsKey('updated_hlc')) {
       context.handle(
         _updatedHlcMeta,
@@ -5490,6 +5512,10 @@ class $CareSchedulesTable extends CareSchedules
         DriftSqlType.bool,
         data['${effectivePrefix}enabled'],
       )!,
+      recurrenceMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recurrence_mode'],
+      )!,
       updatedHlc: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}updated_hlc'],
@@ -5523,6 +5549,13 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
   final int snoozeCount;
   final String recentEventsJson;
   final bool enabled;
+
+  /// How the schedule advances after a care event:
+  ///   'after_completion' — `next_due_at = doneAt + currentIntervalDays`
+  ///   'fixed'            — `next_due_at = anchor + N × interval` for
+  ///                        smallest N making next_due_at > doneAt
+  ///   'once'             — disable the schedule after the first event
+  final String recurrenceMode;
   final String updatedHlc;
   final int? deletedAt;
   final String deviceId;
@@ -5538,6 +5571,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     required this.snoozeCount,
     required this.recentEventsJson,
     required this.enabled,
+    required this.recurrenceMode,
     required this.updatedHlc,
     this.deletedAt,
     required this.deviceId,
@@ -5560,6 +5594,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     map['snooze_count'] = Variable<int>(snoozeCount);
     map['recent_events_json'] = Variable<String>(recentEventsJson);
     map['enabled'] = Variable<bool>(enabled);
+    map['recurrence_mode'] = Variable<String>(recurrenceMode);
     map['updated_hlc'] = Variable<String>(updatedHlc);
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<int>(deletedAt);
@@ -5585,6 +5620,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
       snoozeCount: Value(snoozeCount),
       recentEventsJson: Value(recentEventsJson),
       enabled: Value(enabled),
+      recurrenceMode: Value(recurrenceMode),
       updatedHlc: Value(updatedHlc),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
@@ -5612,6 +5648,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
       snoozeCount: serializer.fromJson<int>(json['snoozeCount']),
       recentEventsJson: serializer.fromJson<String>(json['recentEventsJson']),
       enabled: serializer.fromJson<bool>(json['enabled']),
+      recurrenceMode: serializer.fromJson<String>(json['recurrenceMode']),
       updatedHlc: serializer.fromJson<String>(json['updatedHlc']),
       deletedAt: serializer.fromJson<int?>(json['deletedAt']),
       deviceId: serializer.fromJson<String>(json['deviceId']),
@@ -5632,6 +5669,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
       'snoozeCount': serializer.toJson<int>(snoozeCount),
       'recentEventsJson': serializer.toJson<String>(recentEventsJson),
       'enabled': serializer.toJson<bool>(enabled),
+      'recurrenceMode': serializer.toJson<String>(recurrenceMode),
       'updatedHlc': serializer.toJson<String>(updatedHlc),
       'deletedAt': serializer.toJson<int?>(deletedAt),
       'deviceId': serializer.toJson<String>(deviceId),
@@ -5650,6 +5688,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     int? snoozeCount,
     String? recentEventsJson,
     bool? enabled,
+    String? recurrenceMode,
     String? updatedHlc,
     Value<int?> deletedAt = const Value.absent(),
     String? deviceId,
@@ -5665,6 +5704,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     snoozeCount: snoozeCount ?? this.snoozeCount,
     recentEventsJson: recentEventsJson ?? this.recentEventsJson,
     enabled: enabled ?? this.enabled,
+    recurrenceMode: recurrenceMode ?? this.recurrenceMode,
     updatedHlc: updatedHlc ?? this.updatedHlc,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
     deviceId: deviceId ?? this.deviceId,
@@ -5692,6 +5732,9 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
           ? data.recentEventsJson.value
           : this.recentEventsJson,
       enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      recurrenceMode: data.recurrenceMode.present
+          ? data.recurrenceMode.value
+          : this.recurrenceMode,
       updatedHlc: data.updatedHlc.present
           ? data.updatedHlc.value
           : this.updatedHlc,
@@ -5714,6 +5757,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
           ..write('snoozeCount: $snoozeCount, ')
           ..write('recentEventsJson: $recentEventsJson, ')
           ..write('enabled: $enabled, ')
+          ..write('recurrenceMode: $recurrenceMode, ')
           ..write('updatedHlc: $updatedHlc, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('deviceId: $deviceId')
@@ -5734,6 +5778,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     snoozeCount,
     recentEventsJson,
     enabled,
+    recurrenceMode,
     updatedHlc,
     deletedAt,
     deviceId,
@@ -5753,6 +5798,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
           other.snoozeCount == this.snoozeCount &&
           other.recentEventsJson == this.recentEventsJson &&
           other.enabled == this.enabled &&
+          other.recurrenceMode == this.recurrenceMode &&
           other.updatedHlc == this.updatedHlc &&
           other.deletedAt == this.deletedAt &&
           other.deviceId == this.deviceId);
@@ -5770,6 +5816,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
   final Value<int> snoozeCount;
   final Value<String> recentEventsJson;
   final Value<bool> enabled;
+  final Value<String> recurrenceMode;
   final Value<String> updatedHlc;
   final Value<int?> deletedAt;
   final Value<String> deviceId;
@@ -5786,6 +5833,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     this.snoozeCount = const Value.absent(),
     this.recentEventsJson = const Value.absent(),
     this.enabled = const Value.absent(),
+    this.recurrenceMode = const Value.absent(),
     this.updatedHlc = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.deviceId = const Value.absent(),
@@ -5803,6 +5851,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     this.snoozeCount = const Value.absent(),
     this.recentEventsJson = const Value.absent(),
     this.enabled = const Value.absent(),
+    this.recurrenceMode = const Value.absent(),
     required String updatedHlc,
     this.deletedAt = const Value.absent(),
     required String deviceId,
@@ -5827,6 +5876,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     Expression<int>? snoozeCount,
     Expression<String>? recentEventsJson,
     Expression<bool>? enabled,
+    Expression<String>? recurrenceMode,
     Expression<String>? updatedHlc,
     Expression<int>? deletedAt,
     Expression<String>? deviceId,
@@ -5845,6 +5895,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
       if (snoozeCount != null) 'snooze_count': snoozeCount,
       if (recentEventsJson != null) 'recent_events_json': recentEventsJson,
       if (enabled != null) 'enabled': enabled,
+      if (recurrenceMode != null) 'recurrence_mode': recurrenceMode,
       if (updatedHlc != null) 'updated_hlc': updatedHlc,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (deviceId != null) 'device_id': deviceId,
@@ -5864,6 +5915,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     Value<int>? snoozeCount,
     Value<String>? recentEventsJson,
     Value<bool>? enabled,
+    Value<String>? recurrenceMode,
     Value<String>? updatedHlc,
     Value<int?>? deletedAt,
     Value<String>? deviceId,
@@ -5881,6 +5933,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
       snoozeCount: snoozeCount ?? this.snoozeCount,
       recentEventsJson: recentEventsJson ?? this.recentEventsJson,
       enabled: enabled ?? this.enabled,
+      recurrenceMode: recurrenceMode ?? this.recurrenceMode,
       updatedHlc: updatedHlc ?? this.updatedHlc,
       deletedAt: deletedAt ?? this.deletedAt,
       deviceId: deviceId ?? this.deviceId,
@@ -5926,6 +5979,9 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     if (enabled.present) {
       map['enabled'] = Variable<bool>(enabled.value);
     }
+    if (recurrenceMode.present) {
+      map['recurrence_mode'] = Variable<String>(recurrenceMode.value);
+    }
     if (updatedHlc.present) {
       map['updated_hlc'] = Variable<String>(updatedHlc.value);
     }
@@ -5955,6 +6011,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
           ..write('snoozeCount: $snoozeCount, ')
           ..write('recentEventsJson: $recentEventsJson, ')
           ..write('enabled: $enabled, ')
+          ..write('recurrenceMode: $recurrenceMode, ')
           ..write('updatedHlc: $updatedHlc, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('deviceId: $deviceId, ')
@@ -9855,6 +9912,7 @@ typedef $$CareSchedulesTableCreateCompanionBuilder =
       Value<int> snoozeCount,
       Value<String> recentEventsJson,
       Value<bool> enabled,
+      Value<String> recurrenceMode,
       required String updatedHlc,
       Value<int?> deletedAt,
       required String deviceId,
@@ -9873,6 +9931,7 @@ typedef $$CareSchedulesTableUpdateCompanionBuilder =
       Value<int> snoozeCount,
       Value<String> recentEventsJson,
       Value<bool> enabled,
+      Value<String> recurrenceMode,
       Value<String> updatedHlc,
       Value<int?> deletedAt,
       Value<String> deviceId,
@@ -9940,6 +9999,11 @@ class $$CareSchedulesTableFilterComposer
 
   ColumnFilters<bool> get enabled => $composableBuilder(
     column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recurrenceMode => $composableBuilder(
+    column: $table.recurrenceMode,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10023,6 +10087,11 @@ class $$CareSchedulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get recurrenceMode => $composableBuilder(
+    column: $table.recurrenceMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get updatedHlc => $composableBuilder(
     column: $table.updatedHlc,
     builder: (column) => ColumnOrderings(column),
@@ -10091,6 +10160,11 @@ class $$CareSchedulesTableAnnotationComposer
   GeneratedColumn<bool> get enabled =>
       $composableBuilder(column: $table.enabled, builder: (column) => column);
 
+  GeneratedColumn<String> get recurrenceMode => $composableBuilder(
+    column: $table.recurrenceMode,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get updatedHlc => $composableBuilder(
     column: $table.updatedHlc,
     builder: (column) => column,
@@ -10145,6 +10219,7 @@ class $$CareSchedulesTableTableManager
                 Value<int> snoozeCount = const Value.absent(),
                 Value<String> recentEventsJson = const Value.absent(),
                 Value<bool> enabled = const Value.absent(),
+                Value<String> recurrenceMode = const Value.absent(),
                 Value<String> updatedHlc = const Value.absent(),
                 Value<int?> deletedAt = const Value.absent(),
                 Value<String> deviceId = const Value.absent(),
@@ -10161,6 +10236,7 @@ class $$CareSchedulesTableTableManager
                 snoozeCount: snoozeCount,
                 recentEventsJson: recentEventsJson,
                 enabled: enabled,
+                recurrenceMode: recurrenceMode,
                 updatedHlc: updatedHlc,
                 deletedAt: deletedAt,
                 deviceId: deviceId,
@@ -10179,6 +10255,7 @@ class $$CareSchedulesTableTableManager
                 Value<int> snoozeCount = const Value.absent(),
                 Value<String> recentEventsJson = const Value.absent(),
                 Value<bool> enabled = const Value.absent(),
+                Value<String> recurrenceMode = const Value.absent(),
                 required String updatedHlc,
                 Value<int?> deletedAt = const Value.absent(),
                 required String deviceId,
@@ -10195,6 +10272,7 @@ class $$CareSchedulesTableTableManager
                 snoozeCount: snoozeCount,
                 recentEventsJson: recentEventsJson,
                 enabled: enabled,
+                recurrenceMode: recurrenceMode,
                 updatedHlc: updatedHlc,
                 deletedAt: deletedAt,
                 deviceId: deviceId,

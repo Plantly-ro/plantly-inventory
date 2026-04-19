@@ -60,11 +60,16 @@ class CareScheduleRepository {
 
   /// Create a schedule with a base interval. `next_due_at` is computed
   /// from [firstDueAt] (defaults to "now + base_interval_days").
+  /// [recurrenceMode] — `after_completion` (default — re-schedule from
+  /// the moment the user marks the event done), `fixed` (keeps the
+  /// original cadence regardless of when the user logs the event), or
+  /// `once` (disable the schedule after one event).
   Future<CareScheduleRow> upsert({
     required String plantId,
     required String type,
     required double baseIntervalDays,
     DateTime? firstDueAt,
+    String recurrenceMode = 'after_completion',
   }) async {
     final existing = await forPlantAndType(plantId, type);
     if (existing != null) return existing;
@@ -85,6 +90,7 @@ class CareScheduleRepository {
         'enabled': 1,
         'recent_events_json': '[]',
         'snooze_count': 0,
+        'recurrence_mode': recurrenceMode,
       };
       final hlc = await opLog.recordCreate(
         entity: 'care_schedules',
@@ -100,6 +106,7 @@ class CareScheduleRepository {
               baseIntervalDays: baseIntervalDays,
               currentIntervalDays: baseIntervalDays,
               nextDueAt: Value(firstDue.millisecondsSinceEpoch),
+              recurrenceMode: Value(recurrenceMode),
               updatedHlc: hlc.encode(),
               deviceId: opLog.clock.deviceId,
             ),
@@ -148,9 +155,42 @@ class CareScheduleRepository {
         consecutiveHighSnoozeCycles: s.snoozeCount,
       );
 
-      final nextDue = doneAt.add(Duration(
-        milliseconds: (decision.nextIntervalDays * 86400 * 1000).round(),
-      ));
+      // Branch on recurrence mode. `after_completion` is the existing
+      // behaviour (adaptive-interval-from-now). `fixed` preserves the
+      // original cadence anchored on the first-due timestamp. `once`
+      // disables the schedule after the event lands.
+      int? nextDueAtMs;
+      bool stillEnabled = s.enabled;
+      double intervalDaysForPersist = decision.nextIntervalDays;
+      switch (s.recurrenceMode) {
+        case 'once':
+          nextDueAtMs = null;
+          stillEnabled = false;
+          intervalDaysForPersist = s.currentIntervalDays;
+          break;
+        case 'fixed':
+          // The schedule's original next_due_at is the anchor; advance
+          // by whole-interval steps until we land strictly after doneAt.
+          final intervalMs = (s.currentIntervalDays * 86400 * 1000).round();
+          if (intervalMs <= 0) {
+            nextDueAtMs = null;
+            stillEnabled = false;
+          } else {
+            var next = s.nextDueAt ?? nowMs;
+            while (next <= nowMs) {
+              next += intervalMs;
+            }
+            nextDueAtMs = next;
+            intervalDaysForPersist = s.currentIntervalDays; // no adaptation
+          }
+          break;
+        case 'after_completion':
+        default:
+          nextDueAtMs = doneAt.add(Duration(
+            milliseconds: (decision.nextIntervalDays * 86400 * 1000).round(),
+          )).millisecondsSinceEpoch;
+          break;
+      }
 
       final hlc = await opLog.recordFieldUpdate(
         entity: 'care_schedules',
@@ -158,20 +198,22 @@ class CareScheduleRepository {
         field: '@applyCareEvent',
         value: {
           'last_done_at': nowMs,
-          'current_interval_days': decision.nextIntervalDays,
-          'next_due_at': nextDue.millisecondsSinceEpoch,
+          'current_interval_days': intervalDaysForPersist,
+          'next_due_at': nextDueAtMs,
           'snooze_count': decision.consecutiveHighSnoozeCycles,
           'recent_events_json': _encodeWindow(updatedWindow),
+          'enabled': stillEnabled ? 1 : 0,
         },
       );
 
       await (db.update(db.careSchedules)..where((row) => row.id.equals(s.id))).write(
         CareSchedulesCompanion(
           lastDoneAt: Value(nowMs),
-          currentIntervalDays: Value(decision.nextIntervalDays),
-          nextDueAt: Value(nextDue.millisecondsSinceEpoch),
+          currentIntervalDays: Value(intervalDaysForPersist),
+          nextDueAt: Value(nextDueAtMs),
           snoozeCount: Value(decision.consecutiveHighSnoozeCycles),
           recentEventsJson: Value(_encodeWindow(updatedWindow)),
+          enabled: Value(stillEnabled),
           updatedHlc: Value(hlc.encode()),
           deviceId: Value(opLog.clock.deviceId),
         ),

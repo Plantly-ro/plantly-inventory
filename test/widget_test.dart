@@ -114,10 +114,12 @@ void main() {
     await tester.tap(find.widgetWithText(InkWell, 'Calendar'));
     await tester.pumpAndSettle();
 
-    // Real calendar always shows a "This week" / "Upcoming week" /
-    // "Past week" title depending on the visible anchor. For a freshly-
-    // opened screen it's the current week → "This week".
-    expect(find.text('This week'), findsOneWidget);
+    // Real calendar always renders a "Week / Month / Year" segmented
+    // control at the top; asserting those labels exist confirms we
+    // navigated into the CalendarScreen.
+    expect(find.text('Week'), findsWidgets);
+    expect(find.text('Month'), findsWidgets);
+    expect(find.text('Year'), findsWidgets);
   });
 
   testWidgets('HomeScreen builds without crash', (tester) async {

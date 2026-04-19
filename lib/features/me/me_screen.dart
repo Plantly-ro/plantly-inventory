@@ -14,6 +14,7 @@ import '../../domain/services/backup_service.dart';
 import '../../domain/services/zip_backup_service.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
+import 'care_types_screen.dart';
 
 /// "Me" tab — settings + Phase-1 user-facing actions (backup / iCal /
 /// notification permission). Split into ApplianceRows grouped under
@@ -62,6 +63,20 @@ class MeScreen extends ConsumerWidget {
           _SectionLabel(text: 'APPEARANCE', surface: surface),
           const SizedBox(height: 8),
           _ThemeToggleRow(mode: mode, surface: surface),
+          const SizedBox(height: 20),
+          _SectionLabel(text: 'LISTS', surface: surface),
+          const SizedBox(height: 8),
+          _ActionRow(
+            label: 'Care types',
+            value: 'Rename, reorder, or add custom reminders and events.',
+            icon: Icons.category_outlined,
+            surface: surface,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CareTypesScreen()),
+              );
+            },
+          ),
           const SizedBox(height: 20),
           _SectionLabel(text: 'NOTIFICATIONS', surface: surface),
           const SizedBox(height: 8),
