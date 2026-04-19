@@ -94,6 +94,39 @@ class PlantRepository {
     });
   }
 
+  /// Update nickname + notes + location + species in one transaction. Any
+  /// field left as `null` is deliberately erased; callers who want to leave
+  /// a field untouched should re-pass its current value.
+  Future<void> edit(
+    String id, {
+    required String nickname,
+    required String? notes,
+    required String? locationId,
+    required String? speciesId,
+  }) async {
+    return db.transaction(() async {
+      await opLog.recordFieldUpdate(entity: 'plants', entityId: id, field: 'nickname', value: nickname);
+      await opLog.recordFieldUpdate(entity: 'plants', entityId: id, field: 'notes', value: notes);
+      await opLog.recordFieldUpdate(entity: 'plants', entityId: id, field: 'location_id', value: locationId);
+      final finalHlc = await opLog.recordFieldUpdate(
+        entity: 'plants',
+        entityId: id,
+        field: 'species_id',
+        value: speciesId,
+      );
+      await (db.update(db.plants)..where((p) => p.id.equals(id))).write(
+        PlantsCompanion(
+          nickname: Value(nickname),
+          notes: Value(notes),
+          locationId: Value(locationId),
+          speciesId: Value(speciesId),
+          updatedHlc: Value(finalHlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+  }
+
   /// Move a plant into [locationId] (or clear, when null).
   Future<void> setLocation(String id, String? locationId) async {
     return db.transaction(() async {

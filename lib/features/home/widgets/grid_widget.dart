@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/mock_plants.dart';
+import '../../../data/providers.dart';
 import '../../../shared/plant_thumb.dart';
 import '../../../theme/tokens.dart';
 import '../../search/search_screen.dart';
@@ -23,7 +24,7 @@ class GridWidget extends ConsumerWidget {
   });
 
   final PlantlySurface surface;
-  final void Function(MockPlant)? onPlantTap;
+  final void Function(String plantId)? onPlantTap;
   final bool editing;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
@@ -37,6 +38,10 @@ class GridWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final filter = ref.watch(activeFilterProvider);
     final async = ref.watch(filteredPlantsProvider);
+    final locationsById = ref.watch(locationsStreamProvider).maybeWhen(
+          data: (rows) => {for (final l in rows) l.id: l.name},
+          orElse: () => const <String, String>{},
+        );
     return WidgetShell(
       surface: surface,
       editing: editing,
@@ -73,13 +78,18 @@ class GridWidget extends ConsumerWidget {
                     mainAxisSpacing: 10,
                     crossAxisSpacing: 10,
                     children: rows.map((row) {
-                      final mock = MockPlants.byId(row.id);
+                      final swatch = MockPlants.byId(row.id);
+                      final locName = row.locationId == null
+                          ? null
+                          : locationsById[row.locationId];
                       return _Card(
-                        plant: mock,
+                        plantId: row.id,
+                        swatch: swatch,
                         label: row.nickname,
+                        locationName: locName,
                         ok: !_overdueIds.contains(row.id),
                         surface: surface,
-                        onTap: () => onPlantTap?.call(mock),
+                        onTap: () => onPlantTap?.call(row.id),
                       );
                     }).toList(growable: false),
                   ),
@@ -92,15 +102,19 @@ class GridWidget extends ConsumerWidget {
 
 class _Card extends StatelessWidget {
   const _Card({
-    required this.plant,
+    required this.plantId,
+    required this.swatch,
     required this.label,
+    required this.locationName,
     required this.ok,
     required this.surface,
     required this.onTap,
   });
 
-  final MockPlant plant;
+  final String plantId;
+  final MockPlant swatch;
   final String label;
+  final String? locationName;
   final bool ok;
   final PlantlySurface surface;
   final VoidCallback onTap;
@@ -130,8 +144,8 @@ class _Card extends StatelessWidget {
                     child: Container(
                       color: surface.surfaceAlt,
                       child: PlantPhotoThumb(
-                        plantId: plant.id,
-                        fallback: plant,
+                        plantId: plantId,
+                        fallback: swatch,
                         stubSize: 120,
                         fit: BoxFit.cover,
                       ),
@@ -183,7 +197,7 @@ class _Card extends StatelessWidget {
                       const SizedBox(width: 3),
                       Flexible(
                         child: Text(
-                          plant.location.split(' ›').first,
+                          locationName ?? 'No space',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 10, color: surface.muted),

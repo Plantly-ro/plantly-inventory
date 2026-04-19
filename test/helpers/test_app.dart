@@ -39,6 +39,8 @@ Widget buildTestApp({
       plantsByLocationProvider.overrideWith((ref, locationId) => Stream.value(const <PlantRow>[])),
       inventoryForPlantProvider.overrideWith((ref, plantId) => Stream.value(const <InventoryTransactionRow>[])),
       plantByIdProvider.overrideWith((ref, plantId) => Stream.value(null)),
+      allTagsProvider.overrideWith((ref) => Stream.value(const <TagRow>[])),
+      tagsForPlantProvider.overrideWith((ref, plantId) => Stream.value(const <String>[])),
       ...overrides,
     ],
     child: child,

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 /// Mock plant fixtures — mirror the `plants` object in
 /// `web/prototype/components/screens.jsx` (PlantDetail.plants).
-/// Replaced by Drift-backed repositories in Phase 1 proper.
+/// After Phase 1, these exist only as **decorative** stand-ins for the
+/// fallback thumbnail when a plant has no attached photo; the real data
+/// lives in the `plants` table and flows through `PlantRow`.
 class MockPlant {
   const MockPlant({
     required this.id,
@@ -121,6 +123,42 @@ class MockPlants {
     cactus,
   ];
 
-  static MockPlant byId(String id) =>
-      all.firstWhere((p) => p.id == id, orElse: () => monsteraBob);
+  /// Decorative swatch palette, picked deterministically by id hash so two
+  /// plants with different ids reliably get different stub colours. Used
+  /// only for the fallback thumbnail — real data always flows through
+  /// `PlantRow`.
+  static const _swatchPalette = <Color>[
+    Color(0xFF264E3B),
+    Color(0xFFF0F7F3),
+    Color(0xFFFDF5EF),
+    Color(0xFFFBE8D7),
+    Color(0xFFD9EBE0),
+    Color(0xFFE7EBC6),
+    Color(0xFFDDE7F5),
+    Color(0xFFF4DDE2),
+  ];
+
+  /// Look up the decorative stand-in for [id]. **Never** use the returned
+  /// object's `id` field for navigation — pass the real plant id through
+  /// the call site instead. For ids not in [all], returns a synthesised
+  /// `MockPlant` whose swatch is deterministic on [id].
+  static MockPlant byId(String id) {
+    for (final p in all) {
+      if (p.id == id) return p;
+    }
+    // Fallback for real plants created at runtime. Preserve the id (so
+    // callers that *do* use it for nav are at least consistent) and pick
+    // a swatch from the palette so every new plant looks distinct.
+    final hash = id.codeUnits.fold<int>(0, (h, c) => (h * 31 + c) & 0x7fffffff);
+    final color = _swatchPalette[hash % _swatchPalette.length];
+    return MockPlant(
+      id: id,
+      name: '',
+      latin: '',
+      location: '',
+      acquired: '',
+      tags: const [],
+      swatch: color,
+    );
+  }
 }

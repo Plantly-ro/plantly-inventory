@@ -29,12 +29,26 @@ class StatsWidget extends ConsumerWidget {
     final plantsAsync = ref.watch(plantsStreamProvider);
     final locsAsync = ref.watch(locationsStreamProvider);
     final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final alivePlantIds = plantsAsync.maybeWhen(
+      data: (rows) => {for (final p in rows) p.id},
+      orElse: () => <String>{},
+    );
     final overdue = dueAsync.maybeWhen(
-      data: (rows) => rows.where((s) => s.nextDueAt != null && s.nextDueAt! < nowMs).length,
+      data: (rows) => rows
+          .where((s) =>
+              s.nextDueAt != null &&
+              s.nextDueAt! < nowMs &&
+              alivePlantIds.contains(s.plantId))
+          .length,
       orElse: () => null,
     );
     final today = dueAsync.maybeWhen(
-      data: (rows) => rows.where((s) => s.nextDueAt != null && s.nextDueAt! >= nowMs).length,
+      data: (rows) => rows
+          .where((s) =>
+              s.nextDueAt != null &&
+              s.nextDueAt! >= nowMs &&
+              alivePlantIds.contains(s.plantId))
+          .length,
       orElse: () => null,
     );
     final plants = plantsAsync.maybeWhen(data: (r) => r.length, orElse: () => null);

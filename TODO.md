@@ -77,23 +77,34 @@ everything still open into `PLAN.md` Phase 2 and delete this file.
 
 - [ ] **Externalise the remaining English strings.** Plant Detail,
       Calendar, Export Dialog, SearchScreen, Add-reminder, Log-event,
-      Me screen, Activity screen — anything with raw `'Done'` /
-      `'Save'` still needs ARB keys + `AppLocalizations.of(context)`.
+      Me screen, Activity screen, Edit-plant, Tag chip dialog —
+      anything with raw `'Done'` / `'Save'` still needs ARB keys +
+      `AppLocalizations.of(context)`.
 - [ ] **Location + tag filter chips on Home.** `PlantFilter` only has
-      All / Overdue / Due today.
+      All / Overdue / Due today — now that real tags exist, extending
+      with tag chips is mechanical.
+- [ ] **Species is stored as free-text in `species_id`.** Should link
+      to the `species` table (which is present but unseeded). Phase 1
+      punts on taxonomy; leave the field as a label for now.
 - [ ] **CI workflow.** `.github/workflows/web-ci.yml` exists locally
       but was never pushed (PAT missing `workflow` scope).
 - [ ] **Drift "AppDatabase created multiple times" warning in tests.**
       Cosmetic but log-spammy.
-- [ ] **Greeting widget placeholder avatar.** Dropped "AM" for a
-      generic person icon; next pass can read a user-settable
-      display name from prefs.
+- [ ] **Undo care event** has a repo method (`CareEventRepository.undo`)
+      but no UI — the Timeline row could long-press to delete.
+- [ ] **Plain "Delete plant"** beside Gift / Sale / Mark-dead — for
+      accidents and duplicates the inventory actions don't fit.
 - [ ] **QuickLog widget still toast-only.** Unlike Overdue/Today's
       Done button, QuickLog doesn't record a real care event because
       it has no plant context. Decide: remove (leaves Minimal preset
       short a widget) or prompt the user to pick a plant when tapped.
 - [ ] **Weather widget is hardcoded to TIMIȘOARA · 19°C.** Gate on a
       real weather provider or replace with a generic "tip" tile.
+- [ ] **Search doesn't cover tag names.** FTS5 indexes nickname +
+      notes; extending to tag names is a schema-migration job.
+- [ ] **Inventory ledger viewer.** Data lives in
+      `inventoryForPlantProvider` but has no UI to page through
+      history on Plant Detail. Nice-to-have.
 - [ ] **Prototype's `postMessage` edit-mode protocol** is still
       referenced in `CLAUDE.md` but not ported to Flutter.
 
@@ -106,4 +117,35 @@ everything still open into `PLAN.md` Phase 2 and delete this file.
 
 ---
 
-Last reviewed: 2026-04-19 (after v0.5.3-phase1 ship)
+## Fixed in v0.5.4-phase1 (2026-04-19, second sweep)
+
+- [x] **Opening a plant sometimes opened the wrong one.**
+      `MockPlants.byId(unknownId)` returned `monsteraBob` whose id is
+      `'bob'`, and the home widgets passed `mock.id` to the navigator.
+      Result: every newly-added plant opened Bob's detail screen.
+      Killed `MockPlant.id` as a nav key — widgets now pass the real
+      `PlantRow.id`. `MockPlants.byId` returns a synthesised stub
+      with the requested id and a hash-selected swatch.
+- [x] **New plants inherited Bob's title + photo** — same root cause
+      as above. Home grid / Overdue / Today / Search / Spaces /
+      Assign now read the nickname straight from `PlantRow` and the
+      location name from `locationsStreamProvider`.
+- [x] **Editing plants is not possible.** Pencil icon on Plant Detail
+      opens `EditPlantSheet`: nickname, space dropdown, species
+      (free-text), notes. `PlantRepository.edit` writes per-field
+      op-log entries in one transaction.
+- [x] **Adding tags is not possible.** `TagRepository` +
+      `PlantTagRepository` (OR-Set), `TagChipInput` on the Plant
+      Detail header with remove-chips + an add dialog that
+      autocompletes against `allTagsProvider` and ensures unique
+      tag names.
+- [x] **Schedules for deleted plants linger on home widgets / stats /
+      calendar.** Every list now filters `plantsById.containsKey`
+      so a gifted / sold / dead plant doesn't leave ghost reminders.
+- [x] **First-launch location seed is now idempotent on upgrades.**
+      Previously only users who installed a build that included
+      seeded locations got them; existing installs stayed empty.
+      `seedIfEmpty` now tops-up locations whenever the tenant has
+      none, independently of the plants seed.
+
+Last reviewed: 2026-04-19 (after v0.5.4-phase1 ship)

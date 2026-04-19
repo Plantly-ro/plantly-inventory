@@ -7,7 +7,9 @@ import '../../../theme/tokens.dart';
 class PlantRow extends StatelessWidget {
   const PlantRow({
     super.key,
-    required this.plant,
+    required this.plantId,
+    required this.title,
+    required this.swatch,
     required this.surface,
     required this.subtitle,
     required this.subtitleIcon,
@@ -18,7 +20,13 @@ class PlantRow extends StatelessWidget {
     this.onTap,
   });
 
-  final MockPlant plant;
+  /// Real id from the `plants` table — used for navigation + photo stream.
+  final String plantId;
+  /// Plant nickname from `PlantRow.nickname`.
+  final String title;
+  /// Decorative swatch fallback (from `MockPlants.byId` — safe now that
+  /// unknown ids get a hashed palette colour, not Bob).
+  final MockPlant swatch;
   final PlantlySurface surface;
   final String subtitle;
   final IconData subtitleIcon;
@@ -45,8 +53,8 @@ class PlantRow extends StatelessWidget {
         child: Row(
           children: [
             PlantPhotoThumb(
-              plantId: plant.id,
-              fallback: plant,
+              plantId: plantId,
+              fallback: swatch,
               size: 44,
               borderRadius: BorderRadius.circular(PlantlyTokens.radius),
             ),
@@ -56,7 +64,7 @@ class PlantRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    plant.name,
+                    title,
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,

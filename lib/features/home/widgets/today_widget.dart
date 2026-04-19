@@ -21,8 +21,8 @@ class TodayWidget extends ConsumerWidget {
   });
 
   final PlantlySurface surface;
-  final void Function(MockPlant)? onPlantTap;
-  final void Function(MockPlant, String action)? onLogCare;
+  final void Function(String plantId)? onPlantTap;
+  final void Function(String name, String action)? onLogCare;
   final bool editing;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
@@ -40,7 +40,10 @@ class TodayWidget extends ConsumerWidget {
     final now = DateTime.now().millisecondsSinceEpoch;
     final today = async.maybeWhen(
       data: (rows) => rows
-          .where((s) => s.nextDueAt != null && s.nextDueAt! >= now)
+          .where((s) =>
+              s.nextDueAt != null &&
+              s.nextDueAt! >= now &&
+              plantsById.containsKey(s.plantId))
           .toList(),
       orElse: () => const <db.CareScheduleRow>[],
     );
@@ -90,17 +93,21 @@ class TodayWidget extends ConsumerWidget {
     Map<String, db.PlantRow> plantsById,
     bool last,
   ) {
-    final mock = MockPlants.byId(schedule.plantId);
+    final plant = plantsById[schedule.plantId];
+    final title = plant?.nickname ?? schedule.plantId;
+    final swatch = MockPlants.byId(schedule.plantId);
     final action = _verb(schedule.type);
     return PlantRow(
-      plant: mock,
+      plantId: schedule.plantId,
+      title: title,
+      swatch: swatch,
       surface: surface,
       subtitle: action,
       subtitleIcon: _iconFor(schedule.type),
       subtitleColor: surface.muted,
       first: false,
       last: last,
-      onTap: () => onPlantTap?.call(mock),
+      onTap: () => onPlantTap?.call(schedule.plantId),
       trailing: Consumer(
         builder: (context, ref, _) => _CheckButton(
           surface: surface,
@@ -109,7 +116,7 @@ class TodayWidget extends ConsumerWidget {
                   plantId: schedule.plantId,
                   type: schedule.type,
                 );
-            if (context.mounted) onLogCare?.call(mock, action);
+            if (context.mounted) onLogCare?.call(title, action);
           },
         ),
       ),
