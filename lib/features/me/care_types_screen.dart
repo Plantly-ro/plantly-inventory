@@ -335,29 +335,6 @@ class _Row extends StatelessWidget {
   }
 }
 
-/// A small predefined palette of material icons that make sense for
-/// care reminders. Each entry is a static `Icons.X` reference so the
-/// icon-tree-shaker keeps them in the release APK even though the
-/// chosen codePoint is read from prefs at runtime.
-const List<IconData> kCareIconPalette = [
-  Icons.water_drop_outlined,
-  Icons.eco_outlined,
-  Icons.bubble_chart_outlined,
-  Icons.local_florist_outlined,
-  Icons.content_cut_outlined,
-  Icons.light_mode_outlined,
-  Icons.wb_sunny_outlined,
-  Icons.bug_report_outlined,
-  Icons.air,
-  Icons.thermostat_outlined,
-  Icons.spa_outlined,
-  Icons.grass_outlined,
-  Icons.handyman_outlined,
-  Icons.clean_hands_outlined,
-  Icons.notifications_active_outlined,
-  Icons.medical_services_outlined,
-];
-
 class _IconPicker extends StatelessWidget {
   const _IconPicker({required this.value, required this.surface, required this.onChanged});
   final int value;

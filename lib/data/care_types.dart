@@ -32,7 +32,7 @@ class CareType {
   final double defaultIntervalDays;
   final bool builtin;
 
-  IconData get icon => IconData(iconCode, fontFamily: 'MaterialIcons');
+  IconData get icon => kCareIconByCodePoint[iconCode] ?? Icons.notifications_active_outlined;
 
   /// Past-tense verb for Timeline / Activity rendering. For custom types
   /// the label itself is the best we can do.
@@ -85,6 +85,35 @@ class CareType {
         builtin: (m['builtin'] as bool?) ?? false,
       );
 }
+
+/// Static palette of icons available for care types. All entries are
+/// `const IconData` references so the Flutter icon tree-shaker keeps
+/// their glyphs even when a codePoint is decoded from prefs at runtime.
+const List<IconData> kCareIconPalette = <IconData>[
+  Icons.water_drop_outlined,
+  Icons.eco_outlined,
+  Icons.bubble_chart_outlined,
+  Icons.local_florist_outlined,
+  Icons.content_cut_outlined,
+  Icons.light_mode_outlined,
+  Icons.wb_sunny_outlined,
+  Icons.bug_report_outlined,
+  Icons.air,
+  Icons.thermostat_outlined,
+  Icons.spa_outlined,
+  Icons.grass_outlined,
+  Icons.handyman_outlined,
+  Icons.clean_hands_outlined,
+  Icons.notifications_active_outlined,
+  Icons.medical_services_outlined,
+];
+
+/// Lookup-by-codepoint from [kCareIconPalette]. `CareType.icon` hits
+/// this instead of `IconData(codepoint, fontFamily: 'MaterialIcons')`
+/// so release builds don't trip the non-const-IconData tree-shake guard.
+final Map<int, IconData> kCareIconByCodePoint = {
+  for (final icon in kCareIconPalette) icon.codePoint: icon,
+};
 
 /// Defaults applied on first launch (or whenever prefs is empty).
 final List<CareType> kBuiltInCareTypes = [
