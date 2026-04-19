@@ -240,3 +240,31 @@ final mutedCareTypesProvider =
     StateNotifierProvider<MutedTypesController, Set<String>>((ref) {
   return MutedTypesController(ref.watch(sharedPreferencesProvider.future));
 });
+
+/// User-chosen care-type key for the Plant Detail quick-action FAB.
+/// Default "water" matches the app's muscle memory; users can long-press
+/// the FAB to pick any other care type and persist the choice.
+class QuickFabTypeController extends StateNotifier<String> {
+  QuickFabTypeController(this._prefs) : super('water') {
+    _load();
+  }
+  static const _key = 'plantly_quick_fab_type';
+  final Future<SharedPreferences> _prefs;
+
+  Future<void> _load() async {
+    final p = await _prefs;
+    final stored = p.getString(_key);
+    if (stored != null && stored.isNotEmpty) state = stored;
+  }
+
+  Future<void> set(String key) async {
+    state = key;
+    final p = await _prefs;
+    await p.setString(_key, key);
+  }
+}
+
+final quickFabTypeProvider =
+    StateNotifierProvider<QuickFabTypeController, String>((ref) {
+  return QuickFabTypeController(ref.watch(sharedPreferencesProvider.future));
+});

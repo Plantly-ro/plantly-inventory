@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../data/care_types.dart';
 import '../../data/database/app_database.dart' as db;
 import '../../data/image_processor.dart';
 import '../../data/mock_plants.dart';
@@ -108,23 +109,30 @@ class _PlantDetailBody extends ConsumerWidget {
         ) ??
         (plantRow.locationId == null ? 'No location set' : 'Loading location…');
 
+    final types = ref.watch(careTypesProvider);
+    final fabKey = ref.watch(quickFabTypeProvider);
+    final fabType = resolveCareType(types, fabKey);
     return Scaffold(
       backgroundColor: surface.bg,
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: surface.green,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.water_drop_outlined),
-        label: const Text('Water now'),
-        onPressed: () async {
-          final messenger = ScaffoldMessenger.of(context);
-          await ref.read(careEventRepositoryProvider).record(
-                plantId: plantRow.id,
-                type: 'water',
-              );
-          messenger
-            ..clearSnackBars()
-            ..showSnackBar(const SnackBar(content: Text('Watered — event logged')));
-        },
+      floatingActionButton: GestureDetector(
+        onLongPress: () => _pickFabType(context, ref, types),
+        child: FloatingActionButton.extended(
+          backgroundColor: fabType.color ?? surface.green,
+          foregroundColor: Colors.white,
+          icon: Icon(fabType.icon),
+          label: Text('${fabType.label} now'),
+          tooltip: 'Long-press to change',
+          onPressed: () async {
+            final messenger = ScaffoldMessenger.of(context);
+            await ref.read(careEventRepositoryProvider).record(
+                  plantId: plantRow.id,
+                  type: fabKey,
+                );
+            messenger
+              ..clearSnackBars()
+              ..showSnackBar(SnackBar(content: Text('${fabType.pastTenseLabel} — event logged')));
+          },
+        ),
       ),
       appBar: AppBar(
         backgroundColor: surface.bg,
@@ -366,6 +374,65 @@ class _PlantDetailBody extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _pickFabType(BuildContext context, WidgetRef ref, List<CareType> types) async {
+    final current = ref.read(quickFabTypeProvider);
+    final mode = ref.read(themeModeProvider);
+    final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: surface.bg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(PlantlyTokens.radius2xl)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                height: 4,
+                width: 40,
+                decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'Quick-action button',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text),
+            ),
+            Text(
+              'Pick which care action the FAB performs with one tap.',
+              style: TextStyle(fontSize: 12, color: surface.muted),
+            ),
+            const SizedBox(height: 14),
+            for (final t in types)
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 6),
+                leading: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: t.color ?? surface.greenSoft,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Icon(t.icon, color: t.color == null ? surface.green : Colors.white),
+                ),
+                title: Text(t.label),
+                trailing: t.key == current ? Icon(Icons.check, color: surface.green) : null,
+                onTap: () => Navigator.of(ctx).pop(t.key),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked != null) {
+      await ref.read(quickFabTypeProvider.notifier).set(picked);
+    }
   }
 
   Future<void> _pickLocationDialog(
@@ -712,9 +779,15 @@ class _UpcomingRowView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final types = ref.watch(careTypesProvider);
+    final ct = resolveCareType(types, schedule.type);
     final (label, whenText, urgent) = _describe(schedule);
-    final icon = _iconFor(schedule.type);
+    final icon = ct.icon;
     final muted = schedule.notificationsMuted;
+    // If the user gave this type a colour, use it as the chip fill; the
+    // terra urgent tint still wins when the reminder is actually overdue.
+    final chipBg = urgent ? surface.terraSoft : (ct.color ?? surface.greenSoft);
+    final chipFg = urgent ? surface.terra : (ct.color == null ? surface.green : Colors.white);
     return InkWell(
       onLongPress: () {
         showModalBottomSheet(
@@ -735,10 +808,10 @@ class _UpcomingRowView extends ConsumerWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: urgent ? surface.terraSoft : surface.greenSoft,
+              color: chipBg,
               borderRadius: BorderRadius.circular(PlantlyTokens.radius),
             ),
-            child: Icon(icon, size: 16, color: urgent ? surface.terra : surface.green),
+            child: Icon(icon, size: 16, color: chipFg),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -864,24 +937,6 @@ class _UpcomingRowView extends ConsumerWidget {
     }
   }
 
-  IconData _iconFor(String type) {
-    switch (type) {
-      case 'fertilize':
-        return Icons.eco_outlined;
-      case 'rotate':
-        return Icons.light_mode_outlined;
-      case 'mist':
-        return Icons.bubble_chart_outlined;
-      case 'repot':
-        return Icons.local_florist_outlined;
-      case 'prune':
-        return Icons.content_cut_outlined;
-      case 'water':
-        return Icons.water_drop_outlined;
-      default:
-        return Icons.notifications_active_outlined;
-    }
-  }
 }
 
 class _AddReminderButton extends StatelessWidget {
@@ -1048,12 +1103,18 @@ class _Timeline extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(vertical: 10),
         child: Row(
           children: [
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(color: surface.greenSoft, shape: BoxShape.circle),
-              child: Icon(_iconFor(event.type), size: 14, color: surface.green),
-            ),
+            Builder(builder: (ctx) {
+              final types = ref.watch(careTypesProvider);
+              final ct = resolveCareType(types, event.type);
+              final bg = ct.color ?? surface.greenSoft;
+              final fg = ct.color == null ? surface.green : Colors.white;
+              return Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+                child: Icon(ct.icon, size: 14, color: fg),
+              );
+            }),
             const SizedBox(width: 11),
             Expanded(child: Text(text, style: TextStyle(fontSize: 13, color: surface.text))),
             Text(when, style: TextStyle(fontSize: 11, color: surface.muted, fontWeight: FontWeight.w500)),
@@ -1100,24 +1161,6 @@ class _Timeline extends ConsumerWidget {
     }
   }
 
-  IconData _iconFor(String type) {
-    switch (type) {
-      case 'fertilize':
-        return Icons.eco_outlined;
-      case 'rotate':
-        return Icons.light_mode_outlined;
-      case 'mist':
-        return Icons.bubble_chart_outlined;
-      case 'repot':
-        return Icons.local_florist_outlined;
-      case 'prune':
-        return Icons.content_cut_outlined;
-      case 'water':
-        return Icons.water_drop_outlined;
-      default:
-        return Icons.notifications_active_outlined;
-    }
-  }
 
   String _formatDate(DateTime d) {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

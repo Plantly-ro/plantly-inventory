@@ -66,7 +66,9 @@ void main() {
   testWidgets('Customize → Dashboard preset swaps widgets + persists to prefs', (tester) async {
     await _pumpHome(tester);
 
-    await tester.tap(find.text('✎ Customize home'));
+    // Long-press anywhere on the home body to enter edit mode — the
+    // explicit button was removed in v0.5.14.
+    await tester.longPress(find.text('Recent activity'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Dashboard'));

@@ -305,31 +305,21 @@ class _Row extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: surface.greenSoft,
+                  color: type.color ?? surface.greenSoft,
                   borderRadius: BorderRadius.circular(9),
                 ),
-                child: Icon(type.icon, size: 18, color: surface.green),
+                child: Icon(
+                  type.icon,
+                  size: 18,
+                  color: type.color == null ? surface.green : Colors.white,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(type.label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text)),
-                        const SizedBox(width: 6),
-                        if (type.builtin)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: surface.greenSoft,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text('built-in', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: surface.green)),
-                          ),
-                      ],
-                    ),
+                    Text(type.label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text)),
                     Text('Default: every ${_format(type.defaultIntervalDays)} day${type.defaultIntervalDays == 1 ? '' : 's'}',
                         style: TextStyle(fontSize: 11.5, color: surface.muted)),
                   ],

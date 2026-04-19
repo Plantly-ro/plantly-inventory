@@ -104,6 +104,26 @@ everything still open into `PLAN.md` Phase 2 and delete this file.
 
 ---
 
+## Fixed in v0.5.14-phase1 (2026-04-19, calendar interactivity + home gesture + type colours + FAB)
+
+- [x] **Calendar fully interactive.** Tap a week day row → day
+      detail sheet. Tap a month cell → same. Tap a year tile → zoom
+      to month (already shipped). New `DayDetailSheet` lists the
+      day's Scheduled (with Done/Snooze) and Logged rows.
+- [x] **Home: long-press to customise.** The explicit "✎ Customise
+      home" button is gone. A GestureDetector around the body
+      enters edit mode on long-press; subtle hint text at the top
+      of the ListView reminds first-timers.
+- [x] **Bell icon removed** from the greeting widget header.
+- [x] **Care-type colour wired into the UI.** Upcoming Care row
+      chip fill, Timeline event icon circle, Care Types screen
+      row icon, and day-detail row all use `CareType.color` when
+      set (white icon on the coloured fill).
+- [x] **"built-in" label dropped** from default Care Types rows.
+- [x] **Configurable Plant Detail FAB.** Long-press the FAB to
+      pick which care type it performs. Icon + label + colour
+      update live; choice persists in `plantly_quick_fab_type`.
+
 ## Fixed in v0.5.13-phase1 (2026-04-19, P1 finish — gallery UI + bulk ops)
 
 - [x] **Location photo gallery UI.** New GALLERY section on
