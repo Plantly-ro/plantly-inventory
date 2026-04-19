@@ -212,6 +212,28 @@ class PlantRepository {
       await cascadeDeleteSchedules(db, opLog, id, ts);
     });
   }
+
+  /// Re-animate a soft-deleted plant. Primarily used by snackbar Undo
+  /// flows. Does NOT re-attach photos / tags that were detached as part
+  /// of the delete cascade — those OR-set rows carry their own tombstone
+  /// HLC and would need to be re-issued with a newer add-op.
+  Future<void> restoreFromSoftDelete(String id) async {
+    return db.transaction(() async {
+      final hlc = await opLog.recordFieldUpdate(
+        entity: 'plants',
+        entityId: id,
+        field: 'deleted_at',
+        value: null,
+      );
+      await (db.update(db.plants)..where((p) => p.id.equals(id))).write(
+        PlantsCompanion(
+          deletedAt: const Value(null),
+          updatedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+  }
 }
 
 /// Soft-deletes every schedule for [plantId]. Exposed so the inventory
@@ -234,6 +256,51 @@ Future<void> cascadeDeleteSchedules(
       CareSchedulesCompanion(
         deletedAt: Value(ts),
         updatedHlc: Value(hlc.encode()),
+        deviceId: Value(opLog.clock.deviceId),
+      ),
+    );
+  }
+  // Also detach every `plant_photos` OR-Set row pointing at this plant,
+  // so the live OR-Set rule drops the photo from the plant's gallery.
+  // The underlying content-addressed `photos` rows stay (other plants
+  // may reference the same SHA).
+  final joins = await (db.select(db.plantPhotos)
+        ..where((r) =>
+            r.tenantId.equals(opLog.tenantId) &
+            r.plantId.equals(plantId) &
+            r.removedHlc.isNull()))
+      .get();
+  for (final j in joins) {
+    final hlc = await opLog.recordFieldUpdate(
+      entity: 'plant_tags',
+      entityId: '$plantId/${j.photoSha}',
+      field: 'removed_hlc',
+      value: null,
+    );
+    await (db.update(db.plantPhotos)..where((r) => r.id.equals(j.id))).write(
+      PlantPhotosCompanion(
+        removedHlc: Value(hlc.encode()),
+        deviceId: Value(opLog.clock.deviceId),
+      ),
+    );
+  }
+  // Same for tags.
+  final tagJoins = await (db.select(db.plantTags)
+        ..where((r) =>
+            r.tenantId.equals(opLog.tenantId) &
+            r.plantId.equals(plantId) &
+            r.removedHlc.isNull()))
+      .get();
+  for (final j in tagJoins) {
+    final hlc = await opLog.recordFieldUpdate(
+      entity: 'plant_tags',
+      entityId: '$plantId/${j.tagId}',
+      field: 'removed_hlc',
+      value: null,
+    );
+    await (db.update(db.plantTags)..where((r) => r.id.equals(j.id))).write(
+      PlantTagsCompanion(
+        removedHlc: Value(hlc.encode()),
         deviceId: Value(opLog.clock.deviceId),
       ),
     );

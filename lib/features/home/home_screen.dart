@@ -87,25 +87,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               style: TextStyle(color: surface.terra),
             ),
           ),
-          data: (_) => Column(
-            children: [
-              _EditToggleBar(
-                editing: _editing,
-                surface: surface,
-                onTap: () => setState(() => _editing = !_editing),
-              ),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.only(top: 6, bottom: 96),
-                  children: [
-                    for (var i = 0; i < layout.length; i++)
-                      _renderWidget(layout[i], i, layout.length, surface),
-                    if (_editing) _EditPanel(surface: surface, current: layout),
-                  ],
+          data: (_) {
+            final hasPlants = ref.watch(plantsStreamProvider).maybeWhen(
+                  data: (rows) => rows.isNotEmpty,
+                  orElse: () => true, // assume has plants while loading
+                );
+            final permDenied = ref.watch(notificationPermissionProvider) == false;
+            return Column(
+              children: [
+                _EditToggleBar(
+                  editing: _editing,
+                  surface: surface,
+                  onTap: () => setState(() => _editing = !_editing),
                 ),
-              ),
-            ],
-          ),
+                if (permDenied) _NotificationPermissionBanner(surface: surface),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.only(top: 6, bottom: 96),
+                    children: [
+                      if (!hasPlants) _FirstRunCallout(surface: surface),
+                      for (var i = 0; i < layout.length; i++)
+                        _renderWidget(layout[i], i, layout.length, surface),
+                      if (_editing) _EditPanel(surface: surface, current: layout),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -462,6 +471,82 @@ class _TabIcon extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FirstRunCallout extends StatelessWidget {
+  const _FirstRunCallout({required this.surface});
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: surface.greenSoft,
+          borderRadius: BorderRadius.circular(PlantlyTokens.radius2xl),
+          border: Border.all(color: surface.green),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.eco_outlined, color: surface.green),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'No plants yet',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: surface.text),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Tap the + button to add your first plant. You can set up reminders once it lands.',
+                    style: TextStyle(fontSize: 12, color: surface.muted),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationPermissionBanner extends ConsumerWidget {
+  const _NotificationPermissionBanner({required this.surface});
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Material(
+      color: surface.terraSoft,
+      child: InkWell(
+        onTap: () async {
+          final ok = await ref.read(notificationServiceProvider).requestPermissions();
+          ref.read(notificationPermissionProvider.notifier).state = ok;
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              Icon(Icons.notifications_off_outlined, size: 16, color: surface.terra),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Notifications are off — reminders won\'t fire. Tap to enable.',
+                  style: TextStyle(fontSize: 12, color: surface.terra, fontWeight: FontWeight.w600),
+                ),
+              ),
+              Icon(Icons.chevron_right, size: 16, color: surface.terra),
+            ],
+          ),
+        ),
       ),
     );
   }

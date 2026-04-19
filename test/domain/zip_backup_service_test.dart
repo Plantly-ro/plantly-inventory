@@ -11,10 +11,15 @@ import 'package:plantly_inventory/domain/services/backup_service.dart';
 import 'package:plantly_inventory/domain/services/zip_backup_service.dart';
 import 'package:plantly_inventory/sync/hlc.dart';
 import 'package:plantly_inventory/sync/op_log.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Uint8List _bytes(String s) => Uint8List.fromList(s.codeUnits);
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   const secret = 'secret-passphrase';
 
   Future<

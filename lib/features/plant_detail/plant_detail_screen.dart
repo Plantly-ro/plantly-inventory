@@ -14,7 +14,9 @@ import '../../theme/tokens.dart';
 import '../export/export_dialog.dart';
 import '../home/home_providers.dart';
 import '../../shared/location_picker.dart';
+import '../../shared/photo_source_sheet.dart';
 import 'add_reminder_sheet.dart';
+import 'edit_event_sheet.dart';
 import 'edit_plant_sheet.dart';
 import 'edit_reminder_sheet.dart';
 import 'inventory_action_sheet.dart';
@@ -133,7 +135,7 @@ class _PlantDetailBody extends ConsumerWidget {
             tooltip: 'Add photos',
             onPressed: () async {
               final picker = ref.read(photoPickerProvider);
-              final picked = await picker.pickMultipleFromGallery();
+              final picked = await pickMultiPhotoWithSource(context, picker, surface);
               if (picked.isEmpty) return;
               final processor = ref.read(imageProcessorProvider);
               final photos = ref.read(photoRepositoryProvider);
@@ -185,6 +187,7 @@ class _PlantDetailBody extends ConsumerWidget {
                   break;
                 case 'delete':
                   final nav = Navigator.of(context);
+                  final messenger = ScaffoldMessenger.of(context);
                   final confirm = await showDialog<bool>(
                     context: context,
                     builder: (dctx) => AlertDialog(
@@ -206,6 +209,17 @@ class _PlantDetailBody extends ConsumerWidget {
                   if (confirm == true) {
                     await ref.read(plantRepositoryProvider).softDelete(plantRow.id);
                     if (context.mounted) nav.maybePop();
+                    messenger
+                      ..clearSnackBars()
+                      ..showSnackBar(SnackBar(
+                        content: Text('Deleted "${plantRow.nickname}"'),
+                        action: SnackBarAction(
+                          label: 'Undo',
+                          onPressed: () {
+                            ref.read(plantRepositoryProvider).restoreFromSoftDelete(plantRow.id);
+                          },
+                        ),
+                      ));
                   }
                   break;
               }
@@ -875,6 +889,7 @@ class _Timeline extends ConsumerWidget {
     final when = _formatDate(DateTime.fromMillisecondsSinceEpoch(event.doneAt, isUtc: true).toLocal());
     final text = _describe(event);
     Future<void> delete() async {
+      final messenger = ScaffoldMessenger.of(context);
       final confirm = await showDialog<bool>(
         context: context,
         builder: (dctx) => AlertDialog(
@@ -888,11 +903,39 @@ class _Timeline extends ConsumerWidget {
       );
       if (confirm == true) {
         await ref.read(careEventRepositoryProvider).undo(event.id);
+        messenger
+          ..clearSnackBars()
+          ..showSnackBar(SnackBar(
+            content: Text('Event removed'),
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () async {
+                // "Undo" an undo → re-record the same event verbatim.
+                await ref.read(careEventRepositoryProvider).record(
+                      plantId: event.plantId,
+                      type: event.type,
+                      doneAt: event.doneAt,
+                      notes: event.notes,
+                      dose: event.dose,
+                      product: event.product,
+                      photoSha: event.photoSha,
+                    );
+              },
+            ),
+          ));
       }
     }
 
     return InkWell(
       onLongPress: delete,
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => EditEventSheet(event: event),
+        );
+      },
       child: Container(
         decoration: BoxDecoration(
           border: last ? null : Border(bottom: BorderSide(color: surface.border)),

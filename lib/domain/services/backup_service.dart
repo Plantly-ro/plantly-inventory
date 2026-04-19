@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/database/app_database.dart';
 import '../../sync/hlc.dart';
@@ -26,6 +27,13 @@ class BackupService {
   /// JSON blob. [secret] is the passphrase the user will also need to
   /// import this file — we never persist it.
   Future<String> export({required String secret}) async {
+    // Pull user preferences that live outside Drift so the round-trip is
+    // complete: custom care types, home-widget layout, theme mode.
+    final prefs = await SharedPreferences.getInstance();
+    final prefSnapshot = <String, Object?>{
+      for (final key in const ['plantly_care_types', 'plantly_layout', 'plantly_theme', 'plantly_plant_sort'])
+        if (prefs.containsKey(key)) key: prefs.get(key),
+    };
     final body = <String, Object?>{
       'format': 'plantly_inventory.backup',
       'version': currentFormatVersion,
@@ -40,6 +48,7 @@ class BackupService {
       'care_events': await _rows(db.careEvents),
       'care_schedules': await _rows(db.careSchedules),
       'inventory_transactions': await _rows(db.inventoryTransactions),
+      'prefs': prefSnapshot,
     };
     final canonical = json.encode(body);
     final mac = _hmac(canonical, secret);
@@ -103,6 +112,27 @@ class BackupService {
         'inventory_transactions',
       );
     });
+    // Replay the user preferences blob (custom care types / layout /
+    // theme / sort). Guards each value against the expected type so a
+    // broken backup can't crash the app on read.
+    final prefsBlob = payload['prefs'];
+    if (prefsBlob is Map<String, dynamic>) {
+      final prefs = await SharedPreferences.getInstance();
+      for (final entry in prefsBlob.entries) {
+        final v = entry.value;
+        if (v is String) {
+          await prefs.setString(entry.key, v);
+        } else if (v is int) {
+          await prefs.setInt(entry.key, v);
+        } else if (v is bool) {
+          await prefs.setBool(entry.key, v);
+        } else if (v is double) {
+          await prefs.setDouble(entry.key, v);
+        } else if (v is List) {
+          await prefs.setStringList(entry.key, v.whereType<String>().toList());
+        }
+      }
+    }
     return BackupImportResult(rowsImported: counts);
   }
 
