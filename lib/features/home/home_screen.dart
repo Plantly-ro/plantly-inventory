@@ -11,7 +11,9 @@ import '../locations/locations_screen.dart';
 import '../search/search_screen.dart';
 import '../me/me_screen.dart';
 import 'add_plant_sheet.dart';
+import 'bulk_action_bar.dart';
 import 'home_providers.dart';
+import 'selection.dart';
 import 'widget_registry.dart';
 
 /// Port of `CustomHome` in `web/prototype/components/screens.jsx`.
@@ -54,18 +56,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: bootstrap.hasValue
-          ? _TabBar(
-              surface: surface,
-              onCalendar: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const CalendarScreen()),
-                );
-              },
-              onMe: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const MeScreen()),
-                );
-              },
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (ref.watch(plantSelectionProvider).isNotEmpty)
+                  BulkActionBar(surface: surface),
+                _TabBar(
+                  surface: surface,
+                  onCalendar: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const CalendarScreen()),
+                    );
+                  },
+                  onMe: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const MeScreen()),
+                    );
+                  },
+                ),
+              ],
             )
           : null,
       body: SafeArea(

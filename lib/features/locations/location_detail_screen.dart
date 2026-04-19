@@ -194,6 +194,14 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                   ],
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 18, 20, 4),
+                    child: Text('GALLERY', style: _sectionStyle(surface)),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _LocationGallery(locationId: loc.id, surface: surface),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 4),
                     child: Text('PLANTS (${plants.length})', style: _sectionStyle(surface)),
                   ),
                   Padding(
@@ -586,6 +594,202 @@ class _Row extends StatelessWidget {
               if (plant.pinX != null && plant.pinY != null)
                 Icon(Icons.place, size: 14, color: surface.green),
               Icon(Icons.chevron_right, color: surface.muted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LocationGallery extends ConsumerWidget {
+  const _LocationGallery({required this.locationId, required this.surface});
+  final String locationId;
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final photos = ref.watch(locationPhotosProvider(locationId)).maybeWhen(
+          data: (rows) => rows,
+          orElse: () => const <LocationPhotoRow>[],
+        );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (photos.isEmpty)
+          _AddTile(surface: surface, onTap: () => _addPhoto(context, ref))
+        else
+          GridView.count(
+            crossAxisCount: 3,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            childAspectRatio: 1,
+            mainAxisSpacing: 6,
+            crossAxisSpacing: 6,
+            children: [
+              for (final row in photos)
+                _GalleryTile(row: row, surface: surface, onTap: () => _viewPhoto(context, ref, row)),
+              _AddTile(surface: surface, onTap: () => _addPhoto(context, ref)),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Future<void> _addPhoto(BuildContext context, WidgetRef ref) async {
+    final picker = ref.read(photoPickerProvider);
+    final picked = await pickSinglePhotoWithSource(context, picker, surface);
+    if (picked == null) return;
+    final processor = ref.read(imageProcessorProvider);
+    final shrunk = await processor.toDisplay(picked.bytes);
+    final sha = await ref.read(photoRepositoryProvider).saveBytes(shrunk, mime: 'image/jpeg');
+    await ref.read(locationPhotoRepositoryProvider).attach(locationId, sha);
+  }
+
+  Future<void> _viewPhoto(BuildContext context, WidgetRef ref, LocationPhotoRow row) async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: surface.bg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(PlantlyTokens.radius2xl)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                height: 4,
+                width: 40,
+                decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 14),
+            ListTile(
+              leading: Icon(Icons.edit_note_outlined, color: surface.green),
+              title: const Text('Edit caption'),
+              onTap: () => Navigator.of(ctx).pop('caption'),
+            ),
+            ListTile(
+              leading: Icon(Icons.delete_outline, color: surface.terra),
+              title: const Text('Remove from this space'),
+              onTap: () => Navigator.of(ctx).pop('remove'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == 'caption' && context.mounted) {
+      final controller = TextEditingController(text: row.caption ?? '');
+      final result = await showDialog<String?>(
+        context: context,
+        builder: (dctx) => AlertDialog(
+          title: const Text('Caption'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLength: 200,
+            decoration: const InputDecoration(hintText: 'e.g. morning light corner', border: OutlineInputBorder()),
+            onSubmitted: (v) => Navigator.of(dctx).pop(v),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(dctx).pop(null), child: const Text('Cancel')),
+            if ((row.caption ?? '').isNotEmpty)
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: surface.terra),
+                onPressed: () => Navigator.of(dctx).pop(''),
+                child: const Text('Clear'),
+              ),
+            FilledButton(onPressed: () => Navigator.of(dctx).pop(controller.text), child: const Text('Save')),
+          ],
+        ),
+      );
+      controller.dispose();
+      if (result != null) {
+        await ref
+            .read(locationPhotoRepositoryProvider)
+            .setCaption(row.id, result.isEmpty ? null : result.trim());
+      }
+    } else if (choice == 'remove') {
+      await ref.read(locationPhotoRepositoryProvider).detach(row.locationId, row.photoSha);
+    }
+  }
+}
+
+class _GalleryTile extends ConsumerWidget {
+  const _GalleryTile({required this.row, required this.surface, required this.onTap});
+  final LocationPhotoRow row;
+  final PlantlySurface surface;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            FutureBuilder(
+              future: ref.watch(photoRepositoryProvider).byHash(row.photoSha),
+              builder: (_, snap) {
+                final path = snap.data?.localPath;
+                if (path != null && File(path).existsSync()) {
+                  return Image.file(File(path), fit: BoxFit.cover);
+                }
+                return Container(color: surface.surfaceAlt);
+              },
+            ),
+            if ((row.caption ?? '').isNotEmpty)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  child: Text(
+                    row.caption!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AddTile extends StatelessWidget {
+  const _AddTile({required this.surface, required this.onTap});
+  final PlantlySurface surface;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+      child: Container(
+        decoration: BoxDecoration(
+          color: surface.surface,
+          borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+          border: Border.all(color: surface.border, style: BorderStyle.solid),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.add_photo_alternate_outlined, size: 24, color: surface.muted),
+              const SizedBox(height: 4),
+              Text('Add', style: TextStyle(fontSize: 11, color: surface.muted)),
             ],
           ),
         ),
