@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/database/app_database.dart';
 import '../../../data/mock_plants.dart';
 import '../../../data/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/plant_thumb.dart';
 import '../../../theme/tokens.dart';
 import 'widget_shell.dart';
@@ -31,11 +32,12 @@ class QuickLogWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     final actions = <_Action>[
-      _Action('Water', 'water', Icons.water_drop_outlined, surface.green, surface.greenSoft),
-      _Action('Fertilize', 'fertilize', Icons.eco_outlined, surface.green, surface.greenSoft),
-      _Action('Mist', 'mist', Icons.bubble_chart_outlined, surface.terra, surface.terraSoft),
-      _Action('Rotate', 'rotate', Icons.light_mode_outlined, surface.terra, surface.terraSoft),
+      _Action(t.quickLogWater, 'water', Icons.water_drop_outlined, surface.green, surface.greenSoft),
+      _Action(t.quickLogFertilize, 'fertilize', Icons.eco_outlined, surface.green, surface.greenSoft),
+      _Action(t.quickLogMist, 'mist', Icons.bubble_chart_outlined, surface.terra, surface.terraSoft),
+      _Action(t.quickLogRotate, 'rotate', Icons.light_mode_outlined, surface.terra, surface.terraSoft),
     ];
     return WidgetShell(
       surface: surface,
@@ -43,7 +45,7 @@ class QuickLogWidget extends ConsumerWidget {
       onMoveUp: onMoveUp,
       onMoveDown: onMoveDown,
       onRemove: onRemove,
-      title: 'Quick log',
+      title: t.quickLogTitle,
       child: GridView.count(
         crossAxisCount: 4,
         shrinkWrap: true,

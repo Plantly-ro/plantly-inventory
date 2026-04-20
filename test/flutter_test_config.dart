@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
 
+import 'package:drift/drift.dart';
 import 'package:sqlite3/open.dart';
 
 /// Global flutter_test config — loaded automatically by flutter_test before
@@ -15,5 +16,9 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
       return DynamicLibrary.open('/usr/lib/x86_64-linux-gnu/libsqlite3.so.0');
     });
   }
+  // Tests routinely open a fresh in-memory AppDatabase per setUp. Drift
+  // warns about multiple instances to catch production misuse; not
+  // applicable in tests where each executor is isolated.
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
   await testMain();
 }

@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/providers.dart';
+import '../../data/user_prefs.dart';
 import '../../theme/tokens.dart';
 import '../calendar/calendar_screen.dart';
 import '../plant_detail/plant_detail_screen.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../locations/locations_screen.dart';
+import '../onboarding/onboarding_screen.dart';
 import '../search/search_screen.dart';
 import '../me/me_screen.dart';
 import 'add_plant_sheet.dart';
@@ -26,6 +28,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _editing = false;
+  bool _pushedOnboarding = false;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +39,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // The DB needs one round-trip to open, load the device id, and seed the
     // fixture plants on first launch — show a lightweight loader until then.
     final bootstrap = ref.watch(appContextProvider);
+
+    // First-run gate: once prefs have loaded and the user hasn't seen the
+    // onboarding, push it on the next frame. Guarded by `_pushedOnboarding`
+    // so rebuilds don't re-push, and by `loaded` so we don't flash
+    // onboarding against the default-false initial state.
+    final prefs = ref.watch(userPrefsProvider);
+    if (!_pushedOnboarding && prefs.loaded && !prefs.onboardingSeen) {
+      _pushedOnboarding = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const OnboardingScreen(), fullscreenDialog: true),
+        );
+      });
+    }
 
     return Scaffold(
       backgroundColor: surface.bg,

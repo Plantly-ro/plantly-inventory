@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../data/care_types.dart';
 import '../../data/database/app_database.dart' as db;
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../plant_detail/plant_detail_screen.dart';
@@ -50,6 +51,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   Widget build(BuildContext context) {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final t = AppLocalizations.of(context);
 
     final schedulesAsync = ref.watch(allSchedulesProvider);
     final eventsAsync = ref.watch(recentCareEventsProvider);
@@ -101,12 +103,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             icon: Icon(Icons.arrow_back_ios_new, size: 18, color: surface.text),
           ),
           IconButton(
-            tooltip: 'Today',
+            tooltip: t.calendarToday,
             onPressed: () => setState(() => _anchor = DateTime.now()),
             icon: Icon(Icons.today_outlined, color: surface.text),
           ),
           IconButton(
-            tooltip: 'Next',
+            tooltip: t.calendarNext,
             onPressed: () => setState(() => _anchor = _step(_anchor, _view, 1)),
             icon: Icon(Icons.arrow_forward_ios, size: 18, color: surface.text),
           ),
@@ -118,10 +120,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
             child: SegmentedButton<CalendarView>(
-              segments: const [
-                ButtonSegment(value: CalendarView.week, label: Text('Week')),
-                ButtonSegment(value: CalendarView.month, label: Text('Month')),
-                ButtonSegment(value: CalendarView.year, label: Text('Year')),
+              segments: [
+                ButtonSegment(value: CalendarView.week, label: Text(t.calendarWeek)),
+                ButtonSegment(value: CalendarView.month, label: Text(t.calendarMonth)),
+                ButtonSegment(value: CalendarView.year, label: Text(t.calendarYear)),
               ],
               selected: {_view},
               showSelectedIcon: false,
@@ -133,7 +135,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
               children: [
                 if (upcomingNext10.isNotEmpty) ...[
-                  _sectionLabel('UPCOMING${firstOverdueOrToday > 0 ? '  ·  $firstOverdueOrToday due today or overdue' : ''}', surface),
+                  _sectionLabel('${t.calendarUpcoming}${firstOverdueOrToday > 0 ? '  ·  $firstOverdueOrToday' : ''}', surface),
                   const SizedBox(height: 8),
                   Container(
                     decoration: BoxDecoration(

@@ -1,7 +1,7 @@
 name: plantly_inventory
 description: "PlantlyInventory — offline-first companion plant care tracker. Phase 1 Flutter app; see PLAN.md."
 publish_to: 'none'
-version: 0.1.0+16
+version: 0.1.0+17
 
 environment:
   sdk: ^3.11.5
@@ -50,6 +50,13 @@ dependencies:
   # ZIP-with-photos export (Phase 1). Pure-Dart; already pulled in via
   # flutter_local_notifications → xml → archive is a different lib.
   archive: ^4.0.0
+
+  # Opt-in crash reporting + anonymous usage events. Initialised only
+  # when the user explicitly flips the toggle in Me → Privacy & data
+  # (both default off). Without a DSN (SENTRY_DSN env var at build
+  # time), init is a no-op — the app ships public with zero telemetry
+  # by default.
+  sentry_flutter: ^8.9.0
 
   # User-facing backup / restore + iCal save-to-file. file_selector for
   # picking a backup JSON/ZIP to import; share_plus for handing the

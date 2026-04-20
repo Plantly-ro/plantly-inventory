@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/tokens.dart';
 import 'widget_shell.dart';
 
@@ -80,7 +81,7 @@ class WeatherWidget extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'TIP OF THE DAY',
+                    AppLocalizations.of(context).tipOfTheDay,
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w500,

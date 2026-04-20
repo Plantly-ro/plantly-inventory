@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/care_types.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 
@@ -90,6 +91,7 @@ class _EditEventSheetState extends ConsumerState<EditEventSheet> {
   Widget build(BuildContext context) {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final t = AppLocalizations.of(context);
     final types = ref.watch(careTypesProvider);
 
     return Padding(
@@ -113,26 +115,26 @@ class _EditEventSheetState extends ConsumerState<EditEventSheet> {
                 ),
               ),
               const SizedBox(height: 14),
-              Text('Edit event', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text)),
+              Text(t.editEventTitle, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text)),
               const SizedBox(height: 14),
-              Text('WHAT', style: _label(surface)),
+              Text(t.logEventWhat, style: _label(surface)),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  for (final t in types)
+                  for (final ct in types)
                     _Chip(
-                      label: t.pastTenseLabel,
-                      icon: t.icon,
-                      selected: _selectedType == t.key,
+                      label: ct.pastTenseLabel,
+                      icon: ct.icon,
+                      selected: _selectedType == ct.key,
                       surface: surface,
-                      onTap: () => setState(() => _selectedType = t.key),
+                      onTap: () => setState(() => _selectedType = ct.key),
                     ),
                 ],
               ),
               const SizedBox(height: 14),
-              Text('WHEN', style: _label(surface)),
+              Text(t.logEventWhen, style: _label(surface)),
               const SizedBox(height: 8),
               InkWell(
                 onTap: _pickWhen,
@@ -155,15 +157,15 @@ class _EditEventSheetState extends ConsumerState<EditEventSheet> {
                 ),
               ),
               const SizedBox(height: 14),
-              Text('PRODUCT (OPTIONAL)', style: _label(surface)),
+              Text(t.logEventProduct, style: _label(surface)),
               const SizedBox(height: 8),
-              TextField(controller: _product, decoration: _dec(surface, hint: 'e.g. Fern spray')),
+              TextField(controller: _product, decoration: _dec(surface, hint: t.logEventProductHint)),
               const SizedBox(height: 12),
-              Text('DOSE (OPTIONAL)', style: _label(surface)),
+              Text(t.editEventDose, style: _label(surface)),
               const SizedBox(height: 8),
-              TextField(controller: _dose, decoration: _dec(surface, hint: 'e.g. 100 ml')),
+              TextField(controller: _dose, decoration: _dec(surface, hint: t.editEventDoseHint)),
               const SizedBox(height: 12),
-              Text('NOTES (OPTIONAL)', style: _label(surface)),
+              Text(t.logEventNotes, style: _label(surface)),
               const SizedBox(height: 8),
               TextField(controller: _notes, maxLines: 2, decoration: _dec(surface)),
               if (_error != null) ...[
@@ -182,7 +184,7 @@ class _EditEventSheetState extends ConsumerState<EditEventSheet> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius)),
                       ),
                       onPressed: _saving ? null : () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
+                      child: Text(t.cancel),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -196,7 +198,7 @@ class _EditEventSheetState extends ConsumerState<EditEventSheet> {
                         textStyle: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       onPressed: _saving ? null : _save,
-                      child: Text(_saving ? 'Saving…' : 'Save'),
+                      child: Text(_saving ? t.saving : t.commonSave),
                     ),
                   ),
                 ],

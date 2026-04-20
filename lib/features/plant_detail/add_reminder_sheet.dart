@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/care_types.dart';
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 
@@ -136,6 +137,7 @@ class _AddReminderSheetState extends ConsumerState<AddReminderSheet> {
   Widget build(BuildContext context) {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final t = AppLocalizations.of(context);
     final types = ref.watch(careTypesProvider);
 
     return Padding(
@@ -162,32 +164,32 @@ class _AddReminderSheetState extends ConsumerState<AddReminderSheet> {
                 ),
               ),
               const SizedBox(height: 14),
-              Text('Add reminder',
+              Text(t.addReminderTitle,
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text)),
               const SizedBox(height: 14),
-              _label('TYPE', surface),
+              _label(t.addReminderType, surface),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  for (final t in types)
+                  for (final ct in types)
                     _TypeChip(
-                      label: t.label,
-                      icon: t.icon,
-                      selected: _selectedKey == t.key,
+                      label: ct.label,
+                      icon: ct.icon,
+                      selected: _selectedKey == ct.key,
                       surface: surface,
                       onTap: () {
                         setState(() {
-                          _selectedKey = t.key;
-                          final conv = _fromDays(t.defaultIntervalDays);
+                          _selectedKey = ct.key;
+                          final conv = _fromDays(ct.defaultIntervalDays);
                           _unit = conv.unit;
                           _intervalController.text = _format(conv.count);
                         });
                       },
                     ),
                   _TypeChip(
-                    label: 'Custom',
+                    label: t.addReminderCustom,
                     icon: Icons.edit_outlined,
                     selected: _isCustom,
                     surface: surface,
@@ -200,11 +202,11 @@ class _AddReminderSheetState extends ConsumerState<AddReminderSheet> {
                 TextField(
                   controller: _customTypeController,
                   textCapitalization: TextCapitalization.sentences,
-                  decoration: _dec(surface, hint: 'e.g. neem spray'),
+                  decoration: _dec(surface, hint: t.addReminderCustomHint),
                 ),
               ],
               const SizedBox(height: 14),
-              _label('PRESETS', surface),
+              _label(t.addReminderPresets, surface),
               const SizedBox(height: 8),
               _Presets(
                 surface: surface,
@@ -218,7 +220,7 @@ class _AddReminderSheetState extends ConsumerState<AddReminderSheet> {
                 },
               ),
               const SizedBox(height: 14),
-              _label('EVERY', surface),
+              _label(t.addReminderEvery, surface),
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -234,11 +236,11 @@ class _AddReminderSheetState extends ConsumerState<AddReminderSheet> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: SegmentedButton<_Unit>(
-                      segments: const [
-                        ButtonSegment(value: _Unit.minutes, label: Text('min')),
-                        ButtonSegment(value: _Unit.hours, label: Text('hr')),
-                        ButtonSegment(value: _Unit.days, label: Text('day')),
-                        ButtonSegment(value: _Unit.months, label: Text('mo')),
+                      segments: [
+                        ButtonSegment(value: _Unit.minutes, label: Text(t.addReminderUnitMin)),
+                        ButtonSegment(value: _Unit.hours, label: Text(t.addReminderUnitHr)),
+                        ButtonSegment(value: _Unit.days, label: Text(t.addReminderUnitDay)),
+                        ButtonSegment(value: _Unit.months, label: Text(t.addReminderUnitMo)),
                       ],
                       selected: {_unit},
                       showSelectedIcon: false,
@@ -248,28 +250,28 @@ class _AddReminderSheetState extends ConsumerState<AddReminderSheet> {
                 ],
               ),
               const SizedBox(height: 14),
-              _label('REPEAT', surface),
+              _label(t.addReminderRepeat, surface),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
                   _ModeChip(
-                    label: 'After I mark it done',
+                    label: t.addReminderRepeatOnDone,
                     icon: Icons.refresh,
                     selected: _recurrenceMode == 'after_completion',
                     surface: surface,
                     onTap: () => setState(() => _recurrenceMode = 'after_completion'),
                   ),
                   _ModeChip(
-                    label: 'On a fixed schedule',
+                    label: t.addReminderRepeatFixed,
                     icon: Icons.event_repeat_outlined,
                     selected: _recurrenceMode == 'fixed',
                     surface: surface,
                     onTap: () => setState(() => _recurrenceMode = 'fixed'),
                   ),
                   _ModeChip(
-                    label: 'Just once',
+                    label: t.addReminderRepeatOnce,
                     icon: Icons.event_available_outlined,
                     selected: _recurrenceMode == 'once',
                     surface: surface,
@@ -278,7 +280,7 @@ class _AddReminderSheetState extends ConsumerState<AddReminderSheet> {
                 ],
               ),
               const SizedBox(height: 14),
-              _label('FIRST DUE', surface),
+              _label(t.addReminderFirstDue, surface),
               const SizedBox(height: 8),
               InkWell(
                 onTap: _pickFirstDue,
@@ -331,7 +333,7 @@ class _AddReminderSheetState extends ConsumerState<AddReminderSheet> {
                         ),
                       ),
                       onPressed: _saving ? null : () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
+                      child: Text(t.cancel),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -347,7 +349,7 @@ class _AddReminderSheetState extends ConsumerState<AddReminderSheet> {
                         textStyle: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       onPressed: _saving ? null : _save,
-                      child: Text(_saving ? 'Saving…' : 'Save'),
+                      child: Text(_saving ? t.saving : t.commonSave),
                     ),
                   ),
                 ],

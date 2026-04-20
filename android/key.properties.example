@@ -1,0 +1,17 @@
+# Copy this file to `android/key.properties` and fill in real values to
+# sign the release APK with your own keystore. The real file is
+# .gitignore'd — never commit a keystore or its passwords.
+#
+# Generate a keystore:
+#   keytool -genkey -v -keystore ~/plantly-upload.jks -keyalg RSA \
+#     -keysize 2048 -validity 10000 -alias upload
+#
+# Then:
+#   storeFile=/absolute/path/to/plantly-upload.jks
+#   storePassword=<your-keystore-password>
+#   keyPassword=<your-key-password>
+#   keyAlias=upload
+storeFile=
+storePassword=
+keyPassword=
+keyAlias=

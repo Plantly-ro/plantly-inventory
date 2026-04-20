@@ -2,7 +2,7 @@
 
 > Offline-first, open-source companion plant care tracker. Logs watering / fertilising / repotting / pruning / photos for the plants you actually own, reminds you when each one needs attention, and — when you decide to sell one — exports it in one click as a listing on [plantly.ro](https://plantly.ro) (or any other marketplace via the plugin system).
 
-**Status:** repository bootstrap. The design prototype is runnable and tested; the Flutter application (Phase 1 in [`PLAN.md`](./PLAN.md)) has not been scaffolded yet.
+**Status:** Phase 1 feature-complete — the Flutter app ships in English + Romanian with plant tracking, reminders, care types, calendar, photo gallery, and encrypted backup. Prototype in `web/prototype/` remains the visual reference.
 
 ## Quickstart — run the design prototype
 
@@ -39,14 +39,35 @@ The suite covers:
 
 | Phase | Scope | Status |
 |---|---|---|
-| **0** | Visual prototype (this repo) | ✅ landed |
-| **1** | Offline Flutter MVP — Drift + care tracking + notifications | scaffolding next |
+| **0** | Visual prototype (this repo) | landed |
+| **1** | Offline Flutter MVP — Drift + care tracking + notifications | feature-complete |
 | **2** | Go sync server + plantly.ro export plugin | planned |
 | **3** | Weather + history + reports | planned |
 | **4** | Household sharing + E2E encryption | planned |
 | **5** | Hosted SaaS + Stripe billing | planned |
 
 See [`PLAN.md`](./PLAN.md) for the complete data model, DDL, sync protocol, threat model, package list, and per-phase verification plan.
+
+## Privacy
+
+PlantlyInventory is offline-first by design. Plant data, photos, care events, and schedules live entirely on your device in a local SQLite database. Nothing is sent to a server unless you explicitly ask for it:
+
+- **Backups** (JSON or ZIP) only leave the device via the share sheet when you tap Export.
+- **Notifications** fire locally via the OS alarm system. We do not use a push server.
+- **Crash reports** and **anonymous usage analytics** are off by default. The first-run onboarding and the Me → Privacy & data screen let you opt in. Even then, releases from this repository ship with no Sentry DSN configured — so without a forked build that supplies one, no events ever leave the device.
+- **plantly.ro export** sends only the fields you review in the Export dialog, never the full database.
+
+See `lib/features/me/privacy_screen.dart` for the user-facing statement and `lib/services/telemetry.dart` for the consent gating.
+
+## Release signing (Android)
+
+Release APKs are signed with a keystore referenced via `android/key.properties`. That file is **not committed** — copy `android/key.properties.example` and fill in your own values, then run:
+
+```bash
+flutter build apk --split-per-abi --release
+```
+
+Without `key.properties`, the release build falls back to the Flutter debug keystore so `flutter run --release` still works on contributor machines. Details: https://docs.flutter.dev/deployment/android#signing-the-app
 
 ## Licence
 

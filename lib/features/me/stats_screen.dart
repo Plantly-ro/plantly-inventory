@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../data/care_types.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../plant_detail/plant_detail_screen.dart';
@@ -20,6 +21,7 @@ class StatsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final t = AppLocalizations.of(context);
     final events = ref.watch(recentCareEventsProvider).maybeWhen(
           data: (rows) => rows,
           orElse: () => const <CareEventRow>[],
@@ -62,7 +64,7 @@ class StatsScreen extends ConsumerWidget {
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: Text(
-          'Stats',
+          t.statsTitle,
           style: GoogleFonts.plusJakartaSans(
             fontSize: 22,
             fontWeight: FontWeight.w800,
@@ -82,7 +84,7 @@ class StatsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           if (sortedTypes.isNotEmpty) ...[
-            _section('30-DAY ACTIVITY BY TYPE', surface),
+            _section(t.statsActivityHeader, surface),
             const SizedBox(height: 8),
             _BarList(
               entries: sortedTypes,
@@ -94,7 +96,7 @@ class StatsScreen extends ConsumerWidget {
             const SizedBox(height: 20),
           ],
           if (topPlants.isNotEmpty) ...[
-            _section('TOP PLANTS — 30 DAYS', surface),
+            _section(t.statsTopPlants, surface),
             const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(

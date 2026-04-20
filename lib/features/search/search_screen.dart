@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../data/database/app_database.dart';
 import '../../data/mock_plants.dart';
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../shared/plant_thumb.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
@@ -61,6 +62,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Widget build(BuildContext context) {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final t = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: surface.bg,
@@ -77,7 +79,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           onChanged: _onChanged,
           style: GoogleFonts.inter(fontSize: 16, color: surface.text),
           decoration: InputDecoration(
-            hintText: 'Search plants, notes…',
+            hintText: t.search,
             hintStyle: TextStyle(color: surface.muted),
             border: InputBorder.none,
           ),
@@ -129,13 +131,12 @@ class _Empty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Text(
-          query.trim().isEmpty
-              ? 'Type to search your plants by nickname or notes.'
-              : 'No plants match "$query".',
+          query.trim().isEmpty ? t.searchEmptyStart : t.searchNoMatch(query),
           textAlign: TextAlign.center,
           style: TextStyle(color: surface.muted, fontSize: 14),
         ),
