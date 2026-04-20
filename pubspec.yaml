@@ -56,7 +56,7 @@ dependencies:
   # (both default off). Without a DSN (SENTRY_DSN env var at build
   # time), init is a no-op — the app ships public with zero telemetry
   # by default.
-  sentry_flutter: ^8.9.0
+  sentry_flutter: ^9.0.0
 
   # User-facing backup / restore + iCal save-to-file. file_selector for
   # picking a backup JSON/ZIP to import; share_plus for handing the

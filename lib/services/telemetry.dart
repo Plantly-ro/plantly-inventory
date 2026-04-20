@@ -73,7 +73,7 @@ class TelemetryService {
     return event;
   }
 
-  SentryTransaction? _beforeSendTransaction(SentryTransaction t) {
+  SentryTransaction? _beforeSendTransaction(SentryTransaction t, Hint hint) {
     if (!_prefs.analyticsConsent) return null;
     return t;
   }
