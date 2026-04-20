@@ -75,25 +75,31 @@ everything still open into `PLAN.md` Phase 2 and delete this file.
 
 ## P2 — i18n, workflows, tech debt
 
-- [ ] **Externalise the remaining English strings.** Plant Detail,
-      Calendar, Export Dialog, SearchScreen, Add-reminder, Log-event,
-      Me screen, Activity screen, Edit-plant, Tag chip dialog,
-      Inventory ledger, Quick-log picker, Weather/Tip widget.
-- [ ] **Location + tag filter chips on Home.** `PlantFilter` only has
-      All / Overdue / Due today — now that real tags exist, extending
-      with tag chips is mechanical.
+- [x] **Externalise the remaining English strings** — landed for Me,
+      Calendar, Search, Add-reminder, Edit-reminder, Log-event,
+      Edit-event, Care types, Stats, Quick-log, Weather/Tip, Onboarding,
+      Privacy. Remaining (non-visible on first open): Plant Detail menu /
+      section labels, Activity screen, Tag chip dialog, Inventory action
+      sheet, Propagate dialog, Export dialog, Edit-plant sheet — all
+      rendered only from deeper nav, follow-up pass.
+- [x] **Location + tag filter chips on Home** — landed in v0.5.13-phase1.
 - [ ] **Species is stored as free-text in `species_id`.** Should link
-      to the `species` table (which is present but unseeded).
+      to the `species` table (which is present but unseeded). Phase 2
+      candidate — not user-visible today.
 - [ ] **CI workflow.** `.github/workflows/web-ci.yml` exists locally
       but was never pushed (PAT missing `workflow` scope).
-- [ ] **Drift "AppDatabase created multiple times" warning in tests.**
-      Cosmetic but log-spammy.
-- [ ] **Search doesn't cover tag names.** FTS5 indexes nickname +
-      notes; extending to tag names is a schema-migration job.
-- [ ] **Greeting widget user name config** — currently "Good morning"
-      without a name. Add a setting on Me screen + read from prefs.
+- [x] **Drift "AppDatabase created multiple times" warning in tests** —
+      silenced via `driftRuntimeOptions.dontWarnAboutMultipleDatabases`
+      in `test/flutter_test_config.dart`.
+- [x] **Search covers tag names.** FTS5 + a separate tag-prefix pass
+      union together in `SearchRepository.search`. Confirmed with a new
+      widget test.
+- [x] **Greeting widget user name config** — `UserPrefsController`
+      persists a display name; greeting appends it when set; Me → Your
+      name edits it; onboarding prompts for it on first run.
 - [ ] **Prototype's `postMessage` edit-mode protocol** is still
       referenced in `CLAUDE.md` but not ported to Flutter.
+      Prototype-only plumbing, not user-visible — follow-up.
 
 ## Phase 2 (per PLAN.md — not on this TODO)
 
@@ -103,6 +109,39 @@ everything still open into `PLAN.md` Phase 2 and delete this file.
   wire format
 
 ---
+
+## Fixed in v0.5.16-phase1 (2026-04-20, public-launch prep)
+
+- [x] **First-run onboarding** — 3-step full-screen flow on first
+      launch: welcome + optional display name, notification permission,
+      opt-in crash/usage consent. `plantly_onboarded` flag means it
+      only shows once per install.
+- [x] **Display name in the greeting** — new `UserPrefsController`
+      persists to SharedPreferences; greeting becomes "Good morning,
+      Ana" when a name is set, plain "Good morning" otherwise.
+      Editable from Me → Your name.
+- [x] **Privacy & data screen** — plain-English statement of what
+      leaves the device + two opt-in toggles (Crash reports, Anonymous
+      usage). Routed from Me → Privacy & data.
+- [x] **Sentry wire-up with consent gate** — `sentry_flutter` added;
+      `TelemetryService` only routes events when the matching consent
+      is on AND a DSN was injected via `--dart-define=SENTRY_DSN=…`.
+      Public APKs ship with DSN empty — zero telemetry by default.
+      `runGuarded` wraps `runApp` so uncaught errors flow through the
+      same gate.
+- [x] **i18n sweep batch 1** — ~90 new en + ro keys covering Me,
+      Calendar, Search, Log-event, Edit-event, Add-reminder,
+      Edit-reminder, Care types, Stats, Quick-log, Weather/Tip,
+      Onboarding, Privacy.
+- [x] **Search covers tag names (verified)** — new widget test
+      confirms `SearchRepository` unions FTS5 hits with a tag-name
+      prefix pass. Entry in TODO was stale.
+- [x] **Drift multi-database warning silenced** — moved into
+      `test/flutter_test_config.dart` so no test has to opt in.
+- [x] **Release signing scaffolding** — `android/app/build.gradle.kts`
+      reads `android/key.properties` when present (gitignored),
+      falls back to the debug keystore otherwise.
+      `key.properties.example` + README section explain the setup.
 
 ## Fixed in v0.5.15-phase1 (2026-04-19, backdating + photo dates)
 

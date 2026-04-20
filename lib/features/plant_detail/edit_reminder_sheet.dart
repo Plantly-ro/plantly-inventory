@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/care_types.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 
@@ -103,14 +104,15 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
   }
 
   Future<void> _delete() async {
+    final t = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (dctx) => AlertDialog(
-        title: const Text('Delete reminder?'),
-        content: const Text('Removes this schedule. Past events stay in the timeline.'),
+        title: Text(t.editReminderDeleteTitle),
+        content: Text(t.editReminderDeleteBody),
         actions: [
-          TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.of(dctx).pop(true), child: const Text('Delete')),
+          TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: Text(t.cancel)),
+          TextButton(onPressed: () => Navigator.of(dctx).pop(true), child: Text(t.commonDelete)),
         ],
       ),
     );
@@ -141,6 +143,7 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
   Widget build(BuildContext context) {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final t = AppLocalizations.of(context);
     final types = ref.watch(careTypesProvider);
     final ct = resolveCareType(types, widget.schedule.type);
 
@@ -170,13 +173,13 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
                   Icon(ct.icon, color: surface.green),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text('Edit ${ct.label.toLowerCase()} reminder',
+                    child: Text(t.editReminderTitle(ct.label.toLowerCase()),
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text)),
                   ),
                 ],
               ),
               const SizedBox(height: 14),
-              _label('EVERY', surface),
+              _label(t.addReminderEvery, surface),
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -192,11 +195,11 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: SegmentedButton<_Unit>(
-                      segments: const [
-                        ButtonSegment(value: _Unit.minutes, label: Text('min')),
-                        ButtonSegment(value: _Unit.hours, label: Text('hr')),
-                        ButtonSegment(value: _Unit.days, label: Text('day')),
-                        ButtonSegment(value: _Unit.months, label: Text('mo')),
+                      segments: [
+                        ButtonSegment(value: _Unit.minutes, label: Text(t.addReminderUnitMin)),
+                        ButtonSegment(value: _Unit.hours, label: Text(t.addReminderUnitHr)),
+                        ButtonSegment(value: _Unit.days, label: Text(t.addReminderUnitDay)),
+                        ButtonSegment(value: _Unit.months, label: Text(t.addReminderUnitMo)),
                       ],
                       selected: {_unit},
                       showSelectedIcon: false,
@@ -206,19 +209,19 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
                 ],
               ),
               const SizedBox(height: 14),
-              _label('REPEAT', surface),
+              _label(t.addReminderRepeat, surface),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _mode('After I mark it done', Icons.refresh, 'after_completion', surface),
-                  _mode('On a fixed schedule', Icons.event_repeat_outlined, 'fixed', surface),
-                  _mode('Just once', Icons.event_available_outlined, 'once', surface),
+                  _mode(t.addReminderRepeatOnDone, Icons.refresh, 'after_completion', surface),
+                  _mode(t.addReminderRepeatFixed, Icons.event_repeat_outlined, 'fixed', surface),
+                  _mode(t.addReminderRepeatOnce, Icons.event_available_outlined, 'once', surface),
                 ],
               ),
               const SizedBox(height: 14),
-              _label('NEXT DUE', surface),
+              _label(t.editReminderNextDue, surface),
               const SizedBox(height: 8),
               InkWell(
                 onTap: _pickFirstDue,
@@ -251,7 +254,7 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
                     onPressed: _saving ? null : _delete,
                     style: TextButton.styleFrom(foregroundColor: surface.terra),
                     icon: const Icon(Icons.delete_outline, size: 16),
-                    label: const Text('Delete'),
+                    label: Text(t.commonDelete),
                   ),
                   const Spacer(),
                   TextButton(
@@ -262,7 +265,7 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius)),
                     ),
                     onPressed: _saving ? null : () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
+                    child: Text(t.cancel),
                   ),
                   const SizedBox(width: 8),
                   TextButton(
@@ -274,7 +277,7 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
                       textStyle: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                     onPressed: _saving ? null : _save,
-                    child: Text(_saving ? 'Saving…' : 'Save'),
+                    child: Text(_saving ? t.saving : t.commonSave),
                   ),
                 ],
               ),

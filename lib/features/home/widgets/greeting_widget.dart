@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../data/user_prefs.dart';
 import '../../../theme/tokens.dart';
 import 'widget_shell.dart';
 
-/// Greeting header — shows today's date, a time-of-day-aware salutation,
-/// and a notification dot. The "AM" avatar is a placeholder until a real
-/// account surface lands.
-class GreetingWidget extends StatelessWidget {
+/// Greeting header — shows today's date and a time-of-day-aware
+/// salutation. If the user has set a name in Me, we append it; otherwise
+/// the greeting is anonymous.
+class GreetingWidget extends ConsumerWidget {
   const GreetingWidget({
     super.key,
     required this.surface,
@@ -24,10 +26,12 @@ class GreetingWidget extends StatelessWidget {
   final VoidCallback? onRemove;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final now = DateTime.now();
     final date = _formatDate(now);
-    final greeting = _timeOfDayGreeting(now.hour);
+    final name = ref.watch(userPrefsProvider).userName;
+    final base = _timeOfDayGreeting(now.hour);
+    final greeting = (name != null && name.isNotEmpty) ? '$base, $name' : base;
     return WidgetShell(
       surface: surface,
       editing: editing,

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
 import 'package:plantly_inventory/data/repositories/plant_repository.dart';
 import 'package:plantly_inventory/data/repositories/search_repository.dart';
+import 'package:plantly_inventory/data/repositories/tag_repository.dart';
 import 'package:plantly_inventory/sync/hlc.dart';
 import 'package:plantly_inventory/sync/op_log.dart';
 
@@ -10,12 +11,16 @@ void main() {
   late AppDatabase db;
   late PlantRepository plants;
   late SearchRepository search;
+  late TagRepository tags;
+  late PlantTagRepository plantTags;
 
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     final clock = HlcClock(deviceId: 'test-device');
     final opLog = OpLogWriter(db: db, clock: clock, tenantId: 'tenant-local');
     plants = PlantRepository(db: db, opLog: opLog);
+    tags = TagRepository(db: db, opLog: opLog);
+    plantTags = PlantTagRepository(db: db, opLog: opLog);
     search = SearchRepository(db: db, tenantId: 'tenant-local');
   });
 
@@ -82,6 +87,17 @@ void main() {
       expect(hits, isNotEmpty);
       final hits2 = await search.search('palmatum (japanese');
       expect(hits2, isNotEmpty);
+    });
+
+    test('tag-name prefix matches via the second pass', () async {
+      await plants.create(nickname: 'Variegated monstera');
+      final b = await plants.create(nickname: 'Plain pothos');
+      final tag = await tags.ensure('variegated');
+      await plantTags.attach(b.id, tag.id);
+      // Typing "varieg" should match both: `a` via FTS on nickname and
+      // `b` via the tag pass — with `a` ranking first.
+      final hits = await search.search('varieg');
+      expect(hits.map((p) => p.nickname), containsAll(['Variegated monstera', 'Plain pothos']));
     });
 
     test('tenant isolation — other tenants\' rows are invisible', () async {

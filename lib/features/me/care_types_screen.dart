@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/care_types.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 
@@ -17,6 +18,7 @@ class CareTypesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final t = AppLocalizations.of(context);
     final types = ref.watch(careTypesProvider);
 
     return Scaffold(
@@ -29,7 +31,7 @@ class CareTypesScreen extends ConsumerWidget {
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: Text(
-          'Care types',
+          t.careTypesTitle,
           style: GoogleFonts.plusJakartaSans(
             fontSize: 22,
             fontWeight: FontWeight.w800,
@@ -39,16 +41,16 @@ class CareTypesScreen extends ConsumerWidget {
         ),
         actions: [
           IconButton(
-            tooltip: 'Reset to defaults',
+            tooltip: t.careTypesReset,
             onPressed: () async {
               final ok = await showDialog<bool>(
                 context: context,
                 builder: (dctx) => AlertDialog(
-                  title: const Text('Reset to defaults?'),
-                  content: const Text('Restores the built-in 6 types + drops any custom ones. Existing schedules and events keep their keys.'),
+                  title: Text(t.careTypesResetTitle),
+                  content: Text(t.careTypesResetBody),
                   actions: [
-                    TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: const Text('Cancel')),
-                    FilledButton(onPressed: () => Navigator.of(dctx).pop(true), child: const Text('Reset')),
+                    TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: Text(t.cancel)),
+                    FilledButton(onPressed: () => Navigator.of(dctx).pop(true), child: Text(t.careTypesReset)),
                   ],
                 ),
               );

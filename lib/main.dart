@@ -5,10 +5,17 @@ import 'package:google_fonts/google_fonts.dart';
 import 'features/home/home_providers.dart';
 import 'features/home/home_screen.dart';
 import 'l10n/generated/app_localizations.dart';
+import 'services/telemetry.dart';
 import 'theme/tokens.dart';
 
-void main() {
-  runApp(const ProviderScope(child: PlantlyApp()));
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final container = ProviderContainer();
+  final telemetry = container.read(telemetryServiceProvider);
+  await telemetry.init();
+  await runGuarded(() async {
+    runApp(UncontrolledProviderScope(container: container, child: const PlantlyApp()));
+  }, telemetry);
 }
 
 class PlantlyApp extends ConsumerWidget {

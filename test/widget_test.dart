@@ -38,7 +38,9 @@ Future<void> _pumpHome(WidgetTester tester, [Widget? root]) async {
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    // Skip first-run onboarding — widget tests assert against home content
+    // directly, and an onboarding overlay would hide every finder below.
+    SharedPreferences.setMockInitialValues({'plantly_onboarded': true});
   });
 
   testWidgets('Home renders default layout widgets', (tester) async {
@@ -86,6 +88,7 @@ void main() {
   testWidgets('Layout persists across restarts', (tester) async {
     SharedPreferences.setMockInitialValues({
       'plantly_layout': '["greeting","quicklog"]',
+      'plantly_onboarded': true,
     });
     await _pumpHome(tester);
 
@@ -97,6 +100,7 @@ void main() {
   testWidgets('Reset restores default layout', (tester) async {
     SharedPreferences.setMockInitialValues({
       'plantly_layout': '["greeting"]',
+      'plantly_onboarded': true,
     });
     await _pumpHome(tester);
 

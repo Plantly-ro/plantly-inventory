@@ -10,12 +10,15 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../data/providers.dart';
+import '../../data/user_prefs.dart';
 import '../../domain/services/backup_service.dart';
 import '../../domain/services/zip_backup_service.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import 'care_types_screen.dart';
 import 'notifications_screen.dart';
+import 'privacy_screen.dart';
 import 'stats_screen.dart';
 
 /// "Me" tab — settings + Phase-1 user-facing actions (backup / iCal /
@@ -29,6 +32,7 @@ class MeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final t = AppLocalizations.of(context);
     final plants = ref.watch(plantsStreamProvider).maybeWhen(
           data: (rows) => rows.length,
           orElse: () => null,
@@ -63,8 +67,8 @@ class MeScreen extends ConsumerWidget {
           _StatCard(surface: surface, plants: plants, locations: locations),
           const SizedBox(height: 12),
           _ActionRow(
-            label: 'Stats',
-            value: 'Activity by care type, top plants, last 30 days.',
+            label: t.meStatsLabel,
+            value: t.meStatsValue,
             icon: Icons.insert_chart_outlined,
             surface: surface,
             onTap: () {
@@ -74,15 +78,31 @@ class MeScreen extends ConsumerWidget {
             },
           ),
           const SizedBox(height: 20),
-          _SectionLabel(text: 'APPEARANCE', surface: surface),
+          _SectionLabel(text: t.meSectionYou, surface: surface),
+          const SizedBox(height: 8),
+          _NameRow(surface: surface),
+          const SizedBox(height: 6),
+          _ActionRow(
+            label: t.mePrivacyLabel,
+            value: t.mePrivacyValue,
+            icon: Icons.shield_outlined,
+            surface: surface,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const PrivacyScreen()),
+              );
+            },
+          ),
+          const SizedBox(height: 20),
+          _SectionLabel(text: t.meSectionAppearance, surface: surface),
           const SizedBox(height: 8),
           _ThemeToggleRow(mode: mode, surface: surface),
           const SizedBox(height: 20),
-          _SectionLabel(text: 'LISTS', surface: surface),
+          _SectionLabel(text: t.meSectionLists, surface: surface),
           const SizedBox(height: 8),
           _ActionRow(
-            label: 'Care types',
-            value: 'Rename, reorder, or add custom reminders and events.',
+            label: t.meCareTypesLabel,
+            value: t.meCareTypesValue,
             icon: Icons.category_outlined,
             surface: surface,
             onTap: () {
@@ -92,13 +112,13 @@ class MeScreen extends ConsumerWidget {
             },
           ),
           const SizedBox(height: 20),
-          _SectionLabel(text: 'NOTIFICATIONS', surface: surface),
+          _SectionLabel(text: t.meSectionNotifications, surface: surface),
           const SizedBox(height: 8),
           _NotificationRow(surface: surface),
           const SizedBox(height: 6),
           _ActionRow(
-            label: 'Muted reminders',
-            value: 'See what\'s silenced; unmute in one place.',
+            label: t.meMutedLabel,
+            value: t.meMutedValue,
             icon: Icons.notifications_off_outlined,
             surface: surface,
             onTap: () {
@@ -108,7 +128,7 @@ class MeScreen extends ConsumerWidget {
             },
           ),
           const SizedBox(height: 20),
-          _SectionLabel(text: 'BACKUP', surface: surface),
+          _SectionLabel(text: t.meSectionBackup, surface: surface),
           const SizedBox(height: 8),
           _BackupRow(surface: surface, withPhotos: false),
           const SizedBox(height: 6),
@@ -118,11 +138,11 @@ class MeScreen extends ConsumerWidget {
           const SizedBox(height: 6),
           _CsvExportRow(surface: surface),
           const SizedBox(height: 20),
-          _SectionLabel(text: 'CALENDAR', surface: surface),
+          _SectionLabel(text: t.meSectionCalendar, surface: surface),
           const SizedBox(height: 8),
           _ICalRow(surface: surface),
           const SizedBox(height: 20),
-          _SectionLabel(text: 'ABOUT', surface: surface),
+          _SectionLabel(text: t.meSectionAbout, surface: surface),
           const SizedBox(height: 8),
           _ReadOnlyRow(
             label: 'App',
@@ -200,6 +220,55 @@ class _StatCol extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class _NameRow extends ConsumerWidget {
+  const _NameRow({required this.surface});
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final name = ref.watch(userPrefsProvider).userName;
+    final t = AppLocalizations.of(context);
+    return _ActionRow(
+      label: t.meYourName,
+      value: (name == null || name.isEmpty) ? t.meYourNameEmpty : name,
+      icon: Icons.person_outline,
+      surface: surface,
+      onTap: () => _edit(context, ref, name),
+    );
+  }
+
+  Future<void> _edit(BuildContext context, WidgetRef ref, String? current) async {
+    final controller = TextEditingController(text: current ?? '');
+    final t = AppLocalizations.of(context);
+    final result = await showDialog<String?>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(t.meYourName),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: InputDecoration(hintText: t.meYourNameHint, border: const OutlineInputBorder()),
+          onSubmitted: (v) => Navigator.of(ctx).pop(v),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: Text(t.cancel)),
+          if ((current ?? '').isNotEmpty)
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: surface.terra),
+              onPressed: () => Navigator.of(ctx).pop(''),
+              child: Text(t.commonClear),
+            ),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(controller.text), child: Text(t.commonSave)),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (result == null) return;
+    await ref.read(userPrefsProvider.notifier).setName(result);
   }
 }
 

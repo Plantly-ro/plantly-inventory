@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/care_types.dart';
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 
@@ -61,7 +62,7 @@ class _LogEventSheetState extends ConsumerState<LogEventSheet> {
   Future<void> _save() async {
     final type = _isCustom ? _customTypeController.text.trim().toLowerCase() : _selectedType;
     if (_isCustom && type.isEmpty) {
-      setState(() => _error = 'Enter a name for the event');
+      setState(() => _error = AppLocalizations.of(context).logEventEnterName);
       return;
     }
     setState(() {
@@ -93,6 +94,7 @@ class _LogEventSheetState extends ConsumerState<LogEventSheet> {
   Widget build(BuildContext context) {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final t = AppLocalizations.of(context);
     final types = ref.watch(careTypesProvider);
 
     return Padding(
@@ -119,26 +121,26 @@ class _LogEventSheetState extends ConsumerState<LogEventSheet> {
             ),
             const SizedBox(height: 14),
             Text(
-              'Log event',
+              t.logEventTitle,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text),
             ),
             const SizedBox(height: 14),
-            Text('WHAT', style: _labelStyle(surface)),
+            Text(t.logEventWhat, style: _labelStyle(surface)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final t in types)
+                for (final ct in types)
                   _TypeChip(
-                    label: t.pastTenseLabel,
-                    icon: t.icon,
-                    selected: _selectedType == t.key,
+                    label: ct.pastTenseLabel,
+                    icon: ct.icon,
+                    selected: _selectedType == ct.key,
                     surface: surface,
-                    onTap: () => setState(() => _selectedType = t.key),
+                    onTap: () => setState(() => _selectedType = ct.key),
                   ),
                 _TypeChip(
-                  label: 'Other',
+                  label: t.logEventOther,
                   icon: Icons.edit_outlined,
                   selected: _isCustom,
                   surface: surface,
@@ -151,11 +153,11 @@ class _LogEventSheetState extends ConsumerState<LogEventSheet> {
               TextField(
                 controller: _customTypeController,
                 textCapitalization: TextCapitalization.none,
-                decoration: _inputDecoration(surface, hint: 'e.g. spider-mite treatment'),
+                decoration: _inputDecoration(surface, hint: t.logEventOtherHint),
               ),
             ],
             const SizedBox(height: 14),
-            Text('WHEN', style: _labelStyle(surface)),
+            Text(t.logEventWhen, style: _labelStyle(surface)),
             const SizedBox(height: 8),
             InkWell(
               onTap: _pickWhen,
@@ -180,12 +182,12 @@ class _LogEventSheetState extends ConsumerState<LogEventSheet> {
               ),
             ),
             const SizedBox(height: 14),
-            Text('PRODUCT (OPTIONAL)', style: _labelStyle(surface)),
+            Text(t.logEventProduct, style: _labelStyle(surface)),
             const SizedBox(height: 8),
             TextField(
               controller: _productController,
               textCapitalization: TextCapitalization.sentences,
-              decoration: _inputDecoration(surface, hint: 'e.g. Fern spray'),
+              decoration: _inputDecoration(surface, hint: t.logEventProductHint),
             ),
             Consumer(builder: (ctx, cref, _) {
               final recent = cref.watch(recentProductsProvider).maybeWhen(
@@ -209,13 +211,13 @@ class _LogEventSheetState extends ConsumerState<LogEventSheet> {
               );
             }),
             const SizedBox(height: 14),
-            Text('NOTES (OPTIONAL)', style: _labelStyle(surface)),
+            Text(t.logEventNotes, style: _labelStyle(surface)),
             const SizedBox(height: 8),
             TextField(
               controller: _notesController,
               textCapitalization: TextCapitalization.sentences,
               maxLines: 2,
-              decoration: _inputDecoration(surface, hint: 'e.g. new leaf unfurling'),
+              decoration: _inputDecoration(surface, hint: t.logEventNotesHint),
             ),
             if (_error != null) ...[
               const SizedBox(height: 10),
@@ -235,7 +237,7 @@ class _LogEventSheetState extends ConsumerState<LogEventSheet> {
                       ),
                     ),
                     onPressed: _saving ? null : () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
+                    child: Text(t.cancel),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -251,7 +253,7 @@ class _LogEventSheetState extends ConsumerState<LogEventSheet> {
                       textStyle: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                     onPressed: _saving ? null : _save,
-                    child: Text(_saving ? 'Saving…' : 'Save'),
+                    child: Text(_saving ? t.saving : t.commonSave),
                   ),
                 ),
               ],
