@@ -1,0 +1,59 @@
+# .gitlab-ci.yml — PlantlyInventory
+#
+# Three stages run on every push and MR:
+#   analyze → test → build-web
+#
+# Flutter image: ghcr.io/cirruslabs/flutter:stable (pinned via FLUTTER_IMAGE).
+# Runs on the group runner `tisa15-ct-gitlab-runner-1 (group runner, plantly-inventory)`.
+#
+# Followups Lazarus left for later:
+#  - JS prototype Playwright tests (npm install && npm test) — separate job with a Node image.
+#  - build-android / build-ios — needs runners with the right SDKs (no macOS runner for ios yet).
+#  - container registry image build (registry.urundead.win/plantly-inventory/app) — wire when there's a deploy target.
+
+stages:
+  - analyze
+  - test
+  - build
+
+variables:
+  FLUTTER_IMAGE: "ghcr.io/cirruslabs/flutter:stable"
+  PUB_CACHE: "$CI_PROJECT_DIR/.pub-cache"
+
+default:
+  image: $FLUTTER_IMAGE
+  before_script:
+    - flutter --version
+    - flutter pub get
+
+cache:
+  key:
+    files:
+      - pubspec.lock
+  paths:
+    - .pub-cache/
+
+analyze:
+  stage: analyze
+  script:
+    - dart format --output=none --set-exit-if-changed .
+    - flutter analyze
+
+test:
+  stage: test
+  script:
+    - flutter test --machine --reporter=expanded
+  artifacts:
+    when: always
+    reports:
+      junit: build/test-results/*.xml
+    expire_in: 1 week
+
+build-web:
+  stage: build
+  script:
+    - flutter build web --release
+  artifacts:
+    paths:
+      - build/web/
+    expire_in: 1 week
