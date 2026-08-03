@@ -22,7 +22,16 @@ void main() {
     final clock = HlcClock(deviceId: 'test-device');
     final opLog = OpLogWriter(db: db, clock: clock, tenantId: 'tenant-local');
     fake = FakeNotificationService();
-    sync = ReminderSync(db: db, notifications: fake, tenantId: 'tenant-local');
+    // Pin the clock so the record()/snooze() re-sync path — which windows
+    // reminders against "now" — is deterministic. Fixed before every
+    // schedule's first due date so past-due clamping (reminder_engine.dart)
+    // never rewrites the asserted start times. See issue #1.
+    sync = ReminderSync(
+      db: db,
+      notifications: fake,
+      tenantId: 'tenant-local',
+      clock: () => DateTime.utc(2026, 5, 1),
+    );
     plants = PlantRepository(db: db, opLog: opLog);
     schedules = CareScheduleRepository(db: db, opLog: opLog, reminderSync: sync);
     events = CareEventRepository(

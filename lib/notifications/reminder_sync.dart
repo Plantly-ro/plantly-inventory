@@ -16,11 +16,18 @@ class ReminderSync {
     required this.notifications,
     required this.tenantId,
     Set<String> Function()? mutedTypesSnapshot,
-  }) : _mutedTypesSnapshot = mutedTypesSnapshot;
+    DateTime Function()? clock,
+  })  : _mutedTypesSnapshot = mutedTypesSnapshot,
+        _clock = clock ?? DateTime.now;
 
   final AppDatabase db;
   final NotificationService notifications;
   final String tenantId;
+
+  /// Source of "now" for reminder windowing. Injectable so the record /
+  /// snooze re-sync path (which doesn't pass an explicit `now`) is
+  /// deterministic under test instead of reading the wall clock.
+  final DateTime Function() _clock;
   /// Returns the current set of globally-muted care-type keys. Called
   /// per sync so toggles in the Me screen take effect on the next write
   /// without wiring a listener into this class.
@@ -33,7 +40,7 @@ class ReminderSync {
     DateTime? now,
     Duration window = const Duration(days: 30),
   }) async {
-    final nowUtc = (now ?? DateTime.now()).toUtc();
+    final nowUtc = (now ?? _clock()).toUtc();
     final schedules = await (db.select(db.careSchedules)
           ..where((s) =>
               s.tenantId.equals(tenantId) &
