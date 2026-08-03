@@ -1,14 +1,14 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/database/app_database.dart' as db;
 import '../../data/mock_plants.dart';
 import '../../data/providers.dart';
+import '../../plugins/export_plugin.dart';
+import '../../plugins/plugin_registry.dart';
 import '../../shared/plant_thumb.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
@@ -46,42 +46,40 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
   }
 
   Future<void> _loadDraft() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('plantly_export_draft/${widget.plantRow.id}');
-    if (raw == null || !mounted) return;
-    try {
-      final m = json.decode(raw) as Map<String, dynamic>;
-      setState(() {
-        _title.text = (m['title'] as String?) ?? _title.text;
-        _desc.text = (m['description'] as String?) ?? _desc.text;
-        _price.text = (m['price'] as String?) ?? _price.text;
-        final photos = (m['photos'] as List?)?.cast<String>();
-        if (photos != null) {
-          _selected
-            ..clear()
-            ..addAll(photos);
-          _selectionInitialised = true;
-        }
-        _posted = (m['posted_at'] as String?);
-      });
-    } catch (_) {
-      // Malformed draft — ignore and continue with the defaults.
-    }
+    final draft =
+        await ref.read(localDraftStoreProvider).loadDraft(widget.plantRow.id);
+    if (draft == null || !mounted) return;
+    setState(() {
+      if (draft.title.isNotEmpty) _title.text = draft.title;
+      if (draft.description.isNotEmpty) _desc.text = draft.description;
+      if (draft.priceLei != null) _price.text = draft.priceLei.toString();
+      if (draft.photoRefs.isNotEmpty) {
+        _selected
+          ..clear()
+          ..addAll(draft.photoRefs);
+        _selectionInitialised = true;
+      }
+      _posted = draft.postedAt?.toUtc().toIso8601String();
+    });
   }
 
-  String _draftKey() => 'plantly_export_draft/${widget.plantRow.id}';
+  /// Snapshot the current form as an [ExportDraft]. Category / county / city
+  /// are still placeholder UI (not yet editable), so they're intentionally
+  /// left unset here rather than persisting the fake displayed values.
+  ExportDraft _buildDraft({DateTime? postedAt}) {
+    return ExportDraft(
+      sourcePlantId: widget.plantRow.id,
+      title: _title.text,
+      description: _desc.text,
+      priceLei: int.tryParse(_price.text.trim()),
+      photoRefs: _selected.toList(),
+      postedAt: postedAt ??
+          (_posted != null ? DateTime.tryParse(_posted!) : null),
+    );
+  }
 
-  Future<void> _persistDraft({bool posted = false}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final payload = {
-      'title': _title.text,
-      'description': _desc.text,
-      'price': _price.text,
-      'photos': _selected.toList(),
-      if (posted) 'posted_at': DateTime.now().toUtc().toIso8601String(),
-      if (!posted && _posted != null) 'posted_at': _posted,
-    };
-    await prefs.setString(_draftKey(), json.encode(payload));
+  Future<void> _persistDraft() async {
+    await ref.read(localDraftStoreProvider).saveDraft(_buildDraft());
   }
 
   String? _posted;
@@ -283,8 +281,17 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                             textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                           ),
                           onPressed: () async {
-                            await _persistDraft(posted: true);
-                            if (context.mounted) _finish('Saved locally — plantly.ro sync lands in Phase 2');
+                            final plugin = ref.read(defaultExportPluginProvider);
+                            ExportProgress? last;
+                            await for (final p in plugin.submit(_buildDraft())) {
+                              last = p;
+                            }
+                            if (!context.mounted) return;
+                            if (last?.error != null) {
+                              _finish('Could not post: ${last!.error}');
+                            } else {
+                              _finish(last?.message ?? 'Posted');
+                            }
                           },
                           child: const Text('Post now'),
                         ),
