@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../data/database/app_database.dart' as db;
 import '../../data/mock_plants.dart';
 import '../../data/providers.dart';
+import '../../data/ro_locations.dart';
 import '../../plugins/export_plugin.dart';
 import '../../plugins/plugin_registry.dart';
 import '../../shared/plant_thumb.dart';
@@ -31,8 +32,11 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
   late final TextEditingController _title;
   late final TextEditingController _desc;
   late final TextEditingController _price;
+  late final TextEditingController _city;
   final _selected = <String>{};
   bool _selectionInitialised = false;
+  String? _category;
+  String? _county;
 
   @override
   void initState() {
@@ -40,6 +44,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
     _title = TextEditingController(text: widget.plantRow.nickname);
     _desc = TextEditingController(text: widget.plantRow.notes ?? '');
     _price = TextEditingController();
+    _city = TextEditingController();
     // Fire-and-forget: if a draft exists for this plant, prefill — lets
     // the user resume a half-filled listing instead of re-typing.
     _loadDraft();
@@ -59,19 +64,24 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
           ..addAll(draft.photoRefs);
         _selectionInitialised = true;
       }
+      if (draft.category != null) _category = draft.category;
+      if (draft.county != null) _county = draft.county;
+      if (draft.city != null) _city.text = draft.city!;
       _posted = draft.postedAt?.toUtc().toIso8601String();
     });
   }
 
-  /// Snapshot the current form as an [ExportDraft]. Category / county / city
-  /// are still placeholder UI (not yet editable), so they're intentionally
-  /// left unset here rather than persisting the fake displayed values.
+  /// Snapshot the current form as an [ExportDraft].
   ExportDraft _buildDraft({DateTime? postedAt}) {
+    final city = _city.text.trim();
     return ExportDraft(
       sourcePlantId: widget.plantRow.id,
       title: _title.text,
       description: _desc.text,
       priceLei: int.tryParse(_price.text.trim()),
+      category: _category,
+      county: _county,
+      city: city.isEmpty ? null : city,
       photoRefs: _selected.toList(),
       postedAt: postedAt ??
           (_posted != null ? DateTime.tryParse(_posted!) : null),
@@ -82,6 +92,66 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
     await ref.read(localDraftStoreProvider).saveDraft(_buildDraft());
   }
 
+  /// Present [options] in a scrollable bottom sheet; invoke [onSelected] with
+  /// the picked value. Used for both category and county.
+  Future<void> _pickFrom({
+    required String title,
+    required List<String> options,
+    required String? current,
+    required ValueChanged<String> onSelected,
+  }) async {
+    final mode = ref.read(themeModeProvider);
+    final surface =
+        mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: surface.bg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    title,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: surface.text,
+                    ),
+                  ),
+                ),
+              ),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final o in options)
+                      ListTile(
+                        title: Text(o,
+                            style: TextStyle(color: surface.text, fontSize: 14)),
+                        trailing: o == current
+                            ? Icon(Icons.check, size: 18, color: surface.green)
+                            : null,
+                        onTap: () => Navigator.of(ctx).pop(o),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (picked != null) onSelected(picked);
+  }
+
   String? _posted;
 
   @override
@@ -89,6 +159,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
     _title.dispose();
     _desc.dispose();
     _price.dispose();
+    _city.dispose();
     super.dispose();
   }
 
@@ -212,7 +283,18 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _Label(text: 'CATEGORY', surface: surface),
-                              _FakeInput(text: 'Indoor plant', surface: surface, trailingIcon: Icons.expand_more),
+                              _PickerInput(
+                                value: _category,
+                                placeholder: 'Select category',
+                                surface: surface,
+                                trailingIcon: Icons.expand_more,
+                                onTap: () => _pickFrom(
+                                  title: 'Category',
+                                  options: exportCategories,
+                                  current: _category,
+                                  onSelected: (v) => setState(() => _category = v),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -220,7 +302,35 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                     ),
                     const SizedBox(height: 10),
                     _Label(text: 'LOCATION', surface: surface),
-                    _FakeInput(text: 'Timiș County · Timișoara', surface: surface, leadingIcon: Icons.place_outlined),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _PickerInput(
+                            value: _county,
+                            placeholder: 'County',
+                            surface: surface,
+                            leadingIcon: Icons.place_outlined,
+                            trailingIcon: Icons.expand_more,
+                            onTap: () => _pickFrom(
+                              title: 'County',
+                              options: roCounties,
+                              current: _county,
+                              onSelected: (v) => setState(() => _county = v),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _Field(
+                            controller: _city,
+                            surface: surface,
+                            hintText: 'City',
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 14),
                     _Label(text: 'PHOTOS (${_selected.length}/6)', surface: surface),
                     const SizedBox(height: 8),
@@ -346,6 +456,7 @@ class _Field extends StatelessWidget {
     this.keyboardType,
     this.suffixPadding = 12,
     this.onChanged,
+    this.hintText,
   });
   final TextEditingController controller;
   final PlantlySurface surface;
@@ -354,6 +465,7 @@ class _Field extends StatelessWidget {
   final TextInputType? keyboardType;
   final double suffixPadding;
   final ValueChanged<String>? onChanged;
+  final String? hintText;
 
   @override
   Widget build(BuildContext context) {
@@ -369,6 +481,8 @@ class _Field extends StatelessWidget {
         isDense: true,
         filled: true,
         fillColor: surface.surface,
+        hintText: hintText,
+        hintStyle: TextStyle(fontSize: 14, color: surface.muted),
         contentPadding: EdgeInsets.fromLTRB(12, 10, suffixPadding, 10),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(PlantlyTokens.radius),
@@ -405,36 +519,57 @@ class _CharCount extends StatelessWidget {
   }
 }
 
-class _FakeInput extends StatelessWidget {
-  const _FakeInput({
-    required this.text,
+/// A read-only, tappable field that looks like [_Field] but opens a picker.
+/// Shows [value] when set, else [placeholder] in muted text.
+class _PickerInput extends StatelessWidget {
+  const _PickerInput({
+    required this.value,
+    required this.placeholder,
     required this.surface,
+    required this.onTap,
     this.leadingIcon,
     this.trailingIcon,
   });
-  final String text;
+  final String? value;
+  final String placeholder;
   final PlantlySurface surface;
+  final VoidCallback onTap;
   final IconData? leadingIcon;
   final IconData? trailingIcon;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: surface.surface,
-        borderRadius: BorderRadius.circular(PlantlyTokens.radius),
-        border: Border.all(color: surface.border),
-      ),
-      child: Row(
-        children: [
-          if (leadingIcon != null) ...[
-            Icon(leadingIcon, size: 13, color: surface.muted),
-            const SizedBox(width: 6),
+    final hasValue = value != null && value!.isNotEmpty;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        decoration: BoxDecoration(
+          color: surface.surface,
+          borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+          border: Border.all(color: surface.border),
+        ),
+        child: Row(
+          children: [
+            if (leadingIcon != null) ...[
+              Icon(leadingIcon, size: 13, color: surface.muted),
+              const SizedBox(width: 6),
+            ],
+            Expanded(
+              child: Text(
+                hasValue ? value! : placeholder,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: hasValue ? surface.text : surface.muted,
+                ),
+              ),
+            ),
+            if (trailingIcon != null) Icon(trailingIcon, size: 14, color: surface.muted),
           ],
-          Expanded(child: Text(text, style: TextStyle(fontSize: 13, color: surface.text))),
-          if (trailingIcon != null) Icon(trailingIcon, size: 14, color: surface.muted),
-        ],
+        ),
       ),
     );
   }
