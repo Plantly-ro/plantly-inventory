@@ -18,10 +18,12 @@ stages:
   - analyze
   - test
   - build
+  - publish
 
 variables:
   FLUTTER_IMAGE: "ghcr.io/cirruslabs/flutter:stable"
   PUB_CACHE: "$CI_PROJECT_DIR/.pub-cache"
+  PLAY_PACKAGE: "ro.plantly.inventory"
 
 default:
   image: $FLUTTER_IMAGE
@@ -58,4 +60,33 @@ build-web:
   artifacts:
     paths:
       - build/web/
+    expire_in: 1 week
+
+# Manual: build a signed AAB and upload it to the Play internal-testing track.
+# Requires these protected CI/CD variables (set on the project):
+#   PLAY_SA_JSON             (file)  play-publisher-inventory SA key
+#   PLAY_UPLOAD_KEYSTORE_B64 (var)   base64 of the upload keystore (.jks)
+#   PLAY_KEYSTORE_PASSWORD   (var)   keystore password
+#   PLAY_KEY_PASSWORD        (var)   key password
+# The Play Console app for $PLAY_PACKAGE must exist and have the SA granted.
+publish-internal-android:
+  stage: publish
+  when: manual
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "development"'
+  script:
+    - echo "$PLAY_UPLOAD_KEYSTORE_B64" | base64 -d > "$CI_PROJECT_DIR/android/upload.jks"
+    - |
+      cat > "$CI_PROJECT_DIR/android/key.properties" <<EOF
+      storeFile=$CI_PROJECT_DIR/android/upload.jks
+      storePassword=$PLAY_KEYSTORE_PASSWORD
+      keyPassword=$PLAY_KEY_PASSWORD
+      keyAlias=upload
+      EOF
+    - flutter build appbundle --release
+    - python3 -m pip install --quiet --break-system-packages google-api-python-client google-auth
+    - python3 tool/play_upload.py --package "$PLAY_PACKAGE" --aab build/app/outputs/bundle/release/app-release.aab --credentials "$PLAY_SA_JSON" --track internal
+  artifacts:
+    paths:
+      - build/app/outputs/bundle/release/app-release.aab
     expire_in: 1 week
