@@ -88,6 +88,8 @@ build-web:
       keyAlias=upload
       EOF
     - flutter build appbundle --release --build-number=${CI_PIPELINE_ID}
+    # the flutter image's python3 has no pip module — bootstrap it first
+    - python3 -m ensurepip --upgrade 2>/dev/null || { apt-get update -qq && apt-get install -y -qq python3-pip; }
     - python3 -m pip install --quiet --break-system-packages google-api-python-client google-auth
     - python3 tool/play_upload.py --package "$PLAY_PACKAGE" --aab build/app/outputs/bundle/release/app-release.aab --credentials "$PLAY_SA_JSON" --track "$PLAY_TRACK"
   artifacts:
