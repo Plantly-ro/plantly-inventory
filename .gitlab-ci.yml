@@ -21,8 +21,7 @@ stages:
   - publish
 
 variables:
-  # Pinned (not :stable) for reproducible CI matching local builds.
-  FLUTTER_IMAGE: "ghcr.io/cirruslabs/flutter:3.44.9"
+  FLUTTER_IMAGE: "ghcr.io/cirruslabs/flutter:stable"
   PUB_CACHE: "$CI_PROJECT_DIR/.pub-cache"
   PLAY_PACKAGE: "ro.plantly.inventory"
 
