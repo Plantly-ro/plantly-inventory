@@ -7,23 +7,32 @@ to run in CI after `flutter build appbundle --release`, authenticated with a
 Play publisher service-account JSON.
 
     python3 tool/play_upload.py \
-        --package ro.plantly.assistant \
+        --package ro.plantly.inventory \
         --aab build/app/outputs/bundle/release/app-release.aab \
         --credentials "$PLAY_SA_JSON" \
         --track internal
 
-Requires: google-api-python-client, google-auth (pip-installed in the CI job).
+Requires: google-api-python-client, google-auth, google-auth-httplib2 (pip-installed in the CI job).
 The bundle's versionCode is read from the upload response, so it need not be
 passed in. Exits non-zero on any API failure.
 """
 import argparse
 import sys
 
+import google_auth_httplib2
+import httplib2
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
 SCOPE = "https://www.googleapis.com/auth/androidpublisher"
+# A release AAB with bundled TFLite models is ~250 MB. Uploading it as one
+# request tripped httplib2's default 60 s socket timeout ("The read operation
+# timed out") — so: generous per-request timeout, chunked resumable upload,
+# and retries on every call.
+HTTP_TIMEOUT_S = 300
+CHUNK_SIZE = 16 * 1024 * 1024
+RETRIES = 5
 
 
 def main() -> int:
@@ -38,15 +47,18 @@ def main() -> int:
     creds = service_account.Credentials.from_service_account_file(
         args.credentials, scopes=[SCOPE]
     )
-    service = build("androidpublisher", "v3", credentials=creds, cache_discovery=False)
+    http = google_auth_httplib2.AuthorizedHttp(creds, http=httplib2.Http(timeout=HTTP_TIMEOUT_S))
+    service = build("androidpublisher", "v3", http=http, cache_discovery=False)
     edits = service.edits()
 
-    edit_id = edits.insert(body={}, packageName=args.package).execute()["id"]
+    edit_id = edits.insert(body={}, packageName=args.package).execute(num_retries=RETRIES)["id"]
 
-    media = MediaFileUpload(args.aab, mimetype="application/octet-stream", resumable=True)
+    media = MediaFileUpload(
+        args.aab, mimetype="application/octet-stream", resumable=True, chunksize=CHUNK_SIZE
+    )
     bundle = edits.bundles().upload(
         packageName=args.package, editId=edit_id, media_body=media
-    ).execute()
+    ).execute(num_retries=RETRIES)
     version_code = bundle["versionCode"]
     print(f"uploaded AAB versionCode={version_code}")
 
@@ -59,9 +71,9 @@ def main() -> int:
                 {"versionCodes": [str(version_code)], "status": args.status}
             ]
         },
-    ).execute()
+    ).execute(num_retries=RETRIES)
 
-    edits.commit(packageName=args.package, editId=edit_id).execute()
+    edits.commit(packageName=args.package, editId=edit_id).execute(num_retries=RETRIES)
     print(f"committed: {args.package} versionCode {version_code} -> {args.track} ({args.status})")
     return 0
 
