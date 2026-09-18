@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
+import 'package:plantly_inventory/data/photo_blob_store_io.dart';
 import 'package:plantly_inventory/data/repositories/photo_repository.dart';
 import 'package:plantly_inventory/data/repositories/plant_repository.dart';
 import 'package:plantly_inventory/sync/hlc.dart';
@@ -24,7 +25,7 @@ void main() {
     final clock = HlcClock(deviceId: 'test-device');
     opLog = OpLogWriter(db: db, clock: clock, tenantId: 'tenant-local');
     tmp = await Directory.systemTemp.createTemp('plantly-photos-');
-    photos = PhotoRepository(db: db, opLog: opLog, rootOverride: tmp);
+    photos = PhotoRepository(db: db, opLog: opLog, store: IoPhotoBlobStore(root: tmp));
     joins = PlantPhotoRepository(db: db, opLog: opLog);
     plants = PlantRepository(db: db, opLog: opLog);
   });

@@ -10,12 +10,14 @@ import '../domain/services/reminder_engine.dart';
 import '../domain/services/zip_backup_service.dart';
 import '../notifications/dnd_settings.dart';
 import '../notifications/notification_service.dart';
+import '../notifications/platform_notification_service.dart';
 import '../notifications/reminder_sync.dart';
 import '../sync/device_id.dart';
 import '../sync/hlc.dart';
 import '../sync/op_log.dart';
 import 'care_types.dart';
 import 'database/app_database.dart';
+import 'photo_blob_store.dart';
 import 'repositories/care_event_repository.dart';
 import 'repositories/care_schedule_repository.dart';
 import 'repositories/inventory_transaction_repository.dart';
@@ -85,7 +87,7 @@ final plantRepositoryProvider = Provider<PlantRepository>((ref) {
 });
 
 final notificationServiceProvider = Provider<NotificationService>((ref) {
-  final svc = LocalNotificationService();
+  final svc = createPlatformNotificationService();
   // Best-effort init — failures here shouldn't block the app opening.
   svc.init().catchError((_) {});
   // Keep the service's DND settings in sync with the prefs-backed
@@ -107,7 +109,11 @@ final backupServiceProvider = Provider<BackupService>((ref) {
 
 final zipBackupServiceProvider = Provider<ZipBackupService>((ref) {
   final ctx = ref.watch(appContextProvider).requireValue;
-  return ZipBackupService(db: ctx.db, backup: BackupService(db: ctx.db));
+  return ZipBackupService(
+    db: ctx.db,
+    backup: BackupService(db: ctx.db),
+    photos: ref.watch(photoBlobStoreProvider),
+  );
 });
 
 /// Build ICS bytes for the next 30 days of reminders against the current DB.
@@ -245,7 +251,7 @@ final locationRepositoryProvider = Provider<LocationRepository>((ref) {
 
 final photoRepositoryProvider = Provider<PhotoRepository>((ref) {
   final ctx = ref.watch(appContextProvider).requireValue;
-  return PhotoRepository(db: ctx.db, opLog: ctx.opLog);
+  return PhotoRepository(db: ctx.db, opLog: ctx.opLog, store: ref.watch(photoBlobStoreProvider));
 });
 
 final plantPhotoRepositoryProvider = Provider<PlantPhotoRepository>((ref) {

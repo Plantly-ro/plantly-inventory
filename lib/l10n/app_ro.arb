@@ -132,6 +132,8 @@
   "meSectionAppearance": "ASPECT",
   "meSectionLists": "LISTE",
   "meSectionNotifications": "NOTIFICĂRI",
+  "notificationsWebUnavailable": "Indisponibil în browser",
+  "notificationsWebUnavailableDetail": "Versiunea din browser nu poate afișa notificări de sistem. Mementourile apar în continuare în aplicație și în calendar — folosește aplicația Android pentru alerte.",
   "meSectionBackup": "COPIE DE SIGURANȚĂ",
   "meSectionCalendar": "CALENDAR",
   "meSectionAbout": "DESPRE",

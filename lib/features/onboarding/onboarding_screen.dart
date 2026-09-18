@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/providers.dart';
 import '../../data/user_prefs.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 
@@ -91,7 +92,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
                   _WelcomeStep(surface: surface, nameController: _name),
-                  _NotifStep(surface: surface, granted: _notifGranted, onRequest: _requestNotif),
+                  _NotifStep(
+                    surface: surface,
+                    granted: _notifGranted,
+                    supported: ref.watch(notificationServiceProvider).isSupported,
+                    onRequest: _requestNotif,
+                  ),
                   _PrivacyStep(
                     surface: surface,
                     crash: _crash,
@@ -192,9 +198,16 @@ class _WelcomeStep extends StatelessWidget {
 }
 
 class _NotifStep extends StatelessWidget {
-  const _NotifStep({required this.surface, required this.granted, required this.onRequest});
+  const _NotifStep({
+    required this.surface,
+    required this.granted,
+    required this.supported,
+    required this.onRequest,
+  });
   final PlantlySurface surface;
   final bool granted;
+  /// False on web — no permission to grant, say so instead.
+  final bool supported;
   final VoidCallback onRequest;
 
   @override
@@ -236,11 +249,15 @@ class _NotifStep extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    granted ? 'Reminders are enabled.' : 'Grant permission so reminders can fire.',
+                    !supported
+                        ? AppLocalizations.of(context).notificationsWebUnavailableDetail
+                        : granted
+                            ? 'Reminders are enabled.'
+                            : 'Grant permission so reminders can fire.',
                     style: TextStyle(fontSize: 14, color: surface.text, fontWeight: FontWeight.w600),
                   ),
                 ),
-                if (!granted)
+                if (!granted && supported)
                   TextButton(
                     style: TextButton.styleFrom(foregroundColor: surface.green),
                     onPressed: onRequest,
@@ -249,11 +266,13 @@ class _NotifStep extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            'You can skip this and turn reminders on later in Me → Notifications.',
-            style: TextStyle(fontSize: 12, color: surface.muted),
-          ),
+          if (supported) ...[
+            const SizedBox(height: 12),
+            Text(
+              'You can skip this and turn reminders on later in Me → Notifications.',
+              style: TextStyle(fontSize: 12, color: surface.muted),
+            ),
+          ],
         ],
       ),
     );

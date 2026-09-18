@@ -406,6 +406,13 @@ class AppLocalizationsRo extends AppLocalizations {
   String get meSectionNotifications => 'NOTIFICĂRI';
 
   @override
+  String get notificationsWebUnavailable => 'Indisponibil în browser';
+
+  @override
+  String get notificationsWebUnavailableDetail =>
+      'Versiunea din browser nu poate afișa notificări de sistem. Mementourile apar în continuare în aplicație și în calendar — folosește aplicația Android pentru alerte.';
+
+  @override
   String get meSectionBackup => 'COPIE DE SIGURANȚĂ';
 
   @override

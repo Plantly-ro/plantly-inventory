@@ -848,6 +848,18 @@ abstract class AppLocalizations {
   /// **'NOTIFICATIONS'**
   String get meSectionNotifications;
 
+  /// Me screen row value shown on the web build, where OS notifications can't be scheduled
+  ///
+  /// In en, this message translates to:
+  /// **'Not available in the browser'**
+  String get notificationsWebUnavailable;
+
+  /// Notifications screen permission card body on the web build
+  ///
+  /// In en, this message translates to:
+  /// **'The browser version can\'t show system notifications. Reminders still appear in the app and the calendar — use the Android app for alerts.'**
+  String get notificationsWebUnavailableDetail;
+
   /// No description provided for @meSectionBackup.
   ///
   /// In en, this message translates to:

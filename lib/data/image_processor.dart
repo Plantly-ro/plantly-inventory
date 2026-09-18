@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -43,7 +44,7 @@ class FlutterImageCompressProcessor implements ImageProcessor {
   }
 }
 
-/// In-memory no-op for tests that don't want the native plugin loaded.
+/// Pass-through — tests that don't want the native plugin loaded, and web.
 class NoopImageProcessor implements ImageProcessor {
   const NoopImageProcessor();
 
@@ -54,5 +55,9 @@ class NoopImageProcessor implements ImageProcessor {
   Future<Uint8List> toThumbnail(Uint8List bytes) async => bytes;
 }
 
-final imageProcessorProvider =
-    Provider<ImageProcessor>((_) => const FlutterImageCompressProcessor());
+// flutter_image_compress on web needs the `pica` script from a CDN and
+// throws without it. image_picker_for_web already downsizes to the picker's
+// maxWidth (1600) on a canvas, so passing bytes through is the honest choice.
+final imageProcessorProvider = Provider<ImageProcessor>(
+  (_) => kIsWeb ? const NoopImageProcessor() : const FlutterImageCompressProcessor(),
+);

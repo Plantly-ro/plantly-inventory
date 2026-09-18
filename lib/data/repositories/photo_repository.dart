@@ -1,36 +1,28 @@
-import 'dart:io';
-
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+import 'package:flutter/painting.dart';
 import 'package:ulid/ulid.dart';
 
 import '../../sync/op_log.dart';
 import '../database/app_database.dart';
+import '../photo_blob_store.dart';
 
 /// Content-addressed photo store (PLAN.md §"Schema non-negotiables").
 ///
 /// Photos are keyed by SHA-256 of their raw bytes, not a random id, so
 /// importing the same image twice is a no-op and sync has a natural
-/// dedup key. On disk we use a 2-char shard (`$docs/photos/ab/<sha>.jpg`)
-/// so a hot directory never gets millions of siblings.
+/// dedup key. Bytes live in the platform [PhotoBlobStore] (sharded files
+/// on io, IndexedDB on web); this class owns the metadata row.
 class PhotoRepository {
   PhotoRepository({
     required this.db,
     required this.opLog,
-    Directory? rootOverride,
-  }) : _rootOverride = rootOverride;
+    required this.store,
+  });
 
   final AppDatabase db;
   final OpLogWriter opLog;
-  final Directory? _rootOverride;
-
-  Future<Directory> _rootDir() async {
-    if (_rootOverride != null) return _rootOverride;
-    final docs = await getApplicationDocumentsDirectory();
-    return Directory(p.join(docs.path, 'photos'));
-  }
+  final PhotoBlobStore store;
 
   /// Compute SHA-256 + write to the sharded store + insert a `photos` row.
   /// Idempotent: the same bytes always produce the same sha, and the
@@ -44,15 +36,7 @@ class PhotoRepository {
     int? takenAtMs,
   }) async {
     final shaHex = sha256.convert(bytes).toString();
-    final root = await _rootDir();
-    final shardDir = Directory(p.join(root.path, shaHex.substring(0, 2)));
-    if (!await shardDir.exists()) {
-      await shardDir.create(recursive: true);
-    }
-    final file = File(p.join(shardDir.path, '$shaHex.${_extension(mime)}'));
-    if (!await file.exists()) {
-      await file.writeAsBytes(bytes, flush: true);
-    }
+    final localPath = await store.write(sha: shaHex, mime: mime, bytes: bytes);
 
     await db.transaction(() async {
       final existing = await (db.select(db.photos)..where((t) => t.sha256.equals(shaHex))).getSingleOrNull();
@@ -68,7 +52,7 @@ class PhotoRepository {
           'width': width,
           'height': height,
           'taken_at': takenAtMs,
-          'local_path': file.path,
+          'local_path': localPath,
           'remote_state': 'local',
         },
       );
@@ -81,7 +65,7 @@ class PhotoRepository {
               width: Value(width),
               height: Value(height),
               takenAt: Value(takenAtMs),
-              localPath: Value(file.path),
+              localPath: Value(localPath),
               updatedHlc: hlc.encode(),
               deviceId: opLog.clock.deviceId,
             ),
@@ -95,17 +79,17 @@ class PhotoRepository {
     return (db.select(db.photos)..where((p) => p.sha256.equals(sha))).getSingleOrNull();
   }
 
-  String _extension(String mime) {
-    switch (mime) {
-      case 'image/png':
-        return 'png';
-      case 'image/webp':
-        return 'webp';
-      case 'image/heic':
-        return 'heic';
-      default:
-        return 'jpg';
-    }
+  /// Raw bytes for a stored photo row, or null if the blob is gone.
+  Future<Uint8List?> bytesFor(PhotoRow photo) {
+    return store.read(sha: photo.sha256, mime: photo.mime, localPath: photo.localPath);
+  }
+
+  /// Image for the widget tree — null when the row or its blob is missing,
+  /// so callers fall back to the gradient stub.
+  Future<ImageProvider?> imageFor(String sha) async {
+    final row = await byHash(sha);
+    if (row == null) return null;
+    return store.imageFor(sha: row.sha256, mime: row.mime, localPath: row.localPath);
   }
 }
 

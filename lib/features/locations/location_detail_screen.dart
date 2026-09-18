@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,6 +9,7 @@ import '../../data/photo_picker.dart';
 import '../../data/providers.dart';
 import '../../shared/photo_source_sheet.dart';
 import '../../shared/plant_thumb.dart';
+import '../../shared/stored_photo_image.dart';
 import '../../sync/hlc.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
@@ -350,11 +349,11 @@ class _LocationMapView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final photoRepo = ref.watch(photoRepositoryProvider);
-    return FutureBuilder(
-      future: photoRepo.byHash(mapPhotoSha),
+    return FutureBuilder<ImageProvider?>(
+      future: photoRepo.imageFor(mapPhotoSha),
       builder: (context, snap) {
-        final path = snap.data?.localPath;
-        if (path == null || !File(path).existsSync()) {
+        final image = snap.data;
+        if (image == null) {
           return Container(
             height: 200,
             decoration: BoxDecoration(
@@ -375,7 +374,7 @@ class _LocationMapView extends ConsumerWidget {
                 child: Stack(
                   children: [
                     Positioned.fill(
-                      child: Image.file(File(path), fit: BoxFit.cover),
+                      child: Image(image: image, fit: BoxFit.cover),
                     ),
                     if (editing)
                       Positioned.fill(
@@ -768,15 +767,9 @@ class _GalleryTile extends ConsumerWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            FutureBuilder(
-              future: ref.watch(photoRepositoryProvider).byHash(row.photoSha),
-              builder: (_, snap) {
-                final path = snap.data?.localPath;
-                if (path != null && File(path).existsSync()) {
-                  return Image.file(File(path), fit: BoxFit.cover);
-                }
-                return Container(color: surface.surfaceAlt);
-              },
+            StoredPhotoImage(
+              sha: row.photoSha,
+              placeholder: Container(color: surface.surfaceAlt),
             ),
             Positioned(
               top: 4,
