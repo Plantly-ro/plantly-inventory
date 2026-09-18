@@ -33,6 +33,7 @@ android/.gradle/
 android/app/release/
 android/local.properties
 android/key.properties
+android/upload.jks
 
 # iOS
 ios/Pods/

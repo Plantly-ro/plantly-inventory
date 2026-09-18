@@ -1,9 +1,10 @@
 # .gitlab-ci.yml — PlantlyInventory
 #
-# Three stages run on every push and MR:
-#   analyze → test → build-web
+# Four stages; the first three run on every push and MR:
+#   analyze → test → build (build-web + build-android) → publish (Play tracks)
 #
-# Flutter image: ghcr.io/cirruslabs/flutter:stable (pinned via FLUTTER_IMAGE).
+# Flutter image: ghcr.io/cirruslabs/flutter, pinned by exact tag via FLUTTER_IMAGE
+# (see the note next to the variable).
 # Runs on the group runner `tisa15-ct-gitlab-runner-1 (group runner, plantly-inventory)`.
 #
 # Followups Lazarus left for later:
@@ -11,7 +12,7 @@
 #    existing files don't match dart-format defaults. Add `dart format --set-exit-if-changed .`
 #    here after a one-time `dart format .` pass on the repo.
 #  - JS prototype Playwright tests (npm install && npm test) — separate job with a Node image.
-#  - build-android / build-ios — needs runners with the right SDKs (no macOS runner for ios yet).
+#  - build-ios — needs a macOS runner (none yet). build-android is wired below.
 #  - container registry image build (registry.urundead.win/plantly-inventory/app) — wire when there's a deploy target.
 
 stages:
@@ -21,8 +22,17 @@ stages:
   - publish
 
 variables:
-  FLUTTER_IMAGE: "ghcr.io/cirruslabs/flutter:stable"
+  # Pinned to an exact, existing tag so a `:stable` re-point can't silently
+  # change the toolchain under a release. Verified against the ghcr tag list on
+  # 2026-09-18: cirruslabs stopped publishing after 3.44.0 (Dart 3.12.0), so
+  # there is no 3.47.x image; `:stable` currently resolves to this same digest.
+  # 3.44.0 satisfies pubspec's `sdk: ^3.11.5` and the lockfile (>=3.11.5).
+  # Bump deliberately (and re-verify the tag exists) when moving the toolchain;
+  # local dev on 3.47.x is fine — the lockfile only floats SDK-pinned packages.
+  FLUTTER_IMAGE: "ghcr.io/cirruslabs/flutter:3.44.0"
   PUB_CACHE: "$CI_PROJECT_DIR/.pub-cache"
+  # Gradle's home must live inside the project dir to be cacheable by GitLab.
+  GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle-home"
   PLAY_PACKAGE: "ro.plantly.inventory"
 
 default:
@@ -48,12 +58,10 @@ analyze:
 test:
   stage: test
   script:
-    - flutter test --machine --reporter=expanded
-  artifacts:
-    when: always
-    reports:
-      junit: build/test-results/*.xml
-    expire_in: 1 week
+    # Human-readable per-test output in the job trace. (`--machine` used to
+    # override the reporter with a JSON stream, and the junit artifact it was
+    # paired with is something `flutter test` never writes — dropped.)
+    - flutter test --reporter=expanded
 
 build-web:
   stage: build
@@ -63,6 +71,35 @@ build-web:
     paths:
       - build/web/
     expire_in: 1 week
+
+# Gradle cache shared by the Android jobs (wrapper dists, AGP/Kotlin deps).
+# Keyed on the Gradle inputs, layered on top of the default pub cache.
+.android-gradle-cache:
+  cache:
+    - key:
+        files:
+          - pubspec.lock
+      paths:
+        - .pub-cache/
+    - key:
+        files:
+          - android/gradle/wrapper/gradle-wrapper.properties
+          - android/settings.gradle.kts
+      paths:
+        - .gradle-home/caches/
+        - .gradle-home/wrapper/
+
+# Unsigned debug AAB on every branch/MR so Gradle/AGP/manifest/plugin breakage
+# surfaces pre-merge instead of in the publish job. No key.properties → the
+# build falls back to the debug keystore (see android/app/build.gradle.kts).
+# Note: --debug skips R8, so proguard-rules.pro is only exercised by publish.
+# No artifact on purpose: the debug AAB is ~90 MB and the job exists to
+# pass/fail, not to ship; the publish jobs archive the real signed AAB.
+build-android:
+  stage: build
+  extends: .android-gradle-cache
+  script:
+    - flutter build appbundle --debug
 
 # ─── Play delivery ──────────────────────────────────────────────────────────
 # Automated CD: development → internal testing, main → production.
@@ -78,6 +115,7 @@ build-web:
 #   PLAY_KEY_PASSWORD        (var)   key password
 .play-publish:
   stage: publish
+  extends: .android-gradle-cache
   script:
     - echo "$PLAY_UPLOAD_KEYSTORE_B64" | base64 -d > "$CI_PROJECT_DIR/android/upload.jks"
     - |
@@ -106,12 +144,14 @@ publish-internal:
     - if: '$CI_COMMIT_BRANCH == "development"'
       when: on_success
 
-# main → production (automatic once main is used and the prod track is live).
-# Flip `when: on_success` to `when: manual` here if you ever want a click-gate.
+# main → production: click-gated. A green main pipeline stages the job; a
+# human presses Play in the pipeline view to ship to the production track.
+# `allow_failure: false` keeps the pipeline "blocked" (not "passed") until then.
 publish-production:
   extends: .play-publish
   variables:
     PLAY_TRACK: production
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      when: on_success
+      when: manual
+      allow_failure: false
