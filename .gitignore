@@ -93,3 +93,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# CI-local Gradle home (GRADLE_USER_HOME in .gitlab-ci.yml)
+.gradle-home/

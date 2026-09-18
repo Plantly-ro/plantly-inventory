@@ -15,6 +15,14 @@
 #  - build-ios — needs a macOS runner (none yet). build-android is wired below.
 #  - container registry image build (registry.urundead.win/plantly-inventory/app) — wire when there's a deploy target.
 
+# Branch pipelines only. Without this, a push to a branch that has an open MR
+# spawns a second (merge_request_event) pipeline running the same jobs twice.
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+
 stages:
   - analyze
   - test
@@ -98,11 +106,20 @@ build-web:
 build-android:
   stage: build
   extends: .android-gradle-cache
+  rules:
+    # On development/main the publish jobs build the release variant (signed)
+    # right after — running this gate first only doubles the ~20 min Android
+    # build and delays the internal track.
+    - if: '$CI_COMMIT_BRANCH == "development" || $CI_COMMIT_BRANCH == "main"'
+      when: never
+    - when: on_success
   script:
-    - flutter build appbundle --debug
+    # --release (unsigned → debug keystore fallback) so R8/proguard is exercised
+    # pre-merge; the publish jobs build exactly this variant.
+    - flutter build appbundle --release
 
 # ─── Play delivery ──────────────────────────────────────────────────────────
-# Automated CD: development → internal testing, main → production.
+# development → internal testing (automatic); main → production (manual click-gate).
 # Both build a signed AAB and upload it via the Android Publisher API. The
 # versionCode is the (globally increasing) pipeline id, so every release
 # auto-increments without a manual pubspec bump; versionName stays from pubspec.
@@ -164,4 +181,5 @@ publish-production:
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
-      allow_failure: false
+      # A pending manual job must not leave the main pipeline "blocked".
+      allow_failure: true
