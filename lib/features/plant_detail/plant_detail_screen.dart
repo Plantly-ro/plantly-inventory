@@ -1597,9 +1597,11 @@ class _ReorderPhotosScreenState extends ConsumerState<_ReorderPhotosScreen> {
       body: ReorderableListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         itemCount: _order.length,
-        onReorder: (oldIdx, newIdx) {
+        // onReorderItem hands us a newIdx already adjusted for the item being
+        // removed at oldIdx, so the historical `if (newIdx > oldIdx) newIdx -= 1`
+        // compensation that onReorder needed must NOT be repeated here.
+        onReorderItem: (oldIdx, newIdx) {
           setState(() {
-            if (newIdx > oldIdx) newIdx -= 1;
             final row = _order.removeAt(oldIdx);
             _order.insert(newIdx, row);
           });
