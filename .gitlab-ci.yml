@@ -117,7 +117,17 @@ build-android:
   stage: publish
   extends: .android-gradle-cache
   script:
+    # Fail loudly here rather than deep inside Gradle if a protected var is missing/empty
+    # (e.g. job ran on an unprotected ref) — build.gradle.kts would otherwise error on keystore load.
+    - |
+      if [ -z "$PLAY_UPLOAD_KEYSTORE_B64" ] || [ -z "$PLAY_KEYSTORE_PASSWORD" ] || [ -z "$PLAY_KEY_PASSWORD" ] || [ ! -s "$PLAY_SA_JSON" ]; then
+        echo "publish - PLAY_* CI variables missing (is this a protected branch?)"; exit 1
+      fi
     - echo "$PLAY_UPLOAD_KEYSTORE_B64" | base64 -d > "$CI_PROJECT_DIR/android/upload.jks"
+    - |
+      if [ ! -s "$CI_PROJECT_DIR/android/upload.jks" ]; then
+        echo "publish - keystore decode produced an empty file"; exit 1
+      fi
     - |
       cat > "$CI_PROJECT_DIR/android/key.properties" <<EOF
       storeFile=$CI_PROJECT_DIR/android/upload.jks
