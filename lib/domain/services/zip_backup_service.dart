@@ -43,7 +43,7 @@ class ZipBackupService {
     final archive = Archive()
       ..addFile(ArchiveFile.bytes(
         'plantly.backup.json',
-        Uint8List.fromList(jsonBlob.codeUnits),
+        BackupService.encodeBlob(jsonBlob),
       ));
 
     for (final photo in photoRows) {
@@ -76,7 +76,7 @@ class ZipBackupService {
       (f) => f.name == 'plantly.backup.json',
       orElse: () => throw const ZipBackupFormatError('Missing plantly.backup.json'),
     );
-    final jsonBlob = String.fromCharCodes(jsonFile.content as List<int>);
+    final jsonBlob = BackupService.decodeBlob(jsonFile.content as List<int>);
     final jsonResult = await backup.import(blob: jsonBlob, secret: secret, opLog: opLog);
 
     var photoCount = 0;

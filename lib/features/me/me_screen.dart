@@ -374,7 +374,7 @@ class _BackupRow extends ConsumerWidget {
     try {
       final bytes = withPhotos
           ? await ref.read(zipBackupServiceProvider).exportZip(secret: secret)
-          : Uint8List.fromList((await ref.read(backupServiceProvider).export(secret: secret)).codeUnits);
+          : BackupService.encodeBlob(await ref.read(backupServiceProvider).export(secret: secret));
       final stamp = DateTime.now().toUtc().toIso8601String().replaceAll(':', '-').substring(0, 19);
       final ext = withPhotos ? 'zip' : 'json';
       final where = await ref.read(fileExporterProvider).save(
@@ -433,7 +433,7 @@ class _ImportRow extends ConsumerWidget {
             );
         msg = 'Imported ${result.json.total} rows + ${result.photosRestored} photos';
       } else {
-        final json = String.fromCharCodes(bytes);
+        final json = BackupService.decodeBlob(bytes);
         final result = await ref.read(backupServiceProvider).import(
               blob: json,
               secret: secret,

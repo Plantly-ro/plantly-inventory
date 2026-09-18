@@ -25,7 +25,14 @@ class IndexedDbPhotoBlobStore implements PhotoBlobStore {
 
   String _key(String sha, String mime) => '$sha.${PhotoBlobStore.extensionFor(mime)}';
 
-  Future<web.IDBDatabase> _open() => _db ??= _openDatabase();
+  /// Lazily opened and cached; a failed open is dropped so the next call
+  /// retries instead of replaying the same error forever.
+  Future<web.IDBDatabase> _open() {
+    return _db ??= _openDatabase().catchError((Object e, StackTrace st) {
+      _db = null;
+      return Future<web.IDBDatabase>.error(e, st);
+    });
+  }
 
   Future<web.IDBDatabase> _openDatabase() {
     final request = web.window.indexedDB.open(_databaseName, 1);

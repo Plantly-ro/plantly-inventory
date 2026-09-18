@@ -6,6 +6,7 @@ import 'features/home/home_providers.dart';
 import 'features/home/home_screen.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'services/telemetry.dart';
+import 'services/web_bootstrap.dart';
 import 'theme/tokens.dart';
 
 Future<void> main() async {
@@ -13,6 +14,7 @@ Future<void> main() async {
   final container = ProviderContainer();
   final telemetry = container.read(telemetryServiceProvider);
   await telemetry.init();
+  await initWebPlatform();
   await runGuarded(() async {
     runApp(UncontrolledProviderScope(container: container, child: const PlantlyApp()));
   }, telemetry);

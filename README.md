@@ -78,7 +78,7 @@ flutter build web --release --no-web-resources-cdn   # self-hosts CanvasKit (wor
 python3 -m http.server 8099 --bind 127.0.0.1 --directory build/web
 ```
 
-- **Database** — Drift on `web/sqlite3.wasm` + `web/drift_worker.js` (pinned to the `sqlite3` / `drift` versions in `pubspec.lock`; re-fetch with `tool/fetch_web_sqlite.sh` after bumping either). Storage is OPFS when the page is served with `Cross-Origin-Opener-Policy: same-origin` + `Cross-Origin-Embedder-Policy: require-corp`, IndexedDB otherwise. The two backends are separate stores — pick one header policy for a deployment and keep it, or existing users will see an empty app.
+- **Database** — Drift on `web/sqlite3.wasm` + `web/drift_worker.js` (pinned to the `sqlite3` / `drift` versions in `pubspec.lock`; re-fetch with `tool/fetch_web_sqlite.sh` after bumping either). Storage is OPFS when the page is served with `Cross-Origin-Opener-Policy: same-origin` + `Cross-Origin-Embedder-Policy: require-corp`, IndexedDB otherwise. The two backends are separate stores; drift sticks with whichever one already holds the database, so *adding* the headers later is safe, but *removing* them hides the OPFS data — never remove the headers once shipped.
 - **Photos** — bytes live in IndexedDB (`plantly_inventory_photos`), content-addressed by sha256 like the on-disk store.
 - **Backup / iCal / CSV export** — browser download instead of the OS share sheet. Import uses the browser file picker.
 - **Not available on web** — scheduled OS notifications (the Me screen and onboarding say so; in-app reminders and the calendar still work) and image re-compression (the picker already downsizes to 1600px).

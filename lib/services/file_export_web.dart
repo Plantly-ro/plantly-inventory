@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:js_interop';
 import 'dart:typed_data';
 
@@ -32,7 +33,9 @@ class DownloadFileExporter implements FileExporter {
     web.document.body!.append(anchor);
     anchor.click();
     anchor.remove();
-    web.URL.revokeObjectURL(url);
+    // Revoking right after click() cancels the download in Safari and older
+    // Firefox — the fetch of the blob URL is asynchronous. Give it a while.
+    Timer(const Duration(seconds: 40), () => web.URL.revokeObjectURL(url));
     return fileName;
   }
 }
