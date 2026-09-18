@@ -1,0 +1,38 @@
+Plantly Inventory este un companion calm, offline, pentru iubitorii de plante de apartament. Ține evidența fiecărei plante, nu mai uita niciodată de udat și păstrează-ți întreaga colecție organizată — totul pe dispozitivul tău, fără cont și fără reclame.
+
+🌿 TOTUL RĂMÂNE PE DISPOZITIVUL TĂU
+Plantly Inventory funcționează complet offline. Plantele, pozele și notițele tale rămân pe telefon. Fără înregistrare, fără cloud obligatoriu și fără telemetrie în mod implicit — rapoartele de erori și de utilizare sunt strict opționale.
+
+💧 MEMENTO-URI INTELIGENTE
+• Memento-uri per plantă pentru udare, fertilizare, pulverizare, replantare, tuns și altele
+• Programare adaptivă care învață ritmul tău real de îngrijire
+• Recurență fixă, adaptivă sau o singură dată
+• Ore de liniște (nu deranja) și dezactivare per plantă / per tip
+• Notificări locale fiabile care rezistă după repornire
+
+🗓️ UN CALENDAR CARE ARE SENS
+Vederile pe săptămână, lună și an arată ce e de făcut și ce ai bifat deja. Înregistrează îngrijiri în trecut sau viitor, amână o sarcină sau bifează-o cu un gest.
+
+🪴 ORGANIZEAZĂ-ȚI COLECȚIA
+• Grupează plantele în Spații — camere, rafturi, balcoane, straturi exterioare
+• Adaugă o poză a camerei și pune pini ca să vezi exact unde stă fiecare plantă
+• Etichete, căutare completă (inclusiv după etichetă) și sortare flexibilă
+• Filtrează după stare, loc sau etichetă
+
+📸 POZE ȘI ISTORIC
+• Atașează mai multe poze per plantă, reordonează-le și adaugă-le descrieri
+• Miniaturi și compresie automată pentru a economisi spațiu
+• Un istoric complet de îngrijire pentru fiecare plantă, cu statistici
+
+🌱 MAI MULT DECÂT O EVIDENȚĂ
+• Notează înmulțirea, dăruirea, vânzarea sau pierderea printr-un registru simplu
+• Creează tipuri de îngrijire proprii, cu culori și intervale la alegere
+• Teme luminoase și întunecate
+
+🔒 BACKUP ȘI CONTROL
+• Backup criptat cu o atingere, în JSON sau ZIP cu poze
+• Export CSV și iCal (.ics)
+• Import pentru restaurare sau mutare pe un telefon nou
+• Disponibil în engleză și română
+
+Plantly Inventory este gratuit și îți respectă intimitatea. Pune puțină ordine în viața ta. 🌿
