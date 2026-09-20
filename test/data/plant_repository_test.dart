@@ -6,10 +6,32 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
 import 'package:plantly_inventory/data/repositories/care_event_repository.dart';
 import 'package:plantly_inventory/data/repositories/plant_repository.dart';
+import 'package:plantly_inventory/data/repositories/species_repository.dart';
 import 'package:plantly_inventory/sync/hlc.dart';
 import 'package:plantly_inventory/sync/op_log.dart';
 
 void main() {
+  group('SpeciesRepository.byScientificName', () {
+    test('matches case-insensitively and tolerates duplicate rows differing by case', () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      final opLog = OpLogWriter(db: db, clock: HlcClock(deviceId: 'd'), tenantId: 'local');
+      final species = SpeciesRepository(db: db, opLog: opLog);
+      final a = await species.upsertByScientificName('Monstera deliciosa');
+      expect((await species.upsertByScientificName('MONSTERA DELICIOSA', commonName: 'Swiss cheese')).id, a.id);
+      expect((await species.byScientificName('  monstera Deliciosa '))!.id, a.id);
+      expect(await species.displayName(a.id), 'Monstera deliciosa');
+      expect(await species.displayName('free text'), 'free text');
+      // Two rows differing only in case (e.g. restored from an older backup)
+      // must not make the lookup throw.
+      await db.into(db.species).insert(SpeciesCompanion.insert(
+            id: 'dup', tenantId: 'local', scientificName: 'monstera deliciosa', commonNamesJson: '[]',
+            updatedHlc: 'z', deviceId: 'd',
+          ));
+      expect(await species.byScientificName('Monstera deliciosa'), isNotNull);
+    });
+  });
+
   late AppDatabase db;
   late HlcClock clock;
   late OpLogWriter opLog;

@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/care_types.dart';
 import '../../data/database/app_database.dart' as db;
 import '../../data/image_processor.dart';
 import '../../data/mock_plants.dart';
 import '../../data/photo_picker.dart';
+import '../../config/plantly_features.dart';
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
+import '../../marketplace/listing_records.dart';
+import '../../plugins/plantly_ro/plantly_ro_plugin.dart';
+import '../../plugins/plugin_registry.dart';
 import '../../shared/plant_thumb.dart';
 import '../../shared/stored_photo_image.dart';
 import '../../sync/hlc.dart';
@@ -308,7 +314,12 @@ class _PlantDetailBody extends ConsumerWidget {
                 if (plantRow.speciesId != null && plantRow.speciesId!.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
-                    plantRow.speciesId!,
+                    // Resolves a `species` row id to its scientific name; legacy
+                    // free-text species pass through unchanged.
+                    ref.watch(speciesDisplayNameProvider(plantRow.speciesId!)).maybeWhen(
+                          data: (name) => name ?? plantRow.speciesId!,
+                          orElse: () => plantRow.speciesId!,
+                        ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 13, color: surface.muted, fontStyle: FontStyle.italic),
@@ -361,6 +372,11 @@ class _PlantDetailBody extends ConsumerWidget {
             child: _Timeline(surface: surface, plantId: plantId),
           ),
           _InventoryLedger(surface: surface, plantId: plantId),
+          if (ref.watch(listingRecordsProvider)[plantId] case final ListingRecord record)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: _ListedOnPlantlyRow(surface: surface, record: record),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
             child: _ExportCTA(
@@ -1389,13 +1405,164 @@ class _InventoryLedger extends ConsumerWidget {
   }
 }
 
-class _ExportCTA extends StatelessWidget {
+/// "Listed on plantly.ro" (CONTRACT §5): Open + Mark as sold, driven by the
+/// local listing record written when the export succeeded.
+class _ListedOnPlantlyRow extends ConsumerStatefulWidget {
+  const _ListedOnPlantlyRow({required this.surface, required this.record});
+  final PlantlySurface surface;
+  final ListingRecord record;
+
+  @override
+  ConsumerState<_ListedOnPlantlyRow> createState() => _ListedOnPlantlyRowState();
+}
+
+class _ListedOnPlantlyRowState extends ConsumerState<_ListedOnPlantlyRow> {
+  bool _busy = false;
+
+  Future<void> _markSold() async {
+    final t = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(t.listedMarkSoldTitle),
+        content: Text(t.listedMarkSoldBody),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.listedCancel)),
+          FilledButton(
+            key: const Key('listed-mark-sold-confirm'),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(t.listedMarkSold),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      final plugin = ref.read(plantlyRoPluginProvider);
+      if (plugin == null) return;
+      await plugin.updateStatus(widget.record.postId, 'sold');
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(t.listedMarkedSold)));
+    } on PlantlyExportError catch (e) {
+      final msg = switch (e.kind) {
+        PlantlyExportErrorKind.signInRequired => t.plantlyErrorSignInAgain,
+        PlantlyExportErrorKind.network => t.plantlyErrorNetwork,
+        _ => t.exportFailedServer(e.message),
+      };
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(msg)));
+    } catch (e) {
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(t.exportFailedServer('$e'))));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final surface = widget.surface;
+    final record = widget.record;
+    final t = AppLocalizations.of(context);
+    return Container(
+      key: const Key('listed-on-plantly'),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: surface.surface,
+        borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
+        border: Border.all(color: surface.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.storefront_outlined, size: 16, color: surface.terra),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  t.listedOnPlantly,
+                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: surface.text),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: record.isSold ? surface.surfaceAlt : surface.green.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  record.isSold ? t.listedStatusSold : t.listedStatusActive,
+                  key: const Key('listed-status'),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: record.isSold ? surface.muted : surface.green,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: const Key('listed-open'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: surface.text,
+                    side: BorderSide(color: surface.border),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius)),
+                  ),
+                  onPressed: record.url.isEmpty
+                      ? null
+                      : () => launchUrl(Uri.parse(record.url), mode: LaunchMode.externalApplication),
+                  icon: const Icon(Icons.open_in_new, size: 14),
+                  label: Text(t.listedOpen, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                ),
+              ),
+              if (!record.isSold) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton.icon(
+                    key: const Key('listed-mark-sold'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: surface.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius)),
+                    ),
+                    onPressed: _busy ? null : _markSold,
+                    icon: _busy
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.sell_outlined, size: 14),
+                    label: Text(t.listedMarkSold, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExportCTA extends ConsumerWidget {
   const _ExportCTA({required this.surface, required this.onPressed});
   final PlantlySurface surface;
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
+    final sell = ref.watch(sellEnabledProvider);
     return Material(
       color: surface.surface,
       borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
@@ -1414,7 +1581,7 @@ class _ExportCTA extends StatelessWidget {
               Icon(Icons.open_in_new, size: 16, color: surface.terra),
               const SizedBox(width: 8),
               Text(
-                'Post on plantly.ro',
+                sell ? t.exportPostOnPlantlyRoCta : t.exportDraftCta,
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: surface.terra),
               ),
             ],

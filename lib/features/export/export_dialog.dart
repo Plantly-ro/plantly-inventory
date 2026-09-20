@@ -1,24 +1,35 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../config/plantly_features.dart';
 import '../../data/database/app_database.dart' as db;
 import '../../data/mock_plants.dart';
 import '../../data/providers.dart';
 import '../../data/ro_locations.dart';
+import '../../l10n/generated/app_localizations.dart';
+import '../../marketplace/plantly_api.dart';
+import '../../marketplace/plantly_auth.dart';
 import '../../plugins/export_plugin.dart';
+import '../../plugins/plantly_ro/plantly_ro_plugin.dart';
 import '../../plugins/plugin_registry.dart';
 import '../../shared/plant_thumb.dart';
 import '../../shared/stored_photo_image.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
+import 'category_search_field.dart';
 
 /// Draft a plantly.ro listing. Reads live data from the DB:
 ///   - Title/description seeded from the plant row (nickname + notes).
 ///   - Photos come from the plant's attached OR-set (max 6).
+///   - Category is a marketplace search (CONTRACT §5), pre-queried with the
+///     plant's species; county from the local list; city free text.
 ///
-/// Phase 1 is still "draft" only — "Post now" writes to the draft store
-/// and surfaces a confirmation; the actual network plugin lands in Phase 2.
+/// "Post now" goes through the default [ExportPlugin] (plantly_ro when
+/// registered): sign-in sheet if needed, then multipart upload with progress.
 class ExportDialog extends ConsumerStatefulWidget {
   const ExportDialog({super.key, required this.plantRow});
   final db.PlantRow plantRow;
@@ -35,7 +46,11 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
   final _selected = <String>{};
   bool _selectionInitialised = false;
   String? _category;
+  String? _categoryLabel;
   String? _county;
+  bool _submitting = false;
+  double _progress = 0;
+  final Map<String, String> _issues = {};
 
   @override
   void initState() {
@@ -46,7 +61,34 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
     _city = TextEditingController();
     // Fire-and-forget: if a draft exists for this plant, prefill — lets
     // the user resume a half-filled listing instead of re-typing.
-    _loadDraft();
+    _loadDraft().then((_) {
+      if (ref.read(sellEnabledProvider)) _preselectCategory();
+    });
+  }
+
+  /// Pre-query the marketplace with the plant's species and preselect the
+  /// top hit when it scores ≥ 0.7 (CONTRACT §5). Skipped when the draft
+  /// already carries a category.
+  Future<void> _preselectCategory() async {
+    if (!mounted || _category != null) return;
+    final speciesRef = widget.plantRow.speciesId;
+    if (speciesRef == null || speciesRef.trim().isEmpty) return;
+    try {
+      final name = await ref.read(speciesRepositoryProvider).displayName(speciesRef);
+      if (name == null || name.trim().length < 2 || !mounted) return;
+      final lang = Localizations.localeOf(context).languageCode;
+      final hits = await ref.read(plantlyApiProvider).searchCategories(name, lang: lang, limit: 5);
+      if (!mounted || _category != null || hits.isEmpty) return;
+      final top = hits.first;
+      if (top.score >= 0.7) {
+        setState(() {
+          _category = top.id;
+          _categoryLabel = top.path;
+        });
+      }
+    } catch (_) {
+      // Offline or no match — the user picks manually.
+    }
   }
 
   Future<void> _loadDraft() async {
@@ -63,7 +105,14 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
           ..addAll(draft.photoRefs);
         _selectionInitialised = true;
       }
-      if (draft.category != null) _category = draft.category;
+      // Selling on: only marketplace UUIDs are resumable (legacy drafts
+      // carried free text from the local picker). Selling off: the local
+      // picker's values are the categories.
+      final sell = ref.read(sellEnabledProvider);
+      if (sell ? PlantlyRoExportPlugin.isCategoryId(draft.category) : draft.category != null) {
+        _category = draft.category;
+        _categoryLabel = null; // label isn't persisted; shown as "selected"
+      }
       if (draft.county != null) _county = draft.county;
       if (draft.city != null) _city.text = draft.city!;
       _posted = draft.postedAt?.toUtc().toIso8601String();
@@ -166,8 +215,11 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
   Widget build(BuildContext context) {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final t = AppLocalizations.of(context);
     final plant = widget.plantRow;
     final swatch = MockPlants.byId(plant.id);
+    final lang = Localizations.localeOf(context).languageCode;
+    final sell = ref.watch(sellEnabledProvider);
     final shas = ref.watch(attachedPhotosProvider(plant.id)).maybeWhen(
           data: (list) => list,
           orElse: () => const <String>[],
@@ -207,7 +259,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '🌿 PLANTLY.RO',
+                            sell ? '🌿 PLANTLY.RO' : t.exportDraftEyebrow,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -216,7 +268,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                             ),
                           ),
                           Text(
-                            'Post "${plant.nickname}"',
+                            sell ? t.exportPostTitle(plant.nickname) : t.exportDraftTitle(plant.nickname),
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 19,
                               fontWeight: FontWeight.w800,
@@ -239,68 +291,66 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                   controller: scrollCtrl,
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                   children: [
-                    _Label(text: 'TITLE', surface: surface),
-                    _Field(controller: _title, maxLength: 64, surface: surface, onChanged: (_) => setState(() {})),
-                    _CharCount(value: _title.text.length, max: 64, surface: surface),
+                    _Label(text: t.exportTitleField, surface: surface),
+                    _Field(controller: _title, maxLength: 64, surface: surface, onChanged: (_) => setState(() => _issues.remove('title'))),
+                    _IssueOrCount(issue: _issues['title'], value: _title.text.length, max: 64, surface: surface),
                     const SizedBox(height: 10),
-                    _Label(text: 'DESCRIPTION', surface: surface),
-                    _Field(controller: _desc, maxLength: 2000, surface: surface, maxLines: 3, onChanged: (_) => setState(() {})),
-                    _CharCount(value: _desc.text.length, max: 2000, surface: surface),
+                    _Label(text: t.exportDescriptionField, surface: surface),
+                    _Field(controller: _desc, maxLength: 2000, surface: surface, maxLines: 3, onChanged: (_) => setState(() => _issues.remove('description'))),
+                    _IssueOrCount(issue: _issues['description'], value: _desc.text.length, max: 2000, surface: surface),
                     const SizedBox(height: 10),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    _Label(text: t.exportPriceField, surface: surface),
+                    Stack(
+                      alignment: Alignment.centerRight,
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _Label(text: 'PRICE', surface: surface),
-                              Stack(
-                                alignment: Alignment.centerRight,
-                                children: [
-                                  _Field(
-                                    controller: _price,
-                                    surface: surface,
-                                    keyboardType: TextInputType.number,
-                                    suffixPadding: 40,
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.only(right: 12),
-                                    child: Text(
-                                      'lei',
-                                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: surface.muted),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                        _Field(
+                          controller: _price,
+                          surface: surface,
+                          keyboardType: TextInputType.number,
+                          suffixPadding: 40,
+                          onChanged: (_) => setState(() => _issues.remove('price')),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _Label(text: 'CATEGORY', surface: surface),
-                              _PickerInput(
-                                value: _category,
-                                placeholder: 'Select category',
-                                surface: surface,
-                                trailingIcon: Icons.expand_more,
-                                onTap: () => _pickFrom(
-                                  title: 'Category',
-                                  options: exportCategories,
-                                  current: _category,
-                                  onSelected: (v) => setState(() => _category = v),
-                                ),
-                              ),
-                            ],
+                        Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: Text(
+                            t.exportPriceUnit,
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: surface.muted),
                           ),
                         ),
                       ],
                     ),
+                    if (_issues['price'] != null) _IssueText(text: _issues['price']!, surface: surface),
                     const SizedBox(height: 10),
-                    _Label(text: 'LOCATION', surface: surface),
+                    _Label(text: t.exportCategoryField, surface: surface),
+                    if (sell)
+                      CategorySearchField(
+                        search: (q, l) => ref.read(plantlyApiProvider).searchCategories(q, lang: l, limit: 10),
+                        lang: lang,
+                        surface: surface,
+                        selected: _category == null ? null : (_categoryLabel ?? t.exportCategorySelected),
+                        onSelected: (hit) => setState(() {
+                          _category = hit?.id;
+                          _categoryLabel = hit?.path;
+                          _issues.remove('category');
+                        }),
+                      )
+                    else
+                      // Selling off: the provisional local list, no network.
+                      _PickerInput(
+                        value: _category,
+                        placeholder: t.exportCategoryPlaceholder,
+                        surface: surface,
+                        trailingIcon: Icons.expand_more,
+                        onTap: () => _pickFrom(
+                          title: t.exportCategoryTitle,
+                          options: exportCategories,
+                          current: _category,
+                          onSelected: (v) => setState(() => _category = v),
+                        ),
+                      ),
+                    if (_issues['category'] != null) _IssueText(text: _issues['category']!, surface: surface),
+                    const SizedBox(height: 10),
+                    _Label(text: t.exportLocationField, surface: surface),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -324,14 +374,31 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                           child: _Field(
                             controller: _city,
                             surface: surface,
-                            hintText: 'City',
+                            hintText: t.exportCityPlaceholder,
                             onChanged: (_) => setState(() {}),
                           ),
                         ),
                       ],
                     ),
+                    if (sell) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.storefront_outlined, size: 14, color: surface.muted),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              t.exportDeliveryNote,
+                              style: TextStyle(fontSize: 11.5, color: surface.muted),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 14),
-                    _Label(text: 'PHOTOS (${_selected.length}/6)', surface: surface),
+                    _Label(text: t.exportPhotosField(_selected.length), surface: surface),
+                    if (_issues['photos'] != null) _IssueText(text: _issues['photos']!, surface: surface),
                     const SizedBox(height: 8),
                     _PhotoGrid(
                       shas: shas,
@@ -340,6 +407,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                       surface: surface,
                       onToggle: (sha) {
                         setState(() {
+                          _issues.remove('photos');
                           if (_selected.contains(sha)) {
                             _selected.remove(sha);
                           } else if (_selected.length < 6) {
@@ -359,54 +427,62 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
                 child: SafeArea(
                   top: false,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
-                          style: TextButton.styleFrom(
-                            backgroundColor: surface.surfaceAlt,
-                            foregroundColor: surface.text,
-                            side: BorderSide(color: surface.border),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius + 2)),
-                            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                          ),
-                          onPressed: () async {
-                            await _persistDraft();
-                            if (context.mounted) _finish('Draft saved');
-                          },
-                          child: const Text('Save draft'),
+                  child: _submitting
+                      ? Column(
+                          key: const Key('export-progress'),
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(t.exportPosting, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: surface.text)),
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: _progress <= 0 ? null : _progress,
+                                minHeight: 6,
+                                color: surface.green,
+                                backgroundColor: surface.surfaceAlt,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            Expanded(
+                              child: TextButton(
+                                style: TextButton.styleFrom(
+                                  backgroundColor: surface.surfaceAlt,
+                                  foregroundColor: surface.text,
+                                  side: BorderSide(color: surface.border),
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius + 2)),
+                                  textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                ),
+                                onPressed: () async {
+                                  await _persistDraft();
+                                  if (context.mounted) _finish(t.exportDraftSaved);
+                                },
+                                child: Text(t.exportSaveDraft),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              flex: 14,
+                              child: TextButton(
+                                key: const Key('export-post-now'),
+                                style: TextButton.styleFrom(
+                                  backgroundColor: surface.terra,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius + 2)),
+                                  textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                                ),
+                                onPressed: _postNow,
+                                child: Text(t.exportPostNow),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        flex: 14,
-                        child: TextButton(
-                          style: TextButton.styleFrom(
-                            backgroundColor: surface.terra,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius + 2)),
-                            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                          ),
-                          onPressed: () async {
-                            final plugin = ref.read(defaultExportPluginProvider);
-                            ExportProgress? last;
-                            await for (final p in plugin.submit(_buildDraft())) {
-                              last = p;
-                            }
-                            if (!context.mounted) return;
-                            if (last?.error != null) {
-                              _finish('Could not post: ${last!.error}');
-                            } else {
-                              _finish(last?.message ?? 'Posted');
-                            }
-                          },
-                          child: const Text('Post now'),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ],
@@ -414,6 +490,126 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
         );
       },
     );
+  }
+
+  /// Validate → sign in if needed → submit through the default plugin,
+  /// mirroring progress in the footer. Errors map to localized copy.
+  Future<void> _postNow() async {
+    final t = AppLocalizations.of(context);
+    final plugin = ref.read(defaultExportPluginProvider);
+    final draft = _buildDraft();
+
+    final preview = await plugin.buildPreview(draft);
+    if (!mounted) return;
+    if (!preview.isValid) {
+      setState(() {
+        _issues
+          ..clear()
+          ..addEntries(preview.issues.map((i) => MapEntry(i.field, _issueText(t, i))));
+      });
+      return;
+    }
+
+    if (plugin.manifest.authType != PluginAuthType.none) {
+      var session = await plugin.loadCredentials();
+      if (!mounted) return;
+      if (session == null) {
+        try {
+          session = await plugin.authenticate(context);
+        } on PlantlyAuthCancelled {
+          return;
+        }
+        if (!mounted) return;
+        await plugin.storeCredentials(session);
+      }
+    }
+
+    // Keep a local draft too so a failed upload can be retried without
+    // re-typing.
+    await _persistDraft();
+    if (!mounted) return;
+    setState(() {
+      _submitting = true;
+      _progress = 0;
+    });
+    ExportProgress? last;
+    try {
+      await for (final p in plugin.submit(draft)) {
+        last = p;
+        if (!mounted) return;
+        setState(() => _progress = p.fraction);
+      }
+    } catch (e) {
+      last = ExportProgress(fraction: 0, done: true, error: e);
+    }
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    final error = last?.error;
+    if (error != null) {
+      if (error is PlantlyExportError && error.kind == PlantlyExportErrorKind.validation && error.issueCode != null) {
+        setState(() => _issues[_fieldForCode(error.issueCode!)] = _issueTextForCode(t, error.issueCode!, error.message));
+        return;
+      }
+      _showError(_errorText(t, error));
+      return;
+    }
+    final url = last?.url;
+    final warnings = last?.message;
+    Navigator.of(context).maybePop();
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(
+        content: Text(url == null
+            ? (warnings ?? t.exportPosted)
+            : (warnings == null ? t.exportPosted : t.exportPostedWithWarnings(warnings))),
+        duration: const Duration(seconds: 6),
+        action: url == null
+            ? null
+            : SnackBarAction(
+                label: t.exportOpenListing,
+                onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+              ),
+      ));
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 5)));
+  }
+
+  static String _fieldForCode(String code) => code.split('_').first;
+
+  String _issueText(AppLocalizations t, ExportIssue issue) =>
+      issue is PlantlyExportIssue ? _issueTextForCode(t, issue.code, issue.message) : issue.message;
+
+  String _issueTextForCode(AppLocalizations t, String code, String fallback) => switch (code) {
+        'title_required' => t.exportIssueTitleRequired,
+        'title_too_long' => t.exportIssueTitleTooLong,
+        'description_too_long' => t.exportIssueDescriptionTooLong,
+        'price_invalid' => t.exportIssuePriceInvalid,
+        'category_required' => t.exportIssueCategoryRequired,
+        'category_invalid' => t.exportIssueCategoryInvalid,
+        'photos_required' => t.exportIssuePhotosRequired,
+        'photos_too_many' => t.exportIssuePhotosTooMany,
+        _ => fallback,
+      };
+
+  String _errorText(AppLocalizations t, Object error) {
+    if (error is PlantlyExportError) {
+      return switch (error.kind) {
+        PlantlyExportErrorKind.signInRequired => t.plantlyErrorSignInAgain,
+        PlantlyExportErrorKind.rateLimited => t.plantlyErrorRateLimited,
+        PlantlyExportErrorKind.network => t.plantlyErrorNetwork,
+        PlantlyExportErrorKind.noPhotos => t.exportIssuePhotosRequired,
+        PlantlyExportErrorKind.server => t.exportFailedServer(error.message),
+        PlantlyExportErrorKind.validation => error.message,
+      };
+    }
+    if (error is PlantlyApiException) return t.exportFailedServer(error.message);
+    if (error is PlantlyNetworkException) return t.plantlyErrorNetwork;
+    return t.exportFailedServer('$error');
   }
 
   void _finish(String msg) {
@@ -518,6 +714,35 @@ class _CharCount extends StatelessWidget {
   }
 }
 
+/// Shows a validation issue in place of the char counter when present.
+class _IssueOrCount extends StatelessWidget {
+  const _IssueOrCount({required this.issue, required this.value, required this.max, required this.surface});
+  final String? issue;
+  final int value;
+  final int max;
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context) {
+    if (issue != null) return _IssueText(text: issue!, surface: surface);
+    return _CharCount(value: value, max: max, surface: surface);
+  }
+}
+
+class _IssueText extends StatelessWidget {
+  const _IssueText({required this.text, required this.surface});
+  final String text;
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Text(text, key: Key('issue-$text'), style: TextStyle(fontSize: 11, color: surface.terra)),
+    );
+  }
+}
+
 /// A read-only, tappable field that looks like [_Field] but opens a picker.
 /// Shows [value] when set, else [placeholder] in muted text.
 class _PickerInput extends StatelessWidget {
@@ -600,7 +825,7 @@ class _PhotoGrid extends ConsumerWidget {
         ),
         alignment: Alignment.center,
         child: Text(
-          'No photos attached. Add some on the plant detail screen first.',
+          AppLocalizations.of(context).exportNoPhotos,
           style: TextStyle(fontSize: 12, color: surface.muted),
           textAlign: TextAlign.center,
         ),

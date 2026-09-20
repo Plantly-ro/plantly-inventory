@@ -69,6 +69,11 @@ dependencies:
   # (lib/**/*_web.dart behind conditional imports). Already transitive
   # via drift/sqlite3; listed so the direct imports are legal.
   web: ^1.1.1
+  http: ^1.6.0
+  http_parser: ^4.1.2
+  flutter_secure_storage: ^10.3.4
+  app_links: ^7.2.1
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

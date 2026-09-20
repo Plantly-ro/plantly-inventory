@@ -83,6 +83,20 @@ python3 -m http.server 8099 --bind 127.0.0.1 --directory build/web
 - **Backup / iCal / CSV export** — browser download instead of the OS share sheet. Import uses the browser file picker.
 - **Not available on web** — scheduled OS notifications (the Me screen and onboarding say so; in-app reminders and the calendar still work) and image re-compression (the picker already downsizes to 1600px).
 
+### Marketplace integration flags (all targets)
+
+| dart-define | Default | Effect |
+|---|---|---|
+| `PLANTLY_HOST` | `https://plantly.ro` | Marketplace API + web origin (`/api/v1`). Point at a preview, e.g. `https://development.agent-khepri.urundead.win`. |
+| `PLANTLY_SELL_ENABLED` | `false` | **"Sell on plantly.ro"** (`plantly_ro` export plugin, marketplace category search, Me → Plantly account). Off = the local draft dialog only, no network from the export path. The Assistant/marketplace **import** link handling (`/#/import?d=…`, `plantlyinventory://import`) is always on. |
+
+```bash
+# selling ON against the dev preview
+flutter build web --release --no-web-resources-cdn \
+  --dart-define=PLANTLY_HOST=https://development.agent-khepri.urundead.win \
+  --dart-define=PLANTLY_SELL_ENABLED=true
+```
+
 ## Licence
 
 - **Core app + prototype:** AGPL-3.0-or-later (see [`LICENSE`](./LICENSE)).

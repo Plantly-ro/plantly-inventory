@@ -33,7 +33,31 @@ class _EditPlantSheetState extends ConsumerState<EditPlantSheet> {
     _nickname = TextEditingController(text: widget.plantRow.nickname);
     _notes = TextEditingController(text: widget.plantRow.notes ?? '');
     _species = TextEditingController(text: widget.plantRow.speciesId ?? '');
+    _resolveSpeciesName();
     _locationId = widget.plantRow.locationId;
+  }
+
+  /// `species_id` may point at a real `species` row (imports) — show its
+  /// scientific name instead of the ULID, and keep the id if the user
+  /// leaves the text untouched.
+  String? _resolvedSpeciesName;
+
+  Future<void> _resolveSpeciesName() async {
+    final id = widget.plantRow.speciesId;
+    if (id == null || id.isEmpty) return;
+    final name = await ref.read(speciesRepositoryProvider).displayName(id);
+    if (!mounted || name == null || name == id) return;
+    setState(() {
+      _resolvedSpeciesName = name;
+      if (_species.text == id) _species.text = name;
+    });
+  }
+
+  String? _speciesValue() {
+    final text = _species.text.trim();
+    if (text.isEmpty) return null;
+    if (_resolvedSpeciesName != null && text == _resolvedSpeciesName) return widget.plantRow.speciesId;
+    return text;
   }
 
   @override
@@ -60,7 +84,7 @@ class _EditPlantSheetState extends ConsumerState<EditPlantSheet> {
             nickname: name,
             notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
             locationId: _locationId,
-            speciesId: _species.text.trim().isEmpty ? null : _species.text.trim(),
+            speciesId: _speciesValue(),
           );
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
