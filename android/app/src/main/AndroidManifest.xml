@@ -13,7 +13,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop"
+            android:launchMode="singleTask"
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
@@ -30,6 +30,24 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- PlantlyExport handoff (apps-integration CONTRACT §4a).
+                 1) custom scheme — works without any server-side verification. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="plantlyinventory" android:host="import"/>
+            </intent-filter>
+            <!-- 2) App Link for the marketplace's universal import page. autoVerify
+                 succeeds once plantly.ro/.well-known/assetlinks.json lists this
+                 package's signing SHA-256 (CONTRACT §6d, not in Increment 1); until
+                 then Android offers it as a regular VIEW handler. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="plantly.ro" android:path="/app/inventory/import"/>
             </intent-filter>
         </activity>
         <!-- flutter_local_notifications receivers. Without these the plugin
