@@ -1,12 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/providers.dart';
+import '../marketplace/listing_records.dart';
+import '../marketplace/plantly_auth.dart';
+import '../marketplace/upload_image_prep.dart';
 import 'export_plugin.dart';
 import 'local_draft/local_draft_plugin.dart';
+import 'plantly_ro/plantly_ro_plugin.dart';
 
 /// Compile-time registry of export plugins (a locked decision: no dynamic
-/// plugin loading — plugins are registered here at build time). Phase 2 adds
-/// the networked `plantly_ro` plugin to this list; until then the app ships
-/// with the local-draft fallback only.
+/// plugin loading — plugins are registered here at build time). `plantly_ro`
+/// is registered first so it is the default; `local_draft` stays as the
+/// marketplace-agnostic draft store.
 class PluginRegistry {
   PluginRegistry(this._plugins);
 
@@ -36,6 +41,19 @@ class PluginRegistry {
 /// The single app-wide registry. Add new plugins to the list here.
 final pluginRegistryProvider = Provider<PluginRegistry>((ref) {
   return PluginRegistry([
+    PlantlyRoExportPlugin(
+      api: ref.watch(plantlyApiProvider),
+      auth: ref.watch(plantlyAuthProvider.notifier),
+      records: ref.watch(listingRecordsProvider.notifier),
+      preparer: ref.watch(uploadImagePreparerProvider),
+      // Resolved lazily: the photo repository only exists after bootstrap,
+      // and submit() runs long after that.
+      photoBytes: (sha) async {
+        final repo = ref.read(photoRepositoryProvider);
+        final row = await repo.byHash(sha);
+        return row == null ? null : repo.bytesFor(row);
+      },
+    ),
     LocalDraftExportPlugin(),
   ]);
 });
@@ -50,4 +68,10 @@ final defaultExportPluginProvider = Provider<ExportPlugin>((ref) {
 final localDraftStoreProvider = Provider<LocalDraftExportPlugin>((ref) {
   return ref.watch(pluginRegistryProvider).byId(LocalDraftExportPlugin.pluginId)
       as LocalDraftExportPlugin;
+});
+
+/// The marketplace plugin, typed — for the Me screen account section and the
+/// plant-detail "Listed on plantly.ro" row.
+final plantlyRoPluginProvider = Provider<PlantlyRoExportPlugin>((ref) {
+  return ref.watch(pluginRegistryProvider).byId(PlantlyRoExportPlugin.pluginId) as PlantlyRoExportPlugin;
 });

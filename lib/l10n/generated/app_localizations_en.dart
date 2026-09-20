@@ -583,4 +583,298 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tagAddTitle => 'Add tag';
+
+  @override
+  String exportPostTitle(String name) {
+    return 'Post \"$name\"';
+  }
+
+  @override
+  String get exportCategorySearchHint => 'Search a category (e.g. Monstera)';
+
+  @override
+  String get exportCategoryChangeHint => 'Search to change category';
+
+  @override
+  String get exportCategoryNoResults =>
+      'No matching category — try another word';
+
+  @override
+  String get exportCategorySearchFailed =>
+      'Couldn\'t reach plantly.ro — check your connection';
+
+  @override
+  String get exportCategorySelected => 'Category selected';
+
+  @override
+  String get exportCountyPlaceholder => 'County';
+
+  @override
+  String get exportCountyTitle => 'County';
+
+  @override
+  String get exportCityPlaceholder => 'City';
+
+  @override
+  String get exportDeliveryNote =>
+      'Pickup only for now — you can enable courier delivery on plantly.ro after posting.';
+
+  @override
+  String get exportSaveDraft => 'Save draft';
+
+  @override
+  String get exportPostNow => 'Post now';
+
+  @override
+  String get exportPosting => 'Posting to plantly.ro…';
+
+  @override
+  String get exportPosted => 'Posted on plantly.ro';
+
+  @override
+  String exportPostedWithWarnings(String warnings) {
+    return 'Posted on plantly.ro — $warnings';
+  }
+
+  @override
+  String get exportOpenListing => 'Open';
+
+  @override
+  String exportFailedServer(String message) {
+    return 'Could not post: $message';
+  }
+
+  @override
+  String get exportIssueTitleRequired => 'Title is required';
+
+  @override
+  String get exportIssueTitleTooLong => 'Title is too long (max 64 characters)';
+
+  @override
+  String get exportIssueDescriptionTooLong =>
+      'Description is too long (max 2000 characters)';
+
+  @override
+  String get exportIssuePriceInvalid => 'Enter a price greater than 0';
+
+  @override
+  String get exportIssueCategoryRequired => 'Pick a category';
+
+  @override
+  String get exportIssuePhotosRequired => 'Select at least one photo';
+
+  @override
+  String get exportIssuePhotosTooMany => 'At most 6 photos';
+
+  @override
+  String get plantlyLoginTitle => 'Sign in to plantly.ro';
+
+  @override
+  String get plantlyLoginSubtitle =>
+      'Use your plantly.ro account to post listings.';
+
+  @override
+  String get plantlyLoginEmail => 'Email';
+
+  @override
+  String get plantlyLoginPassword => 'Password';
+
+  @override
+  String get plantlyLoginSubmit => 'Sign in';
+
+  @override
+  String get plantlyLoginCreateAccount => 'Create account';
+
+  @override
+  String get plantlyLoginForgot => 'Forgot password?';
+
+  @override
+  String get plantlyLoginMissingFields => 'Enter your email and password';
+
+  @override
+  String get plantlyLoginInvalid => 'Wrong email or password';
+
+  @override
+  String get plantlyLoginNotVerified =>
+      'Please verify your email first — check your inbox';
+
+  @override
+  String get plantlyLoginSuspended => 'This account is suspended';
+
+  @override
+  String get plantlyLoginFailed => 'Sign-in failed — please try again';
+
+  @override
+  String get plantlyErrorNetwork =>
+      'No connection to plantly.ro — check your internet and try again';
+
+  @override
+  String get plantlyErrorRateLimited =>
+      'Too many attempts — wait a minute and try again';
+
+  @override
+  String get plantlyErrorSignInAgain =>
+      'Your plantly.ro session expired — sign in again';
+
+  @override
+  String get listedOnPlantly => 'Listed on plantly.ro';
+
+  @override
+  String get listedStatusActive => 'ACTIVE';
+
+  @override
+  String get listedStatusSold => 'SOLD';
+
+  @override
+  String get listedOpen => 'Open';
+
+  @override
+  String get listedMarkSold => 'Mark as sold';
+
+  @override
+  String get listedMarkSoldTitle => 'Mark as sold?';
+
+  @override
+  String get listedMarkSoldBody =>
+      'The listing on plantly.ro will be closed. This can\'t be undone from the app.';
+
+  @override
+  String get listedMarkedSold => 'Marked as sold on plantly.ro';
+
+  @override
+  String get listedCancel => 'Cancel';
+
+  @override
+  String get meSectionPlantlyAccount => 'PLANTLY ACCOUNT';
+
+  @override
+  String get mePlantlyAccountLabel => 'plantly.ro';
+
+  @override
+  String mePlantlySignedInAs(String username) {
+    return 'Signed in as $username';
+  }
+
+  @override
+  String get mePlantlySignedOut => 'Sign in';
+
+  @override
+  String get mePlantlySignOutTitle => 'Sign out?';
+
+  @override
+  String mePlantlySignOutBody(String username) {
+    return 'You\'ll be signed out of plantly.ro ($username) on this device.';
+  }
+
+  @override
+  String get mePlantlySignOut => 'Sign out';
+
+  @override
+  String get importTitle => 'Add to your plants';
+
+  @override
+  String get importSourceAssistant => 'FROM PLANTLY ASSISTANT';
+
+  @override
+  String get importSourceMarketplace => 'FROM PLANTLY.RO';
+
+  @override
+  String get importNicknameLabel => 'NICKNAME';
+
+  @override
+  String get importNoSchedulesHint =>
+      'Care reminders aren\'t created automatically — set them up from the plant page.';
+
+  @override
+  String get importRecentDuplicate =>
+      'You added this one just now — add again?';
+
+  @override
+  String get importCancel => 'Cancel';
+
+  @override
+  String get importConfirm => 'Add plant';
+
+  @override
+  String get importConfirmAgain => 'Add again';
+
+  @override
+  String importHealthLine(String status) {
+    return 'Health: $status';
+  }
+
+  @override
+  String get importHealthHealthy => 'healthy';
+
+  @override
+  String get importHealthStressed => 'stressed';
+
+  @override
+  String get importHealthDiseased => 'diseased';
+
+  @override
+  String get importHealthUnknown => 'unknown';
+
+  @override
+  String get importObsYellowing => 'yellowing';
+
+  @override
+  String get importObsBrowning => 'browning';
+
+  @override
+  String get importObsSpots => 'spots';
+
+  @override
+  String get importObsWilting => 'wilting';
+
+  @override
+  String get importObsPests => 'pests';
+
+  @override
+  String get importObsOther => 'other';
+
+  @override
+  String importNotesIdentified(String date) {
+    return 'Identified with Plantly Assistant on $date.';
+  }
+
+  @override
+  String get importNotesIdentifiedNoDate =>
+      'Identified with Plantly Assistant.';
+
+  @override
+  String importNotesBought(String date) {
+    return 'Bought on plantly.ro on $date.';
+  }
+
+  @override
+  String get importNotesBoughtNoDate => 'Bought on plantly.ro.';
+
+  @override
+  String importNotesHealth(String status) {
+    return 'Health: $status.';
+  }
+
+  @override
+  String importNotesObservations(String items) {
+    return 'Observations: $items.';
+  }
+
+  @override
+  String get importErrorTitle => 'Couldn\'t read that plant';
+
+  @override
+  String get importErrorMalformed =>
+      'The link is damaged or incomplete. Try exporting it again from the other app.';
+
+  @override
+  String get importErrorTooLarge =>
+      'The link is too large to open. Try exporting it again without the photo.';
+
+  @override
+  String get importErrorVersion =>
+      'This link was made by a newer app version. Update Plantly Inventory and try again.';
+
+  @override
+  String get importErrorDismiss => 'OK';
 }

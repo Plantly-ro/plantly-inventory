@@ -1189,6 +1189,522 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add tag'**
   String get tagAddTitle;
+
+  /// No description provided for @exportPostTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Post \"{name}\"'**
+  String exportPostTitle(String name);
+
+  /// No description provided for @exportCategorySearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search a category (e.g. Monstera)'**
+  String get exportCategorySearchHint;
+
+  /// No description provided for @exportCategoryChangeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search to change category'**
+  String get exportCategoryChangeHint;
+
+  /// No description provided for @exportCategoryNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching category — try another word'**
+  String get exportCategoryNoResults;
+
+  /// No description provided for @exportCategorySearchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach plantly.ro — check your connection'**
+  String get exportCategorySearchFailed;
+
+  /// No description provided for @exportCategorySelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Category selected'**
+  String get exportCategorySelected;
+
+  /// No description provided for @exportCountyPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'County'**
+  String get exportCountyPlaceholder;
+
+  /// No description provided for @exportCountyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'County'**
+  String get exportCountyTitle;
+
+  /// No description provided for @exportCityPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'City'**
+  String get exportCityPlaceholder;
+
+  /// No description provided for @exportDeliveryNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Pickup only for now — you can enable courier delivery on plantly.ro after posting.'**
+  String get exportDeliveryNote;
+
+  /// No description provided for @exportSaveDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Save draft'**
+  String get exportSaveDraft;
+
+  /// No description provided for @exportPostNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Post now'**
+  String get exportPostNow;
+
+  /// No description provided for @exportPosting.
+  ///
+  /// In en, this message translates to:
+  /// **'Posting to plantly.ro…'**
+  String get exportPosting;
+
+  /// No description provided for @exportPosted.
+  ///
+  /// In en, this message translates to:
+  /// **'Posted on plantly.ro'**
+  String get exportPosted;
+
+  /// No description provided for @exportPostedWithWarnings.
+  ///
+  /// In en, this message translates to:
+  /// **'Posted on plantly.ro — {warnings}'**
+  String exportPostedWithWarnings(String warnings);
+
+  /// No description provided for @exportOpenListing.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get exportOpenListing;
+
+  /// No description provided for @exportFailedServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not post: {message}'**
+  String exportFailedServer(String message);
+
+  /// No description provided for @exportIssueTitleRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Title is required'**
+  String get exportIssueTitleRequired;
+
+  /// No description provided for @exportIssueTitleTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Title is too long (max 64 characters)'**
+  String get exportIssueTitleTooLong;
+
+  /// No description provided for @exportIssueDescriptionTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Description is too long (max 2000 characters)'**
+  String get exportIssueDescriptionTooLong;
+
+  /// No description provided for @exportIssuePriceInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a price greater than 0'**
+  String get exportIssuePriceInvalid;
+
+  /// No description provided for @exportIssueCategoryRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a category'**
+  String get exportIssueCategoryRequired;
+
+  /// No description provided for @exportIssuePhotosRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Select at least one photo'**
+  String get exportIssuePhotosRequired;
+
+  /// No description provided for @exportIssuePhotosTooMany.
+  ///
+  /// In en, this message translates to:
+  /// **'At most 6 photos'**
+  String get exportIssuePhotosTooMany;
+
+  /// No description provided for @plantlyLoginTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to plantly.ro'**
+  String get plantlyLoginTitle;
+
+  /// No description provided for @plantlyLoginSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use your plantly.ro account to post listings.'**
+  String get plantlyLoginSubtitle;
+
+  /// No description provided for @plantlyLoginEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get plantlyLoginEmail;
+
+  /// No description provided for @plantlyLoginPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get plantlyLoginPassword;
+
+  /// No description provided for @plantlyLoginSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get plantlyLoginSubmit;
+
+  /// No description provided for @plantlyLoginCreateAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get plantlyLoginCreateAccount;
+
+  /// No description provided for @plantlyLoginForgot.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get plantlyLoginForgot;
+
+  /// No description provided for @plantlyLoginMissingFields.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email and password'**
+  String get plantlyLoginMissingFields;
+
+  /// No description provided for @plantlyLoginInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong email or password'**
+  String get plantlyLoginInvalid;
+
+  /// No description provided for @plantlyLoginNotVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Please verify your email first — check your inbox'**
+  String get plantlyLoginNotVerified;
+
+  /// No description provided for @plantlyLoginSuspended.
+  ///
+  /// In en, this message translates to:
+  /// **'This account is suspended'**
+  String get plantlyLoginSuspended;
+
+  /// No description provided for @plantlyLoginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in failed — please try again'**
+  String get plantlyLoginFailed;
+
+  /// No description provided for @plantlyErrorNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'No connection to plantly.ro — check your internet and try again'**
+  String get plantlyErrorNetwork;
+
+  /// No description provided for @plantlyErrorRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts — wait a minute and try again'**
+  String get plantlyErrorRateLimited;
+
+  /// No description provided for @plantlyErrorSignInAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Your plantly.ro session expired — sign in again'**
+  String get plantlyErrorSignInAgain;
+
+  /// No description provided for @listedOnPlantly.
+  ///
+  /// In en, this message translates to:
+  /// **'Listed on plantly.ro'**
+  String get listedOnPlantly;
+
+  /// No description provided for @listedStatusActive.
+  ///
+  /// In en, this message translates to:
+  /// **'ACTIVE'**
+  String get listedStatusActive;
+
+  /// No description provided for @listedStatusSold.
+  ///
+  /// In en, this message translates to:
+  /// **'SOLD'**
+  String get listedStatusSold;
+
+  /// No description provided for @listedOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get listedOpen;
+
+  /// No description provided for @listedMarkSold.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as sold'**
+  String get listedMarkSold;
+
+  /// No description provided for @listedMarkSoldTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as sold?'**
+  String get listedMarkSoldTitle;
+
+  /// No description provided for @listedMarkSoldBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The listing on plantly.ro will be closed. This can\'t be undone from the app.'**
+  String get listedMarkSoldBody;
+
+  /// No description provided for @listedMarkedSold.
+  ///
+  /// In en, this message translates to:
+  /// **'Marked as sold on plantly.ro'**
+  String get listedMarkedSold;
+
+  /// No description provided for @listedCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get listedCancel;
+
+  /// No description provided for @meSectionPlantlyAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'PLANTLY ACCOUNT'**
+  String get meSectionPlantlyAccount;
+
+  /// No description provided for @mePlantlyAccountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'plantly.ro'**
+  String get mePlantlyAccountLabel;
+
+  /// No description provided for @mePlantlySignedInAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in as {username}'**
+  String mePlantlySignedInAs(String username);
+
+  /// No description provided for @mePlantlySignedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get mePlantlySignedOut;
+
+  /// No description provided for @mePlantlySignOutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out?'**
+  String get mePlantlySignOutTitle;
+
+  /// No description provided for @mePlantlySignOutBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll be signed out of plantly.ro ({username}) on this device.'**
+  String mePlantlySignOutBody(String username);
+
+  /// No description provided for @mePlantlySignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get mePlantlySignOut;
+
+  /// No description provided for @importTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to your plants'**
+  String get importTitle;
+
+  /// No description provided for @importSourceAssistant.
+  ///
+  /// In en, this message translates to:
+  /// **'FROM PLANTLY ASSISTANT'**
+  String get importSourceAssistant;
+
+  /// No description provided for @importSourceMarketplace.
+  ///
+  /// In en, this message translates to:
+  /// **'FROM PLANTLY.RO'**
+  String get importSourceMarketplace;
+
+  /// No description provided for @importNicknameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'NICKNAME'**
+  String get importNicknameLabel;
+
+  /// No description provided for @importNoSchedulesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Care reminders aren\'t created automatically — set them up from the plant page.'**
+  String get importNoSchedulesHint;
+
+  /// No description provided for @importRecentDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'You added this one just now — add again?'**
+  String get importRecentDuplicate;
+
+  /// No description provided for @importCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get importCancel;
+
+  /// No description provided for @importConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Add plant'**
+  String get importConfirm;
+
+  /// No description provided for @importConfirmAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Add again'**
+  String get importConfirmAgain;
+
+  /// No description provided for @importHealthLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Health: {status}'**
+  String importHealthLine(String status);
+
+  /// No description provided for @importHealthHealthy.
+  ///
+  /// In en, this message translates to:
+  /// **'healthy'**
+  String get importHealthHealthy;
+
+  /// No description provided for @importHealthStressed.
+  ///
+  /// In en, this message translates to:
+  /// **'stressed'**
+  String get importHealthStressed;
+
+  /// No description provided for @importHealthDiseased.
+  ///
+  /// In en, this message translates to:
+  /// **'diseased'**
+  String get importHealthDiseased;
+
+  /// No description provided for @importHealthUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'unknown'**
+  String get importHealthUnknown;
+
+  /// No description provided for @importObsYellowing.
+  ///
+  /// In en, this message translates to:
+  /// **'yellowing'**
+  String get importObsYellowing;
+
+  /// No description provided for @importObsBrowning.
+  ///
+  /// In en, this message translates to:
+  /// **'browning'**
+  String get importObsBrowning;
+
+  /// No description provided for @importObsSpots.
+  ///
+  /// In en, this message translates to:
+  /// **'spots'**
+  String get importObsSpots;
+
+  /// No description provided for @importObsWilting.
+  ///
+  /// In en, this message translates to:
+  /// **'wilting'**
+  String get importObsWilting;
+
+  /// No description provided for @importObsPests.
+  ///
+  /// In en, this message translates to:
+  /// **'pests'**
+  String get importObsPests;
+
+  /// No description provided for @importObsOther.
+  ///
+  /// In en, this message translates to:
+  /// **'other'**
+  String get importObsOther;
+
+  /// No description provided for @importNotesIdentified.
+  ///
+  /// In en, this message translates to:
+  /// **'Identified with Plantly Assistant on {date}.'**
+  String importNotesIdentified(String date);
+
+  /// No description provided for @importNotesIdentifiedNoDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Identified with Plantly Assistant.'**
+  String get importNotesIdentifiedNoDate;
+
+  /// No description provided for @importNotesBought.
+  ///
+  /// In en, this message translates to:
+  /// **'Bought on plantly.ro on {date}.'**
+  String importNotesBought(String date);
+
+  /// No description provided for @importNotesBoughtNoDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Bought on plantly.ro.'**
+  String get importNotesBoughtNoDate;
+
+  /// No description provided for @importNotesHealth.
+  ///
+  /// In en, this message translates to:
+  /// **'Health: {status}.'**
+  String importNotesHealth(String status);
+
+  /// No description provided for @importNotesObservations.
+  ///
+  /// In en, this message translates to:
+  /// **'Observations: {items}.'**
+  String importNotesObservations(String items);
+
+  /// No description provided for @importErrorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read that plant'**
+  String get importErrorTitle;
+
+  /// No description provided for @importErrorMalformed.
+  ///
+  /// In en, this message translates to:
+  /// **'The link is damaged or incomplete. Try exporting it again from the other app.'**
+  String get importErrorMalformed;
+
+  /// No description provided for @importErrorTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The link is too large to open. Try exporting it again without the photo.'**
+  String get importErrorTooLarge;
+
+  /// No description provided for @importErrorVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'This link was made by a newer app version. Update Plantly Inventory and try again.'**
+  String get importErrorVersion;
+
+  /// No description provided for @importErrorDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get importErrorDismiss;
 }
 
 class _AppLocalizationsDelegate

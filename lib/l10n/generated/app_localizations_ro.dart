@@ -587,4 +587,299 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get tagAddTitle => 'Adaugă etichetă';
+
+  @override
+  String exportPostTitle(String name) {
+    return 'Publică „$name”';
+  }
+
+  @override
+  String get exportCategorySearchHint => 'Caută o categorie (ex. Monstera)';
+
+  @override
+  String get exportCategoryChangeHint => 'Caută pentru a schimba categoria';
+
+  @override
+  String get exportCategoryNoResults =>
+      'Nicio categorie potrivită — încearcă alt cuvânt';
+
+  @override
+  String get exportCategorySearchFailed =>
+      'Nu s-a putut contacta plantly.ro — verifică conexiunea';
+
+  @override
+  String get exportCategorySelected => 'Categorie selectată';
+
+  @override
+  String get exportCountyPlaceholder => 'Județ';
+
+  @override
+  String get exportCountyTitle => 'Județ';
+
+  @override
+  String get exportCityPlaceholder => 'Localitate';
+
+  @override
+  String get exportDeliveryNote =>
+      'Deocamdată doar ridicare personală — poți activa livrarea prin curier pe plantly.ro după publicare.';
+
+  @override
+  String get exportSaveDraft => 'Salvează ciorna';
+
+  @override
+  String get exportPostNow => 'Publică acum';
+
+  @override
+  String get exportPosting => 'Se publică pe plantly.ro…';
+
+  @override
+  String get exportPosted => 'Publicat pe plantly.ro';
+
+  @override
+  String exportPostedWithWarnings(String warnings) {
+    return 'Publicat pe plantly.ro — $warnings';
+  }
+
+  @override
+  String get exportOpenListing => 'Deschide';
+
+  @override
+  String exportFailedServer(String message) {
+    return 'Nu s-a putut publica: $message';
+  }
+
+  @override
+  String get exportIssueTitleRequired => 'Titlul este obligatoriu';
+
+  @override
+  String get exportIssueTitleTooLong =>
+      'Titlul este prea lung (max. 64 de caractere)';
+
+  @override
+  String get exportIssueDescriptionTooLong =>
+      'Descrierea este prea lungă (max. 2000 de caractere)';
+
+  @override
+  String get exportIssuePriceInvalid => 'Introdu un preț mai mare decât 0';
+
+  @override
+  String get exportIssueCategoryRequired => 'Alege o categorie';
+
+  @override
+  String get exportIssuePhotosRequired => 'Selectează cel puțin o fotografie';
+
+  @override
+  String get exportIssuePhotosTooMany => 'Cel mult 6 fotografii';
+
+  @override
+  String get plantlyLoginTitle => 'Conectare la plantly.ro';
+
+  @override
+  String get plantlyLoginSubtitle =>
+      'Folosește contul tău plantly.ro pentru a publica anunțuri.';
+
+  @override
+  String get plantlyLoginEmail => 'Email';
+
+  @override
+  String get plantlyLoginPassword => 'Parolă';
+
+  @override
+  String get plantlyLoginSubmit => 'Conectare';
+
+  @override
+  String get plantlyLoginCreateAccount => 'Creează cont';
+
+  @override
+  String get plantlyLoginForgot => 'Ai uitat parola?';
+
+  @override
+  String get plantlyLoginMissingFields => 'Introdu emailul și parola';
+
+  @override
+  String get plantlyLoginInvalid => 'Email sau parolă greșită';
+
+  @override
+  String get plantlyLoginNotVerified =>
+      'Confirmă-ți mai întâi emailul — verifică inboxul';
+
+  @override
+  String get plantlyLoginSuspended => 'Acest cont este suspendat';
+
+  @override
+  String get plantlyLoginFailed => 'Conectarea a eșuat — încearcă din nou';
+
+  @override
+  String get plantlyErrorNetwork =>
+      'Fără conexiune la plantly.ro — verifică internetul și încearcă din nou';
+
+  @override
+  String get plantlyErrorRateLimited =>
+      'Prea multe încercări — așteaptă un minut și încearcă din nou';
+
+  @override
+  String get plantlyErrorSignInAgain =>
+      'Sesiunea plantly.ro a expirat — conectează-te din nou';
+
+  @override
+  String get listedOnPlantly => 'Listată pe plantly.ro';
+
+  @override
+  String get listedStatusActive => 'ACTIV';
+
+  @override
+  String get listedStatusSold => 'VÂNDUT';
+
+  @override
+  String get listedOpen => 'Deschide';
+
+  @override
+  String get listedMarkSold => 'Marchează vândut';
+
+  @override
+  String get listedMarkSoldTitle => 'Marchezi ca vândut?';
+
+  @override
+  String get listedMarkSoldBody =>
+      'Anunțul de pe plantly.ro va fi închis. Nu se poate anula din aplicație.';
+
+  @override
+  String get listedMarkedSold => 'Marcat ca vândut pe plantly.ro';
+
+  @override
+  String get listedCancel => 'Anulează';
+
+  @override
+  String get meSectionPlantlyAccount => 'CONT PLANTLY';
+
+  @override
+  String get mePlantlyAccountLabel => 'plantly.ro';
+
+  @override
+  String mePlantlySignedInAs(String username) {
+    return 'Conectat ca $username';
+  }
+
+  @override
+  String get mePlantlySignedOut => 'Conectare';
+
+  @override
+  String get mePlantlySignOutTitle => 'Te deconectezi?';
+
+  @override
+  String mePlantlySignOutBody(String username) {
+    return 'Vei fi deconectat de la plantly.ro ($username) pe acest dispozitiv.';
+  }
+
+  @override
+  String get mePlantlySignOut => 'Deconectare';
+
+  @override
+  String get importTitle => 'Adaugă la plantele tale';
+
+  @override
+  String get importSourceAssistant => 'DIN PLANTLY ASSISTANT';
+
+  @override
+  String get importSourceMarketplace => 'DE PE PLANTLY.RO';
+
+  @override
+  String get importNicknameLabel => 'NUME';
+
+  @override
+  String get importNoSchedulesHint =>
+      'Mementourile de îngrijire nu se creează automat — le setezi din pagina plantei.';
+
+  @override
+  String get importRecentDuplicate =>
+      'Ai adăugat-o pe aceasta chiar acum — o adaugi din nou?';
+
+  @override
+  String get importCancel => 'Anulează';
+
+  @override
+  String get importConfirm => 'Adaugă planta';
+
+  @override
+  String get importConfirmAgain => 'Adaugă din nou';
+
+  @override
+  String importHealthLine(String status) {
+    return 'Sănătate: $status';
+  }
+
+  @override
+  String get importHealthHealthy => 'sănătoasă';
+
+  @override
+  String get importHealthStressed => 'stresată';
+
+  @override
+  String get importHealthDiseased => 'bolnavă';
+
+  @override
+  String get importHealthUnknown => 'necunoscută';
+
+  @override
+  String get importObsYellowing => 'îngălbenire';
+
+  @override
+  String get importObsBrowning => 'brunificare';
+
+  @override
+  String get importObsSpots => 'pete';
+
+  @override
+  String get importObsWilting => 'ofilire';
+
+  @override
+  String get importObsPests => 'dăunători';
+
+  @override
+  String get importObsOther => 'altele';
+
+  @override
+  String importNotesIdentified(String date) {
+    return 'Identificată cu Plantly Assistant pe $date.';
+  }
+
+  @override
+  String get importNotesIdentifiedNoDate =>
+      'Identificată cu Plantly Assistant.';
+
+  @override
+  String importNotesBought(String date) {
+    return 'Cumpărată de pe plantly.ro pe $date.';
+  }
+
+  @override
+  String get importNotesBoughtNoDate => 'Cumpărată de pe plantly.ro.';
+
+  @override
+  String importNotesHealth(String status) {
+    return 'Sănătate: $status.';
+  }
+
+  @override
+  String importNotesObservations(String items) {
+    return 'Observații: $items.';
+  }
+
+  @override
+  String get importErrorTitle => 'Nu am putut citi planta';
+
+  @override
+  String get importErrorMalformed =>
+      'Linkul este deteriorat sau incomplet. Încearcă să exporți din nou din cealaltă aplicație.';
+
+  @override
+  String get importErrorTooLarge =>
+      'Linkul este prea mare pentru a fi deschis. Încearcă să exporți din nou fără fotografie.';
+
+  @override
+  String get importErrorVersion =>
+      'Acest link a fost creat de o versiune mai nouă a aplicației. Actualizează Plantly Inventory și încearcă din nou.';
+
+  @override
+  String get importErrorDismiss => 'OK';
 }
