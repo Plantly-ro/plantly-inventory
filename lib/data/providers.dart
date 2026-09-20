@@ -25,6 +25,7 @@ import 'repositories/location_repository.dart';
 import 'repositories/photo_repository.dart';
 import 'repositories/plant_repository.dart';
 import 'repositories/search_repository.dart';
+import 'repositories/species_repository.dart';
 import 'repositories/tag_repository.dart';
 import 'seed.dart';
 
@@ -350,4 +351,15 @@ final locationsStreamProvider = StreamProvider<List<LocationRow>>((ref) {
 final plantsStreamProvider = StreamProvider<List<PlantRow>>((ref) {
   final repo = ref.watch(plantRepositoryProvider);
   return repo.watchAll();
+});
+
+final speciesRepositoryProvider = Provider<SpeciesRepository>((ref) {
+  final ctx = ref.watch(appContextProvider).requireValue;
+  return SpeciesRepository(db: ctx.db, opLog: ctx.opLog);
+});
+
+/// Human-readable species for a plant's `species_id` — the `species` row's
+/// scientific name when one exists, else the legacy free-text value.
+final speciesDisplayNameProvider = FutureProvider.family<String?, String>((ref, speciesIdOrName) {
+  return ref.watch(speciesRepositoryProvider).displayName(speciesIdOrName);
 });

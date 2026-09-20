@@ -11,6 +11,9 @@ import '../../data/user_prefs.dart';
 import '../../domain/services/backup_service.dart';
 import '../../domain/services/zip_backup_service.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../marketplace/plantly_auth.dart';
+import '../../plugins/plantly_ro/plantly_ro_plugin.dart';
+import '../../plugins/plugin_registry.dart';
 import '../../services/file_export.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
@@ -91,6 +94,10 @@ class MeScreen extends ConsumerWidget {
               );
             },
           ),
+          const SizedBox(height: 20),
+          _SectionLabel(text: t.meSectionPlantlyAccount, surface: surface),
+          const SizedBox(height: 8),
+          _PlantlyAccountRow(surface: surface),
           const SizedBox(height: 20),
           _SectionLabel(text: t.meSectionAppearance, surface: surface),
           const SizedBox(height: 8),
@@ -218,6 +225,64 @@ class _StatCol extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+/// "Plantly account" (CONTRACT §5): signed in as `username` → sign out, or
+/// sign in through the plugin's login sheet.
+class _PlantlyAccountRow extends ConsumerWidget {
+  const _PlantlyAccountRow({required this.surface});
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
+    final session = ref.watch(plantlyAuthProvider);
+    final username = session.asData?.value?.username;
+    final signedIn = username != null;
+    return _ActionRow(
+      key: const Key('me-plantly-account'),
+      label: t.mePlantlyAccountLabel,
+      value: session.isLoading
+          ? '…'
+          : signedIn
+              ? t.mePlantlySignedInAs(username)
+              : t.mePlantlySignedOut,
+      icon: Icons.storefront_outlined,
+      surface: surface,
+      valueColor: signedIn ? surface.green : null,
+      onTap: () => signedIn ? _signOut(context, ref, username) : _signIn(context, ref),
+    );
+  }
+
+  Future<void> _signIn(BuildContext context, WidgetRef ref) async {
+    final plugin = ref.read(plantlyRoPluginProvider);
+    try {
+      final session = await plugin.authenticate(context);
+      await plugin.storeCredentials(session);
+    } on PlantlyAuthCancelled {
+      // Dismissed — nothing to do.
+    }
+  }
+
+  Future<void> _signOut(BuildContext context, WidgetRef ref, String username) async {
+    final t = AppLocalizations.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(t.mePlantlySignOutTitle),
+        content: Text(t.mePlantlySignOutBody(username)),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.listedCancel)),
+          FilledButton(
+            key: const Key('me-plantly-sign-out-confirm'),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(t.mePlantlySignOut),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) await ref.read(plantlyRoPluginProvider).revoke();
   }
 }
 
@@ -559,6 +624,7 @@ class _SectionLabel extends StatelessWidget {
 
 class _ActionRow extends StatelessWidget {
   const _ActionRow({
+    super.key,
     required this.label,
     required this.value,
     required this.icon,
@@ -672,6 +738,8 @@ class _CsvExportRow extends ConsumerWidget {
           final events = await ctx.db.select(ctx.db.careEvents).get();
           final locations = await ctx.db.select(ctx.db.locations).get();
           final byLoc = {for (final l in locations) l.id: l.name};
+          final speciesRows = await ctx.db.select(ctx.db.species).get();
+          final bySpecies = {for (final sp in speciesRows) sp.id: sp.scientificName};
           final buf = StringBuffer();
           buf.writeln('type,plant_id,nickname,species,location,status,acquired_at,notes,done_at,care_type,product,dose,care_notes');
           String esc(String? v) {
@@ -687,7 +755,7 @@ class _CsvExportRow extends ConsumerWidget {
               'plant',
               esc(p.id),
               esc(p.nickname),
-              esc(p.speciesId),
+              esc(p.speciesId == null ? null : (bySpecies[p.speciesId] ?? p.speciesId)),
               esc(p.locationId == null ? null : byLoc[p.locationId]),
               esc(p.status),
               p.acquiredAt == null ? '' : DateTime.fromMillisecondsSinceEpoch(p.acquiredAt!, isUtc: true).toIso8601String(),
