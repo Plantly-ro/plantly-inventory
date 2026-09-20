@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,6 +9,7 @@ import '../../data/mock_plants.dart';
 import '../../data/photo_picker.dart';
 import '../../data/providers.dart';
 import '../../shared/plant_thumb.dart';
+import '../../shared/stored_photo_image.dart';
 import '../../sync/hlc.dart';
 import '../../theme/tokens.dart';
 import '../export/export_dialog.dart';
@@ -738,23 +737,17 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
   }
 }
 
-class _PhotoView extends ConsumerWidget {
+class _PhotoView extends StatelessWidget {
   const _PhotoView({required this.sha, required this.fallback});
   final String sha;
   final MockPlant fallback;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final repo = ref.watch(photoRepositoryProvider);
-    return FutureBuilder(
-      future: repo.byHash(sha),
-      builder: (context, snap) {
-        final path = snap.data?.localPath;
-        if (path != null && File(path).existsSync()) {
-          return Image.file(File(path), fit: BoxFit.cover, width: double.infinity);
-        }
-        return Center(child: PlantThumb(plant: fallback, size: 280));
-      },
+  Widget build(BuildContext context) {
+    return StoredPhotoImage(
+      sha: sha,
+      width: double.infinity,
+      placeholder: Center(child: PlantThumb(plant: fallback, size: 280)),
     );
   }
 }

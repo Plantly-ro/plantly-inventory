@@ -406,6 +406,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get meSectionNotifications => 'NOTIFICATIONS';
 
   @override
+  String get notificationsWebUnavailable => 'Not available in the browser';
+
+  @override
+  String get notificationsWebUnavailableDetail =>
+      'The browser version can\'t show system notifications. Reminders still appear in the app and the calendar — use the Android app for alerts.';
+
+  @override
   String get meSectionBackup => 'BACKUP';
 
   @override

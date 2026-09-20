@@ -1,19 +1,17 @@
-import 'dart:io';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../data/providers.dart';
 import '../../data/user_prefs.dart';
 import '../../domain/services/backup_service.dart';
 import '../../domain/services/zip_backup_service.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../services/file_export.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import 'care_types_screen.dart';
@@ -324,7 +322,9 @@ class _NotificationRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final granted = ref.watch(notificationPermissionProvider);
+    final supported = ref.watch(notificationServiceProvider).isSupported;
     final (status, color) = switch (granted) {
+      _ when !supported => (AppLocalizations.of(context).notificationsWebUnavailable, surface.muted),
       null => ('Checking…', surface.muted),
       true => ('Enabled', surface.green),
       false => ('Disabled — tap to retry', surface.terra),
@@ -335,7 +335,7 @@ class _NotificationRow extends ConsumerWidget {
       icon: granted == true ? Icons.notifications_active_outlined : Icons.notifications_off_outlined,
       valueColor: color,
       surface: surface,
-      onTap: granted == true
+      onTap: granted == true || !supported
           ? null
           : () async {
               final ok = await ref.read(notificationServiceProvider).requestPermissions();
@@ -374,19 +374,18 @@ class _BackupRow extends ConsumerWidget {
     try {
       final bytes = withPhotos
           ? await ref.read(zipBackupServiceProvider).exportZip(secret: secret)
-          : Uint8List.fromList((await ref.read(backupServiceProvider).export(secret: secret)).codeUnits);
-      final docs = await getApplicationDocumentsDirectory();
+          : BackupService.encodeBlob(await ref.read(backupServiceProvider).export(secret: secret));
       final stamp = DateTime.now().toUtc().toIso8601String().replaceAll(':', '-').substring(0, 19);
       final ext = withPhotos ? 'zip' : 'json';
-      final file = File(p.join(docs.path, 'plantly-backup-$stamp.$ext'));
-      await file.writeAsBytes(bytes, flush: true);
-      await SharePlus.instance.share(ShareParams(
-        files: [XFile(file.path)],
-        text: 'PlantlyInventory backup',
-      ));
+      final where = await ref.read(fileExporterProvider).save(
+            fileName: 'plantly-backup-$stamp.$ext',
+            bytes: bytes,
+            mimeType: withPhotos ? 'application/zip' : 'application/json',
+            shareText: 'PlantlyInventory backup',
+          );
       messenger
         ..clearSnackBars()
-        ..showSnackBar(SnackBar(content: Text('Backup saved: ${file.path}')));
+        ..showSnackBar(SnackBar(content: Text('Backup saved: $where')));
     } catch (e) {
       messenger
         ..clearSnackBars()
@@ -427,17 +426,14 @@ class _ImportRow extends ConsumerWidget {
       final opLog = ctx.opLog;
       String msg;
       if (file.name.toLowerCase().endsWith('.zip')) {
-        final docs = await getApplicationDocumentsDirectory();
-        final photoRoot = Directory(p.join(docs.path, 'photos'));
         final result = await ref.read(zipBackupServiceProvider).importZip(
               bytes: bytes,
               secret: secret,
               opLog: opLog,
-              photoStoreRoot: photoRoot,
             );
         msg = 'Imported ${result.json.total} rows + ${result.photosRestored} photos';
       } else {
-        final json = String.fromCharCodes(bytes);
+        final json = BackupService.decodeBlob(bytes);
         final result = await ref.read(backupServiceProvider).import(
               blob: json,
               secret: secret,
@@ -487,17 +483,16 @@ class _ICalRow extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     try {
       final ics = await ref.read(iCalFutureProvider.future);
-      final docs = await getApplicationDocumentsDirectory();
       final stamp = DateTime.now().toUtc().toIso8601String().replaceAll(':', '-').substring(0, 19);
-      final file = File(p.join(docs.path, 'plantly-reminders-$stamp.ics'));
-      await file.writeAsString(ics, flush: true);
-      await SharePlus.instance.share(ShareParams(
-        files: [XFile(file.path)],
-        text: 'PlantlyInventory reminders',
-      ));
+      final where = await ref.read(fileExporterProvider).save(
+            fileName: 'plantly-reminders-$stamp.ics',
+            bytes: Uint8List.fromList(utf8.encode(ics)),
+            mimeType: 'text/calendar',
+            shareText: 'PlantlyInventory reminders',
+          );
       messenger
         ..clearSnackBars()
-        ..showSnackBar(SnackBar(content: Text('.ics saved: ${file.path}')));
+        ..showSnackBar(SnackBar(content: Text('.ics saved: $where')));
     } catch (e) {
       messenger
         ..clearSnackBars()
@@ -715,17 +710,16 @@ class _CsvExportRow extends ConsumerWidget {
               esc(e.notes),
             ].join(','));
           }
-          final docs = await getApplicationDocumentsDirectory();
           final stamp = DateTime.now().toUtc().toIso8601String().replaceAll(':', '-').substring(0, 19);
-          final file = File(p.join(docs.path, 'plantly-export-$stamp.csv'));
-          await file.writeAsString(buf.toString(), flush: true);
-          await SharePlus.instance.share(ShareParams(
-            files: [XFile(file.path)],
-            text: 'PlantlyInventory CSV',
-          ));
+          final where = await ref.read(fileExporterProvider).save(
+                fileName: 'plantly-export-$stamp.csv',
+                bytes: Uint8List.fromList(utf8.encode(buf.toString())),
+                mimeType: 'text/csv',
+                shareText: 'PlantlyInventory CSV',
+              );
           messenger
             ..clearSnackBars()
-            ..showSnackBar(SnackBar(content: Text('CSV saved: ${file.path}')));
+            ..showSnackBar(SnackBar(content: Text('CSV saved: $where')));
         } catch (e) {
           messenger
             ..clearSnackBars()

@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../data/care_types.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../notifications/dnd_settings.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
@@ -166,7 +167,13 @@ class _PermissionCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final supported = ref.watch(notificationServiceProvider).isSupported;
     final (status, color, icon) = switch (granted) {
+      _ when !supported => (
+          AppLocalizations.of(context).notificationsWebUnavailableDetail,
+          surface.muted,
+          Icons.notifications_off_outlined,
+        ),
       null => ('Checking system permission…', surface.muted, Icons.hourglass_empty),
       true => ('OS notifications are allowed for PlantlyInventory.', surface.green, Icons.notifications_active_outlined),
       false => ('OS notifications are OFF. Reminders won\'t fire.', surface.terra, Icons.notifications_off_outlined),
@@ -175,7 +182,7 @@ class _PermissionCard extends ConsumerWidget {
       color: surface.surface,
       borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
       child: InkWell(
-        onTap: granted == true
+        onTap: granted == true || !supported
             ? null
             : () async {
                 final ok = await ref.read(notificationServiceProvider).requestPermissions();
@@ -195,7 +202,7 @@ class _PermissionCard extends ConsumerWidget {
               Expanded(
                 child: Text(status, style: TextStyle(fontSize: 13, color: surface.text)),
               ),
-              if (granted != true) Icon(Icons.chevron_right, color: surface.muted),
+              if (granted != true && supported) Icon(Icons.chevron_right, color: surface.muted),
             ],
           ),
         ),

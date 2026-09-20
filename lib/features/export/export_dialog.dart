@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,6 +9,7 @@ import '../../data/ro_locations.dart';
 import '../../plugins/export_plugin.dart';
 import '../../plugins/plugin_registry.dart';
 import '../../shared/plant_thumb.dart';
+import '../../shared/stored_photo_image.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 
@@ -652,23 +651,18 @@ class _PhotoGrid extends ConsumerWidget {
   }
 }
 
-class _GridPhoto extends ConsumerWidget {
+class _GridPhoto extends StatelessWidget {
   const _GridPhoto({required this.sha, required this.fallback});
   final String sha;
   final MockPlant fallback;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final repo = ref.watch(photoRepositoryProvider);
-    return FutureBuilder(
-      future: repo.byHash(sha),
-      builder: (_, snap) {
-        final path = snap.data?.localPath;
-        if (path != null && File(path).existsSync()) {
-          return Image.file(File(path), fit: BoxFit.cover, width: 80, height: 80);
-        }
-        return PlantThumb(plant: fallback, size: 80);
-      },
+  Widget build(BuildContext context) {
+    return StoredPhotoImage(
+      sha: sha,
+      width: 80,
+      height: 80,
+      placeholder: PlantThumb(plant: fallback, size: 80),
     );
   }
 }

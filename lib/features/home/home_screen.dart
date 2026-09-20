@@ -119,7 +119,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   data: (rows) => rows.isNotEmpty,
                   orElse: () => true, // assume has plants while loading
                 );
-            final permDenied = ref.watch(notificationPermissionProvider) == false;
+            // No banner on web: there's no permission to grant, and the Me
+            // screen already says reminders are unavailable there.
+            final permDenied = ref.watch(notificationPermissionProvider) == false &&
+                ref.watch(notificationServiceProvider).isSupported;
             return Column(
               children: [
                 _EditToggleBar(

@@ -1,11 +1,10 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/mock_plants.dart';
 import '../data/providers.dart';
 import '../theme/tokens.dart';
+import 'stored_photo_image.dart';
 
 /// Static gradient+leaf stand-in used when no attached photo is available
 /// (e.g. Propagate dialog preview, or the fallback behind PlantPhotoThumb).
@@ -105,7 +104,7 @@ class _Fallback extends StatelessWidget {
   }
 }
 
-class _FirstPhoto extends ConsumerWidget {
+class _FirstPhoto extends StatelessWidget {
   const _FirstPhoto({
     required this.sha,
     required this.fit,
@@ -119,22 +118,13 @@ class _FirstPhoto extends ConsumerWidget {
   final double stubSize;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final repo = ref.watch(photoRepositoryProvider);
-    return FutureBuilder(
-      future: repo.byHash(sha),
-      builder: (context, snap) {
-        final path = snap.data?.localPath;
-        if (path != null && File(path).existsSync()) {
-          return Image.file(
-            File(path),
-            fit: fit,
-            width: double.infinity,
-            height: double.infinity,
-          );
-        }
-        return _Fallback(fallback: fallback, stubSize: stubSize);
-      },
+  Widget build(BuildContext context) {
+    return StoredPhotoImage(
+      sha: sha,
+      fit: fit,
+      width: double.infinity,
+      height: double.infinity,
+      placeholder: _Fallback(fallback: fallback, stubSize: stubSize),
     );
   }
 }

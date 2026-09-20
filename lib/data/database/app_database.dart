@@ -291,7 +291,18 @@ class SyncOps extends Table {
   SyncOps,
 ])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(driftDatabase(name: 'plantly_inventory'));
+  /// io: sqlite file in the app's data dir. Web: sqlite3.wasm + the drift
+  /// worker committed under `web/` (see tool/fetch_web_sqlite.sh), persisted
+  /// to OPFS when the page is cross-origin isolated, IndexedDB otherwise.
+  /// `driftDatabase` throws synchronously on web without these options.
+  AppDatabase()
+      : super(driftDatabase(
+          name: 'plantly_inventory',
+          web: DriftWebOptions(
+            sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+            driftWorker: Uri.parse('drift_worker.js'),
+          ),
+        ));
   AppDatabase.forTesting(super.executor);
 
   @override

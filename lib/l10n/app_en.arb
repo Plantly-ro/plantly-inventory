@@ -144,6 +144,14 @@
   "meSectionAppearance": "APPEARANCE",
   "meSectionLists": "LISTS",
   "meSectionNotifications": "NOTIFICATIONS",
+  "notificationsWebUnavailable": "Not available in the browser",
+  "@notificationsWebUnavailable": {
+    "description": "Me screen row value shown on the web build, where OS notifications can't be scheduled"
+  },
+  "notificationsWebUnavailableDetail": "The browser version can't show system notifications. Reminders still appear in the app and the calendar — use the Android app for alerts.",
+  "@notificationsWebUnavailableDetail": {
+    "description": "Notifications screen permission card body on the web build"
+  },
   "meSectionBackup": "BACKUP",
   "meSectionCalendar": "CALENDAR",
   "meSectionAbout": "ABOUT",

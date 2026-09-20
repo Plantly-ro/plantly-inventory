@@ -214,6 +214,20 @@ class BackupService {
     return Variable<String>(json.encode(v));
   }
 
+  /// Bytes of an exported JSON document — always UTF-8.
+  static Uint8List encodeBlob(String blob) => Uint8List.fromList(utf8.encode(blob));
+
+  /// Inverse of [encodeBlob]. Backups written before 2026-09 went through
+  /// `String.codeUnits`, i.e. Latin-1 (and silently truncated anything
+  /// beyond it); those aren't valid UTF-8, so fall back to Latin-1 for them.
+  static String decodeBlob(List<int> bytes) {
+    try {
+      return utf8.decode(bytes);
+    } on FormatException {
+      return latin1.decode(bytes);
+    }
+  }
+
   String _hmac(String canonical, String secret) {
     final hmac = Hmac(sha256, utf8.encode(secret));
     return base64Encode(hmac.convert(utf8.encode(canonical)).bytes);

@@ -96,3 +96,6 @@ app.*.map.json
 
 # CI-local Gradle home (GRADLE_USER_HOME in .gitlab-ci.yml)
 .gradle-home/
+
+# Local headless-browser QA artifacts (screenshots, smoke script scratch)
+.qa/

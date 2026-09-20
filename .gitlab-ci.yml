@@ -74,7 +74,7 @@ test:
 build-web:
   stage: build
   script:
-    - flutter build web --release
+    - flutter build web --release --no-web-resources-cdn
   artifacts:
     paths:
       - build/web/
