@@ -161,6 +161,16 @@ void main() {
     expect(parsed.files[1].bytes, [4, 5]);
   });
 
+  test('createPost treats a 2xx without an id as a server error', () async {
+    final a = api((_) async => http.Response('{"status":"active"}', 201));
+    await expectLater(
+      a.createPost(token: 't', title: 'x', description: '', price: '1', categoryId: 'c', images: [
+        UploadImage(bytes: Uint8ListX.of([1])),
+      ]),
+      throwsA(isA<PlantlyApiException>().having((e) => e.status, 'status', 201)),
+    );
+  });
+
   test('createPost surfaces 429 with retry hint', () async {
     final a = api((_) async => http.Response('{"error":"rate limited"}', 429, headers: {'retry-after': '30'}));
     await expectLater(

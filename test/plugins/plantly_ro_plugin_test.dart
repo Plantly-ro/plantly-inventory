@@ -63,7 +63,7 @@ void main() {
     String title = 'Monstera deliciosa',
     String description = 'Healthy, 3 leaves',
     int? price = 45,
-    String? category = 'cat-uuid',
+    String? category = '7eb901e4-10e3-46ee-bfe9-29a08d0841d3',
     List<String> photos = const ['sha-a'],
     String? county = 'Cluj',
     String? city = 'Cluj-Napoca',
@@ -110,6 +110,8 @@ void main() {
       expect(await codes(draft(price: null)), contains('price_invalid'));
       expect(await codes(draft(price: 0)), contains('price_invalid'));
       expect(await codes(draft(category: null)), contains('category_required'));
+      expect(await codes(draft(category: 'Indoor plant')), contains('category_invalid'));
+      expect(await codes(draft(category: '7eb901e4-10e3-46ee-bfe9-29a08d0841d3')), isNot(contains('category_invalid')));
       expect(await codes(draft(photos: const [])), contains('photos_required'));
       expect(await codes(draft(photos: List.generate(7, (i) => 'sha-$i'))), contains('photos_too_many'));
     });
@@ -144,7 +146,7 @@ void main() {
       final parsed = parseMultipart(log.single);
       expect(parsed.fields['title'], 'Monstera deliciosa');
       expect(parsed.fields['price'], '45');
-      expect(parsed.fields['category_id'], 'cat-uuid');
+      expect(parsed.fields['category_id'], '7eb901e4-10e3-46ee-bfe9-29a08d0841d3');
       expect(parsed.fields['state'], 'Romania');
       expect(parsed.fields['county'], 'Cluj');
       expect(parsed.fields['city'], 'Cluj-Napoca');

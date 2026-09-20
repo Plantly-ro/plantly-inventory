@@ -45,10 +45,18 @@ class _HandoffListenerState extends ConsumerState<HandoffListener> {
 
   void _enqueue(Uri uri) {
     final d = extractImportParam(uri);
+    // `_lastHandled` only dedupes the initial-link + stream double delivery
+    // of the same URI; it is cleared once the sheet closes so the same link
+    // can be opened again deliberately.
     if (d == null || d == _lastHandled) return;
     _lastHandled = d;
+    ref.read(incomingLinksProvider).consume();
     _pending.add(d);
     _drain();
+  }
+
+  void _release(String d) {
+    if (_lastHandled == d) _lastHandled = null;
   }
 
   void _drain() {
@@ -65,9 +73,9 @@ class _HandoffListenerState extends ConsumerState<HandoffListener> {
       if (ctx == null || !ctx.mounted) return;
       try {
         final payload = PlantlyExportPayload.decodeParam(d);
-        unawaited(showImportPlantSheet(ctx, payload));
+        unawaited(showImportPlantSheet(ctx, payload).whenComplete(() => _release(d)));
       } on PlantlyExportFormatException catch (e) {
-        unawaited(showImportErrorSheet(ctx, e.error));
+        unawaited(showImportErrorSheet(ctx, e.error).whenComplete(() => _release(d)));
       }
     });
     // A link arriving while the app is idle (web `hashchange`, resumed

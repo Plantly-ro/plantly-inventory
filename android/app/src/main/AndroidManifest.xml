@@ -39,15 +39,22 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="plantlyinventory" android:host="import"/>
             </intent-filter>
-            <!-- 2) App Link for the marketplace's universal import page. autoVerify
-                 succeeds once plantly.ro/.well-known/assetlinks.json lists this
-                 package's signing SHA-256 (CONTRACT §6d, not in Increment 1); until
-                 then Android offers it as a regular VIEW handler. -->
+            <!-- 2) App Link for the marketplace's universal import page — bare and
+                 locale-prefixed (/ro, /en) paths. autoVerify passes once
+                 plantly.ro/.well-known/assetlinks.json lists this package's signing
+                 SHA-256 (CONTRACT §6d, not in Increment 1). Until then: on Android 12+
+                 an unverified https filter is NOT offered for these URLs at all (the
+                 browser opens them; the page's "Open in Plantly Inventory" button uses
+                 the custom scheme above); on Android 11 and older it appears in the
+                 app-chooser. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="https" android:host="plantly.ro" android:path="/app/inventory/import"/>
+                <data android:scheme="https" android:host="plantly.ro"/>
+                <data android:path="/app/inventory/import"/>
+                <data android:path="/ro/app/inventory/import"/>
+                <data android:path="/en/app/inventory/import"/>
             </intent-filter>
         </activity>
         <!-- flutter_local_notifications receivers. Without these the plugin

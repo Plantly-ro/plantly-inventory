@@ -876,5 +876,29 @@ class AppLocalizationsEn extends AppLocalizations {
       'This link was made by a newer app version. Update Plantly Inventory and try again.';
 
   @override
+  String get exportIssueCategoryInvalid =>
+      'Pick a category from the search results';
+
+  @override
+  String get importErrorSave => 'Couldn\'t save the plant — please try again.';
+
+  @override
+  String get exportDraftCta => 'Prepare listing draft';
+
+  @override
+  String get exportDraftEyebrow => 'LISTING DRAFT';
+
+  @override
+  String exportDraftTitle(String name) {
+    return 'Draft \"$name\"';
+  }
+
+  @override
+  String get exportCategoryPlaceholder => 'Select category';
+
+  @override
+  String get exportCategoryTitle => 'Category';
+
+  @override
   String get importErrorDismiss => 'OK';
 }

@@ -316,5 +316,13 @@
   "importErrorMalformed": "The link is damaged or incomplete. Try exporting it again from the other app.",
   "importErrorTooLarge": "The link is too large to open. Try exporting it again without the photo.",
   "importErrorVersion": "This link was made by a newer app version. Update Plantly Inventory and try again.",
+  "exportIssueCategoryInvalid": "Pick a category from the search results",
+  "importErrorSave": "Couldn't save the plant — please try again.",
+  "exportDraftCta": "Prepare listing draft",
+  "exportDraftEyebrow": "LISTING DRAFT",
+  "exportDraftTitle": "Draft \"{name}\"",
+  "@exportDraftTitle": { "placeholders": { "name": { "type": "String" } } },
+  "exportCategoryPlaceholder": "Select category",
+  "exportCategoryTitle": "Category",
   "importErrorDismiss": "OK"
 }

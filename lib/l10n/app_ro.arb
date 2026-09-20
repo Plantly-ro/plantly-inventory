@@ -287,5 +287,12 @@
   "importErrorMalformed": "Linkul este deteriorat sau incomplet. Încearcă să exporți din nou din cealaltă aplicație.",
   "importErrorTooLarge": "Linkul este prea mare pentru a fi deschis. Încearcă să exporți din nou fără fotografie.",
   "importErrorVersion": "Acest link a fost creat de o versiune mai nouă a aplicației. Actualizează Plantly Inventory și încearcă din nou.",
+  "exportIssueCategoryInvalid": "Alege o categorie din rezultatele căutării",
+  "importErrorSave": "Nu s-a putut salva planta — încearcă din nou.",
+  "exportDraftCta": "Pregătește ciorna anunțului",
+  "exportDraftEyebrow": "CIORNĂ ANUNȚ",
+  "exportDraftTitle": "Ciornă „{name}”",
+  "exportCategoryPlaceholder": "Alege categoria",
+  "exportCategoryTitle": "Categorie",
   "importErrorDismiss": "OK"
 }

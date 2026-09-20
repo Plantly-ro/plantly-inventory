@@ -73,8 +73,14 @@ class ImportPlantService {
     );
     final thumb = payload.thumbBytes;
     if (thumb != null) {
-      final sha = await photos.saveBytes(thumb, takenAtMs: payload.capturedAt?.toUtc().millisecondsSinceEpoch);
-      await plantPhotos.attach(plant.id, sha, displayOrder: 0);
+      // The plant row already exists; a blob-store failure must not surface
+      // as "import failed" (which would invite a confirm → duplicate plant).
+      try {
+        final sha = await photos.saveBytes(thumb, takenAtMs: payload.capturedAt?.toUtc().millisecondsSinceEpoch);
+        await plantPhotos.attach(plant.id, sha, displayOrder: 0);
+      } catch (_) {
+        // Plant imported without its thumb — the user can add photos later.
+      }
     }
     return plant;
   }

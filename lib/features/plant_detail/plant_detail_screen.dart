@@ -8,6 +8,7 @@ import '../../data/database/app_database.dart' as db;
 import '../../data/image_processor.dart';
 import '../../data/mock_plants.dart';
 import '../../data/photo_picker.dart';
+import '../../config/plantly_features.dart';
 import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../marketplace/listing_records.dart';
@@ -1439,7 +1440,9 @@ class _ListedOnPlantlyRowState extends ConsumerState<_ListedOnPlantlyRow> {
     if (confirmed != true || !mounted) return;
     setState(() => _busy = true);
     try {
-      await ref.read(plantlyRoPluginProvider).updateStatus(widget.record.postId, 'sold');
+      final plugin = ref.read(plantlyRoPluginProvider);
+      if (plugin == null) return;
+      await plugin.updateStatus(widget.record.postId, 'sold');
       messenger
         ..clearSnackBars()
         ..showSnackBar(SnackBar(content: Text(t.listedMarkedSold)));
@@ -1551,13 +1554,15 @@ class _ListedOnPlantlyRowState extends ConsumerState<_ListedOnPlantlyRow> {
   }
 }
 
-class _ExportCTA extends StatelessWidget {
+class _ExportCTA extends ConsumerWidget {
   const _ExportCTA({required this.surface, required this.onPressed});
   final PlantlySurface surface;
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
+    final sell = ref.watch(sellEnabledProvider);
     return Material(
       color: surface.surface,
       borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
@@ -1576,7 +1581,7 @@ class _ExportCTA extends StatelessWidget {
               Icon(Icons.open_in_new, size: 16, color: surface.terra),
               const SizedBox(width: 8),
               Text(
-                AppLocalizations.of(context).exportPostOnPlantlyRoCta,
+                sell ? t.exportPostOnPlantlyRoCta : t.exportDraftCta,
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: surface.terra),
               ),
             ],

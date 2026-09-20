@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../config/plantly_features.dart';
 import '../../data/database/app_database.dart' as db;
 import '../../data/mock_plants.dart';
 import '../../data/providers.dart';
@@ -60,7 +61,9 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
     _city = TextEditingController();
     // Fire-and-forget: if a draft exists for this plant, prefill — lets
     // the user resume a half-filled listing instead of re-typing.
-    _loadDraft().then((_) => _preselectCategory());
+    _loadDraft().then((_) {
+      if (ref.read(sellEnabledProvider)) _preselectCategory();
+    });
   }
 
   /// Pre-query the marketplace with the plant's species and preselect the
@@ -102,7 +105,11 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
           ..addAll(draft.photoRefs);
         _selectionInitialised = true;
       }
-      if (draft.category != null) {
+      // Selling on: only marketplace UUIDs are resumable (legacy drafts
+      // carried free text from the local picker). Selling off: the local
+      // picker's values are the categories.
+      final sell = ref.read(sellEnabledProvider);
+      if (sell ? PlantlyRoExportPlugin.isCategoryId(draft.category) : draft.category != null) {
         _category = draft.category;
         _categoryLabel = null; // label isn't persisted; shown as "selected"
       }
@@ -212,6 +219,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
     final plant = widget.plantRow;
     final swatch = MockPlants.byId(plant.id);
     final lang = Localizations.localeOf(context).languageCode;
+    final sell = ref.watch(sellEnabledProvider);
     final shas = ref.watch(attachedPhotosProvider(plant.id)).maybeWhen(
           data: (list) => list,
           orElse: () => const <String>[],
@@ -251,7 +259,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '🌿 PLANTLY.RO',
+                            sell ? '🌿 PLANTLY.RO' : t.exportDraftEyebrow,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -260,7 +268,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                             ),
                           ),
                           Text(
-                            t.exportPostTitle(plant.nickname),
+                            sell ? t.exportPostTitle(plant.nickname) : t.exportDraftTitle(plant.nickname),
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 19,
                               fontWeight: FontWeight.w800,
@@ -314,17 +322,32 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                     if (_issues['price'] != null) _IssueText(text: _issues['price']!, surface: surface),
                     const SizedBox(height: 10),
                     _Label(text: t.exportCategoryField, surface: surface),
-                    CategorySearchField(
-                      search: (q, l) => ref.read(plantlyApiProvider).searchCategories(q, lang: l, limit: 10),
-                      lang: lang,
-                      surface: surface,
-                      selected: _category == null ? null : (_categoryLabel ?? t.exportCategorySelected),
-                      onSelected: (hit) => setState(() {
-                        _category = hit?.id;
-                        _categoryLabel = hit?.path;
-                        _issues.remove('category');
-                      }),
-                    ),
+                    if (sell)
+                      CategorySearchField(
+                        search: (q, l) => ref.read(plantlyApiProvider).searchCategories(q, lang: l, limit: 10),
+                        lang: lang,
+                        surface: surface,
+                        selected: _category == null ? null : (_categoryLabel ?? t.exportCategorySelected),
+                        onSelected: (hit) => setState(() {
+                          _category = hit?.id;
+                          _categoryLabel = hit?.path;
+                          _issues.remove('category');
+                        }),
+                      )
+                    else
+                      // Selling off: the provisional local list, no network.
+                      _PickerInput(
+                        value: _category,
+                        placeholder: t.exportCategoryPlaceholder,
+                        surface: surface,
+                        trailingIcon: Icons.expand_more,
+                        onTap: () => _pickFrom(
+                          title: t.exportCategoryTitle,
+                          options: exportCategories,
+                          current: _category,
+                          onSelected: (v) => setState(() => _category = v),
+                        ),
+                      ),
                     if (_issues['category'] != null) _IssueText(text: _issues['category']!, surface: surface),
                     const SizedBox(height: 10),
                     _Label(text: t.exportLocationField, surface: surface),
@@ -357,20 +380,22 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(Icons.storefront_outlined, size: 14, color: surface.muted),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            t.exportDeliveryNote,
-                            style: TextStyle(fontSize: 11.5, color: surface.muted),
+                    if (sell) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.storefront_outlined, size: 14, color: surface.muted),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              t.exportDeliveryNote,
+                              style: TextStyle(fontSize: 11.5, color: surface.muted),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 14),
                     _Label(text: t.exportPhotosField(_selected.length), surface: surface),
                     if (_issues['photos'] != null) _IssueText(text: _issues['photos']!, surface: surface),
@@ -565,6 +590,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
         'description_too_long' => t.exportIssueDescriptionTooLong,
         'price_invalid' => t.exportIssuePriceInvalid,
         'category_required' => t.exportIssueCategoryRequired,
+        'category_invalid' => t.exportIssueCategoryInvalid,
         'photos_required' => t.exportIssuePhotosRequired,
         'photos_too_many' => t.exportIssuePhotosTooMany,
         _ => fallback,

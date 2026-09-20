@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../config/plantly_features.dart';
 import '../data/providers.dart';
 import '../marketplace/listing_records.dart';
 import '../marketplace/plantly_auth.dart';
@@ -40,8 +41,12 @@ class PluginRegistry {
 
 /// The single app-wide registry. Add new plugins to the list here.
 final pluginRegistryProvider = Provider<PluginRegistry>((ref) {
+  final sell = ref.watch(sellEnabledProvider);
   return PluginRegistry([
-    PlantlyRoExportPlugin(
+    // Behind PLANTLY_SELL_ENABLED: with the flag off the registry is exactly
+    // the pre-marketplace one (local_draft only, and therefore the default).
+    if (sell)
+      PlantlyRoExportPlugin(
       api: ref.watch(plantlyApiProvider),
       auth: ref.watch(plantlyAuthProvider.notifier),
       records: ref.watch(listingRecordsProvider.notifier),
@@ -71,7 +76,7 @@ final localDraftStoreProvider = Provider<LocalDraftExportPlugin>((ref) {
 });
 
 /// The marketplace plugin, typed — for the Me screen account section and the
-/// plant-detail "Listed on plantly.ro" row.
-final plantlyRoPluginProvider = Provider<PlantlyRoExportPlugin>((ref) {
-  return ref.watch(pluginRegistryProvider).byId(PlantlyRoExportPlugin.pluginId) as PlantlyRoExportPlugin;
+/// plant-detail "Listed on plantly.ro" row. Null while selling is disabled.
+final plantlyRoPluginProvider = Provider<PlantlyRoExportPlugin?>((ref) {
+  return ref.watch(pluginRegistryProvider).byId(PlantlyRoExportPlugin.pluginId) as PlantlyRoExportPlugin?;
 });

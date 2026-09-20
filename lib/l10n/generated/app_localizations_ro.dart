@@ -881,5 +881,29 @@ class AppLocalizationsRo extends AppLocalizations {
       'Acest link a fost creat de o versiune mai nouă a aplicației. Actualizează Plantly Inventory și încearcă din nou.';
 
   @override
+  String get exportIssueCategoryInvalid =>
+      'Alege o categorie din rezultatele căutării';
+
+  @override
+  String get importErrorSave => 'Nu s-a putut salva planta — încearcă din nou.';
+
+  @override
+  String get exportDraftCta => 'Pregătește ciorna anunțului';
+
+  @override
+  String get exportDraftEyebrow => 'CIORNĂ ANUNȚ';
+
+  @override
+  String exportDraftTitle(String name) {
+    return 'Ciornă „$name”';
+  }
+
+  @override
+  String get exportCategoryPlaceholder => 'Alege categoria';
+
+  @override
+  String get exportCategoryTitle => 'Categorie';
+
+  @override
   String get importErrorDismiss => 'OK';
 }

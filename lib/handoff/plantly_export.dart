@@ -26,9 +26,13 @@ class PlantlyExportPayload {
   /// `d` (and therefore the whole URL) must stay under 100 KiB (§4).
   static const int maxEncodedBytes = 100 * 1024;
 
-  /// Thumb cap is 64 KiB of JPEG (§4); allow a little slack for producers
-  /// that measure before base64.
-  static const int maxThumbBytes = 96 * 1024;
+  /// Thumb cap: 64 KiB of decoded JPEG (§4). Anything larger, or not a JPEG,
+  /// is dropped — the rest of the payload still imports.
+  static const int maxThumbBytes = 64 * 1024;
+
+  /// Attacker-controlled free text is truncated (never rejected) to these.
+  static const int maxNameChars = 200;
+  static const int maxNoteChars = 500;
 
   static const Set<String> knownHealthStatuses = {'healthy', 'stressed', 'diseased', 'unknown'};
   static const Set<String> knownObservationKinds = {'yellowing', 'browning', 'spots', 'wilting', 'pests', 'other'};
@@ -54,13 +58,15 @@ class PlantlyExportPayload {
   /// Display name for the import sheet: `commonName ?? scientificName` (§4b).
   String get defaultNickname => (commonName?.trim().isNotEmpty ?? false) ? commonName!.trim() : scientificName;
 
-  /// Decoded thumb bytes, or null when absent, malformed or over the cap.
+  /// Decoded thumb bytes, or null when absent, malformed, over the cap, or
+  /// not a JPEG (SOI marker `FF D8 FF`).
   Uint8List? get thumbBytes {
     final raw = photoThumbJpegBase64;
     if (raw == null || raw.isEmpty) return null;
     try {
       final bytes = base64Decode(base64.normalize(raw.trim()));
-      if (bytes.isEmpty || bytes.length > maxThumbBytes) return null;
+      if (bytes.length < 4 || bytes.length > maxThumbBytes) return null;
+      if (bytes[0] != 0xFF || bytes[1] != 0xD8 || bytes[2] != 0xFF) return null;
       return bytes;
     } on FormatException {
       return null;
@@ -107,15 +113,15 @@ class PlantlyExportPayload {
     return PlantlyExportPayload(
       schemaVersion: version.toInt(),
       source: json['source'] is String ? json['source'] as String : 'unknown',
-      scientificName: sci.trim(),
-      commonName: _string(json['commonName']),
-      chosenScientificName: _string(json['chosenScientificName']),
+      scientificName: _clip(sci.trim(), maxNameChars),
+      commonName: _string(json['commonName'], maxNameChars),
+      chosenScientificName: _string(json['chosenScientificName'], maxNameChars),
       candidates: [
         if (rawCandidates is List)
           for (final c in rawCandidates)
             if (c is Map && c['scientificName'] is String)
               ExportCandidate(
-                scientificName: c['scientificName'] as String,
+                scientificName: _clip(c['scientificName'] as String, maxNameChars),
                 confidence: _double(c['confidence']),
               ),
       ],
@@ -127,7 +133,7 @@ class PlantlyExportPayload {
                   ExportObservation(
                     kind: o['kind'] is String && knownObservationKinds.contains(o['kind']) ? o['kind'] as String : 'other',
                     severity: _double(o['severity']),
-                    note: _string(o['note']),
+                    note: _string(o['note'], maxNoteChars),
                   ),
             ]
           : null,
@@ -139,7 +145,9 @@ class PlantlyExportPayload {
     );
   }
 
-  static String? _string(Object? v) => v is String && v.trim().isNotEmpty ? v : null;
+  static String? _string(Object? v, [int? max]) =>
+      v is String && v.trim().isNotEmpty ? (max == null ? v : _clip(v, max)) : null;
+  static String _clip(String v, int max) => v.length <= max ? v : v.substring(0, max);
   static double _double(Object? v) => v is num ? v.toDouble() : 0.0;
   static DateTime? _date(Object? v) => v is String ? DateTime.tryParse(v) : null;
 }

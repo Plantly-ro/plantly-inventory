@@ -83,14 +83,46 @@ void main() {
       expect(p.marketplacePostId, 'post-uuid');
     });
 
-    test('thumb decodes when present and ≤ cap; invalid base64 → null', () {
-      final jpeg = List<int>.generate(1000, (i) => i % 251);
+    test('thumb decodes when it is a JPEG ≤ 64 KiB; non-JPEG, oversized or invalid base64 → null', () {
+      final jpeg = [0xFF, 0xD8, 0xFF, 0xE0, ...List<int>.generate(1000, (i) => i % 251)];
       final p = PlantlyExportPayload.decodeParam(encodeParam(sample(extra: {
         'photoThumbJpegBase64': base64Encode(jpeg),
       })));
       expect(p.thumbBytes, jpeg);
+
+      final png = [0x89, 0x50, 0x4E, 0x47, ...List<int>.generate(100, (i) => i)];
+      expect(PlantlyExportPayload.decodeParam(encodeParam(sample(extra: {'photoThumbJpegBase64': base64Encode(png)}))).thumbBytes, isNull);
+
+      // Cap boundary checked on fromJson: a 64 KiB thumb is base64'd twice on
+      // the wire (inside the JSON, then the JSON as `d`), so such a link is
+      // already over the 100 KiB URL cap and decodeParam rejects it earlier.
+      final big = [0xFF, 0xD8, 0xFF, ...List<int>.filled(64 * 1024, 0)];
+      expect(PlantlyExportPayload.fromJson(sample(extra: {'photoThumbJpegBase64': base64Encode(big)})).thumbBytes, isNull);
+
+      final exact = [0xFF, 0xD8, 0xFF, ...List<int>.filled(64 * 1024 - 3, 0)];
+      expect(PlantlyExportPayload.fromJson(sample(extra: {'photoThumbJpegBase64': base64Encode(exact)})).thumbBytes, hasLength(64 * 1024));
+
       final bad = PlantlyExportPayload.decodeParam(encodeParam(sample(extra: {'photoThumbJpegBase64': '!!!'})));
       expect(bad.thumbBytes, isNull);
+    });
+
+    test('over-long strings are truncated, not rejected', () {
+      final p = PlantlyExportPayload.decodeParam(encodeParam(sample(extra: {
+        'scientificName': 'S' * 1000,
+        'commonName': 'C' * 1000,
+        'chosenScientificName': 'X' * 1000,
+        'candidates': [
+          {'scientificName': 'K' * 1000, 'confidence': 0.5},
+        ],
+        'observations': [
+          {'kind': 'spots', 'severity': 0.1, 'note': 'N' * 5000},
+        ],
+      })));
+      expect(p.scientificName, hasLength(200));
+      expect(p.commonName, hasLength(200));
+      expect(p.chosenScientificName, hasLength(200));
+      expect(p.candidates.single.scientificName, hasLength(200));
+      expect(p.observations!.single.note, hasLength(500));
     });
 
     test('rejects oversized param (> 100 KiB)', () {

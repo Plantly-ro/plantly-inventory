@@ -36,6 +36,10 @@ class PlantlyRoExportPlugin implements ExportPlugin {
   /// Price string accepted by the server: whole lei or up to 2 decimals.
   static final priceRe = RegExp(r'^[0-9]+(\.[0-9]{1,2})?$');
 
+  /// Marketplace category ids are UUIDs (§5: draft `category` = UUID).
+  static final uuidRe = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+  static bool isCategoryId(String? v) => v != null && uuidRe.hasMatch(v.trim());
+
   final PlantlyApi _api;
   final PlantlyAuth _auth;
   final ListingRecords _records;
@@ -112,6 +116,8 @@ class PlantlyRoExportPlugin implements ExportPlugin {
     }
     if (draft.category == null || draft.category!.trim().isEmpty) {
       issues.add(const PlantlyExportIssue('category', 'category_required', 'Pick a category'));
+    } else if (!isCategoryId(draft.category)) {
+      issues.add(const PlantlyExportIssue('category', 'category_invalid', 'Pick a category from the search results'));
     }
     if (draft.photoRefs.isEmpty) {
       issues.add(const PlantlyExportIssue('photos', 'photos_required', 'Add at least one photo'));

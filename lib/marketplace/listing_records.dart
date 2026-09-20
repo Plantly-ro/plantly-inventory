@@ -82,7 +82,8 @@ class ListingRecords extends StateNotifier<Map<String, ListingRecord>> {
         // Corrupt entry — ignore rather than crash the detail screen.
       }
     }
-    state = out;
+    // The prefs read is async; the notifier may be gone by the time it lands.
+    if (mounted) state = out;
   }
 
   ListingRecord? forPlant(String plantId) => state[plantId];

@@ -10,6 +10,7 @@ import '../../data/providers.dart';
 import '../../data/user_prefs.dart';
 import '../../domain/services/backup_service.dart';
 import '../../domain/services/zip_backup_service.dart';
+import '../../config/plantly_features.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../marketplace/plantly_auth.dart';
 import '../../plugins/plantly_ro/plantly_ro_plugin.dart';
@@ -94,10 +95,12 @@ class MeScreen extends ConsumerWidget {
               );
             },
           ),
-          const SizedBox(height: 20),
-          _SectionLabel(text: t.meSectionPlantlyAccount, surface: surface),
-          const SizedBox(height: 8),
-          _PlantlyAccountRow(surface: surface),
+          if (ref.watch(sellEnabledProvider)) ...[
+            const SizedBox(height: 20),
+            _SectionLabel(text: t.meSectionPlantlyAccount, surface: surface),
+            const SizedBox(height: 8),
+            _PlantlyAccountRow(surface: surface),
+          ],
           const SizedBox(height: 20),
           _SectionLabel(text: t.meSectionAppearance, surface: surface),
           const SizedBox(height: 8),
@@ -257,6 +260,7 @@ class _PlantlyAccountRow extends ConsumerWidget {
 
   Future<void> _signIn(BuildContext context, WidgetRef ref) async {
     final plugin = ref.read(plantlyRoPluginProvider);
+    if (plugin == null) return;
     try {
       final session = await plugin.authenticate(context);
       await plugin.storeCredentials(session);
@@ -282,7 +286,7 @@ class _PlantlyAccountRow extends ConsumerWidget {
         ],
       ),
     );
-    if (ok == true) await ref.read(plantlyRoPluginProvider).revoke();
+    if (ok == true) await ref.read(plantlyRoPluginProvider)?.revoke();
   }
 }
 

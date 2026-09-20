@@ -20,14 +20,18 @@ class SpeciesRepository {
     return (db.select(db.species)..where((s) => s.id.equals(id))).getSingleOrNull();
   }
 
-  /// Case-insensitive match on `scientific_name` within the tenant.
+  /// Case-insensitive match on `scientific_name` within the tenant — both
+  /// sides lower-cased (Dart for the needle, SQL `lower()` for the column).
+  /// `limit(1)` so two rows differing only in case can't make this throw.
   Future<SpeciesRow?> byScientificName(String name) {
     final needle = name.trim().toLowerCase();
     return (db.select(db.species)
           ..where((s) =>
               s.tenantId.equals(opLog.tenantId) &
               s.deletedAt.isNull() &
-              s.scientificName.lower().equals(needle)))
+              s.scientificName.lower().equals(needle))
+          ..orderBy([(s) => OrderingTerm(expression: s.updatedHlc)])
+          ..limit(1))
         .getSingleOrNull();
   }
 

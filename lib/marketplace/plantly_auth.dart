@@ -32,6 +32,12 @@ class PlantlyAuth extends StateNotifier<AsyncValue<PlantlySession?>> {
 
   PlantlySession? get sessionOrNull => state.asData?.value;
 
+  /// Every transition lands after an await (store / network); the notifier
+  /// may have been disposed meanwhile, so never assign `state` blindly.
+  void _set(AsyncValue<PlantlySession?> next) {
+    if (mounted) state = next;
+  }
+
   /// The usable session, refreshing first when it is inside the 12 h
   /// window. Returns null (and clears the store) when there is no session,
   /// it is malformed, or a needed refresh is refused by the server. A
@@ -44,7 +50,7 @@ class PlantlyAuth extends StateNotifier<AsyncValue<PlantlySession?>> {
   Future<PlantlySession?> _load() async {
     final token = await _store.readToken();
     if (token == null || token.isEmpty) {
-      state = const AsyncValue.data(null);
+      _set(const AsyncValue.data(null));
       return null;
     }
     PlantlySession session;
@@ -52,7 +58,7 @@ class PlantlyAuth extends StateNotifier<AsyncValue<PlantlySession?>> {
       session = PlantlySession.fromToken(token);
     } on FormatException {
       await _store.clear();
-      state = const AsyncValue.data(null);
+      _set(const AsyncValue.data(null));
       return null;
     }
     final now = _now();
@@ -80,7 +86,7 @@ class PlantlyAuth extends StateNotifier<AsyncValue<PlantlySession?>> {
         return null;
       }
     }
-    state = AsyncValue.data(session);
+    _set(AsyncValue.data(session));
     return session;
   }
 
@@ -90,7 +96,7 @@ class PlantlyAuth extends StateNotifier<AsyncValue<PlantlySession?>> {
     final result = await _api.login(email.trim(), password);
     final session = PlantlySession.fromToken(result.token);
     await _store.writeToken(session.token);
-    state = AsyncValue.data(session);
+    _set(AsyncValue.data(session));
     return session;
   }
 
@@ -98,14 +104,14 @@ class PlantlyAuth extends StateNotifier<AsyncValue<PlantlySession?>> {
   Future<PlantlySession> adoptToken(String token) async {
     final session = PlantlySession.fromToken(token);
     await _store.writeToken(token);
-    state = AsyncValue.data(session);
+    _set(AsyncValue.data(session));
     return session;
   }
 
   /// Drop the token. There is no logout route (§1).
   Future<void> signOut() async {
     await _store.clear();
-    state = const AsyncValue.data(null);
+    _set(const AsyncValue.data(null));
   }
 }
 

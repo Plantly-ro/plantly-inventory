@@ -6,11 +6,14 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 /// `PLANTLY_HOST` dart-define so the same binary can target a preview
 /// environment: `--dart-define=PLANTLY_HOST=https://development.agent-khepri.urundead.win`.
 abstract final class PlantlyHosts {
-  /// Marketplace API + web origin. Prod default; no trailing slash.
-  static const String host = String.fromEnvironment(
+  static const String _hostDefine = String.fromEnvironment(
     'PLANTLY_HOST',
     defaultValue: 'https://plantly.ro',
   );
+
+  /// Marketplace API + web origin. Prod default; trailing slashes stripped so
+  /// a `--dart-define=PLANTLY_HOST=https://x/` doesn't produce `//api`.
+  static String get host => _hostDefine.replaceAll(RegExp(r'/+$'), '');
 
   /// App version reported in the User-Agent. Overridable at build time so CI
   /// can stamp the real pubspec version without a code change.

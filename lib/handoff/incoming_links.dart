@@ -13,6 +13,11 @@ abstract class IncomingLinks {
 
   /// Links arriving while the app is running.
   Stream<Uri> get stream;
+
+  /// Called once an import link has been taken: the web half strips the
+  /// payload from the address bar so reloads / bookmarks / history don't
+  /// re-import (and the fragment never lingers in the URL). io: no-op.
+  void consume() {}
 }
 
 /// Test double — push URIs with [emit].
@@ -26,6 +31,11 @@ class FakeIncomingLinks implements IncomingLinks {
 
   @override
   Stream<Uri> get stream => _controller.stream;
+
+  int consumed = 0;
+
+  @override
+  void consume() => consumed++;
 
   void emit(Uri uri) => _controller.add(uri);
 

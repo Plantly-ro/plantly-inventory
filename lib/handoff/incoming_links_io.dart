@@ -23,4 +23,8 @@ class AppLinksIncomingLinks implements IncomingLinks {
 
   @override
   Stream<Uri> get stream => _appLinks.uriLinkStream;
+
+  /// Nothing to strip on io — the OS delivered a one-shot intent.
+  @override
+  void consume() {}
 }

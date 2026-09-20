@@ -1700,6 +1700,48 @@ abstract class AppLocalizations {
   /// **'This link was made by a newer app version. Update Plantly Inventory and try again.'**
   String get importErrorVersion;
 
+  /// No description provided for @exportIssueCategoryInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a category from the search results'**
+  String get exportIssueCategoryInvalid;
+
+  /// No description provided for @importErrorSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save the plant — please try again.'**
+  String get importErrorSave;
+
+  /// No description provided for @exportDraftCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Prepare listing draft'**
+  String get exportDraftCta;
+
+  /// No description provided for @exportDraftEyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'LISTING DRAFT'**
+  String get exportDraftEyebrow;
+
+  /// No description provided for @exportDraftTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft \"{name}\"'**
+  String exportDraftTitle(String name);
+
+  /// No description provided for @exportCategoryPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Select category'**
+  String get exportCategoryPlaceholder;
+
+  /// No description provided for @exportCategoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get exportCategoryTitle;
+
   /// No description provided for @importErrorDismiss.
   ///
   /// In en, this message translates to:

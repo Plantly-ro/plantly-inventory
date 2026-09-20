@@ -21,9 +21,10 @@ import '../helpers/test_app.dart';
 
 String encodeParam(Map<String, Object?> json) => base64Url.encode(utf8.encode(jsonEncode(json))).replaceAll('=', '');
 
-/// A real 1×1 PNG so `Image.memory` decodes cleanly in the preview.
+/// A real 2×2 JPEG (ImageMagick, q60) — the parser requires the JPEG SOI
+/// marker and `Image.memory` must decode it cleanly in the preview.
 final thumb = base64Decode(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+  '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA0JCgsKCA0LCgsODg0PEyAVExISEyccHhcgLikxMC4pLSwzOko+MzZGNywtQFdBRkxOUlNSMj5aYVpQYEpRUk//2wBDAQ4ODhMREyYVFSZPNS01T09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0//wAARCAACAAIDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAgX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCcAKe//9k=',
 );
 
 Map<String, Object?> samplePayload() => {
@@ -192,6 +193,14 @@ void main() {
       ),
     ));
     await settle(tester);
+    await settle(tester);
+    expect(find.byKey(const Key('import-confirm')), findsOneWidget);
+    expect(links.consumed, 1); // web half strips the hash here
+    navKey.currentState!.pop();
+    await settle(tester);
+
+    // Same link again after the sheet closed → dedupe released → opens again.
+    links.emit(links.initialUri!);
     await settle(tester);
     expect(find.byKey(const Key('import-confirm')), findsOneWidget);
     navKey.currentState!.pop();

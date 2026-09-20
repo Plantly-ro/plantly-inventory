@@ -100,10 +100,17 @@ class _ImportPlantSheetState extends ConsumerState<ImportPlantSheet> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _error = '$e';
+        _error = t.importErrorSave;
       });
     }
   }
+
+  static Widget _thumbFallback(PlantlySurface surface) => Container(
+        width: 72,
+        height: 72,
+        color: surface.surfaceAlt,
+        child: Icon(Icons.local_florist_outlined, color: surface.green),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -154,13 +161,17 @@ class _ImportPlantSheetState extends ConsumerState<ImportPlantSheet> {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(PlantlyTokens.radius),
                       child: thumb != null
-                          ? Image.memory(thumb, key: const Key('import-thumb'), width: 72, height: 72, fit: BoxFit.cover)
-                          : Container(
+                          ? Image.memory(
+                              thumb,
+                              key: const Key('import-thumb'),
                               width: 72,
                               height: 72,
-                              color: surface.surfaceAlt,
-                              child: Icon(Icons.local_florist_outlined, color: surface.green),
-                            ),
+                              fit: BoxFit.cover,
+                              // A JPEG that passed the magic check can still be
+                              // truncated/corrupt — fall back to the icon.
+                              errorBuilder: (_, _, _) => _thumbFallback(surface),
+                            )
+                          : _thumbFallback(surface),
                     ),
                     const SizedBox(width: 12),
                     Expanded(

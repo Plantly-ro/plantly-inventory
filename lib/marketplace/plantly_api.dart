@@ -210,9 +210,14 @@ class PlantlyApi {
     }
     final res = await _send(() async => http.Response.fromStream(await _client.send(req)), timeout: uploadTimeout);
     final body = _decodeObject(res);
+    final id = body['id'];
+    if (id is! String || id.isEmpty) {
+      // A 2xx without an id is a broken reply, not a listing.
+      throw PlantlyApiException(status: res.statusCode, message: 'create reply has no post id');
+    }
     final warnings = body['upload_warnings'];
     return CreatePostResult(
-      id: body['id'] as String? ?? '',
+      id: id,
       uploadWarnings: warnings is List ? warnings.map((w) => '$w').toList() : const [],
     );
   }
