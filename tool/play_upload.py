@@ -47,7 +47,12 @@ def main() -> int:
     creds = service_account.Credentials.from_service_account_file(
         args.credentials, scopes=[SCOPE]
     )
-    http = google_auth_httplib2.AuthorizedHttp(creds, http=httplib2.Http(timeout=HTTP_TIMEOUT_S))
+    transport = httplib2.Http(timeout=HTTP_TIMEOUT_S)
+    # Resumable uploads answer each chunk with "308 Resume Incomplete"; httplib2 treats 308
+    # as a redirect and raises RedirectMissingLocation unless it is excluded (this is what
+    # googleapiclient.http.build_http() does for its default transport).
+    transport.redirect_codes = transport.redirect_codes - {308}
+    http = google_auth_httplib2.AuthorizedHttp(creds, http=transport)
     service = build("androidpublisher", "v3", http=http, cache_discovery=False)
     edits = service.edits()
 
