@@ -15,7 +15,7 @@ metadata/android/<locale>/
   images/
     icon.png                 # 512×512 (hi-res icon)
     featureGraphic.png       # 1024×500
-    phoneScreenshots/1..5    # 1080×2400 raw device captures (Pixel 8 emulator, API 35)
+    phoneScreenshots/1..5    # 1080×2160 device captures (Pixel 8 emulator, API 35; status/gesture bars cropped, scaled to Play’s 2:1 limit)
 ```
 
 ## What is automated (GitLab CI)
