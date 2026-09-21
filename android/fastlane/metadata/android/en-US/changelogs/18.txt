@@ -1,1 +1,0 @@
-First public release. Offline plant care tracking with smart, adaptive reminders, a week/month/year calendar, Spaces with room maps, photos and care history, encrypted backups, and full English + Romanian support. No account, no ads, zero telemetry by default.

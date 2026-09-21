@@ -1,1 +1,0 @@
-Prima versiune publică. Evidența offline a plantelor, cu memento-uri inteligente și adaptive, calendar pe săptămână/lună/an, Spații cu hărți ale camerelor, poze și istoric de îngrijire, backup criptat și suport complet în engleză și română. Fără cont, fără reclame, fără telemetrie implicită.

@@ -1,0 +1,7 @@
+Plantly Inventory 1.0.0 — first public release.
+• Offline plant care tracking with smart, adaptive reminders
+• Week / month / year calendar of what's due and done
+• Spaces with room maps, photos and full care history
+• Encrypted backups, CSV and iCal export
+• English + Romanian
+No account, no ads, no telemetry unless you opt in.
