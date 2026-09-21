@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:ulid/ulid.dart';
 
+import '../../notifications/reminder_sync.dart';
 import '../../sync/op_log.dart';
 import '../database/app_database.dart';
 import 'plant_repository.dart' show cascadeDeleteSchedules;
@@ -10,11 +11,20 @@ import 'plant_repository.dart' show cascadeDeleteSchedules;
 /// Phase 1 only needs propagation (parent → child) end-to-end; gifts /
 /// sales / deaths are one-call conveniences that land with their UI.
 class InventoryTransactionRepository {
-  InventoryTransactionRepository({required this.db, required this.opLog, required this.plants});
+  InventoryTransactionRepository({
+    required this.db,
+    required this.opLog,
+    required this.plants,
+    this.reminderSync,
+  });
 
   final AppDatabase db;
   final OpLogWriter opLog;
   final PlantsTableForWrites plants;
+
+  /// Optional: re-synced after gift/sell/markDead, which cascade-delete the
+  /// plant's schedules and so must cancel their OS alarms (issue #13).
+  final ReminderSync? reminderSync;
 
   /// Create a child plant + record the propagation transaction linking
   /// parent → child. Both rows land in one transaction so a crash never
@@ -132,7 +142,7 @@ class InventoryTransactionRepository {
     int? atMs,
   }) async {
     final ts = atMs ?? DateTime.now().toUtc().millisecondsSinceEpoch;
-    return db.transaction(() async {
+    final row = await db.transaction(() async {
       final txId = Ulid().toString();
       final hlc = await opLog.recordCreate(
         entity: 'inventory_transactions',
@@ -182,6 +192,11 @@ class InventoryTransactionRepository {
                 ..where((r) => r.id.equals(txId)))
               .getSingle());
     });
+    // Best-effort: a notification-plugin failure must never fail the ledger write.
+    try {
+      await reminderSync?.syncFromDatabase();
+    } catch (_) {}
+    return row;
   }
 
   Stream<List<InventoryTransactionRow>> watchForPlant(String plantId) {

@@ -1,16 +1,21 @@
 import 'package:drift/drift.dart';
 import 'package:ulid/ulid.dart';
 
+import '../../notifications/reminder_sync.dart';
 import '../../sync/op_log.dart';
 import '../database/app_database.dart';
 
 /// CRUD for the hierarchical `locations` table. Locations form a tree via
 /// `parent_id`; children of null are top-level ("Home", "Balcony").
 class LocationRepository {
-  LocationRepository({required this.db, required this.opLog});
+  LocationRepository({required this.db, required this.opLog, this.reminderSync});
 
   final AppDatabase db;
   final OpLogWriter opLog;
+
+  /// Optional: re-synced after mute/delete since ReminderSync silences
+  /// every plant in a muted location. Null in seed/tests.
+  final ReminderSync? reminderSync;
 
   Stream<List<LocationRow>> watchAll() {
     return (db.select(db.locations)
@@ -154,7 +159,7 @@ class LocationRepository {
   /// Toggle per-location notification mute — silences OS notifications
   /// for every plant in this location.
   Future<void> setNotificationsMuted(String id, bool muted) async {
-    return db.transaction(() async {
+    await db.transaction(() async {
       final hlc = await opLog.recordFieldUpdate(
         entity: 'locations',
         entityId: id,
@@ -169,10 +174,11 @@ class LocationRepository {
         ),
       );
     });
+    await _resync();
   }
 
   Future<void> softDelete(String id) async {
-    return db.transaction(() async {
+    await db.transaction(() async {
       final hlc = await opLog.recordTombstone(entity: 'locations', entityId: id);
       await (db.update(db.locations)..where((l) => l.id.equals(id))).write(
         LocationsCompanion(
@@ -182,6 +188,14 @@ class LocationRepository {
         ),
       );
     });
+    await _resync();
+  }
+
+  /// Best-effort OS reminder rebuild after a committed mutation (issue #13).
+  Future<void> _resync() async {
+    try {
+      await reminderSync?.syncFromDatabase();
+    } catch (_) {}
   }
 }
 

@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:ulid/ulid.dart';
 
+import '../../notifications/reminder_sync.dart';
 import '../../sync/op_log.dart';
 import '../database/app_database.dart';
 
@@ -8,10 +9,14 @@ import '../database/app_database.dart';
 /// op-log entry via [OpLogWriter] so a future sync push ships the same bits
 /// that landed locally.
 class PlantRepository {
-  PlantRepository({required this.db, required this.opLog});
+  PlantRepository({required this.db, required this.opLog, this.reminderSync});
 
   final AppDatabase db;
   final OpLogWriter opLog;
+
+  /// Optional: re-synced after mutations that change which reminders the
+  /// OS should hold (mute, delete, duplicate). Null in seed/tests.
+  final ReminderSync? reminderSync;
 
   Stream<List<PlantRow>> watchAll() {
     return (db.select(db.plants)
@@ -171,7 +176,7 @@ class PlantRepository {
   /// Toggle per-plant notification mute. ReminderSync reads this flag
   /// and skips every schedule for this plant when true.
   Future<void> setNotificationsMuted(String id, bool muted) async {
-    return db.transaction(() async {
+    await db.transaction(() async {
       final hlc = await opLog.recordFieldUpdate(
         entity: 'plants',
         entityId: id,
@@ -186,6 +191,7 @@ class PlantRepository {
         ),
       );
     });
+    await _resync();
   }
 
   Stream<List<PlantRow>> watchByLocation(String locationId) {
@@ -199,7 +205,7 @@ class PlantRepository {
   }
 
   Future<void> softDelete(String id) async {
-    return db.transaction(() async {
+    await db.transaction(() async {
       final ts = DateTime.now().toUtc().millisecondsSinceEpoch;
       final hlc = await opLog.recordTombstone(entity: 'plants', entityId: id);
       await (db.update(db.plants)..where((p) => p.id.equals(id))).write(
@@ -211,6 +217,7 @@ class PlantRepository {
       );
       await cascadeDeleteSchedules(db, opLog, id, ts);
     });
+    await _resync();
   }
 
   /// Create a sibling of an existing plant. Copies nickname + species +
@@ -224,7 +231,7 @@ class PlantRepository {
   }) async {
     final source = await byId(sourceId);
     if (source == null) throw StateError('Source plant not found');
-    return db.transaction(() async {
+    final child = await db.transaction(() async {
       // New plant row.
       final child = await _createInTx(
         nickname: nicknameOverride ?? '${source.nickname} #2',
@@ -303,6 +310,8 @@ class PlantRepository {
       }
       return child;
     });
+    await _resync();
+    return child;
   }
 
   Future<PlantRow> _createInTx({
@@ -346,6 +355,13 @@ class PlantRepository {
   }
 
   String _freshId() => Ulid().toString();
+
+  /// Best-effort OS reminder rebuild after a committed mutation (issue #13).
+  Future<void> _resync() async {
+    try {
+      await reminderSync?.syncFromDatabase();
+    } catch (_) {}
+  }
 
   /// Re-animate a soft-deleted plant. Primarily used by snackbar Undo
   /// flows. Does NOT re-attach photos / tags that were detached as part

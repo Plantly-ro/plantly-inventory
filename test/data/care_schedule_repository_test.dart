@@ -4,8 +4,11 @@ import 'package:plantly_inventory/data/database/app_database.dart';
 import 'package:plantly_inventory/data/repositories/care_event_repository.dart';
 import 'package:plantly_inventory/data/repositories/care_schedule_repository.dart';
 import 'package:plantly_inventory/data/repositories/plant_repository.dart';
+import 'package:plantly_inventory/notifications/notification_service.dart';
+import 'package:plantly_inventory/notifications/reminder_sync.dart';
 import 'package:plantly_inventory/sync/hlc.dart';
 import 'package:plantly_inventory/sync/op_log.dart';
+import '../helpers/recording_reminder_sync.dart';
 
 void main() {
   late AppDatabase db;
@@ -133,4 +136,56 @@ void main() {
       expect(after.snoozeCount, 1);
     });
   });
+
+  group('CareScheduleRepository.upsert — OS reminder re-sync (issue #13)', () {
+    late RecordingReminderSync sync;
+    late CareScheduleRepository synced;
+
+    setUp(() {
+      final clock = HlcClock(deviceId: 'test-device');
+      final opLog = OpLogWriter(db: db, clock: clock, tenantId: 'tenant-local');
+      sync = RecordingReminderSync(db: db, clock: () => DateTime.utc(2026, 5, 1));
+      synced = CareScheduleRepository(db: db, opLog: opLog, reminderSync: sync);
+    });
+
+    test('a newly created schedule re-syncs once and lands in the OS reminder set', () async {
+      final p = await plants.create(nickname: 'Monstera');
+      expect(sync.calls, 0);
+      await synced.upsert(
+        plantId: p.id,
+        type: 'water',
+        baseIntervalDays: 7,
+        firstDueAt: DateTime.utc(2026, 5, 3),
+      );
+      expect(sync.calls, 1, reason: 'Add reminder → Save must schedule the alarm immediately');
+      expect(sync.fake.calls, hasLength(1));
+      expect(sync.fake.calls.single.event.summary, contains('Monstera'));
+    });
+
+    test('the idempotent (existing plant+type) path re-syncs as well', () async {
+      final p = await plants.create(nickname: 'Fern');
+      await synced.upsert(plantId: p.id, type: 'water', baseIntervalDays: 5);
+      await synced.upsert(plantId: p.id, type: 'water', baseIntervalDays: 99);
+      expect(sync.calls, 2);
+    });
+
+    test('a failing sync never fails the write', () async {
+      final clock = HlcClock(deviceId: 'test-device');
+      final opLog = OpLogWriter(db: db, clock: clock, tenantId: 'tenant-local');
+      final repo = CareScheduleRepository(db: db, opLog: opLog, reminderSync: _ThrowingReminderSync(db));
+      final p = await plants.create(nickname: 'Cactus');
+      final s = await repo.upsert(plantId: p.id, type: 'water', baseIntervalDays: 14);
+      expect(await repo.forPlantAndType(p.id, 'water'), isNotNull);
+      expect(s.baseIntervalDays, 14);
+    });
+  });
+}
+
+class _ThrowingReminderSync extends ReminderSync {
+  _ThrowingReminderSync(AppDatabase db)
+      : super(db: db, notifications: FakeNotificationService(), tenantId: 'tenant-local');
+  @override
+  Future<int> syncFromDatabase({DateTime? now, Duration window = const Duration(days: 30)}) async {
+    throw StateError('notification plugin unavailable');
+  }
 }
