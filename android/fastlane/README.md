@@ -13,7 +13,7 @@ metadata/android/<locale>/
   images/
     icon.png                 # 512×512 (hi-res icon)
     featureGraphic.png       # 1024×500
-    phoneScreenshots/1..5    # 2160×3780, framed marketing shots
+    phoneScreenshots/1..5    # 1080×2400 raw device captures (Pixel 8 emulator, API 35)
 ```
 
 ## Building the release artifact
@@ -28,12 +28,15 @@ Application ID `ro.plantly.inventory`, versionName `1.0.0`, versionCode `18`.
 
 ## Regenerating the graphics
 
-Screenshots are captured from the real Flutter **web** build driven headless, then framed.
-Scripts live under the job scratch dir; see the PR description. Feature graphic + slides use
-the botanical brand gradient (`#3D7A5F`, `--botanical-500`) and the launcher mark.
+Phone screenshots (`1_home` … `5_me`, en-US + ro) are raw `adb exec-out screencap` captures of the
+**release APK** (R8-minified) on a Pixel 8 AVD (1080×2400, Android 15), light theme, status bar in
+SystemUI demo mode (09:41, wifi, full battery). No frames or marketing text — Play accepts raw
+captures. Capture script + emulator setup notes live on the Mac mini build host at
+`~/plantly/README-emulator.md` / `~/plantly/capture.sh` (2026-09-21). Feature graphic + icon still
+use the botanical brand gradient (`#3D7A5F`, `--botanical-500`) and the launcher mark.
 
-> Before final publish, consider replacing the web-derived screenshots with captures from a
-> real device (e.g. the Z Fold 7) — pixel-identical by design, but device shots are ideal.
+> The `ro` set shows Romanian only where the UI is localized (calendar, filter chips, reminder /
+> import sheets); Home, Me, tab bar and plant detail are hardcoded English literals today.
 
 ## Manual steps in Play Console (NOT covered by these files)
 
