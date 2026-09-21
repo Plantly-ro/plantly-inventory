@@ -1,30 +1,45 @@
 # Play Store listing — Plantly Inventory
 
 Store metadata in the [Fastlane *supply*](https://docs.fastlane.tools/actions/supply/)
-layout, understood by `fastlane supply`, Triple-T's *gradle-play-publisher*, and the
-`r0adkll/upload-google-play` GitHub Action. Locales: `en-US` (default) and `ro`.
+layout, understood by `fastlane supply`, Triple-T's *gradle-play-publisher*, the
+`r0adkll/upload-google-play` GitHub Action — and by our own `tool/play_listing.py` /
+`tool/play_upload.py`, which is what CI runs. Locales: `en-US` (default) and `ro`.
 
 ```
 metadata/android/<locale>/
   title.txt                 # app name (≤30 chars)
   short_description.txt      # ≤80 chars
   full_description.txt       # ≤4000 chars
-  changelogs/18.txt          # "what's new" for versionCode 18 (≤500 chars)
+  changelogs/default.txt     # "what's new" for any versionCode (≤500 chars)
+  changelogs/<code>.txt      # optional: overrides default.txt for that versionCode only
   images/
     icon.png                 # 512×512 (hi-res icon)
     featureGraphic.png       # 1024×500
     phoneScreenshots/1..5    # 1080×2400 raw device captures (Pixel 8 emulator, API 35)
 ```
 
-## Building the release artifact
+## What is automated (GitLab CI)
+
+| Job | Branch | Trigger | Does |
+|---|---|---|---|
+| `lint-tools` | every branch | automatic | unit-tests the scripts + `play_listing.py --dry-run` (validates every file above) |
+| `publish-internal` | `development` | automatic | signed AAB → **internal** track, with release notes from `changelogs/` |
+| `publish-listing` | `development` | **manual** | pushes texts + graphics to the (app-wide) store listing, no build |
+| `publish-production` | `main` | **manual** | listing push (fails fast if invalid) → build → AAB → **production**, 100 % rollout with release notes; set `PLAY_UPLOAD_EXTRA_ARGS="--user-fraction 0.2"` in the Run-job form for a staged rollout |
+
+Locally:
 
 ```bash
-flutter build appbundle --release   # -> build/app/outputs/bundle/release/app-release.aab
+python3 tool/play_listing.py --package ro.plantly.inventory --dry-run           # validate + plan
+python3 tool/play_listing.py --package ro.plantly.inventory --credentials sa.json   # push
+python3 -m unittest discover -s tool/tests                                       # script tests
 ```
 
-Signed with the **upload key** (`android/key.properties` → `~/.secrets/plantly-inventory-upload.jks`,
-alias `upload`, SHA-256 `EC:0A:25:…:DF`). Enroll in **Play App Signing** on first upload.
-Application ID `ro.plantly.inventory`, versionName `1.0.0`, versionCode `18`.
+`versionCode` is the CI pipeline id (`--build-number=$CI_PIPELINE_ID`); `versionName`
+comes from `pubspec.yaml`. Signed with the **upload key** (CI variables
+`PLAY_UPLOAD_KEYSTORE_B64` / `PLAY_KEYSTORE_PASSWORD` / `PLAY_KEY_PASSWORD`, alias
+`upload`, SHA-256 `EC:0A:25:…:DF`); the Play API key is `PLAY_SA_JSON`. Enrol in
+**Play App Signing** on first upload.
 
 ## Regenerating the graphics
 
@@ -38,13 +53,17 @@ use the botanical brand gradient (`#3D7A5F`, `--botanical-500`) and the launcher
 > The `ro` set shows Romanian only where the UI is localized (calendar, filter chips, reminder /
 > import sheets); Home, Me, tab bar and plant detail are hardcoded English literals today.
 
-## Manual steps in Play Console (NOT covered by these files)
+## Console-only items (NOT covered by these files or CI)
 
-- **Data safety**: declare *no data collected / no data shared*. The app is offline-only;
-  Sentry crash/usage is opt-in AND ships with an empty DSN, so nothing leaves the device by default.
-- **Content rating**: complete the IARC questionnaire → expected **Everyone / PEGI 3**.
-- **Privacy policy URL**: required. Host the plain-English privacy statement (mirrors the in-app
-  *Me → Privacy & data* screen).
-- **App category**: Lifestyle (alt: Productivity). Tags: plants, gardening, reminders.
-- **Contact email**: a support address.
-- **Target audience**: not directed at children.
+Exact answers live in [`docs/play-console-checklist.md`](../../docs/play-console-checklist.md).
+Summary:
+
+- **Privacy policy URL** — `https://plantly.ro/app/inventory/privacy`, serving
+  [`docs/privacy-policy.en.md`](../../docs/privacy-policy.en.md) / [`.ro.md`](../../docs/privacy-policy.ro.md).
+- **Data safety** — declare opt-in *Crash logs* + *App interactions* (optional, not shared);
+  everything else "not collected".
+- **Content rating** — IARC questionnaire, all "No" → Everyone / PEGI 3.
+- **Target audience** — 18+, not appealing to children. **App access** — no restrictions.
+- **Ads** — none. **Advertising ID** — not used.
+- **Category** Lifestyle · **Contact** `admin@plantly.ro` · **Pricing** free · countries.
+- **Play App Signing** enrolment on the first upload.
