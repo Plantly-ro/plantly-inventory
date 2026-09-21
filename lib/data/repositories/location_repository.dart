@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:ulid/ulid.dart';
 
 import '../../notifications/reminder_sync.dart';
@@ -195,7 +196,9 @@ class LocationRepository {
   Future<void> _resync() async {
     try {
       await reminderSync?.syncFromDatabase();
-    } catch (_) {}
+    } catch (e) {
+      if (kDebugMode) debugPrint('reminder re-sync failed: $e');
+    }
   }
 }
 

@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/providers.dart';
@@ -78,7 +79,9 @@ class BackupActions {
     // nothing about yet — same class of gap as issue #13. Best-effort.
     try {
       await _ref.read(reminderSyncProvider).syncFromDatabase();
-    } catch (_) {}
+    } catch (e) {
+      if (kDebugMode) debugPrint('reminder re-sync failed: $e');
+    }
     return msg;
   }
 }

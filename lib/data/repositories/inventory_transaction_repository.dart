@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:ulid/ulid.dart';
 
 import '../../notifications/reminder_sync.dart';
@@ -192,11 +193,18 @@ class InventoryTransactionRepository {
                 ..where((r) => r.id.equals(txId)))
               .getSingle());
     });
-    // Best-effort: a notification-plugin failure must never fail the ledger write.
+    await _resync();
+    return row;
+  }
+
+  /// Best-effort OS reminder rebuild after a committed mutation (issue #13).
+  /// A notification-plugin failure must never fail the ledger write.
+  Future<void> _resync() async {
     try {
       await reminderSync?.syncFromDatabase();
-    } catch (_) {}
-    return row;
+    } catch (e) {
+      if (kDebugMode) debugPrint('reminder re-sync failed: $e');
+    }
   }
 
   Stream<List<InventoryTransactionRow>> watchForPlant(String plantId) {
