@@ -15,7 +15,7 @@ metadata/android/<locale>/
   images/
     icon.png                 # 512×512 (hi-res icon)
     featureGraphic.png       # 1024×500
-    phoneScreenshots/1..5    # 2160×3780, framed marketing shots (2–8, filename order)
+    phoneScreenshots/1..5    # 1080×2160 device captures (Pixel 8 emulator, API 35; status/gesture bars cropped, scaled to Play’s 2:1 limit)
 ```
 
 ## What is automated (GitLab CI)
@@ -43,12 +43,15 @@ comes from `pubspec.yaml`. Signed with the **upload key** (CI variables
 
 ## Regenerating the graphics
 
-Screenshots are captured from the real Flutter **web** build driven headless, then framed.
-Scripts live under the job scratch dir; see the PR description. Feature graphic + slides use
-the botanical brand gradient (`#3D7A5F`, `--botanical-500`) and the launcher mark.
+Phone screenshots (`1_home` … `5_me`, en-US + ro) are raw `adb exec-out screencap` captures of the
+**release APK** (R8-minified) on a Pixel 8 AVD (1080×2400, Android 15), light theme, status bar in
+SystemUI demo mode (09:41, wifi, full battery). No frames or marketing text — Play accepts raw
+captures. Capture script + emulator setup notes live on the Mac mini build host at
+`~/plantly/README-emulator.md` / `~/plantly/capture.sh` (2026-09-21). Feature graphic + icon still
+use the botanical brand gradient (`#3D7A5F`, `--botanical-500`) and the launcher mark.
 
-> Before final publish, consider replacing the web-derived screenshots with captures from a
-> real device (e.g. the Z Fold 7) — pixel-identical by design, but device shots are ideal.
+> The `ro` set shows Romanian only where the UI is localized (calendar, filter chips, reminder /
+> import sheets); Home, Me, tab bar and plant detail are hardcoded English literals today.
 
 ## Console-only items (NOT covered by these files or CI)
 
