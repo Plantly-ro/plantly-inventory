@@ -1,7 +1,8 @@
 # .gitlab-ci.yml — PlantlyInventory
 #
 # Four stages; the first three run on every push and MR:
-#   analyze → test → build (build-web + build-android) → publish (Play tracks)
+#   analyze → test (flutter test + lint-tools) → build (build-web + build-android)
+#   → publish (Play tracks + store listing)
 #
 # Flutter image: ghcr.io/cirruslabs/flutter, pinned by exact tag via FLUTTER_IMAGE
 # (see the note next to the variable).
@@ -42,6 +43,8 @@ variables:
   # Gradle's home must live inside the project dir to be cacheable by GitLab.
   GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle-home"
   PLAY_PACKAGE: "ro.plantly.inventory"
+  # fastlane-layout store listing + changelogs (tool/play_listing.py, --release-notes-dir)
+  PLAY_METADATA_DIR: "android/fastlane/metadata/android"
 
 default:
   image: $FLUTTER_IMAGE
@@ -70,6 +73,20 @@ test:
     # override the reporter with a JSON stream, and the junit artifact it was
     # paired with is something `flutter test` never writes — dropped.)
     - flutter test --reporter=expanded
+
+# Release tooling under tool/ (Play listing + upload scripts): unit tests with
+# stdlib-only fakes, plus a --dry-run over the real store metadata so an
+# over-long description or a mis-sized graphic fails every pipeline in seconds
+# instead of the production publish job. No pip, no pub get.
+lint-tools:
+  stage: test
+  needs: []
+  before_script: []
+  cache: []
+  script:
+    - python3 --version
+    - python3 -m unittest discover -s tool/tests -v
+    - python3 tool/play_listing.py --package "$PLAY_PACKAGE" --metadata-dir "$PLAY_METADATA_DIR" --dry-run
 
 build-web:
   stage: build
@@ -120,9 +137,11 @@ build-android:
 
 # ─── Play delivery ──────────────────────────────────────────────────────────
 # development → internal testing (automatic); main → production (manual click-gate).
-# Both build a signed AAB and upload it via the Android Publisher API. The
-# versionCode is the (globally increasing) pipeline id, so every release
-# auto-increments without a manual pubspec bump; versionName stays from pubspec.
+# Both build a signed AAB and upload it via the Android Publisher API, with the
+# per-locale "what's new" text from $PLAY_METADATA_DIR/<locale>/changelogs/
+# (<versionCode>.txt, else default.txt). The versionCode is the (globally
+# increasing) pipeline id, so every release auto-increments without a manual
+# pubspec bump; versionName stays from pubspec.
 #
 # Requires these PROTECTED CI/CD variables (set on the project) and PROTECTED
 # development + main branches so they are only exposed to those pipelines:
@@ -130,15 +149,37 @@ build-android:
 #   PLAY_UPLOAD_KEYSTORE_B64 (var)   base64 of the upload keystore (.jks)
 #   PLAY_KEYSTORE_PASSWORD   (var)   keystore password
 #   PLAY_KEY_PASSWORD        (var)   key password
+
+# The flutter image's python3 has no pip module — bootstrap it, then the Play client.
+.play-pip: &play-pip
+  - python3 -m ensurepip --upgrade 2>/dev/null || { apt-get update -qq && apt-get install -y -qq python3-pip; }
+  - python3 -m pip install --quiet --break-system-packages google-api-python-client google-auth google-auth-httplib2
+
 .play-publish:
   stage: publish
   extends: .android-gradle-cache
+  variables:
+    # "true" = validate + push the store listing (texts + graphics) from
+    # $PLAY_METADATA_DIR inside this job, BEFORE the ~25 min AAB build, so a bad
+    # listing fails in seconds. The listing is app-wide (not per track).
+    PLAY_PUSH_LISTING: "false"
+    # Extra flags for tool/play_upload.py. Default = 100 % rollout. For a staged
+    # production rollout, run the manual job with this variable set in the
+    # "Run job" form, e.g.  PLAY_UPLOAD_EXTRA_ARGS="--user-fraction 0.2"
+    # (status inProgress, 20 % of users; finish it later in Play Console or by
+    # re-running with the same versionCode and no fraction).
+    PLAY_UPLOAD_EXTRA_ARGS: ""
   script:
     # Fail loudly here rather than deep inside Gradle if a protected var is missing/empty
     # (e.g. job ran on an unprotected ref) — build.gradle.kts would otherwise error on keystore load.
     - |
       if [ -z "$PLAY_UPLOAD_KEYSTORE_B64" ] || [ -z "$PLAY_KEYSTORE_PASSWORD" ] || [ -z "$PLAY_KEY_PASSWORD" ] || [ ! -s "$PLAY_SA_JSON" ]; then
         echo "publish - PLAY_* CI variables missing (is this a protected branch?)"; exit 1
+      fi
+    - *play-pip
+    - |
+      if [ "$PLAY_PUSH_LISTING" = "true" ]; then
+        python3 tool/play_listing.py --package "$PLAY_PACKAGE" --credentials "$PLAY_SA_JSON" --metadata-dir "$PLAY_METADATA_DIR"
       fi
     - echo "$PLAY_UPLOAD_KEYSTORE_B64" | base64 -d > "$CI_PROJECT_DIR/android/upload.jks"
     - |
@@ -153,10 +194,7 @@ build-android:
       keyAlias=upload
       EOF
     - flutter build appbundle --release --build-number=${CI_PIPELINE_ID}
-    # the flutter image's python3 has no pip module — bootstrap it first
-    - python3 -m ensurepip --upgrade 2>/dev/null || { apt-get update -qq && apt-get install -y -qq python3-pip; }
-    - python3 -m pip install --quiet --break-system-packages google-api-python-client google-auth google-auth-httplib2
-    - python3 tool/play_upload.py --package "$PLAY_PACKAGE" --aab build/app/outputs/bundle/release/app-release.aab --credentials "$PLAY_SA_JSON" --track "$PLAY_TRACK"
+    - python3 tool/play_upload.py --package "$PLAY_PACKAGE" --aab build/app/outputs/bundle/release/app-release.aab --credentials "$PLAY_SA_JSON" --track "$PLAY_TRACK" --release-notes-dir "$PLAY_METADATA_DIR" $PLAY_UPLOAD_EXTRA_ARGS
   artifacts:
     paths:
       - build/app/outputs/bundle/release/app-release.aab
@@ -173,13 +211,38 @@ publish-internal:
 
 # main → production: click-gated. A green main pipeline stages the job; a
 # human presses Play in the pipeline view to ship to the production track.
-# `allow_failure: false` keeps the pipeline "blocked" (not "passed") until then.
+# The job pushes the store listing first (fails fast on validation), then
+# builds, uploads with release notes and rolls out to 100 % — set
+# PLAY_UPLOAD_EXTRA_ARGS="--user-fraction 0.2" in the Run-job form for a
+# staged rollout instead.
+# `allow_failure: true` keeps a pending manual job from leaving main "blocked".
 publish-production:
   extends: .play-publish
   variables:
     PLAY_TRACK: production
+    PLAY_PUSH_LISTING: "true"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
-      # A pending manual job must not leave the main pipeline "blocked".
+      allow_failure: true
+
+# development → store listing only (manual): push texts + graphics from
+# $PLAY_METADATA_DIR without building or shipping an AAB. Same app-wide
+# listing as production sees (Play has one listing per app, not per track);
+# for an unpublished app it updates the draft. No Gradle, no pub get.
+publish-listing:
+  stage: publish
+  needs: []
+  before_script: []
+  cache: []
+  script:
+    - |
+      if [ ! -s "$PLAY_SA_JSON" ]; then
+        echo "publish-listing - PLAY_SA_JSON missing (is this a protected branch?)"; exit 1
+      fi
+    - *play-pip
+    - python3 tool/play_listing.py --package "$PLAY_PACKAGE" --credentials "$PLAY_SA_JSON" --metadata-dir "$PLAY_METADATA_DIR"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "development"'
+      when: manual
       allow_failure: true
