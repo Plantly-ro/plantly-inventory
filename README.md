@@ -59,12 +59,29 @@ PlantlyInventory is offline-first by design. Plant data, photos, care events, an
 
 See `lib/features/me/privacy_screen.dart` for the user-facing statement and `lib/services/telemetry.dart` for the consent gating.
 
-## Release signing (Android)
+## Release (Android / Google Play)
 
-Release APKs are signed with a keystore referenced via `android/key.properties`. That file is **not committed** — copy `android/key.properties.example` and fill in your own values, then run:
+Releases are built and published by GitLab CI (`.gitlab-ci.yml`); the only manual step is
+the click on `publish-production`.
+
+| Branch | Job | What ships |
+|---|---|---|
+| `development` | `publish-internal` (automatic) | signed AAB → Play **internal** track, release notes from `android/fastlane/metadata/android/<locale>/changelogs/` |
+| `development` | `publish-listing` (manual) | store listing texts + graphics only, no build |
+| `main` | `publish-production` (manual) | listing push (validated first, fails fast) → build → AAB → **production**, 100 % rollout; set `PLAY_UPLOAD_EXTRA_ARGS="--user-fraction 0.2"` in the Run-job form for a staged rollout |
+
+- `versionCode` = the CI pipeline id (`--build-number=$CI_PIPELINE_ID`); `versionName` = `version:` in `pubspec.yaml`.
+- Release notes: `changelogs/default.txt` applies to every build; add `changelogs/<versionCode>.txt` to override for one build (≤500 chars).
+- Scripts: `tool/play_listing.py` (listing; `--dry-run` validates without credentials) and `tool/play_upload.py` (AAB + track). Tests: `python3 -m unittest discover -s tool/tests` (stdlib only; `lint-tools` runs them on every push).
+- Store metadata layout, console-only items and CI variables: [`android/fastlane/README.md`](android/fastlane/README.md), [`docs/play-console-checklist.md`](docs/play-console-checklist.md).
+- Privacy policy (en/ro): [`docs/privacy-policy.en.md`](docs/privacy-policy.en.md), [`docs/privacy-policy.ro.md`](docs/privacy-policy.ro.md) — to be hosted at `https://plantly.ro/app/inventory/privacy`.
+
+### Local release signing
+
+Release builds are signed with a keystore referenced via `android/key.properties`. That file is **not committed** — copy `android/key.properties.example` and fill in your own values, then run:
 
 ```bash
-flutter build apk --split-per-abi --release
+flutter build appbundle --release     # or: flutter build apk --split-per-abi --release
 ```
 
 Without `key.properties`, the release build falls back to the Flutter debug keystore so `flutter run --release` still works on contributor machines. Details: https://docs.flutter.dev/deployment/android#signing-the-app
