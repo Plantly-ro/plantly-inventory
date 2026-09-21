@@ -35,7 +35,10 @@ class FakeResource:
         def method(**kwargs):
             if name in NESTED:
                 return FakeResource(self._recorder, self._results, prefix=f"{full}.")
-            return FakeRequest(self._recorder, full, kwargs, self._results.get(full))
+            result = self._results.get(full)
+            if isinstance(result, list):  # per-call sequence; the last entry repeats
+                result = result.pop(0) if len(result) > 1 else result[0]
+            return FakeRequest(self._recorder, full, kwargs, result)
 
         return method
 

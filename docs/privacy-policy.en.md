@@ -48,7 +48,7 @@ An optional "Sell on plantly.ro" feature exists in the code but is **disabled** 
 - **Notifications** — to show your care reminders.
 - **Run at start-up** — to re-schedule reminders after a reboot.
 - **Internet** — only for the cases listed above (fonts, opt-in reports, links you open).
-- Photos are picked through the system photo picker; the app does not scan your gallery.
+- Photos are picked through the system photo picker or taken with your camera app; the app itself requests no camera permission and does not scan your gallery.
 
 ## Children
 

@@ -48,7 +48,7 @@ Versiunea publicată pe Google Play este livrată **fără un punct de raportare
 - **Notificări** — pentru a afișa memento-urile de îngrijire.
 - **Pornire la boot** — pentru a reprograma memento-urile după o repornire.
 - **Internet** — doar pentru situațiile de mai sus (fonturi, rapoarte opționale, linkuri pe care le deschizi).
-- Pozele sunt alese prin selectorul de fotografii al sistemului; aplicația nu îți scanează galeria.
+- Pozele sunt alese prin selectorul de fotografii al sistemului sau făcute cu aplicația ta de cameră; aplicația în sine nu cere permisiunea de cameră și nu îți scanează galeria.
 
 ## Copii
 

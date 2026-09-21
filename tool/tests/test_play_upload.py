@@ -112,6 +112,33 @@ class RunTests(unittest.TestCase):
         self.assertEqual(release["status"], "inProgress")
         self.assertEqual(release["userFraction"], 0.2)
 
+    def test_failure_after_insert_discards_the_edit_without_commit(self):
+        svc = FakeService(results={"edits.bundles.upload": RuntimeError("upload boom")})
+        args = play_upload.parse_args(["--package", "p", "--aab", "a", "--credentials", "c"])
+        with self.assertRaises(RuntimeError):
+            play_upload.run(svc, args, media_factory=fake_media)
+        self.assertEqual(svc.names(), ["edits.insert", "edits.bundles.upload", "edits.delete"])
+
+    def test_commit_retries_as_draft_when_play_refuses_auto_review(self):
+        refusal = RuntimeError("Please set the query parameter changesNotSentForReview to true.")
+        svc = FakeService(results={
+            "edits.bundles.upload": {"versionCode": 7},
+            "edits.commit": [refusal, {"id": "edit-1"}],
+        })
+        args = play_upload.parse_args(["--package", "p", "--aab", "a", "--credentials", "c"])
+        self.assertEqual(play_upload.run(svc, args, media_factory=fake_media), 0)
+        commits = svc.kwargs("edits.commit")
+        self.assertEqual(len(commits), 2)
+        self.assertNotIn("changesNotSentForReview", commits[0])
+        self.assertIs(commits[1]["changesNotSentForReview"], True)
+        self.assertNotIn("edits.delete", svc.names())
+
+    def test_changes_not_sent_for_review_flag(self):
+        svc = self._run("--changes-not-sent-for-review")
+        commits = svc.kwargs("edits.commit")
+        self.assertEqual(len(commits), 1)
+        self.assertIs(commits[0]["changesNotSentForReview"], True)
+
     def test_user_fraction_must_be_in_open_interval(self):
         for bad in ("0", "1", "1.5", "-0.1"):
             with self.assertRaises(SystemExit):

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Push the Play store listing from a fastlane `metadata/android/` tree.
 
-One Android Publisher edit: per locale `edits.listings.update` (title, short
-and full description), then — unless `--skip-images` — `edits.images.deleteall`
+One Android Publisher edit: per locale `edits.listings.patch` (title, short
+and full description — patch, so a console-set promo video survives), then — unless `--skip-images` — `edits.images.deleteall`
 + `upload` for the icon, feature graphic and phone screenshots (in filename
 order), then `edits.commit`.
 
@@ -14,7 +14,8 @@ order), then `edits.commit`.
 `--dry-run` validates the tree and prints the plan without touching the API
 (no credentials needed) — CI runs it on every push so a bad listing fails
 long before the 25-minute AAB build. Validation (Play's limits): title ≤30,
-short description ≤80, full description ≤4000 chars; icon 512×512 PNG;
+short description ≤80, full description ≤4000 chars; `changelogs/default.txt`
+present and every changelog ≤500 chars; icon 512×512 PNG;
 feature graphic 1024×500; 2–8 phone screenshots, each 320–3840 px with the
 long side at most twice the short side. Exit 2 on validation errors.
 """
@@ -40,6 +41,7 @@ IMAGE_TYPES = ("icon", "featureGraphic", "phoneScreenshots")
 EXACT_SIZES = {"icon": (512, 512), "featureGraphic": (1024, 500)}
 SCREENSHOTS_MIN, SCREENSHOTS_MAX = 2, 8
 SCREENSHOT_SIDE_MIN, SCREENSHOT_SIDE_MAX = 320, 3840
+CHANGELOG_LIMIT = 500
 IMAGE_EXTS = (".png", ".jpg", ".jpeg")
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -55,29 +57,41 @@ class LocaleListing:
     language: str
     texts: dict = field(default_factory=dict)  # api field -> text
     images: dict = field(default_factory=dict)  # imageType -> [paths]
+    changelogs: dict = field(default_factory=dict)  # file name -> text
 
 
 def image_size(path: str):
     """(width, height) from the PNG IHDR or JPEG SOF header, without Pillow."""
-    with open(path, "rb") as fh:
-        head = fh.read(32)
-        if head.startswith(PNG_SIGNATURE):
-            if head[12:16] != b"IHDR":
-                raise ValidationError(f"{path}: malformed PNG (no IHDR)")
-            return struct.unpack(">II", head[16:24])
-        if head[:2] == b"\xff\xd8":
-            fh.seek(2)
-            while True:
-                marker = fh.read(2)
-                if len(marker) < 2 or marker[0] != 0xFF:
-                    break
-                if marker[1] in (0xC0, 0xC1, 0xC2):
-                    fh.read(3)
-                    height, width = struct.unpack(">HH", fh.read(4))
-                    return width, height
-                (seg_len,) = struct.unpack(">H", fh.read(2))
-                fh.seek(seg_len - 2, os.SEEK_CUR)
-            raise ValidationError(f"{path}: malformed JPEG (no SOF)")
+    try:
+        with open(path, "rb") as fh:
+            head = fh.read(32)
+            if head.startswith(PNG_SIGNATURE):
+                if head[12:16] != b"IHDR":
+                    raise ValidationError(f"{path}: malformed PNG (no IHDR)")
+                return struct.unpack(">II", head[16:24])
+            if head[:2] == b"\xff\xd8":
+                fh.seek(2)
+                while True:
+                    byte = fh.read(1)
+                    if byte != b"\xff":
+                        break
+                    # markers may be preceded by any number of 0xFF fill bytes
+                    while byte == b"\xff":
+                        byte = fh.read(1)
+                    if not byte:
+                        break
+                    marker = byte[0]
+                    if marker in (0xC0, 0xC1, 0xC2):
+                        fh.read(3)
+                        height, width = struct.unpack(">HH", fh.read(4))
+                        return width, height
+                    if marker == 0xD9:  # EOI
+                        break
+                    (seg_len,) = struct.unpack(">H", fh.read(2))
+                    fh.seek(seg_len - 2, os.SEEK_CUR)
+                raise ValidationError(f"{path}: malformed JPEG (no SOF)")
+    except struct.error as exc:
+        raise ValidationError(f"{path}: truncated image header ({exc})") from exc
     raise ValidationError(f"{path}: not a PNG/JPEG file")
 
 
@@ -117,6 +131,11 @@ def load_metadata(metadata_dir: str, locale_map=LOCALE_MAP):
                         if os.path.isfile(path):
                             listing.images[image_type] = [path]
                             break
+        changelog_dir = os.path.join(locale_dir, "changelogs")
+        if os.path.isdir(changelog_dir):
+            for name in sorted(os.listdir(changelog_dir)):
+                if name.endswith(".txt"):
+                    listing.changelogs[name] = _read_text(os.path.join(changelog_dir, name))
         listings.append(listing)
     if not listings:
         raise ValidationError(f"no locale dirs under {metadata_dir}")
@@ -134,6 +153,13 @@ def validate(listings, skip_images: bool = False):
                 errors.append(f"{tag} missing or empty {TEXT_FILES[api_field]}")
             elif len(text) > limit:
                 errors.append(f"{tag} {TEXT_FILES[api_field]} is {len(text)} chars (max {limit})")
+        # release notes are attached by play_upload.py after the 25-min build —
+        # catch a bad note here instead.
+        if "default.txt" not in listing.changelogs:
+            errors.append(f"{tag} missing changelogs/default.txt")
+        for name, text in listing.changelogs.items():
+            if len(text) > CHANGELOG_LIMIT:
+                errors.append(f"{tag} changelogs/{name} is {len(text)} chars (max {CHANGELOG_LIMIT})")
         if skip_images or not listing.images:
             continue
         for image_type, expected in EXACT_SIZES.items():
@@ -175,6 +201,8 @@ def describe_plan(package: str, listings, skip_images: bool):
             text = listing.texts.get(api_field, "")
             preview = text.splitlines()[0][:60] if text else ""
             lines.append(f"    {api_field}: {len(text)} chars  \"{preview}\"")
+        notes = ", ".join(f"{n} ({len(t)} chars)" for n, t in listing.changelogs.items())
+        lines.append(f"    changelogs: {notes or 'none'}")
         if skip_images:
             lines.append("    images: skipped (--skip-images)")
             continue
@@ -189,14 +217,23 @@ def describe_plan(package: str, listings, skip_images: bool):
     return "\n".join(lines)
 
 
-def push(service, package: str, listings, skip_images: bool = False, media_factory=play_api.file_media):
+def push(
+    service,
+    package: str,
+    listings,
+    skip_images: bool = False,
+    changes_not_sent_for_review: bool = False,
+    media_factory=play_api.file_media,
+):
     """Apply the listing inside one edit; deletes the edit if anything fails."""
     edits = service.edits()
     edit_id = edits.insert(body={}, packageName=package).execute(num_retries=play_api.RETRIES)["id"]
     try:
         for listing in listings:
             body = {"language": listing.language, **listing.texts}
-            edits.listings().update(
+            # patch, not update: update replaces the whole Listing and would null
+            # a promo `video` set in the console.
+            edits.listings().patch(
                 packageName=package, editId=edit_id, language=listing.language, body=body
             ).execute(num_retries=play_api.RETRIES)
             print(f"listing updated: {listing.language}")
@@ -219,12 +256,9 @@ def push(service, package: str, listings, skip_images: bool = False, media_facto
                         media_body=media_factory(path, mimetype),
                     ).execute(num_retries=play_api.RETRIES)
                 print(f"images replaced: {listing.language}/{image_type} x{len(paths)}")
-        edits.commit(packageName=package, editId=edit_id).execute(num_retries=play_api.RETRIES)
+        play_api.commit_edit(edits, package, edit_id, changes_not_sent_for_review)
     except Exception:
-        try:
-            edits.delete(packageName=package, editId=edit_id).execute()
-        except Exception as cleanup_exc:  # pragma: no cover - best effort
-            print(f"warning: could not discard edit {edit_id}: {cleanup_exc}", file=sys.stderr)
+        play_api.discard_edit(edits, package, edit_id)
         raise
     print(f"committed listing for {package} ({', '.join(l.language for l in listings)})")
     return edit_id
@@ -237,6 +271,11 @@ def main(argv=None) -> int:
     ap.add_argument("--metadata-dir", default="android/fastlane/metadata/android")
     ap.add_argument("--dry-run", action="store_true", help="validate and print the plan; no API calls")
     ap.add_argument("--skip-images", action="store_true", help="texts only; leave images untouched")
+    ap.add_argument(
+        "--changes-not-sent-for-review",
+        action="store_true",
+        help="commit as a draft (send for review from Play Console); auto-retried on Play's refusal anyway",
+    )
     args = ap.parse_args(argv)
 
     try:
@@ -258,7 +297,13 @@ def main(argv=None) -> int:
         print("error: --credentials is required without --dry-run", file=sys.stderr)
         return 2
     service = play_api.build_service(args.credentials)
-    push(service, args.package, listings, skip_images=args.skip_images)
+    push(
+        service,
+        args.package,
+        listings,
+        skip_images=args.skip_images,
+        changes_not_sent_for_review=args.changes_not_sent_for_review,
+    )
     return 0
 
 

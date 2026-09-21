@@ -50,28 +50,31 @@ def build_release(version_code, status: str, user_fraction=None, release_notes=N
 def run(service, args, media_factory=play_api.file_media) -> int:
     edits = service.edits()
     edit_id = edits.insert(body={}, packageName=args.package).execute(num_retries=play_api.RETRIES)["id"]
+    try:
+        media = media_factory(args.aab, "application/octet-stream", resumable=True)
+        bundle = edits.bundles().upload(
+            packageName=args.package, editId=edit_id, media_body=media
+        ).execute(num_retries=play_api.RETRIES)
+        version_code = bundle["versionCode"]
+        print(f"uploaded AAB versionCode={version_code}")
 
-    media = media_factory(args.aab, "application/octet-stream", resumable=True)
-    bundle = edits.bundles().upload(
-        packageName=args.package, editId=edit_id, media_body=media
-    ).execute(num_retries=play_api.RETRIES)
-    version_code = bundle["versionCode"]
-    print(f"uploaded AAB versionCode={version_code}")
+        release_notes = None
+        if args.release_notes_dir:
+            release_notes = play_api.load_release_notes(args.release_notes_dir, version_code, LOCALE_MAP)
+            print(f"release notes: {', '.join(n['language'] for n in release_notes) or 'none found'}")
 
-    release_notes = None
-    if args.release_notes_dir:
-        release_notes = play_api.load_release_notes(args.release_notes_dir, version_code, LOCALE_MAP)
-        print(f"release notes: {', '.join(n['language'] for n in release_notes) or 'none found'}")
+        release = build_release(version_code, args.status, args.user_fraction, release_notes)
+        edits.tracks().update(
+            packageName=args.package,
+            editId=edit_id,
+            track=args.track,
+            body={"releases": [release]},
+        ).execute(num_retries=play_api.RETRIES)
 
-    release = build_release(version_code, args.status, args.user_fraction, release_notes)
-    edits.tracks().update(
-        packageName=args.package,
-        editId=edit_id,
-        track=args.track,
-        body={"releases": [release]},
-    ).execute(num_retries=play_api.RETRIES)
-
-    edits.commit(packageName=args.package, editId=edit_id).execute(num_retries=play_api.RETRIES)
+        play_api.commit_edit(edits, args.package, edit_id, args.changes_not_sent_for_review)
+    except Exception:
+        play_api.discard_edit(edits, args.package, edit_id)
+        raise
     rollout = f"{release['status']}" + (
         f" {release['userFraction'] * 100:g}%" if "userFraction" in release else ""
     )
@@ -101,6 +104,11 @@ def parse_args(argv=None):
         "--user-fraction",
         type=user_fraction,
         help="staged rollout fraction in (0,1): sets status=inProgress with this userFraction",
+    )
+    ap.add_argument(
+        "--changes-not-sent-for-review",
+        action="store_true",
+        help="commit as a draft (send for review from Play Console); auto-retried on Play's refusal anyway",
     )
     return ap.parse_args(argv)
 

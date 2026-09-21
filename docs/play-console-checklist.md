@@ -131,6 +131,12 @@ defensible today because nothing can be transmitted with an empty DSN, but the f
 - Testing requirement: personal developer accounts created after 13 Nov 2023 need 12
   testers for 14 days on closed testing before production. URUNDEAD LABS is an
   organisation account, which is exempt — verify in *Dashboard → Set up your app*.
+- `publish-production` commits the **listing before the build starts**, so texts and
+  graphics go live (or into review) even if the 25-min build later fails. Either re-run the
+  job after the fix, or revert the metadata and run `publish-listing` from `development`.
+- If Play refuses the automatic review (`changesNotSentForReview`: unpublished app or a
+  console change pending review) the scripts retry as a draft commit and say so in the
+  job log — then click **Send for review** in the console.
 - After the first `publish-production` run, review the release in *Production → Releases*
   and click **Send for review** if the console asks (managed publishing is off by default,
   so an API commit normally goes straight to review).

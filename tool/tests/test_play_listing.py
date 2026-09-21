@@ -30,9 +30,11 @@ def write(path, data):
         fh.write(data)
 
 
-def make_locale(root, name, *, title="Plantly Inventory", short="short", full="full", images=True, shots=2):
+def make_locale(root, name, *, title="Plantly Inventory", short="short", full="full", images=True, shots=2, changelog="notes"):
     d = os.path.join(root, name)
     write(os.path.join(d, "title.txt"), title + "\n")
+    if changelog is not None:
+        write(os.path.join(d, "changelogs", "default.txt"), changelog)
     write(os.path.join(d, "short_description.txt"), short)
     write(os.path.join(d, "full_description.txt"), full)
     if images:
@@ -121,6 +123,34 @@ class LoadAndValidateTests(unittest.TestCase):
         write(path, jpeg)
         self.assertEqual(play_listing.image_size(path), (100, 200))
 
+    def test_changelog_default_required_and_limit_enforced(self):
+        d = make_locale(self.root, "en-US", changelog=None)
+        errors = play_listing.validate(play_listing.load_metadata(self.root))
+        self.assertEqual(errors, ["[en-US] missing changelogs/default.txt"])
+        write(os.path.join(d, "changelogs", "default.txt"), "ok")
+        write(os.path.join(d, "changelogs", "4242.txt"), "ș" * 501)  # code points, not bytes
+        errors = play_listing.validate(play_listing.load_metadata(self.root))
+        self.assertEqual(errors, ["[en-US] changelogs/4242.txt is 501 chars (max 500)"])
+        write(os.path.join(d, "changelogs", "4242.txt"), "ș" * 500)
+        self.assertEqual(play_listing.validate(play_listing.load_metadata(self.root)), [])
+
+    def test_image_size_skips_jpeg_fill_bytes(self):
+        jpeg = b"\xff\xd8" + b"\xff\xff\xff\xe0" + struct.pack(">H", 16) + b"\x00" * 14
+        jpeg += b"\xff\xff\xc2" + struct.pack(">H", 17) + b"\x08" + struct.pack(">HH", 300, 150) + b"\x00" * 10
+        path = os.path.join(self.root, "fill.jpg")
+        write(path, jpeg)
+        self.assertEqual(play_listing.image_size(path), (150, 300))
+
+    def test_truncated_headers_raise_validation_error(self):
+        png = os.path.join(self.root, "short.png")
+        write(png, play_listing.PNG_SIGNATURE + b"\x00\x00\x00\x0dIHDR\x00\x01")
+        with self.assertRaises(play_listing.ValidationError):
+            play_listing.image_size(png)
+        jpg = os.path.join(self.root, "short.jpg")
+        write(jpg, b"\xff\xd8\xff\xc0\x00")
+        with self.assertRaises(play_listing.ValidationError):
+            play_listing.image_size(jpg)
+
     @unittest.skipUnless(os.path.isdir(REPO_METADATA), "repo metadata not present")
     def test_repo_metadata_is_valid(self):
         listings = play_listing.load_metadata(REPO_METADATA)
@@ -146,7 +176,7 @@ class PushTests(unittest.TestCase):
         names = svc.names()
         self.assertEqual(names[0], "edits.insert")
         self.assertEqual(names[-1], "edits.commit")
-        self.assertEqual(names.count("edits.listings.update"), 2)
+        self.assertEqual(names.count("edits.listings.patch"), 2)
         # per locale: 3 deleteall; uploads = 1 icon + 1 feature + shots
         self.assertEqual(names.count("edits.images.deleteall"), 6)
         self.assertEqual(names.count("edits.images.upload"), (2 + 2) + (2 + 3))
@@ -154,7 +184,7 @@ class PushTests(unittest.TestCase):
         edit_ids = {kw["editId"] for n, kw in svc.calls if "editId" in kw}
         self.assertEqual(edit_ids, {"edit-1"})
 
-        update_bodies = svc.kwargs("edits.listings.update")
+        update_bodies = svc.kwargs("edits.listings.patch")
         self.assertEqual(update_bodies[0]["language"], "en-US")
         self.assertEqual(
             update_bodies[0]["body"],
@@ -176,23 +206,86 @@ class PushTests(unittest.TestCase):
         svc = FakeService()
         play_listing.push(svc, "ro.plantly.inventory", self.listings, skip_images=True, media_factory=fake_media)
         self.assertEqual(
-            svc.names(), ["edits.insert", "edits.listings.update", "edits.listings.update", "edits.commit"]
+            svc.names(), ["edits.insert", "edits.listings.patch", "edits.listings.patch", "edits.commit"]
         )
 
-    def test_failure_discards_the_edit_and_reraises(self):
-        svc = FakeService(results={"edits.listings.update": RuntimeError("boom")})
+    def test_failure_mid_images_discards_the_edit_without_commit(self):
+        svc = FakeService(results={"edits.images.upload": [None, RuntimeError("upload boom")]})
         with self.assertRaises(RuntimeError):
             play_listing.push(svc, "ro.plantly.inventory", self.listings, media_factory=fake_media)
-        self.assertEqual(svc.names(), ["edits.insert", "edits.listings.update", "edits.delete"])
+        names = svc.names()
+        self.assertEqual(names.count("edits.images.upload"), 2)
+        self.assertEqual(names[-1], "edits.delete")
+        self.assertNotIn("edits.commit", names)
+
+    def test_commit_retries_as_draft_when_play_refuses_auto_review(self):
+        refusal = RuntimeError(
+            "Changes cannot be sent for review automatically. Please set the query parameter "
+            "changesNotSentForReview to true."
+        )
+        svc = FakeService(results={"edits.commit": [refusal, {"id": "edit-1"}]})
+        play_listing.push(svc, "ro.plantly.inventory", self.listings, skip_images=True, media_factory=fake_media)
+        commits = svc.kwargs("edits.commit")
+        self.assertEqual(len(commits), 2)
+        self.assertNotIn("changesNotSentForReview", commits[0])
+        self.assertIs(commits[1]["changesNotSentForReview"], True)
+        self.assertNotIn("edits.delete", svc.names())
+
+    def test_unrelated_commit_error_is_not_retried(self):
+        svc = FakeService(results={"edits.commit": RuntimeError("quota exceeded")})
+        with self.assertRaises(RuntimeError):
+            play_listing.push(svc, "ro.plantly.inventory", self.listings, skip_images=True, media_factory=fake_media)
+        self.assertEqual(svc.names().count("edits.commit"), 1)
+        self.assertEqual(svc.names()[-1], "edits.delete")
+
+    def test_flag_commits_as_draft_first_time(self):
+        svc = FakeService()
+        play_listing.push(
+            svc, "ro.plantly.inventory", self.listings, skip_images=True,
+            changes_not_sent_for_review=True, media_factory=fake_media,
+        )
+        commits = svc.kwargs("edits.commit")
+        self.assertEqual(len(commits), 1)
+        self.assertIs(commits[0]["changesNotSentForReview"], True)
+
+    def test_failure_discards_the_edit_and_reraises(self):
+        svc = FakeService(results={"edits.listings.patch": RuntimeError("boom")})
+        with self.assertRaises(RuntimeError):
+            play_listing.push(svc, "ro.plantly.inventory", self.listings, media_factory=fake_media)
+        self.assertEqual(svc.names(), ["edits.insert", "edits.listings.patch", "edits.delete"])
         self.assertNotIn("edits.commit", svc.names())
 
 
 class MainTests(unittest.TestCase):
     def test_dry_run_needs_no_credentials_and_exits_zero(self):
-        with tempfile.TemporaryDirectory() as root:
-            make_locale(root, "en-US")
-            rc = play_listing.main(["--package", "p", "--metadata-dir", root, "--dry-run"])
+        def explode(_path):
+            raise AssertionError("build_service must not be called in --dry-run")
+
+        original = play_listing.play_api.build_service
+        play_listing.play_api.build_service = explode
+        try:
+            with tempfile.TemporaryDirectory() as root:
+                make_locale(root, "en-US")
+                rc = play_listing.main(["--package", "p", "--metadata-dir", root, "--dry-run"])
+        finally:
+            play_listing.play_api.build_service = original
         self.assertEqual(rc, 0)
+
+    def test_flag_is_passed_through_main(self):
+        svc = FakeService()
+        original = play_listing.play_api.build_service
+        play_listing.play_api.build_service = lambda _path: svc
+        try:
+            with tempfile.TemporaryDirectory() as root:
+                make_locale(root, "en-US")
+                rc = play_listing.main([
+                    "--package", "p", "--metadata-dir", root, "--credentials", "x.json",
+                    "--skip-images", "--changes-not-sent-for-review",
+                ])
+        finally:
+            play_listing.play_api.build_service = original
+        self.assertEqual(rc, 0)
+        self.assertIs(svc.kwargs("edits.commit")[0]["changesNotSentForReview"], True)
 
     def test_validation_failure_exits_two(self):
         with tempfile.TemporaryDirectory() as root:
