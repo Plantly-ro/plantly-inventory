@@ -18,6 +18,7 @@ import '../../plugins/plugin_registry.dart';
 import '../../services/file_export.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
+import 'backup_actions.dart';
 import 'care_types_screen.dart';
 import 'notifications_screen.dart';
 import 'privacy_screen.dart';
@@ -271,6 +272,7 @@ class _PlantlyAccountRow extends ConsumerWidget {
 
   Future<void> _signOut(BuildContext context, WidgetRef ref, String username) async {
     final t = AppLocalizations.of(context);
+    final plugin = ref.read(plantlyRoPluginProvider); // before the await (#14)
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -286,7 +288,7 @@ class _PlantlyAccountRow extends ConsumerWidget {
         ],
       ),
     );
-    if (ok == true) await ref.read(plantlyRoPluginProvider)?.revoke();
+    if (ok == true) await plugin?.revoke();
   }
 }
 
@@ -308,34 +310,59 @@ class _NameRow extends ConsumerWidget {
   }
 
   Future<void> _edit(BuildContext context, WidgetRef ref, String? current) async {
-    final controller = TextEditingController(text: current ?? '');
-    final t = AppLocalizations.of(context);
+    final prefs = ref.read(userPrefsProvider.notifier); // before the await (#14)
     final result = await showDialog<String?>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(t.meYourName),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textCapitalization: TextCapitalization.words,
-          decoration: InputDecoration(hintText: t.meYourNameHint, border: const OutlineInputBorder()),
-          onSubmitted: (v) => Navigator.of(ctx).pop(v),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: Text(t.cancel)),
-          if ((current ?? '').isNotEmpty)
-            TextButton(
-              style: TextButton.styleFrom(foregroundColor: surface.terra),
-              onPressed: () => Navigator.of(ctx).pop(''),
-              child: Text(t.commonClear),
-            ),
-          FilledButton(onPressed: () => Navigator.of(ctx).pop(controller.text), child: Text(t.commonSave)),
-        ],
-      ),
+      builder: (_) => _NameDialog(current: current, surface: surface),
     );
-    controller.dispose();
     if (result == null) return;
-    await ref.read(userPrefsProvider.notifier).setName(result);
+    await prefs.setName(result);
+  }
+}
+
+/// Owns its [TextEditingController] so it is disposed with the route, not
+/// the moment `showDialog` returns (the dialog is still animating out then).
+class _NameDialog extends StatefulWidget {
+  const _NameDialog({required this.current, required this.surface});
+  final String? current;
+  final PlantlySurface surface;
+
+  @override
+  State<_NameDialog> createState() => _NameDialogState();
+}
+
+class _NameDialogState extends State<_NameDialog> {
+  late final TextEditingController _controller = TextEditingController(text: widget.current ?? '');
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    return AlertDialog(
+      title: Text(t.meYourName),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.words,
+        decoration: InputDecoration(hintText: t.meYourNameHint, border: const OutlineInputBorder()),
+        onSubmitted: (v) => Navigator.of(context).pop(v),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(null), child: Text(t.cancel)),
+        if ((widget.current ?? '').isNotEmpty)
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: widget.surface.terra),
+            onPressed: () => Navigator.of(context).pop(''),
+            child: Text(t.commonClear),
+          ),
+        FilledButton(onPressed: () => Navigator.of(context).pop(_controller.text), child: Text(t.commonSave)),
+      ],
+    );
   }
 }
 
@@ -407,8 +434,10 @@ class _NotificationRow extends ConsumerWidget {
       onTap: granted == true || !supported
           ? null
           : () async {
-              final ok = await ref.read(notificationServiceProvider).requestPermissions();
-              ref.read(notificationPermissionProvider.notifier).state = ok;
+              final notifications = ref.read(notificationServiceProvider); // before the await (#14)
+              final permission = ref.read(notificationPermissionProvider.notifier);
+              final ok = await notifications.requestPermissions();
+              permission.state = ok;
               if (!context.mounted) return;
               _toast(context, ok ? 'Notifications enabled' : 'Still denied — enable in system settings');
             },
@@ -437,21 +466,17 @@ class _BackupRow extends ConsumerWidget {
   }
 
   Future<void> _runExport(BuildContext context, WidgetRef ref) async {
+    // Resolve everything before the first await. The passphrase dialog's
+    // keyboard can shrink the viewport enough to unmount this row, after
+    // which `ref` is dead (issue #14); `actions` lives in the container.
     final messenger = ScaffoldMessenger.of(context);
-    final secret = await _promptSecret(context, surface, title: 'Backup passphrase');
+    final actions = ref.read(backupActionsProvider);
+    final secret = await _promptSecret(context, title: 'Backup passphrase');
     if (secret == null || secret.isEmpty) return;
     try {
-      final bytes = withPhotos
-          ? await ref.read(zipBackupServiceProvider).exportZip(secret: secret)
-          : BackupService.encodeBlob(await ref.read(backupServiceProvider).export(secret: secret));
-      final stamp = DateTime.now().toUtc().toIso8601String().replaceAll(':', '-').substring(0, 19);
-      final ext = withPhotos ? 'zip' : 'json';
-      final where = await ref.read(fileExporterProvider).save(
-            fileName: 'plantly-backup-$stamp.$ext',
-            bytes: bytes,
-            mimeType: withPhotos ? 'application/zip' : 'application/json',
-            shareText: 'PlantlyInventory backup',
-          );
+      final where = withPhotos
+          ? await actions.exportZip(secret: secret)
+          : await actions.exportJson(secret: secret);
       messenger
         ..clearSnackBars()
         ..showSnackBar(SnackBar(content: Text('Backup saved: $where')));
@@ -479,7 +504,10 @@ class _ImportRow extends ConsumerWidget {
   }
 
   Future<void> _run(BuildContext context, WidgetRef ref) async {
+    // Same as _BackupRow: the file picker + passphrase dialog can both
+    // unmount this row, so resolve the controller before any await (#14).
     final messenger = ScaffoldMessenger.of(context);
+    final actions = ref.read(backupActionsProvider);
     final file = await openFile(
       acceptedTypeGroups: [
         const XTypeGroup(label: 'Plantly backup', extensions: ['json', 'zip']),
@@ -487,29 +515,11 @@ class _ImportRow extends ConsumerWidget {
     );
     if (file == null) return;
     if (!context.mounted) return;
-    final secret = await _promptSecret(context, surface, title: 'Backup passphrase');
+    final secret = await _promptSecret(context, title: 'Backup passphrase');
     if (secret == null || secret.isEmpty) return;
     try {
       final bytes = await file.readAsBytes();
-      final ctx = ref.read(appContextProvider).requireValue;
-      final opLog = ctx.opLog;
-      String msg;
-      if (file.name.toLowerCase().endsWith('.zip')) {
-        final result = await ref.read(zipBackupServiceProvider).importZip(
-              bytes: bytes,
-              secret: secret,
-              opLog: opLog,
-            );
-        msg = 'Imported ${result.json.total} rows + ${result.photosRestored} photos';
-      } else {
-        final json = BackupService.decodeBlob(bytes);
-        final result = await ref.read(backupServiceProvider).import(
-              blob: json,
-              secret: secret,
-              opLog: opLog,
-            );
-        msg = 'Imported ${result.total} rows';
-      }
+      final msg = await actions.importBackup(fileName: file.name, bytes: bytes, secret: secret);
       messenger
         ..clearSnackBars()
         ..showSnackBar(SnackBar(content: Text(msg)));
@@ -550,10 +560,11 @@ class _ICalRow extends ConsumerWidget {
 
   Future<void> _run(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
+    final exporter = ref.read(fileExporterProvider); // before the await (#14)
     try {
       final ics = await ref.read(iCalFutureProvider.future);
       final stamp = DateTime.now().toUtc().toIso8601String().replaceAll(':', '-').substring(0, 19);
-      final where = await ref.read(fileExporterProvider).save(
+      final where = await exporter.save(
             fileName: 'plantly-reminders-$stamp.ics',
             bytes: Uint8List.fromList(utf8.encode(ics)),
             mimeType: 'text/calendar',
@@ -570,32 +581,53 @@ class _ICalRow extends ConsumerWidget {
   }
 }
 
-Future<String?> _promptSecret(BuildContext context, PlantlySurface surface, {required String title}) async {
-  final controller = TextEditingController();
-  final result = await showDialog<String>(
+Future<String?> _promptSecret(BuildContext context, {required String title}) {
+  return showDialog<String>(
     context: context,
-    builder: (ctx) {
-      return AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          obscureText: true,
-          decoration: const InputDecoration(
-            hintText: 'Pick anything — needed to import again',
-            border: OutlineInputBorder(),
-          ),
-          onSubmitted: (v) => Navigator.of(ctx).pop(v),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.of(ctx).pop(controller.text), child: const Text('OK')),
-        ],
-      );
-    },
+    builder: (_) => _SecretDialog(title: title),
   );
-  controller.dispose();
-  return result;
+}
+
+/// Owns its [TextEditingController] so it is disposed with the route, not
+/// the moment `showDialog` returns — the dialog is still animating out then
+/// and its TextField would rebuild against a disposed controller.
+class _SecretDialog extends StatefulWidget {
+  const _SecretDialog({required this.title});
+  final String title;
+
+  @override
+  State<_SecretDialog> createState() => _SecretDialogState();
+}
+
+class _SecretDialogState extends State<_SecretDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        obscureText: true,
+        decoration: const InputDecoration(
+          hintText: 'Pick anything — needed to import again',
+          border: OutlineInputBorder(),
+        ),
+        onSubmitted: (v) => Navigator.of(context).pop(v),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(null), child: const Text('Cancel')),
+        FilledButton(onPressed: () => Navigator.of(context).pop(_controller.text), child: const Text('OK')),
+      ],
+    );
+  }
 }
 
 void _toast(BuildContext context, String msg) {
@@ -736,6 +768,7 @@ class _CsvExportRow extends ConsumerWidget {
       surface: surface,
       onTap: () async {
         final messenger = ScaffoldMessenger.of(context);
+        final exporter = ref.read(fileExporterProvider); // before the first await (#14)
         try {
           final ctx = ref.read(appContextProvider).requireValue;
           final plants = await ctx.db.select(ctx.db.plants).get();
@@ -783,7 +816,7 @@ class _CsvExportRow extends ConsumerWidget {
             ].join(','));
           }
           final stamp = DateTime.now().toUtc().toIso8601String().replaceAll(':', '-').substring(0, 19);
-          final where = await ref.read(fileExporterProvider).save(
+          final where = await exporter.save(
                 fileName: 'plantly-export-$stamp.csv',
                 bytes: Uint8List.fromList(utf8.encode(buf.toString())),
                 mimeType: 'text/csv',

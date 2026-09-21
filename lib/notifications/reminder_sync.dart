@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart';
 
 import '../data/database/app_database.dart';
@@ -33,12 +35,59 @@ class ReminderSync {
   /// without wiring a listener into this class.
   final Set<String> Function()? _mutedTypesSnapshot;
 
+  // Single-flight + trailing run. Every repository mutation calls
+  // [syncFromDatabase]; a bulk mute/delete of N plants would otherwise do
+  // N full cancelAll+schedule rounds against the OS. While a run is in
+  // flight, later callers mark the state dirty and share ONE trailing
+  // run that starts after the current one finishes — so 20 overlapping
+  // calls cost at most 2 pipeline runs, and the trailing run always sees
+  // the newest rows.
+  Future<int>? _inflight;
+  Completer<int>? _trailing;
+  bool _dirty = false;
+  DateTime? _pendingNow;
+  Duration _pendingWindow = const Duration(days: 30);
+
   /// Rebuild the entire reminder set from the current schedule rows and
-  /// hand it to the platform plugin. Called on care-event record /
-  /// snooze / schedule edit — conservative but cheap.
+  /// hand it to the platform plugin. Called on every schedule-affecting
+  /// mutation — conservative but cheap, and coalesced (see above).
+  ///
+  /// Callers that arrive while a run is in flight get the future of the
+  /// trailing run, so `await syncFromDatabase()` always means "a rebuild
+  /// that observed my write has completed".
   Future<int> syncFromDatabase({
     DateTime? now,
     Duration window = const Duration(days: 30),
+  }) {
+    if (_inflight != null) {
+      _dirty = true;
+      _pendingNow = now;
+      _pendingWindow = window;
+      return (_trailing ??= Completer<int>()).future;
+    }
+    return _inflight = _drive(now, window);
+  }
+
+  Future<int> _drive(DateTime? now, Duration window) async {
+    try {
+      return await _runOnce(now: now, window: window);
+    } finally {
+      _inflight = null;
+      if (_dirty) {
+        _dirty = false;
+        final completer = _trailing!;
+        _trailing = null;
+        // The trailing run becomes the new in-flight run, so anything that
+        // arrives while it executes coalesces onto the next one.
+        final next = _inflight = _drive(_pendingNow, _pendingWindow);
+        next.then(completer.complete, onError: completer.completeError);
+      }
+    }
+  }
+
+  Future<int> _runOnce({
+    required DateTime? now,
+    required Duration window,
   }) async {
     final nowUtc = (now ?? _clock()).toUtc();
     final schedules = await (db.select(db.careSchedules)

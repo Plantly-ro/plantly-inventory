@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
 import 'package:plantly_inventory/data/repositories/care_event_repository.dart';
 import 'package:plantly_inventory/data/repositories/care_schedule_repository.dart';
 import 'package:plantly_inventory/data/repositories/plant_repository.dart';
+import 'package:plantly_inventory/domain/services/ical_export.dart';
 import 'package:plantly_inventory/notifications/notification_service.dart';
 import 'package:plantly_inventory/notifications/reminder_sync.dart';
 import 'package:plantly_inventory/sync/hlc.dart';
@@ -122,4 +125,89 @@ void main() {
     await sync.syncFromDatabase(now: DateTime.utc(2026, 4, 18));
     expect(fake.calls, isEmpty);
   });
+
+  group('syncFromDatabase coalescing (single-flight + trailing run)', () {
+    late _GatedNotificationService gated;
+    late ReminderSync coalescing;
+
+    setUp(() {
+      gated = _GatedNotificationService();
+      coalescing = ReminderSync(
+        db: db,
+        notifications: gated,
+        tenantId: 'tenant-local',
+        clock: () => DateTime.utc(2026, 5, 1),
+      );
+    });
+
+    test('20 concurrent calls → at most 2 pipeline runs, every caller sees the final state', () async {
+      final p = await plants.create(nickname: 'Bob');
+      await schedules.upsert(plantId: p.id, type: 'water', baseIntervalDays: 7, firstDueAt: DateTime.utc(2026, 5, 2));
+
+      final results = await Future.wait([for (var i = 0; i < 20; i++) coalescing.syncFromDatabase()]);
+
+      expect(gated.runs, inInclusiveRange(1, 2));
+      expect(results, everyElement(1));
+      expect(gated.calls.map((c) => c.event.summary), ['Water — Bob']);
+    });
+
+    test('a write that lands mid-run is picked up by the single trailing run', () async {
+      final p = await plants.create(nickname: 'Bob');
+      await schedules.upsert(plantId: p.id, type: 'water', baseIntervalDays: 7, firstDueAt: DateTime.utc(2026, 5, 2));
+
+      // Run 1 reads the rows, then parks inside syncAll on the gate.
+      final gate = gated.gate = Completer<void>();
+      final first = coalescing.syncFromDatabase();
+      await gated.entered.future;
+      expect(gated.runs, 1);
+
+      // Mutations while run 1 is in flight: each would normally trigger a
+      // full rebuild. They share one trailing run instead.
+      await plants.setNotificationsMuted(p.id, true); // repo has no reminderSync → no auto sync
+      final second = coalescing.syncFromDatabase();
+      final third = coalescing.syncFromDatabase();
+      expect(gated.runs, 1, reason: 'no new run may start while one is in flight');
+
+      gate.complete();
+      expect(await first, 1, reason: 'run 1 saw the pre-mute rows');
+      expect(await second, 0);
+      expect(await third, 0);
+      expect(gated.runs, 2);
+      expect(gated.calls, isEmpty, reason: 'final OS state reflects the mute');
+    });
+
+    test('a failing run does not wedge the pipeline', () async {
+      final p = await plants.create(nickname: 'Bob');
+      await schedules.upsert(plantId: p.id, type: 'water', baseIntervalDays: 7, firstDueAt: DateTime.utc(2026, 5, 2));
+      gated.failNext = true;
+      await expectLater(coalescing.syncFromDatabase(), throwsStateError);
+      expect(await coalescing.syncFromDatabase(), 1);
+      expect(gated.runs, 2);
+    });
+  });
+}
+
+/// [FakeNotificationService] that counts `syncAll` pipeline runs and can
+/// park a run on a [gate] so a test can deterministically overlap calls.
+class _GatedNotificationService extends FakeNotificationService {
+  int runs = 0;
+  Completer<void>? gate;
+  Completer<void> entered = Completer<void>();
+  bool failNext = false;
+
+  @override
+  Future<void> syncAll(Iterable<ICalEvent> events) async {
+    runs++;
+    if (!entered.isCompleted) entered.complete();
+    if (failNext) {
+      failNext = false;
+      throw StateError('plugin unavailable');
+    }
+    final g = gate;
+    if (g != null) {
+      gate = null;
+      await g.future;
+    }
+    await super.syncAll(events);
+  }
 }

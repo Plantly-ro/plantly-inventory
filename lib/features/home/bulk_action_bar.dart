@@ -89,9 +89,11 @@ class BulkActionBar extends ConsumerWidget {
 
   Future<void> _bulkMute(WidgetRef ref, List<String> ids, bool muted) async {
     final repo = ref.read(plantRepositoryProvider);
-    for (final id in ids) {
-      await repo.setNotificationsMuted(id, muted);
-    }
+    // Issue every mutation at once: Drift serialises the transactions on
+    // the single connection, and the per-plant reminder re-syncs overlap
+    // so ReminderSync coalesces them into one trailing rebuild instead of
+    // N full cancelAll+schedule rounds.
+    await Future.wait(ids.map((id) => repo.setNotificationsMuted(id, muted)));
     ref.read(plantSelectionProvider.notifier).clear();
   }
 
@@ -114,9 +116,7 @@ class BulkActionBar extends ConsumerWidget {
     );
     if (confirm != true) return;
     final repo = ref.read(plantRepositoryProvider);
-    for (final id in ids) {
-      await repo.softDelete(id);
-    }
+    await Future.wait(ids.map(repo.softDelete)); // overlapping → one coalesced re-sync
     ref.read(plantSelectionProvider.notifier).clear();
     messenger
       ..clearSnackBars()

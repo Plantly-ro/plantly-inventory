@@ -84,7 +84,7 @@ final appContextProvider = FutureProvider<AppContext>((ref) async {
 
 final plantRepositoryProvider = Provider<PlantRepository>((ref) {
   final ctx = ref.watch(appContextProvider).requireValue;
-  return PlantRepository(db: ctx.db, opLog: ctx.opLog);
+  return PlantRepository(db: ctx.db, opLog: ctx.opLog, reminderSync: ref.watch(reminderSyncProvider));
 });
 
 final notificationServiceProvider = Provider<NotificationService>((ref) {
@@ -247,7 +247,7 @@ final searchRepositoryProvider = Provider<SearchRepository>((ref) {
 
 final locationRepositoryProvider = Provider<LocationRepository>((ref) {
   final ctx = ref.watch(appContextProvider).requireValue;
-  return LocationRepository(db: ctx.db, opLog: ctx.opLog);
+  return LocationRepository(db: ctx.db, opLog: ctx.opLog, reminderSync: ref.watch(reminderSyncProvider));
 });
 
 final photoRepositoryProvider = Provider<PhotoRepository>((ref) {
@@ -335,6 +335,7 @@ final inventoryTransactionRepositoryProvider = Provider<InventoryTransactionRepo
     db: ctx.db,
     opLog: ctx.opLog,
     plants: PlantsTableForWrites(db: ctx.db, opLog: ctx.opLog),
+    reminderSync: ref.watch(reminderSyncProvider),
   );
 });
 

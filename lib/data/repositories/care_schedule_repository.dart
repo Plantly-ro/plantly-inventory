@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:ulid/ulid.dart';
 
 import '../../domain/services/adaptive_schedule.dart';
@@ -72,47 +73,53 @@ class CareScheduleRepository {
     String recurrenceMode = 'after_completion',
   }) async {
     final existing = await forPlantAndType(plantId, type);
-    if (existing != null) return existing;
-    return db.transaction(() async {
-      final id = Ulid().toString();
-      final firstDue = firstDueAt ??
-          DateTime.now().toUtc().add(Duration(
-                milliseconds: (baseIntervalDays * 86400 * 1000).round(),
-              ));
-      final value = {
-        'id': id,
-        'tenant_id': opLog.tenantId,
-        'plant_id': plantId,
-        'type': type,
-        'base_interval_days': baseIntervalDays,
-        'current_interval_days': baseIntervalDays,
-        'next_due_at': firstDue.millisecondsSinceEpoch,
-        'enabled': 1,
-        'recent_events_json': '[]',
-        'snooze_count': 0,
-        'recurrence_mode': recurrenceMode,
-      };
-      final hlc = await opLog.recordCreate(
-        entity: 'care_schedules',
-        entityId: id,
-        value: value,
-      );
-      await db.into(db.careSchedules).insert(
-            CareSchedulesCompanion.insert(
-              id: id,
-              tenantId: opLog.tenantId,
-              plantId: plantId,
-              type: type,
-              baseIntervalDays: baseIntervalDays,
-              currentIntervalDays: baseIntervalDays,
-              nextDueAt: Value(firstDue.millisecondsSinceEpoch),
-              recurrenceMode: Value(recurrenceMode),
-              updatedHlc: hlc.encode(),
-              deviceId: opLog.clock.deviceId,
-            ),
+    final row = existing ??
+        await db.transaction<CareScheduleRow>(() async {
+          final id = Ulid().toString();
+          final firstDue = firstDueAt ??
+              DateTime.now().toUtc().add(Duration(
+                    milliseconds: (baseIntervalDays * 86400 * 1000).round(),
+                  ));
+          final value = {
+            'id': id,
+            'tenant_id': opLog.tenantId,
+            'plant_id': plantId,
+            'type': type,
+            'base_interval_days': baseIntervalDays,
+            'current_interval_days': baseIntervalDays,
+            'next_due_at': firstDue.millisecondsSinceEpoch,
+            'enabled': 1,
+            'recent_events_json': '[]',
+            'snooze_count': 0,
+            'recurrence_mode': recurrenceMode,
+          };
+          final hlc = await opLog.recordCreate(
+            entity: 'care_schedules',
+            entityId: id,
+            value: value,
           );
-      return (await forPlantAndType(plantId, type))!;
-    });
+          await db.into(db.careSchedules).insert(
+                CareSchedulesCompanion.insert(
+                  id: id,
+                  tenantId: opLog.tenantId,
+                  plantId: plantId,
+                  type: type,
+                  baseIntervalDays: baseIntervalDays,
+                  currentIntervalDays: baseIntervalDays,
+                  nextDueAt: Value(firstDue.millisecondsSinceEpoch),
+                  recurrenceMode: Value(recurrenceMode),
+                  updatedHlc: hlc.encode(),
+                  deviceId: opLog.clock.deviceId,
+                ),
+              );
+          return (await forPlantAndType(plantId, type))!;
+        });
+    // Register the alarm now, not on the next pull-to-refresh: this is the
+    // Add-reminder → Save path and it used to be the only mutator that
+    // never re-synced (issue #13). Also runs on the idempotent branch so a
+    // caller can rely on "upsert ⇒ OS reminders are current".
+    await _resync();
+    return row;
   }
 
   /// Called by CareEventRepository after recording an event. Appends the
@@ -271,9 +278,7 @@ class CareScheduleRepository {
         ),
       );
     });
-    try {
-      await reminderSync?.syncFromDatabase();
-    } catch (_) {}
+    await _resync();
   }
 
   /// Remove a schedule entirely (tombstone). For one-off reminders the
@@ -290,9 +295,7 @@ class CareScheduleRepository {
         ),
       );
     });
-    try {
-      await reminderSync?.syncFromDatabase();
-    } catch (_) {}
+    await _resync();
   }
 
   /// Toggle per-schedule notification mute. ReminderSync reads this.
@@ -312,9 +315,7 @@ class CareScheduleRepository {
         ),
       );
     });
-    try {
-      await reminderSync?.syncFromDatabase();
-    } catch (_) {}
+    await _resync();
   }
 
   Future<void> snooze(String scheduleId, {Duration by = const Duration(days: 1)}) async {
@@ -337,10 +338,16 @@ class CareScheduleRepository {
         ),
       );
     });
+    await _resync();
+  }
+
+  /// Rebuild the OS reminder set after a committed schedule mutation.
+  /// Best-effort: a notification-plugin failure must never fail the write.
+  Future<void> _resync() async {
     try {
       await reminderSync?.syncFromDatabase();
-    } catch (_) {
-      // Notification re-sync is best-effort.
+    } catch (e) {
+      if (kDebugMode) debugPrint('reminder re-sync failed: $e');
     }
   }
 
