@@ -151,6 +151,7 @@ class _HeadlineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -160,11 +161,11 @@ class _HeadlineCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(child: _Cell(value: '$plants', label: 'PLANTS', surface: surface)),
+          Expanded(child: _Cell(value: '$plants', label: t.statsCellPlants, surface: surface)),
           Container(width: 1, height: 40, color: surface.border),
-          Expanded(child: _Cell(value: '$events', label: 'EVENTS', surface: surface)),
+          Expanded(child: _Cell(value: '$events', label: t.statsCellEvents, surface: surface)),
           Container(width: 1, height: 40, color: surface.border),
-          Expanded(child: _Cell(value: '$recent30d', label: 'LAST 30d', surface: surface)),
+          Expanded(child: _Cell(value: '$recent30d', label: t.statsCellLast30, surface: surface)),
         ],
       ),
     );
@@ -343,6 +344,7 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -352,7 +354,7 @@ class _EmptyState extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: Text(
-        'No care events yet. Log your first reminder to see stats here.',
+        t.statsEmpty,
         textAlign: TextAlign.center,
         style: TextStyle(color: surface.muted, fontSize: 13),
       ),

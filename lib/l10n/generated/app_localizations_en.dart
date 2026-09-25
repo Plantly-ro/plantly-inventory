@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -901,4 +902,596 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get importErrorDismiss => 'OK';
+
+  @override
+  String get meTitle => 'Me';
+
+  @override
+  String get meStatCardPlants => 'PLANTS';
+
+  @override
+  String get meStatCardSpaces => 'SPACES';
+
+  @override
+  String get meAboutApp => 'App';
+
+  @override
+  String get meAboutAppValue => 'PlantlyInventory · Phase 1';
+
+  @override
+  String get meAboutLicense => 'License';
+
+  @override
+  String get meThemeLabel => 'Theme';
+
+  @override
+  String get meThemeDark => 'Dark';
+
+  @override
+  String get meThemeLight => 'Light';
+
+  @override
+  String get meNotificationsLabel => 'Notifications';
+
+  @override
+  String get meNotifChecking => 'Checking…';
+
+  @override
+  String get meNotifEnabled => 'Enabled';
+
+  @override
+  String get meNotifDisabledRetry => 'Disabled — tap to retry';
+
+  @override
+  String get meNotifEnabledToast => 'Notifications enabled';
+
+  @override
+  String get meNotifStillDenied => 'Still denied — enable in system settings';
+
+  @override
+  String get meExportZipLabel => 'Export ZIP (with photos)';
+
+  @override
+  String get meExportJsonLabel => 'Export JSON (signed)';
+
+  @override
+  String get meExportZipValue => 'Includes every attached photo. Larger file.';
+
+  @override
+  String get meExportJsonValue =>
+      'HMAC-signed JSON of every plant / schedule / event.';
+
+  @override
+  String get meBackupPassphrase => 'Backup passphrase';
+
+  @override
+  String get meBackupPassphraseHint => 'Pick anything — needed to import again';
+
+  @override
+  String meBackupSaved(String where) {
+    return 'Backup saved: $where';
+  }
+
+  @override
+  String meExportFailed(String error) {
+    return 'Export failed: $error';
+  }
+
+  @override
+  String get meImportLabel => 'Import backup';
+
+  @override
+  String get meImportValue => 'Pick a .json or .zip from this device.';
+
+  @override
+  String get meImportFileType => 'Plantly backup';
+
+  @override
+  String get meImportWrongPassphrase => 'Wrong passphrase for this backup.';
+
+  @override
+  String meImportInvalidBackup(String message) {
+    return 'Invalid backup: $message';
+  }
+
+  @override
+  String meImportInvalidZip(String message) {
+    return 'Invalid ZIP: $message';
+  }
+
+  @override
+  String meImportFailed(String error) {
+    return 'Import failed: $error';
+  }
+
+  @override
+  String meImportedRows(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Imported $count rows',
+      one: 'Imported 1 row',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String meImportedPhotos(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count photos',
+      one: '1 photo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get meIcsLabel => 'Download .ics';
+
+  @override
+  String get meIcsValue =>
+      'Open the next 30 days of reminders in any calendar app.';
+
+  @override
+  String get meIcsShareText => 'PlantlyInventory reminders';
+
+  @override
+  String meIcsSaved(String where) {
+    return '.ics saved: $where';
+  }
+
+  @override
+  String get meCsvLabel => 'Export CSV';
+
+  @override
+  String get meCsvValue =>
+      'Plants + care events as a spreadsheet-friendly dump.';
+
+  @override
+  String get meCsvShareText => 'PlantlyInventory CSV';
+
+  @override
+  String meCsvSaved(String where) {
+    return 'CSV saved: $where';
+  }
+
+  @override
+  String meCsvFailed(String error) {
+    return 'CSV export failed: $error';
+  }
+
+  @override
+  String get mePrivacyTitle => 'Privacy & data';
+
+  @override
+  String get mePrivacyWhatLeaves => 'What leaves your device';
+
+  @override
+  String get mePrivacyBulletLocal =>
+      'Nothing by default. Plants, photos, care events, and schedules live in a local SQLite database on your phone.';
+
+  @override
+  String get mePrivacyBulletBackups =>
+      'Backups (JSON or ZIP) only leave the device when you tap Export — you choose where they go via the share sheet.';
+
+  @override
+  String get mePrivacyBulletNotifications =>
+      'Notifications fire locally via the OS alarm system. We do not use a push server.';
+
+  @override
+  String get mePrivacyBulletMarketplace =>
+      'If you later post a plant to plantly.ro, only the fields you review in the Export dialog are sent — never the full database.';
+
+  @override
+  String get mePrivacySectionTelemetry => 'OPT-IN TELEMETRY';
+
+  @override
+  String get mePrivacyCrashTitle => 'Crash reports';
+
+  @override
+  String get mePrivacyCrashBody =>
+      'If the app crashes, send the stack trace to help us fix it. No plant data, no photos.';
+
+  @override
+  String get mePrivacyUsageTitle => 'Anonymous usage';
+
+  @override
+  String get mePrivacyUsageBody =>
+      'Tap counts by screen — so we know which features are loved. No identifiers, no text you enter.';
+
+  @override
+  String get mePrivacySectionLegal => 'LEGAL';
+
+  @override
+  String get mePrivacyLicenseValue =>
+      'AGPL-3.0-or-later · source: github.com/URunDEAD/PlantlyInventory';
+
+  @override
+  String get meCareTypeNew => 'New care type';
+
+  @override
+  String meCareTypeEdit(String label) {
+    return 'Edit \"$label\"';
+  }
+
+  @override
+  String get meCareTypeLabelField => 'LABEL';
+
+  @override
+  String get meCareTypeLabelHint => 'e.g. Neem spray';
+
+  @override
+  String get meCareTypeIntervalField => 'DEFAULT INTERVAL (DAYS)';
+
+  @override
+  String get meCareTypeIconField => 'ICON';
+
+  @override
+  String get meCareTypeColourField => 'COLOUR';
+
+  @override
+  String get meCareTypeColourDefault => 'Default';
+
+  @override
+  String meCareTypeDefaultEvery(String days, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'days',
+      one: 'day',
+    );
+    return 'Default: every $days $_temp0';
+  }
+
+  @override
+  String get meCareTypeMuteTooltip => 'Mute this care type everywhere';
+
+  @override
+  String get meCareTypeUnmuteTooltip => 'Unmute this care type everywhere';
+
+  @override
+  String meMutedPlantsHeader(int count) {
+    return 'MUTED PLANTS ($count)';
+  }
+
+  @override
+  String meMutedRemindersHeader(int count) {
+    return 'MUTED REMINDERS ($count)';
+  }
+
+  @override
+  String meMutedSpacesHeader(int count) {
+    return 'MUTED SPACES ($count)';
+  }
+
+  @override
+  String get meMutedPlantBody => 'Every reminder for this plant is silenced.';
+
+  @override
+  String get meMutedReminderBody =>
+      'Single schedule muted — other reminders for this plant still fire.';
+
+  @override
+  String get meMutedSpaceBody => 'Every plant in this space is silenced.';
+
+  @override
+  String get meNothingMuted => 'Nothing muted';
+
+  @override
+  String get meNothingMutedBody =>
+      'Silence reminders per plant, schedule, or space from the relevant detail screen.';
+
+  @override
+  String get meUnmute => 'Unmute';
+
+  @override
+  String get meDndTitle => 'Do not disturb';
+
+  @override
+  String meDndActive(String start, String end) {
+    return 'Quiet between $start and $end (reminders delayed)';
+  }
+
+  @override
+  String get meDndInactive => 'Fire reminders whenever they\'re due';
+
+  @override
+  String get meDndStart => 'Start';
+
+  @override
+  String get meDndEnd => 'End';
+
+  @override
+  String get meNotifPermChecking => 'Checking system permission…';
+
+  @override
+  String get meNotifPermGranted =>
+      'OS notifications are allowed for PlantlyInventory.';
+
+  @override
+  String get meNotifPermDenied =>
+      'OS notifications are OFF. Reminders won\'t fire.';
+
+  @override
+  String get statsCellPlants => 'PLANTS';
+
+  @override
+  String get statsCellEvents => 'EVENTS';
+
+  @override
+  String get statsCellLast30 => 'LAST 30d';
+
+  @override
+  String get statsEmpty =>
+      'No care events yet. Log your first reminder to see stats here.';
+
+  @override
+  String statsCardLast(String type) {
+    return 'LAST $type';
+  }
+
+  @override
+  String statsCardAvg(String type) {
+    return 'AVG $type';
+  }
+
+  @override
+  String get statsCardToday => 'today';
+
+  @override
+  String statsCardDaysShort(int count) {
+    return '${count}d';
+  }
+
+  @override
+  String statsCardAvgDaysShort(String value) {
+    return '~${value}d';
+  }
+
+  @override
+  String get activityToday => 'TODAY';
+
+  @override
+  String get activityYesterday => 'YESTERDAY';
+
+  @override
+  String detailLoadFailed(String error) {
+    return 'Failed to load plant.\n$error';
+  }
+
+  @override
+  String get detailNoLocation => 'No location set';
+
+  @override
+  String get detailLoadingLocation => 'Loading location…';
+
+  @override
+  String detailFabNow(String action) {
+    return '$action now';
+  }
+
+  @override
+  String get detailFabTooltip => 'Long-press to change';
+
+  @override
+  String get detailDeleteTitle => 'Delete plant?';
+
+  @override
+  String detailDeleteBody(String name) {
+    return 'Removes \"$name\" from your collection. Use Gave away / Sold / Marked dead if you want a ledger entry.';
+  }
+
+  @override
+  String detailDeletedToast(String name) {
+    return 'Deleted \"$name\"';
+  }
+
+  @override
+  String get detailUndo => 'Undo';
+
+  @override
+  String detailAddedOn(String date) {
+    return 'Added $date';
+  }
+
+  @override
+  String detailAcquiredOn(String date) {
+    return 'Acquired $date';
+  }
+
+  @override
+  String get detailRemovedFromSpace => 'Removed from any space';
+
+  @override
+  String detailMovedTo(String space) {
+    return 'Moved to $space';
+  }
+
+  @override
+  String get detailThatSpace => 'that space';
+
+  @override
+  String get detailReorderTooltip => 'Reorder';
+
+  @override
+  String get detailEditDateTooltip => 'Edit date';
+
+  @override
+  String get detailCaptionTooltip => 'Caption';
+
+  @override
+  String get detailMuteReminderTooltip => 'Mute this reminder';
+
+  @override
+  String get detailUnmuteReminderTooltip => 'Unmute this reminder';
+
+  @override
+  String get detailSnoozedToast => 'Snoozed 3 days';
+
+  @override
+  String get detailNoDueDate => 'No due date';
+
+  @override
+  String get detailOverdue => 'overdue';
+
+  @override
+  String detailOverdueDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days overdue',
+      one: '1 day overdue',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get detailDueToday => 'today';
+
+  @override
+  String get detailDueTomorrow => 'tomorrow';
+
+  @override
+  String detailDueInDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'in $count days',
+      one: 'in 1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get detailVerbRepot => 'Repot';
+
+  @override
+  String get detailVerbPrune => 'Prune';
+
+  @override
+  String get detailPastWater => 'Watered';
+
+  @override
+  String get detailPastFertilize => 'Fertilized';
+
+  @override
+  String get detailPastMist => 'Misted';
+
+  @override
+  String get detailPastRepot => 'Repotted';
+
+  @override
+  String get detailPastPrune => 'Pruned';
+
+  @override
+  String get detailPastRotate => 'Rotated';
+
+  @override
+  String get detailDeleteEventTitle => 'Delete this event?';
+
+  @override
+  String detailDeleteEventBody(String text) {
+    return 'Removes this \"$text\" record from the timeline.';
+  }
+
+  @override
+  String get detailLedgerPropagatedOut => 'Propagated off this plant';
+
+  @override
+  String get detailLedgerPropagatedIn => 'Propagated from a parent';
+
+  @override
+  String detailLedgerGaveTo(String who) {
+    return 'Gave to $who';
+  }
+
+  @override
+  String get detailLedgerSomeone => 'someone';
+
+  @override
+  String get detailLedgerSold => 'Sold';
+
+  @override
+  String detailLedgerSoldTo(String buyer) {
+    return 'Sold to $buyer';
+  }
+
+  @override
+  String get detailLedgerMarkedDead => 'Marked dead';
+
+  @override
+  String get detailReorderPhotosTitle => 'Reorder photos';
+
+  @override
+  String detailPhotoN(int n) {
+    return 'Photo $n';
+  }
+
+  @override
+  String get sheetNicknameRequired => 'Nickname is required';
+
+  @override
+  String get sheetFieldSpace => 'SPACE';
+
+  @override
+  String get sheetFieldSpecies => 'SPECIES';
+
+  @override
+  String get sheetSpeciesHint => 'e.g. Monstera deliciosa';
+
+  @override
+  String get sheetFieldNotes => 'NOTES';
+
+  @override
+  String get sheetNoLocation => '— no location —';
+
+  @override
+  String get sheetLoading => 'Loading…';
+
+  @override
+  String get sheetGaveAwayTitle => 'Gave away';
+
+  @override
+  String get sheetGaveAwayHint => 'Who did you give it to? (optional)';
+
+  @override
+  String get sheetSoldTitle => 'Sold';
+
+  @override
+  String get sheetSoldHint => 'Buyer (optional)';
+
+  @override
+  String get sheetMarkedDeadTitle => 'Marked dead';
+
+  @override
+  String sheetInventoryRemoveBody(String name) {
+    return 'This will remove \"$name\" from your active collection.';
+  }
+
+  @override
+  String get sheetPriceHint => 'Price (optional)';
+
+  @override
+  String get sheetNotesOptionalHint => 'Notes (optional)';
+
+  @override
+  String sheetPropagateTitle(String name) {
+    return 'Propagate $name';
+  }
+
+  @override
+  String get sheetChildNickname => 'Child nickname';
+
+  @override
+  String get sheetPropagateNotesHint =>
+      'e.g. cut from node 3; rooting in water';
+
+  @override
+  String sheetPropagateDefaultName(String name) {
+    return '$name · propagation';
+  }
+
+  @override
+  String get sheetPropagateAction => 'Propagate';
 }

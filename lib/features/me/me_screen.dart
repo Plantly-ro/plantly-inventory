@@ -55,7 +55,7 @@ class MeScreen extends ConsumerWidget {
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: Text(
-          'Me',
+          t.meTitle,
           style: GoogleFonts.plusJakartaSans(
             fontSize: 22,
             fontWeight: FontWeight.w800,
@@ -154,14 +154,14 @@ class MeScreen extends ConsumerWidget {
           _SectionLabel(text: t.meSectionAbout, surface: surface),
           const SizedBox(height: 8),
           _ReadOnlyRow(
-            label: 'App',
-            value: 'PlantlyInventory · Phase 1',
+            label: t.meAboutApp,
+            value: t.meAboutAppValue,
             icon: Icons.info_outline,
             surface: surface,
           ),
           const SizedBox(height: 8),
           _ReadOnlyRow(
-            label: 'License',
+            label: t.meAboutLicense,
             value: 'AGPL-3.0-or-later',
             icon: Icons.description_outlined,
             surface: surface,
@@ -180,6 +180,7 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -189,9 +190,9 @@ class _StatCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(child: _StatCol(label: 'PLANTS', value: plants?.toString() ?? '…', surface: surface)),
+          Expanded(child: _StatCol(label: t.meStatCardPlants, value: plants?.toString() ?? '…', surface: surface)),
           Container(width: 1, height: 40, color: surface.border),
-          Expanded(child: _StatCol(label: 'SPACES', value: locations?.toString() ?? '…', surface: surface)),
+          Expanded(child: _StatCol(label: t.meStatCardSpaces, value: locations?.toString() ?? '…', surface: surface)),
         ],
       ),
     );
@@ -373,6 +374,7 @@ class _ThemeToggleRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     final isDark = mode == ThemeMode.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -390,11 +392,11 @@ class _ThemeToggleRow extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Theme',
+                  t.meThemeLabel,
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text),
                 ),
                 Text(
-                  isDark ? 'Dark' : 'Light',
+                  isDark ? t.meThemeDark : t.meThemeLight,
                   style: TextStyle(fontSize: 12, color: surface.muted),
                 ),
               ],
@@ -417,16 +419,17 @@ class _NotificationRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     final granted = ref.watch(notificationPermissionProvider);
     final supported = ref.watch(notificationServiceProvider).isSupported;
     final (status, color) = switch (granted) {
-      _ when !supported => (AppLocalizations.of(context).notificationsWebUnavailable, surface.muted),
-      null => ('Checking…', surface.muted),
-      true => ('Enabled', surface.green),
-      false => ('Disabled — tap to retry', surface.terra),
+      _ when !supported => (t.notificationsWebUnavailable, surface.muted),
+      null => (t.meNotifChecking, surface.muted),
+      true => (t.meNotifEnabled, surface.green),
+      false => (t.meNotifDisabledRetry, surface.terra),
     };
     return _ActionRow(
-      label: 'Notifications',
+      label: t.meNotificationsLabel,
       value: status,
       icon: granted == true ? Icons.notifications_active_outlined : Icons.notifications_off_outlined,
       valueColor: color,
@@ -439,7 +442,7 @@ class _NotificationRow extends ConsumerWidget {
               final ok = await notifications.requestPermissions();
               permission.state = ok;
               if (!context.mounted) return;
-              _toast(context, ok ? 'Notifications enabled' : 'Still denied — enable in system settings');
+              _toast(context, ok ? t.meNotifEnabledToast : t.meNotifStillDenied);
             },
     );
   }
@@ -452,10 +455,9 @@ class _BackupRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final label = withPhotos ? 'Export ZIP (with photos)' : 'Export JSON (signed)';
-    final subtitle = withPhotos
-        ? 'Includes every attached photo. Larger file.'
-        : 'HMAC-signed JSON of every plant / schedule / event.';
+    final t = AppLocalizations.of(context);
+    final label = withPhotos ? t.meExportZipLabel : t.meExportJsonLabel;
+    final subtitle = withPhotos ? t.meExportZipValue : t.meExportJsonValue;
     return _ActionRow(
       label: label,
       value: subtitle,
@@ -469,9 +471,10 @@ class _BackupRow extends ConsumerWidget {
     // Resolve everything before the first await. The passphrase dialog's
     // keyboard can shrink the viewport enough to unmount this row, after
     // which `ref` is dead (issue #14); `actions` lives in the container.
+    final t = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final actions = ref.read(backupActionsProvider);
-    final secret = await _promptSecret(context, title: 'Backup passphrase');
+    final secret = await _promptSecret(context, title: t.meBackupPassphrase);
     if (secret == null || secret.isEmpty) return;
     try {
       final where = withPhotos
@@ -479,11 +482,11 @@ class _BackupRow extends ConsumerWidget {
           : await actions.exportJson(secret: secret);
       messenger
         ..clearSnackBars()
-        ..showSnackBar(SnackBar(content: Text('Backup saved: $where')));
+        ..showSnackBar(SnackBar(content: Text(t.meBackupSaved(where))));
     } catch (e) {
       messenger
         ..clearSnackBars()
-        ..showSnackBar(SnackBar(content: Text('Export failed: $e')));
+        ..showSnackBar(SnackBar(content: Text(t.meExportFailed('$e'))));
     }
   }
 }
@@ -494,9 +497,10 @@ class _ImportRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     return _ActionRow(
-      label: 'Import backup',
-      value: 'Pick a .json or .zip from this device.',
+      label: t.meImportLabel,
+      value: t.meImportValue,
       icon: Icons.file_upload_outlined,
       surface: surface,
       onTap: () => _run(context, ref),
@@ -506,39 +510,42 @@ class _ImportRow extends ConsumerWidget {
   Future<void> _run(BuildContext context, WidgetRef ref) async {
     // Same as _BackupRow: the file picker + passphrase dialog can both
     // unmount this row, so resolve the controller before any await (#14).
+    final t = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final actions = ref.read(backupActionsProvider);
     final file = await openFile(
       acceptedTypeGroups: [
-        const XTypeGroup(label: 'Plantly backup', extensions: ['json', 'zip']),
+        XTypeGroup(label: t.meImportFileType, extensions: const ['json', 'zip']),
       ],
     );
     if (file == null) return;
     if (!context.mounted) return;
-    final secret = await _promptSecret(context, title: 'Backup passphrase');
+    final secret = await _promptSecret(context, title: t.meBackupPassphrase);
     if (secret == null || secret.isEmpty) return;
     try {
       final bytes = await file.readAsBytes();
-      final msg = await actions.importBackup(fileName: file.name, bytes: bytes, secret: secret);
+      final result = await actions.importBackup(fileName: file.name, bytes: bytes, secret: secret);
+      final rows = t.meImportedRows(result.rows);
+      final msg = result.photos == null ? rows : '$rows + ${t.meImportedPhotos(result.photos!)}';
       messenger
         ..clearSnackBars()
         ..showSnackBar(SnackBar(content: Text(msg)));
     } on BackupSignatureError {
       messenger
         ..clearSnackBars()
-        ..showSnackBar(const SnackBar(content: Text('Wrong passphrase for this backup.')));
+        ..showSnackBar(SnackBar(content: Text(t.meImportWrongPassphrase)));
     } on BackupFormatError catch (e) {
       messenger
         ..clearSnackBars()
-        ..showSnackBar(SnackBar(content: Text('Invalid backup: ${e.message}')));
+        ..showSnackBar(SnackBar(content: Text(t.meImportInvalidBackup(e.message))));
     } on ZipBackupFormatError catch (e) {
       messenger
         ..clearSnackBars()
-        ..showSnackBar(SnackBar(content: Text('Invalid ZIP: ${e.message}')));
+        ..showSnackBar(SnackBar(content: Text(t.meImportInvalidZip(e.message))));
     } catch (e) {
       messenger
         ..clearSnackBars()
-        ..showSnackBar(SnackBar(content: Text('Import failed: $e')));
+        ..showSnackBar(SnackBar(content: Text(t.meImportFailed('$e'))));
     }
   }
 }
@@ -549,9 +556,10 @@ class _ICalRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     return _ActionRow(
-      label: 'Download .ics',
-      value: 'Open the next 30 days of reminders in any calendar app.',
+      label: t.meIcsLabel,
+      value: t.meIcsValue,
       icon: Icons.event_note_outlined,
       surface: surface,
       onTap: () => _run(context, ref),
@@ -559,6 +567,7 @@ class _ICalRow extends ConsumerWidget {
   }
 
   Future<void> _run(BuildContext context, WidgetRef ref) async {
+    final t = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final exporter = ref.read(fileExporterProvider); // before the await (#14)
     try {
@@ -568,15 +577,15 @@ class _ICalRow extends ConsumerWidget {
             fileName: 'plantly-reminders-$stamp.ics',
             bytes: Uint8List.fromList(utf8.encode(ics)),
             mimeType: 'text/calendar',
-            shareText: 'PlantlyInventory reminders',
+            shareText: t.meIcsShareText,
           );
       messenger
         ..clearSnackBars()
-        ..showSnackBar(SnackBar(content: Text('.ics saved: $where')));
+        ..showSnackBar(SnackBar(content: Text(t.meIcsSaved(where))));
     } catch (e) {
       messenger
         ..clearSnackBars()
-        ..showSnackBar(SnackBar(content: Text('Export failed: $e')));
+        ..showSnackBar(SnackBar(content: Text(t.meExportFailed('$e'))));
     }
   }
 }
@@ -610,21 +619,22 @@ class _SecretDialogState extends State<_SecretDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return AlertDialog(
       title: Text(widget.title),
       content: TextField(
         controller: _controller,
         autofocus: true,
         obscureText: true,
-        decoration: const InputDecoration(
-          hintText: 'Pick anything — needed to import again',
+        decoration: InputDecoration(
+          hintText: t.meBackupPassphraseHint,
           border: OutlineInputBorder(),
         ),
         onSubmitted: (v) => Navigator.of(context).pop(v),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(null), child: const Text('Cancel')),
-        FilledButton(onPressed: () => Navigator.of(context).pop(_controller.text), child: const Text('OK')),
+        TextButton(onPressed: () => Navigator.of(context).pop(null), child: Text(t.cancel)),
+        FilledButton(onPressed: () => Navigator.of(context).pop(_controller.text), child: Text(t.commonOk)),
       ],
     );
   }
@@ -761,9 +771,10 @@ class _CsvExportRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     return _ActionRow(
-      label: 'Export CSV',
-      value: 'Plants + care events as a spreadsheet-friendly dump.',
+      label: t.meCsvLabel,
+      value: t.meCsvValue,
       icon: Icons.table_chart_outlined,
       surface: surface,
       onTap: () async {
@@ -820,15 +831,15 @@ class _CsvExportRow extends ConsumerWidget {
                 fileName: 'plantly-export-$stamp.csv',
                 bytes: Uint8List.fromList(utf8.encode(buf.toString())),
                 mimeType: 'text/csv',
-                shareText: 'PlantlyInventory CSV',
+                shareText: t.meCsvShareText,
               );
           messenger
             ..clearSnackBars()
-            ..showSnackBar(SnackBar(content: Text('CSV saved: $where')));
+            ..showSnackBar(SnackBar(content: Text(t.meCsvSaved(where))));
         } catch (e) {
           messenger
             ..clearSnackBars()
-            ..showSnackBar(SnackBar(content: Text('CSV export failed: $e')));
+            ..showSnackBar(SnackBar(content: Text(t.meCsvFailed('$e'))));
         }
       },
     );

@@ -55,6 +55,7 @@ class NotificationsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
     final granted = ref.watch(notificationPermissionProvider);
@@ -77,7 +78,7 @@ class NotificationsScreen extends ConsumerWidget {
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: Text(
-          'Notifications',
+          t.meNotificationsLabel,
           style: GoogleFonts.plusJakartaSans(
             fontSize: 22,
             fontWeight: FontWeight.w800,
@@ -97,12 +98,12 @@ class NotificationsScreen extends ConsumerWidget {
             _EmptyState(surface: surface)
           else ...[
             if (plants.isNotEmpty) ...[
-              _SectionLabel(text: 'MUTED PLANTS (${plants.length})', surface: surface),
+              _SectionLabel(text: t.meMutedPlantsHeader(plants.length), surface: surface),
               const SizedBox(height: 8),
               for (final p in plants)
                 _MutedRow(
                   title: p.nickname,
-                  subtitle: 'Every reminder for this plant is silenced.',
+                  subtitle: t.meMutedPlantBody,
                   icon: Icons.eco_outlined,
                   surface: surface,
                   onTap: () {
@@ -116,12 +117,12 @@ class NotificationsScreen extends ConsumerWidget {
               const SizedBox(height: 20),
             ],
             if (schedules.isNotEmpty) ...[
-              _SectionLabel(text: 'MUTED REMINDERS (${schedules.length})', surface: surface),
+              _SectionLabel(text: t.meMutedRemindersHeader(schedules.length), surface: surface),
               const SizedBox(height: 8),
               for (final s in schedules)
                 _MutedRow(
                   title: '${resolveCareType(types, s.type).label} · ${plantsById[s.plantId]?.nickname ?? s.plantId}',
-                  subtitle: 'Single schedule muted — other reminders for this plant still fire.',
+                  subtitle: t.meMutedReminderBody,
                   icon: resolveCareType(types, s.type).icon,
                   surface: surface,
                   onTap: () {
@@ -136,12 +137,12 @@ class NotificationsScreen extends ConsumerWidget {
               const SizedBox(height: 20),
             ],
             if (locations.isNotEmpty) ...[
-              _SectionLabel(text: 'MUTED SPACES (${locations.length})', surface: surface),
+              _SectionLabel(text: t.meMutedSpacesHeader(locations.length), surface: surface),
               const SizedBox(height: 8),
               for (final l in locations)
                 _MutedRow(
                   title: l.name,
-                  subtitle: 'Every plant in this space is silenced.',
+                  subtitle: t.meMutedSpaceBody,
                   icon: Icons.place_outlined,
                   surface: surface,
                   onTap: () {
@@ -167,16 +168,17 @@ class _PermissionCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     final supported = ref.watch(notificationServiceProvider).isSupported;
     final (status, color, icon) = switch (granted) {
       _ when !supported => (
-          AppLocalizations.of(context).notificationsWebUnavailableDetail,
+          t.notificationsWebUnavailableDetail,
           surface.muted,
           Icons.notifications_off_outlined,
         ),
-      null => ('Checking system permission…', surface.muted, Icons.hourglass_empty),
-      true => ('OS notifications are allowed for PlantlyInventory.', surface.green, Icons.notifications_active_outlined),
-      false => ('OS notifications are OFF. Reminders won\'t fire.', surface.terra, Icons.notifications_off_outlined),
+      null => (t.meNotifPermChecking, surface.muted, Icons.hourglass_empty),
+      true => (t.meNotifPermGranted, surface.green, Icons.notifications_active_outlined),
+      false => (t.meNotifPermDenied, surface.terra, Icons.notifications_off_outlined),
     };
     return Material(
       color: surface.surface,
@@ -217,6 +219,7 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -228,11 +231,11 @@ class _EmptyState extends StatelessWidget {
         children: [
           Icon(Icons.notifications_none_outlined, size: 32, color: surface.muted),
           const SizedBox(height: 10),
-          Text('Nothing muted',
+          Text(t.meNothingMuted,
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text)),
           const SizedBox(height: 4),
           Text(
-            'Silence reminders per plant, schedule, or space from the relevant detail screen.',
+            t.meNothingMutedBody,
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 12, color: surface.muted),
           ),
@@ -280,6 +283,7 @@ class _MutedRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Material(
@@ -309,7 +313,7 @@ class _MutedRow extends StatelessWidget {
                 ),
                 TextButton.icon(
                   icon: Icon(Icons.notifications_active_outlined, size: 14, color: surface.green),
-                  label: Text('Unmute', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: surface.green)),
+                  label: Text(t.meUnmute, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: surface.green)),
                   onPressed: onUnmute,
                 ),
               ],
@@ -327,6 +331,7 @@ class _DndCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     final dnd = ref.watch(dndSettingsProvider);
     return Container(
       decoration: BoxDecoration(
@@ -342,15 +347,15 @@ class _DndCard extends ConsumerWidget {
               children: [
                 Icon(Icons.bedtime_outlined, color: surface.green),
                 const SizedBox(width: 10),
-                Text('Do not disturb', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text)),
+                Text(t.meDndTitle, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text)),
               ],
             ),
             subtitle: Padding(
               padding: const EdgeInsets.only(left: 34, top: 2),
               child: Text(
                 dnd.enabled
-                    ? 'Quiet between ${_fmt(dnd.start)} and ${_fmt(dnd.end)} (reminders delayed)'
-                    : 'Fire reminders whenever they\'re due',
+                    ? t.meDndActive(_fmt(dnd.start), _fmt(dnd.end))
+                    : t.meDndInactive,
                 style: TextStyle(fontSize: 12, color: surface.muted),
               ),
             ),
@@ -365,7 +370,7 @@ class _DndCard extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: _TimeField(
-                      label: 'Start',
+                      label: t.meDndStart,
                       value: dnd.start,
                       surface: surface,
                       onChanged: (t) => ref.read(dndSettingsProvider.notifier).setStart(t),
@@ -374,7 +379,7 @@ class _DndCard extends ConsumerWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: _TimeField(
-                      label: 'End',
+                      label: t.meDndEnd,
                       value: dnd.end,
                       surface: surface,
                       onChanged: (t) => ref.read(dndSettingsProvider.notifier).setEnd(t),

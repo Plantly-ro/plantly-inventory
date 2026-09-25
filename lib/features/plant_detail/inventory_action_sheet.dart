@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database/app_database.dart' as db;
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 
@@ -83,10 +84,11 @@ class _InventoryActionSheetState extends ConsumerState<InventoryActionSheet> {
   Widget build(BuildContext context) {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final t = AppLocalizations.of(context);
     final (title, hint, accent) = switch (widget.type) {
-      'gift' => ('Gave away', 'Who did you give it to? (optional)', surface.green),
-      'sale' => ('Sold', 'Buyer (optional)', surface.terra),
-      'death' => ('Marked dead', null, surface.terra),
+      'gift' => (t.sheetGaveAwayTitle, t.sheetGaveAwayHint, surface.green),
+      'sale' => (t.sheetSoldTitle, t.sheetSoldHint, surface.terra),
+      'death' => (t.sheetMarkedDeadTitle, null, surface.terra),
       _ => (widget.type, null, surface.muted),
     };
 
@@ -113,7 +115,7 @@ class _InventoryActionSheetState extends ConsumerState<InventoryActionSheet> {
             Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text)),
             const SizedBox(height: 4),
             Text(
-              'This will remove "${widget.plantRow.nickname}" from your active collection.',
+              t.sheetInventoryRemoveBody(widget.plantRow.nickname),
               style: TextStyle(fontSize: 12, color: surface.muted),
             ),
             if (hint != null) ...[
@@ -133,7 +135,7 @@ class _InventoryActionSheetState extends ConsumerState<InventoryActionSheet> {
                     child: TextField(
                       controller: _amount,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: _inputDecoration(surface, hint: 'Price (optional)'),
+                      decoration: _inputDecoration(surface, hint: t.sheetPriceHint),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -158,7 +160,7 @@ class _InventoryActionSheetState extends ConsumerState<InventoryActionSheet> {
               controller: _notes,
               maxLines: 2,
               textCapitalization: TextCapitalization.sentences,
-              decoration: _inputDecoration(surface, hint: 'Notes (optional)'),
+              decoration: _inputDecoration(surface, hint: t.sheetNotesOptionalHint),
             ),
             if (_error != null) ...[
               const SizedBox(height: 10),
@@ -176,7 +178,7 @@ class _InventoryActionSheetState extends ConsumerState<InventoryActionSheet> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius)),
                     ),
                     onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-                    child: const Text('Cancel'),
+                    child: Text(t.cancel),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -190,7 +192,7 @@ class _InventoryActionSheetState extends ConsumerState<InventoryActionSheet> {
                       textStyle: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                     onPressed: _saving ? null : _save,
-                    child: Text(_saving ? 'Saving…' : 'Confirm'),
+                    child: Text(_saving ? t.saving : t.commonConfirm),
                   ),
                 ),
               ],

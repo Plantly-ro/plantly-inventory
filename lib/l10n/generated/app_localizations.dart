@@ -1747,6 +1747,954 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'OK'**
   String get importErrorDismiss;
+
+  /// No description provided for @meTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Me'**
+  String get meTitle;
+
+  /// No description provided for @meStatCardPlants.
+  ///
+  /// In en, this message translates to:
+  /// **'PLANTS'**
+  String get meStatCardPlants;
+
+  /// No description provided for @meStatCardSpaces.
+  ///
+  /// In en, this message translates to:
+  /// **'SPACES'**
+  String get meStatCardSpaces;
+
+  /// No description provided for @meAboutApp.
+  ///
+  /// In en, this message translates to:
+  /// **'App'**
+  String get meAboutApp;
+
+  /// No description provided for @meAboutAppValue.
+  ///
+  /// In en, this message translates to:
+  /// **'PlantlyInventory · Phase 1'**
+  String get meAboutAppValue;
+
+  /// No description provided for @meAboutLicense.
+  ///
+  /// In en, this message translates to:
+  /// **'License'**
+  String get meAboutLicense;
+
+  /// No description provided for @meThemeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get meThemeLabel;
+
+  /// No description provided for @meThemeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get meThemeDark;
+
+  /// No description provided for @meThemeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get meThemeLight;
+
+  /// No description provided for @meNotificationsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get meNotificationsLabel;
+
+  /// No description provided for @meNotifChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get meNotifChecking;
+
+  /// No description provided for @meNotifEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get meNotifEnabled;
+
+  /// No description provided for @meNotifDisabledRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled — tap to retry'**
+  String get meNotifDisabledRetry;
+
+  /// No description provided for @meNotifEnabledToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications enabled'**
+  String get meNotifEnabledToast;
+
+  /// No description provided for @meNotifStillDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Still denied — enable in system settings'**
+  String get meNotifStillDenied;
+
+  /// No description provided for @meExportZipLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Export ZIP (with photos)'**
+  String get meExportZipLabel;
+
+  /// No description provided for @meExportJsonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Export JSON (signed)'**
+  String get meExportJsonLabel;
+
+  /// No description provided for @meExportZipValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Includes every attached photo. Larger file.'**
+  String get meExportZipValue;
+
+  /// No description provided for @meExportJsonValue.
+  ///
+  /// In en, this message translates to:
+  /// **'HMAC-signed JSON of every plant / schedule / event.'**
+  String get meExportJsonValue;
+
+  /// No description provided for @meBackupPassphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup passphrase'**
+  String get meBackupPassphrase;
+
+  /// No description provided for @meBackupPassphraseHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick anything — needed to import again'**
+  String get meBackupPassphraseHint;
+
+  /// No description provided for @meBackupSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup saved: {where}'**
+  String meBackupSaved(String where);
+
+  /// No description provided for @meExportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Export failed: {error}'**
+  String meExportFailed(String error);
+
+  /// No description provided for @meImportLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Import backup'**
+  String get meImportLabel;
+
+  /// No description provided for @meImportValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a .json or .zip from this device.'**
+  String get meImportValue;
+
+  /// No description provided for @meImportFileType.
+  ///
+  /// In en, this message translates to:
+  /// **'Plantly backup'**
+  String get meImportFileType;
+
+  /// No description provided for @meImportWrongPassphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong passphrase for this backup.'**
+  String get meImportWrongPassphrase;
+
+  /// No description provided for @meImportInvalidBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid backup: {message}'**
+  String meImportInvalidBackup(String message);
+
+  /// No description provided for @meImportInvalidZip.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid ZIP: {message}'**
+  String meImportInvalidZip(String message);
+
+  /// No description provided for @meImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Import failed: {error}'**
+  String meImportFailed(String error);
+
+  /// No description provided for @meImportedRows.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Imported 1 row} other{Imported {count} rows}}'**
+  String meImportedRows(int count);
+
+  /// No description provided for @meImportedPhotos.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 photo} other{{count} photos}}'**
+  String meImportedPhotos(int count);
+
+  /// No description provided for @meIcsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Download .ics'**
+  String get meIcsLabel;
+
+  /// No description provided for @meIcsValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the next 30 days of reminders in any calendar app.'**
+  String get meIcsValue;
+
+  /// No description provided for @meIcsShareText.
+  ///
+  /// In en, this message translates to:
+  /// **'PlantlyInventory reminders'**
+  String get meIcsShareText;
+
+  /// No description provided for @meIcsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'.ics saved: {where}'**
+  String meIcsSaved(String where);
+
+  /// No description provided for @meCsvLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Export CSV'**
+  String get meCsvLabel;
+
+  /// No description provided for @meCsvValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Plants + care events as a spreadsheet-friendly dump.'**
+  String get meCsvValue;
+
+  /// No description provided for @meCsvShareText.
+  ///
+  /// In en, this message translates to:
+  /// **'PlantlyInventory CSV'**
+  String get meCsvShareText;
+
+  /// No description provided for @meCsvSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV saved: {where}'**
+  String meCsvSaved(String where);
+
+  /// No description provided for @meCsvFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV export failed: {error}'**
+  String meCsvFailed(String error);
+
+  /// No description provided for @mePrivacyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy & data'**
+  String get mePrivacyTitle;
+
+  /// No description provided for @mePrivacyWhatLeaves.
+  ///
+  /// In en, this message translates to:
+  /// **'What leaves your device'**
+  String get mePrivacyWhatLeaves;
+
+  /// No description provided for @mePrivacyBulletLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing by default. Plants, photos, care events, and schedules live in a local SQLite database on your phone.'**
+  String get mePrivacyBulletLocal;
+
+  /// No description provided for @mePrivacyBulletBackups.
+  ///
+  /// In en, this message translates to:
+  /// **'Backups (JSON or ZIP) only leave the device when you tap Export — you choose where they go via the share sheet.'**
+  String get mePrivacyBulletBackups;
+
+  /// No description provided for @mePrivacyBulletNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications fire locally via the OS alarm system. We do not use a push server.'**
+  String get mePrivacyBulletNotifications;
+
+  /// No description provided for @mePrivacyBulletMarketplace.
+  ///
+  /// In en, this message translates to:
+  /// **'If you later post a plant to plantly.ro, only the fields you review in the Export dialog are sent — never the full database.'**
+  String get mePrivacyBulletMarketplace;
+
+  /// No description provided for @mePrivacySectionTelemetry.
+  ///
+  /// In en, this message translates to:
+  /// **'OPT-IN TELEMETRY'**
+  String get mePrivacySectionTelemetry;
+
+  /// No description provided for @mePrivacyCrashTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Crash reports'**
+  String get mePrivacyCrashTitle;
+
+  /// No description provided for @mePrivacyCrashBody.
+  ///
+  /// In en, this message translates to:
+  /// **'If the app crashes, send the stack trace to help us fix it. No plant data, no photos.'**
+  String get mePrivacyCrashBody;
+
+  /// No description provided for @mePrivacyUsageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Anonymous usage'**
+  String get mePrivacyUsageTitle;
+
+  /// No description provided for @mePrivacyUsageBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap counts by screen — so we know which features are loved. No identifiers, no text you enter.'**
+  String get mePrivacyUsageBody;
+
+  /// No description provided for @mePrivacySectionLegal.
+  ///
+  /// In en, this message translates to:
+  /// **'LEGAL'**
+  String get mePrivacySectionLegal;
+
+  /// No description provided for @mePrivacyLicenseValue.
+  ///
+  /// In en, this message translates to:
+  /// **'AGPL-3.0-or-later · source: github.com/URunDEAD/PlantlyInventory'**
+  String get mePrivacyLicenseValue;
+
+  /// No description provided for @meCareTypeNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New care type'**
+  String get meCareTypeNew;
+
+  /// No description provided for @meCareTypeEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit \"{label}\"'**
+  String meCareTypeEdit(String label);
+
+  /// No description provided for @meCareTypeLabelField.
+  ///
+  /// In en, this message translates to:
+  /// **'LABEL'**
+  String get meCareTypeLabelField;
+
+  /// No description provided for @meCareTypeLabelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Neem spray'**
+  String get meCareTypeLabelHint;
+
+  /// No description provided for @meCareTypeIntervalField.
+  ///
+  /// In en, this message translates to:
+  /// **'DEFAULT INTERVAL (DAYS)'**
+  String get meCareTypeIntervalField;
+
+  /// No description provided for @meCareTypeIconField.
+  ///
+  /// In en, this message translates to:
+  /// **'ICON'**
+  String get meCareTypeIconField;
+
+  /// No description provided for @meCareTypeColourField.
+  ///
+  /// In en, this message translates to:
+  /// **'COLOUR'**
+  String get meCareTypeColourField;
+
+  /// No description provided for @meCareTypeColourDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get meCareTypeColourDefault;
+
+  /// No description provided for @meCareTypeDefaultEvery.
+  ///
+  /// In en, this message translates to:
+  /// **'Default: every {days} {count, plural, =1{day} other{days}}'**
+  String meCareTypeDefaultEvery(String days, int count);
+
+  /// No description provided for @meCareTypeMuteTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute this care type everywhere'**
+  String get meCareTypeMuteTooltip;
+
+  /// No description provided for @meCareTypeUnmuteTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Unmute this care type everywhere'**
+  String get meCareTypeUnmuteTooltip;
+
+  /// No description provided for @meMutedPlantsHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'MUTED PLANTS ({count})'**
+  String meMutedPlantsHeader(int count);
+
+  /// No description provided for @meMutedRemindersHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'MUTED REMINDERS ({count})'**
+  String meMutedRemindersHeader(int count);
+
+  /// No description provided for @meMutedSpacesHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'MUTED SPACES ({count})'**
+  String meMutedSpacesHeader(int count);
+
+  /// No description provided for @meMutedPlantBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Every reminder for this plant is silenced.'**
+  String get meMutedPlantBody;
+
+  /// No description provided for @meMutedReminderBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Single schedule muted — other reminders for this plant still fire.'**
+  String get meMutedReminderBody;
+
+  /// No description provided for @meMutedSpaceBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Every plant in this space is silenced.'**
+  String get meMutedSpaceBody;
+
+  /// No description provided for @meNothingMuted.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing muted'**
+  String get meNothingMuted;
+
+  /// No description provided for @meNothingMutedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Silence reminders per plant, schedule, or space from the relevant detail screen.'**
+  String get meNothingMutedBody;
+
+  /// No description provided for @meUnmute.
+  ///
+  /// In en, this message translates to:
+  /// **'Unmute'**
+  String get meUnmute;
+
+  /// No description provided for @meDndTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Do not disturb'**
+  String get meDndTitle;
+
+  /// No description provided for @meDndActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Quiet between {start} and {end} (reminders delayed)'**
+  String meDndActive(String start, String end);
+
+  /// No description provided for @meDndInactive.
+  ///
+  /// In en, this message translates to:
+  /// **'Fire reminders whenever they\'re due'**
+  String get meDndInactive;
+
+  /// No description provided for @meDndStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get meDndStart;
+
+  /// No description provided for @meDndEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End'**
+  String get meDndEnd;
+
+  /// No description provided for @meNotifPermChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking system permission…'**
+  String get meNotifPermChecking;
+
+  /// No description provided for @meNotifPermGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'OS notifications are allowed for PlantlyInventory.'**
+  String get meNotifPermGranted;
+
+  /// No description provided for @meNotifPermDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'OS notifications are OFF. Reminders won\'t fire.'**
+  String get meNotifPermDenied;
+
+  /// No description provided for @statsCellPlants.
+  ///
+  /// In en, this message translates to:
+  /// **'PLANTS'**
+  String get statsCellPlants;
+
+  /// No description provided for @statsCellEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'EVENTS'**
+  String get statsCellEvents;
+
+  /// No description provided for @statsCellLast30.
+  ///
+  /// In en, this message translates to:
+  /// **'LAST 30d'**
+  String get statsCellLast30;
+
+  /// No description provided for @statsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No care events yet. Log your first reminder to see stats here.'**
+  String get statsEmpty;
+
+  /// No description provided for @statsCardLast.
+  ///
+  /// In en, this message translates to:
+  /// **'LAST {type}'**
+  String statsCardLast(String type);
+
+  /// No description provided for @statsCardAvg.
+  ///
+  /// In en, this message translates to:
+  /// **'AVG {type}'**
+  String statsCardAvg(String type);
+
+  /// No description provided for @statsCardToday.
+  ///
+  /// In en, this message translates to:
+  /// **'today'**
+  String get statsCardToday;
+
+  /// No description provided for @statsCardDaysShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}d'**
+  String statsCardDaysShort(int count);
+
+  /// No description provided for @statsCardAvgDaysShort.
+  ///
+  /// In en, this message translates to:
+  /// **'~{value}d'**
+  String statsCardAvgDaysShort(String value);
+
+  /// No description provided for @activityToday.
+  ///
+  /// In en, this message translates to:
+  /// **'TODAY'**
+  String get activityToday;
+
+  /// No description provided for @activityYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'YESTERDAY'**
+  String get activityYesterday;
+
+  /// No description provided for @detailLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load plant.\n{error}'**
+  String detailLoadFailed(String error);
+
+  /// No description provided for @detailNoLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'No location set'**
+  String get detailNoLocation;
+
+  /// No description provided for @detailLoadingLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading location…'**
+  String get detailLoadingLocation;
+
+  /// No description provided for @detailFabNow.
+  ///
+  /// In en, this message translates to:
+  /// **'{action} now'**
+  String detailFabNow(String action);
+
+  /// No description provided for @detailFabTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Long-press to change'**
+  String get detailFabTooltip;
+
+  /// No description provided for @detailDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete plant?'**
+  String get detailDeleteTitle;
+
+  /// No description provided for @detailDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Removes \"{name}\" from your collection. Use Gave away / Sold / Marked dead if you want a ledger entry.'**
+  String detailDeleteBody(String name);
+
+  /// No description provided for @detailDeletedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted \"{name}\"'**
+  String detailDeletedToast(String name);
+
+  /// No description provided for @detailUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get detailUndo;
+
+  /// No description provided for @detailAddedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Added {date}'**
+  String detailAddedOn(String date);
+
+  /// No description provided for @detailAcquiredOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Acquired {date}'**
+  String detailAcquiredOn(String date);
+
+  /// No description provided for @detailRemovedFromSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed from any space'**
+  String get detailRemovedFromSpace;
+
+  /// No description provided for @detailMovedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved to {space}'**
+  String detailMovedTo(String space);
+
+  /// No description provided for @detailThatSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'that space'**
+  String get detailThatSpace;
+
+  /// No description provided for @detailReorderTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Reorder'**
+  String get detailReorderTooltip;
+
+  /// No description provided for @detailEditDateTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit date'**
+  String get detailEditDateTooltip;
+
+  /// No description provided for @detailCaptionTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Caption'**
+  String get detailCaptionTooltip;
+
+  /// No description provided for @detailMuteReminderTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute this reminder'**
+  String get detailMuteReminderTooltip;
+
+  /// No description provided for @detailUnmuteReminderTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Unmute this reminder'**
+  String get detailUnmuteReminderTooltip;
+
+  /// No description provided for @detailSnoozedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Snoozed 3 days'**
+  String get detailSnoozedToast;
+
+  /// No description provided for @detailNoDueDate.
+  ///
+  /// In en, this message translates to:
+  /// **'No due date'**
+  String get detailNoDueDate;
+
+  /// No description provided for @detailOverdue.
+  ///
+  /// In en, this message translates to:
+  /// **'overdue'**
+  String get detailOverdue;
+
+  /// No description provided for @detailOverdueDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day overdue} other{{count} days overdue}}'**
+  String detailOverdueDays(int count);
+
+  /// No description provided for @detailDueToday.
+  ///
+  /// In en, this message translates to:
+  /// **'today'**
+  String get detailDueToday;
+
+  /// No description provided for @detailDueTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'tomorrow'**
+  String get detailDueTomorrow;
+
+  /// No description provided for @detailDueInDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{in 1 day} other{in {count} days}}'**
+  String detailDueInDays(int count);
+
+  /// No description provided for @detailVerbRepot.
+  ///
+  /// In en, this message translates to:
+  /// **'Repot'**
+  String get detailVerbRepot;
+
+  /// No description provided for @detailVerbPrune.
+  ///
+  /// In en, this message translates to:
+  /// **'Prune'**
+  String get detailVerbPrune;
+
+  /// No description provided for @detailPastWater.
+  ///
+  /// In en, this message translates to:
+  /// **'Watered'**
+  String get detailPastWater;
+
+  /// No description provided for @detailPastFertilize.
+  ///
+  /// In en, this message translates to:
+  /// **'Fertilized'**
+  String get detailPastFertilize;
+
+  /// No description provided for @detailPastMist.
+  ///
+  /// In en, this message translates to:
+  /// **'Misted'**
+  String get detailPastMist;
+
+  /// No description provided for @detailPastRepot.
+  ///
+  /// In en, this message translates to:
+  /// **'Repotted'**
+  String get detailPastRepot;
+
+  /// No description provided for @detailPastPrune.
+  ///
+  /// In en, this message translates to:
+  /// **'Pruned'**
+  String get detailPastPrune;
+
+  /// No description provided for @detailPastRotate.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotated'**
+  String get detailPastRotate;
+
+  /// No description provided for @detailDeleteEventTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this event?'**
+  String get detailDeleteEventTitle;
+
+  /// No description provided for @detailDeleteEventBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Removes this \"{text}\" record from the timeline.'**
+  String detailDeleteEventBody(String text);
+
+  /// No description provided for @detailLedgerPropagatedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Propagated off this plant'**
+  String get detailLedgerPropagatedOut;
+
+  /// No description provided for @detailLedgerPropagatedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Propagated from a parent'**
+  String get detailLedgerPropagatedIn;
+
+  /// No description provided for @detailLedgerGaveTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Gave to {who}'**
+  String detailLedgerGaveTo(String who);
+
+  /// No description provided for @detailLedgerSomeone.
+  ///
+  /// In en, this message translates to:
+  /// **'someone'**
+  String get detailLedgerSomeone;
+
+  /// No description provided for @detailLedgerSold.
+  ///
+  /// In en, this message translates to:
+  /// **'Sold'**
+  String get detailLedgerSold;
+
+  /// No description provided for @detailLedgerSoldTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Sold to {buyer}'**
+  String detailLedgerSoldTo(String buyer);
+
+  /// No description provided for @detailLedgerMarkedDead.
+  ///
+  /// In en, this message translates to:
+  /// **'Marked dead'**
+  String get detailLedgerMarkedDead;
+
+  /// No description provided for @detailReorderPhotosTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reorder photos'**
+  String get detailReorderPhotosTitle;
+
+  /// No description provided for @detailPhotoN.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo {n}'**
+  String detailPhotoN(int n);
+
+  /// No description provided for @sheetNicknameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Nickname is required'**
+  String get sheetNicknameRequired;
+
+  /// No description provided for @sheetFieldSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'SPACE'**
+  String get sheetFieldSpace;
+
+  /// No description provided for @sheetFieldSpecies.
+  ///
+  /// In en, this message translates to:
+  /// **'SPECIES'**
+  String get sheetFieldSpecies;
+
+  /// No description provided for @sheetSpeciesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Monstera deliciosa'**
+  String get sheetSpeciesHint;
+
+  /// No description provided for @sheetFieldNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'NOTES'**
+  String get sheetFieldNotes;
+
+  /// No description provided for @sheetNoLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'— no location —'**
+  String get sheetNoLocation;
+
+  /// No description provided for @sheetLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading…'**
+  String get sheetLoading;
+
+  /// No description provided for @sheetGaveAwayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Gave away'**
+  String get sheetGaveAwayTitle;
+
+  /// No description provided for @sheetGaveAwayHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Who did you give it to? (optional)'**
+  String get sheetGaveAwayHint;
+
+  /// No description provided for @sheetSoldTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sold'**
+  String get sheetSoldTitle;
+
+  /// No description provided for @sheetSoldHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Buyer (optional)'**
+  String get sheetSoldHint;
+
+  /// No description provided for @sheetMarkedDeadTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Marked dead'**
+  String get sheetMarkedDeadTitle;
+
+  /// No description provided for @sheetInventoryRemoveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This will remove \"{name}\" from your active collection.'**
+  String sheetInventoryRemoveBody(String name);
+
+  /// No description provided for @sheetPriceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Price (optional)'**
+  String get sheetPriceHint;
+
+  /// No description provided for @sheetNotesOptionalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes (optional)'**
+  String get sheetNotesOptionalHint;
+
+  /// No description provided for @sheetPropagateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Propagate {name}'**
+  String sheetPropagateTitle(String name);
+
+  /// No description provided for @sheetChildNickname.
+  ///
+  /// In en, this message translates to:
+  /// **'Child nickname'**
+  String get sheetChildNickname;
+
+  /// No description provided for @sheetPropagateNotesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. cut from node 3; rooting in water'**
+  String get sheetPropagateNotesHint;
+
+  /// No description provided for @sheetPropagateDefaultName.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} · propagation'**
+  String sheetPropagateDefaultName(String name);
+
+  /// No description provided for @sheetPropagateAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Propagate'**
+  String get sheetPropagateAction;
 }
 
 class _AppLocalizationsDelegate

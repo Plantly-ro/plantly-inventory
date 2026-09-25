@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 /// Propagate dialog — asks for a child nickname + optional notes, writes
 /// a propagation transaction, returns the newly-created PlantRow so
@@ -28,11 +29,19 @@ class _PropagateDialogState extends ConsumerState<PropagateDialog> {
   late final TextEditingController _nickname;
   final _notes = TextEditingController();
   bool _saving = false;
+  bool _nicknameReady = false;
 
   @override
-  void initState() {
-    super.initState();
-    _nickname = TextEditingController(text: '${widget.parentName} · propagation');
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // The localized default needs an inherited lookup, which initState
+    // can't do; seed the controller once the first time we have context.
+    if (!_nicknameReady) {
+      _nickname = TextEditingController(
+        text: AppLocalizations.of(context).sheetPropagateDefaultName(widget.parentName),
+      );
+      _nicknameReady = true;
+    }
   }
 
   @override
@@ -44,24 +53,25 @@ class _PropagateDialogState extends ConsumerState<PropagateDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return AlertDialog(
-      title: Text('Propagate ${widget.parentName}'),
+      title: Text(t.sheetPropagateTitle(widget.parentName)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
             controller: _nickname,
             autofocus: true,
-            decoration: const InputDecoration(labelText: 'Child nickname'),
+            decoration: InputDecoration(labelText: t.sheetChildNickname),
             maxLength: 64,
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _notes,
             maxLines: 3,
-            decoration: const InputDecoration(
-              labelText: 'Notes (optional)',
-              hintText: 'e.g. cut from node 3; rooting in water',
+            decoration: InputDecoration(
+              labelText: t.sheetNotesOptionalHint,
+              hintText: t.sheetPropagateNotesHint,
             ),
           ),
         ],
@@ -69,11 +79,11 @@ class _PropagateDialogState extends ConsumerState<PropagateDialog> {
       actions: [
         TextButton(
           onPressed: _saving ? null : () => Navigator.of(context).maybePop(),
-          child: const Text('Cancel'),
+          child: Text(t.cancel),
         ),
         FilledButton(
           onPressed: _saving ? null : _submit,
-          child: Text(_saving ? 'Saving…' : 'Propagate'),
+          child: Text(_saving ? t.saving : t.sheetPropagateAction),
         ),
       ],
     );
