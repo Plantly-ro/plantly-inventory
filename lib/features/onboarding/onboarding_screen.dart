@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/providers.dart';
 import '../../data/user_prefs.dart';
@@ -120,7 +119,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   ),
                   onPressed: _next,
                   child: Text(_step == 2 ? 'Start using Plantly' : 'Continue',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700)),
+                      style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, fontSize: 15, fontWeight: FontWeight.w700)),
                 ),
               ),
             ),
@@ -153,7 +152,7 @@ class _WelcomeStep extends StatelessWidget {
           const SizedBox(height: 20),
           Text(
             'Welcome to Plantly',
-            style: GoogleFonts.plusJakartaSans(fontSize: 26, fontWeight: FontWeight.w800, color: surface.text, letterSpacing: -0.5),
+            style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, fontSize: 26, fontWeight: FontWeight.w800, color: surface.text, letterSpacing: -0.5),
           ),
           const SizedBox(height: 8),
           Text(
@@ -227,7 +226,7 @@ class _NotifStep extends StatelessWidget {
           const SizedBox(height: 20),
           Text(
             'Plant reminders',
-            style: GoogleFonts.plusJakartaSans(fontSize: 26, fontWeight: FontWeight.w800, color: surface.text, letterSpacing: -0.5),
+            style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, fontSize: 26, fontWeight: FontWeight.w800, color: surface.text, letterSpacing: -0.5),
           ),
           const SizedBox(height: 8),
           Text(
@@ -310,7 +309,7 @@ class _PrivacyStep extends StatelessWidget {
           const SizedBox(height: 20),
           Text(
             'Help us improve',
-            style: GoogleFonts.plusJakartaSans(fontSize: 26, fontWeight: FontWeight.w800, color: surface.text, letterSpacing: -0.5),
+            style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, fontSize: 26, fontWeight: FontWeight.w800, color: surface.text, letterSpacing: -0.5),
           ),
           const SizedBox(height: 8),
           Text(

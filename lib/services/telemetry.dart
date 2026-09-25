@@ -41,6 +41,11 @@ class TelemetryService {
       options.beforeSend = _beforeSend;
       options.beforeSendTransaction = _beforeSendTransaction;
       options.tracesSampleRate = 0.0;
+      // No session envelopes: auto session tracking would send a
+      // "session started" ping on every launch, bypassing beforeSend and
+      // hence the in-app consent toggles. Everything that does go out is
+      // gated per event in _beforeSend / _beforeSendTransaction.
+      options.enableAutoSessionTracking = false;
     });
     _initialized = true;
   }

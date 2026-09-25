@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/database/app_database.dart' as db;
 import '../../data/providers.dart';
@@ -34,7 +33,7 @@ class ActivityScreen extends ConsumerWidget {
         ),
         title: Text(
           'Activity',
-          style: GoogleFonts.plusJakartaSans(
+          style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
             fontSize: 22,
             fontWeight: FontWeight.w800,
             color: surface.text,

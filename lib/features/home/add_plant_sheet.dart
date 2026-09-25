@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
@@ -95,7 +94,7 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
               ),
               Text(
                 'Add a plant',
-                style: GoogleFonts.plusJakartaSans(
+                style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
                   color: surface.text,

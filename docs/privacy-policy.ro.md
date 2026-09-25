@@ -1,6 +1,6 @@
 # Plantly Inventory — Politica de confidențialitate
 
-**Data intrării în vigoare:** 21 septembrie 2026
+**Data intrării în vigoare:** 25 septembrie 2026
 **Operator:** URUNDEAD LABS S.R.L., România (CUI 54762154) — contact: admin@plantly.ro
 *English: see [privacy-policy.en.md](privacy-policy.en.md).*
 
@@ -24,7 +24,6 @@ Toate acestea se află în stocarea privată a aplicației. Noi nu le putem vede
 - **Backup-uri și exporturi** (JSON, ZIP cu poze, CSV, iCal). Sunt create pe dispozitiv și predate aplicației pe care o alegi, prin meniul de partajare sau selectorul de fișiere al sistemului. Unde ajung depinde de tine.
 - **Linkuri pe care le deschizi.** Unele ecrane pot deschide plantly.ro în browser, unde se aplică [politica de confidențialitate plantly.ro](https://plantly.ro/privacy).
 - **Date despre plante primite prin link.** Aplicația poate primi detalii despre o plantă printr-un link `plantlyinventory://import` sau `plantly.ro/app/inventory/import`, de exemplu din Plantly Assistant sau de pe plantly.ro. Datele sunt conținute chiar în link și sunt prelucrate doar pe dispozitivul tău; nimic nu este trimis înapoi.
-- **Fonturi.** La prima pornire aplicația descarcă două fonturi (Inter, Plus Jakarta Sans) de la Google Fonts și le păstrează în cache. Ca orice cerere web, aceasta dezvăluie adresa ta IP către Google ([politica de confidențialitate Google](https://policies.google.com/privacy)); nu sunt incluse date din aplicație.
 
 **Notificările** sunt programate local de sistemul de operare. Nu există un server de push.
 
@@ -47,7 +46,7 @@ Versiunea publicată pe Google Play este livrată **fără un punct de raportare
 
 - **Notificări** — pentru a afișa memento-urile de îngrijire.
 - **Pornire la boot** — pentru a reprograma memento-urile după o repornire.
-- **Internet** — doar pentru situațiile de mai sus (fonturi, rapoarte opționale, linkuri pe care le deschizi).
+- **Internet** — doar pentru situațiile de mai sus (rapoarte opționale, linkuri pe care le deschizi).
 - Pozele sunt alese prin selectorul de fotografii al sistemului sau făcute cu aplicația ta de cameră; aplicația în sine nu cere permisiunea de cameră și nu îți scanează galeria.
 
 ## Copii

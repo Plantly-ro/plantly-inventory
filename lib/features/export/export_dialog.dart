@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/plantly_features.dart';
@@ -171,7 +170,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     title,
-                    style: GoogleFonts.plusJakartaSans(
+                    style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: surface.text,
@@ -272,7 +271,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                           ),
                           Text(
                             sell ? t.exportPostTitle(plant.nickname) : t.exportDraftTitle(plant.nickname),
-                            style: GoogleFonts.plusJakartaSans(
+                            style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
                               fontSize: 19,
                               fontWeight: FontWeight.w800,
                               color: surface.text,
