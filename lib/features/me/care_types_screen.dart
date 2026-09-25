@@ -65,11 +65,13 @@ class CareTypesScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton(
         backgroundColor: surface.green,
         foregroundColor: Colors.white,
+        tooltip: t.addBtn,
         onPressed: () => _edit(context, ref, surface, null),
         child: const Icon(Icons.add),
       ),
       body: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 80),
+        // Bottom clearance for the FAB (+ gesture-nav inset).
+        padding: EdgeInsets.fromLTRB(20, 0, 20, 96 + MediaQuery.paddingOf(context).bottom),
         itemCount: types.length,
         separatorBuilder: (_, _) => const SizedBox(height: 6),
         itemBuilder: (_, i) {

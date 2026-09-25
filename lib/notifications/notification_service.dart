@@ -14,7 +14,17 @@ abstract class NotificationService {
   bool get isSupported => true;
 
   Future<void> init();
+
+  /// Prompt the OS permission dialog (Android 13+ POST_NOTIFICATIONS, iOS
+  /// UNUserNotificationCenter). Only user-initiated surfaces call this —
+  /// onboarding's "Allow" button, the Home banner, Me → Notifications.
+  /// Startup must use [checkPermissions] instead so the system dialog never
+  /// pre-empts the first onboarding page.
   Future<bool> requestPermissions();
+
+  /// Current permission state WITHOUT prompting. `null` when the platform
+  /// can't tell (no plugin implementation for this host).
+  Future<bool?> checkPermissions();
   Future<void> schedule({required int id, required ICalEvent event});
   Future<void> cancel(int id);
   Future<void> cancelAll();
@@ -63,6 +73,9 @@ class UnsupportedNotificationService extends NotificationService {
   Future<bool> requestPermissions() async => false;
 
   @override
+  Future<bool?> checkPermissions() async => false;
+
+  @override
   Future<void> schedule({required int id, required ICalEvent event}) async {}
 
   @override
@@ -80,6 +93,14 @@ class FakeNotificationService extends NotificationService {
   bool initCalled = false;
   bool cancelAllCalled = false;
 
+  /// What [checkPermissions] reports and what [requestPermissions] "grants".
+  bool? permissionGranted = true;
+
+  /// Number of times the (prompting) [requestPermissions] was called —
+  /// bootstrap must leave this at 0.
+  int requestPermissionsCalls = 0;
+  int checkPermissionsCalls = 0;
+
   @override
   DndSettings dnd = DndSettings.disabled;
 
@@ -89,7 +110,16 @@ class FakeNotificationService extends NotificationService {
   }
 
   @override
-  Future<bool> requestPermissions() async => true;
+  Future<bool> requestPermissions() async {
+    requestPermissionsCalls++;
+    return permissionGranted ?? true;
+  }
+
+  @override
+  Future<bool?> checkPermissions() async {
+    checkPermissionsCalls++;
+    return permissionGranted;
+  }
 
   @override
   Future<void> schedule({required int id, required ICalEvent event}) async {

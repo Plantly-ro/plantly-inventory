@@ -14,13 +14,20 @@ class ReminderEngine {
 
   /// Reminders for all enabled schedules with `next_due_at` within
   /// [window] from [now]. Past-due schedules (next_due_at < now) are
-  /// surfaced at `now` so the user still sees them on the calendar.
+  /// surfaced at `now` so the user still sees them on the calendar / iCal
+  /// export — unless [includeOverdue] is false, in which case they are
+  /// dropped. The OS-notification path (`ReminderSync`) passes false: a
+  /// reminder that was already overdue when we (re)schedule must not fire
+  /// a notification the moment the plugin sees it (fresh-install storm —
+  /// the seeded demo plants are deliberately overdue so the Home widgets
+  /// have content). Overdue items stay visible in-app either way.
   static List<ICalEvent> buildUpcoming({
     required List<CareScheduleRow> schedules,
     required Map<String, PlantRow> plantsById,
     required Map<String, LocationRow> locationsById,
     required DateTime now,
     Duration window = const Duration(days: 30),
+    bool includeOverdue = true,
     String Function(String type)? typeLabel,
   }) {
     final cutoff = now.add(window);
@@ -32,7 +39,9 @@ class ReminderEngine {
       if (due == null) continue;
       final at = DateTime.fromMillisecondsSinceEpoch(due, isUtc: true);
       if (at.isAfter(cutoff)) continue;
-      final effective = at.isBefore(now) ? now : at;
+      final overdue = at.isBefore(now);
+      if (overdue && !includeOverdue) continue;
+      final effective = overdue ? now : at;
       final plant = plantsById[s.plantId];
       if (plant == null) continue;
       final summary = '${(typeLabel ?? _verb)(s.type)} — ${plant.nickname}';

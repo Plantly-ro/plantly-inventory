@@ -3895,6 +3895,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Rotate'**
   String get careTypeRotate;
+
+  /// No description provided for @seedPlantBob.
+  ///
+  /// In en, this message translates to:
+  /// **'Monstera \"Bob\"'**
+  String get seedPlantBob;
+
+  /// No description provided for @seedPlantGreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Pothos \"Green\"'**
+  String get seedPlantGreen;
+
+  /// No description provided for @seedPlantSnake.
+  ///
+  /// In en, this message translates to:
+  /// **'Snake plant'**
+  String get seedPlantSnake;
+
+  /// No description provided for @seedPlantCala.
+  ///
+  /// In en, this message translates to:
+  /// **'Calathea'**
+  String get seedPlantCala;
+
+  /// No description provided for @seedPlantFid.
+  ///
+  /// In en, this message translates to:
+  /// **'Fiddle fig'**
+  String get seedPlantFid;
+
+  /// No description provided for @seedPlantFern.
+  ///
+  /// In en, this message translates to:
+  /// **'Fern spray'**
+  String get seedPlantFern;
+
+  /// No description provided for @seedPlantSuc.
+  ///
+  /// In en, this message translates to:
+  /// **'Hens & chicks'**
+  String get seedPlantSuc;
+
+  /// No description provided for @seedPlantPete.
+  ///
+  /// In en, this message translates to:
+  /// **'Prickly Pete'**
+  String get seedPlantPete;
+
+  /// No description provided for @seedSpaceHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get seedSpaceHome;
+
+  /// No description provided for @seedSpaceLivingRoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Living room'**
+  String get seedSpaceLivingRoom;
+
+  /// No description provided for @seedSpaceBalcony.
+  ///
+  /// In en, this message translates to:
+  /// **'Balcony'**
+  String get seedSpaceBalcony;
+
+  /// No description provided for @notifChannelName.
+  ///
+  /// In en, this message translates to:
+  /// **'Plant care reminders'**
+  String get notifChannelName;
+
+  /// No description provided for @notifChannelDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Watering, fertilising, and other plant care reminders.'**
+  String get notifChannelDescription;
 }
 
 class _AppLocalizationsDelegate

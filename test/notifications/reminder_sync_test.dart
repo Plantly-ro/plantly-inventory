@@ -126,6 +126,64 @@ void main() {
     expect(fake.calls, isEmpty);
   });
 
+  group('overdue occurrences never reach the OS (fresh-install storm)', () {
+    // The seed deliberately creates overdue / due-today demo plants so the
+    // Home widgets have content. Before this guard every overdue row was
+    // clamped to `now`, handed to flutter_local_notifications 1s ahead and
+    // fired the instant POST_NOTIFICATIONS was granted — N notifications
+    // at once. Overdue rows stay visible in-app (they read the table).
+    test('an overdue schedule schedules nothing; a future one is scheduled', () async {
+      final overdue = await plants.create(nickname: 'Bob');
+      final future = await plants.create(nickname: 'Fern');
+      await schedules.upsert(
+        plantId: overdue.id,
+        type: 'water',
+        baseIntervalDays: 7,
+        firstDueAt: DateTime.utc(2026, 4, 20), // 11 days before the pinned clock
+      );
+      await schedules.upsert(
+        plantId: future.id,
+        type: 'water',
+        baseIntervalDays: 3,
+        firstDueAt: DateTime.utc(2026, 5, 3),
+      );
+      fake.calls.clear();
+
+      final count = await sync.syncFromDatabase(now: DateTime.utc(2026, 5, 1));
+
+      expect(count, 1);
+      expect(fake.calls.map((c) => c.event.summary).toList(), ['Water — Fern']);
+      expect(fake.calls.single.event.start, DateTime.utc(2026, 5, 3));
+    });
+
+    test('a schedule due exactly now is still handed over at now (service-level guard skips it)', () async {
+      final p = await plants.create(nickname: 'Snake');
+      await schedules.upsert(plantId: p.id, type: 'water', baseIntervalDays: 14, firstDueAt: DateTime.utc(2026, 5, 1));
+      fake.calls.clear();
+      await sync.syncFromDatabase(now: DateTime.utc(2026, 5, 1));
+      // Not "overdue" (not strictly before now) so the engine keeps it — the
+      // LocalNotificationService.schedule guard (`!when.isAfter(now)` → skip)
+      // is what prevents an immediate fire for this edge.
+      expect(fake.calls.map((c) => c.event.start).toList(), [DateTime.utc(2026, 5, 1)]);
+    });
+
+    test('all-overdue seed-like state → zero OS reminders, no throw', () async {
+      for (final (name, daysAgo) in [('Bob', 2), ('Green', 1), ('Cala', 0)]) {
+        final p = await plants.create(nickname: name);
+        await schedules.upsert(
+          plantId: p.id,
+          type: 'water',
+          baseIntervalDays: 7,
+          firstDueAt: DateTime.utc(2026, 5, 1).subtract(Duration(days: daysAgo, seconds: 1)),
+        );
+      }
+      fake.calls.clear();
+      expect(await sync.syncFromDatabase(now: DateTime.utc(2026, 5, 1)), 0);
+      expect(fake.calls, isEmpty);
+      expect(fake.cancelAllCalled, isTrue, reason: 'stale OS entries are still cleared');
+    });
+  });
+
   group('syncFromDatabase coalescing (single-flight + trailing run)', () {
     late _GatedNotificationService gated;
     late ReminderSync coalescing;

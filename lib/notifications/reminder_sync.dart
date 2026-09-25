@@ -132,6 +132,13 @@ class ReminderSync {
       locationsById: locationsById,
       now: nowUtc,
       window: window,
+      // Only future fire times reach the OS. Anything already overdue at
+      // sync time would otherwise be clamped to `now` and fire on the spot
+      // (flutter_local_notifications rejects past dates, and the service
+      // used to nudge them 1s ahead) — one notification per overdue plant
+      // the instant the permission is granted. Overdue rows still render
+      // in Home / Calendar, which read the schedule table directly.
+      includeOverdue: false,
       typeLabel: _typeLabel,
     );
     await notifications.syncAll(events);

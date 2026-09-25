@@ -747,5 +747,18 @@
   "careTypeMist": "Mist",
   "careTypeRepot": "Repot",
   "careTypePrune": "Prune",
-  "careTypeRotate": "Rotate"
+  "careTypeRotate": "Rotate",
+  "seedPlantBob": "Monstera \"Bob\"",
+  "seedPlantGreen": "Pothos \"Green\"",
+  "seedPlantSnake": "Snake plant",
+  "seedPlantCala": "Calathea",
+  "seedPlantFid": "Fiddle fig",
+  "seedPlantFern": "Fern spray",
+  "seedPlantSuc": "Hens & chicks",
+  "seedPlantPete": "Prickly Pete",
+  "seedSpaceHome": "Home",
+  "seedSpaceLivingRoom": "Living room",
+  "seedSpaceBalcony": "Balcony",
+  "notifChannelName": "Plant care reminders",
+  "notifChannelDescription": "Watering, fertilising, and other plant care reminders."
 }

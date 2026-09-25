@@ -46,6 +46,7 @@ class LocationsScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton(
         backgroundColor: surface.green,
         foregroundColor: Colors.white,
+        tooltip: AppLocalizations.of(context).addSpace,
         onPressed: () {
           showModalBottomSheet(
             context: context,
@@ -77,7 +78,8 @@ class LocationsScreen extends ConsumerWidget {
           }
           final tree = buildTree(rows);
           return ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            // Bottom clearance for the FAB (+ gesture-nav inset).
+            padding: EdgeInsets.fromLTRB(20, 8, 20, 96 + MediaQuery.paddingOf(context).bottom),
             children: [
               for (final node in tree) _LocationTile(node: node, depth: 0, surface: surface),
             ],

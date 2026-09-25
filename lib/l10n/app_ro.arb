@@ -653,5 +653,18 @@
   "careTypeMist": "Pulverizare",
   "careTypeRepot": "Replantare",
   "careTypePrune": "Tundere",
-  "careTypeRotate": "Rotire"
+  "careTypeRotate": "Rotire",
+  "seedPlantBob": "Monstera \"Bob\"",
+  "seedPlantGreen": "Pothos \"Green\"",
+  "seedPlantSnake": "Limba soacrei",
+  "seedPlantCala": "Calathea",
+  "seedPlantFid": "Ficus lira",
+  "seedPlantFern": "Ferigă",
+  "seedPlantSuc": "Urechelniță",
+  "seedPlantPete": "Cactus Pete",
+  "seedSpaceHome": "Acasă",
+  "seedSpaceLivingRoom": "Sufragerie",
+  "seedSpaceBalcony": "Balcon",
+  "notifChannelName": "Memento-uri de îngrijire a plantelor",
+  "notifChannelDescription": "Udare, fertilizare și alte memento-uri de îngrijire a plantelor."
 }

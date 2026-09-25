@@ -1,10 +1,28 @@
 import 'package:drift/drift.dart';
 
+import '../l10n/generated/app_localizations.dart';
+import '../shared/care_type_labels.dart';
 import '../sync/op_log.dart';
 import 'database/app_database.dart';
 import 'mock_plants.dart';
 import 'repositories/care_schedule_repository.dart';
 import 'repositories/location_repository.dart';
+
+/// Localized display nickname for a seeded demo plant. Species / scientific
+/// names stay as-is (they live on the decorative [MockPlant]); only the
+/// common-name nicknames follow the device locale ("Snake plant" →
+/// "Limba soacrei"). Unknown ids fall back to the fixture's English name.
+String seedPlantName(AppLocalizations t, MockPlant mock) => switch (mock.id) {
+      'bob' => t.seedPlantBob,
+      'green' => t.seedPlantGreen,
+      'snake' => t.seedPlantSnake,
+      'cala' => t.seedPlantCala,
+      'fid' => t.seedPlantFid,
+      'fern' => t.seedPlantFern,
+      'suc' => t.seedPlantSuc,
+      'pete' => t.seedPlantPete,
+      _ => mock.name,
+    };
 
 /// Populates an empty database with the prototype's fixture plants so the
 /// app is immediately demonstrable on first launch. No-op once the plants
@@ -13,10 +31,17 @@ import 'repositories/location_repository.dart';
 /// Also seeds default care schedules that match the prototype's visual
 /// state (Bob + Green overdue, Snake + Calathea + Fiddle due today,
 /// everyone else on a forward schedule).
+///
+/// Runs once, outside the widget tree, so the demo names are resolved via
+/// [appLocalizationsForPlatform] (the locale `MaterialApp` is about to
+/// pick) unless a caller injects [l10n]. Existing installs are unaffected —
+/// the seed is a no-op when data exists.
 Future<void> seedIfEmpty({
   required AppDatabase db,
   required OpLogWriter opLog,
+  AppLocalizations? l10n,
 }) async {
+  final t = l10n ?? appLocalizationsForPlatform();
   final locations = LocationRepository(db: db, opLog: opLog);
 
   // Seed a small location tree whenever the tenant has none — runs
@@ -26,9 +51,9 @@ Future<void> seedIfEmpty({
       .filter((l) => l.tenantId(opLog.tenantId) & l.deletedAt.isNull())
       .get();
   if (locRows.isEmpty) {
-    final home = await locations.create(name: 'Home', kind: 'home');
-    await locations.create(name: 'Living room', kind: 'room', parentId: home.id);
-    await locations.create(name: 'Balcony', kind: 'outdoor_bed', parentId: home.id, isOutdoor: true);
+    final home = await locations.create(name: t.seedSpaceHome, kind: 'home');
+    await locations.create(name: t.seedSpaceLivingRoom, kind: 'room', parentId: home.id);
+    await locations.create(name: t.seedSpaceBalcony, kind: 'outdoor_bed', parentId: home.id, isOutdoor: true);
   }
 
   final count = await db.managers.plants.count();
@@ -42,11 +67,12 @@ Future<void> seedIfEmpty({
   DateTime daysFromNow(int n) => now.add(Duration(days: n));
 
   for (final mock in MockPlants.all) {
+    final nickname = seedPlantName(t, mock);
     await db.transaction(() async {
       final value = {
         'id': mock.id,
         'tenant_id': opLog.tenantId,
-        'nickname': mock.name,
+        'nickname': nickname,
         'status': 'alive',
         'notes': null,
       };
@@ -59,7 +85,7 @@ Future<void> seedIfEmpty({
             PlantsCompanion.insert(
               id: mock.id,
               tenantId: opLog.tenantId,
-              nickname: mock.name,
+              nickname: nickname,
               status: 'alive',
               updatedHlc: hlc.encode(),
               deviceId: opLog.clock.deviceId,

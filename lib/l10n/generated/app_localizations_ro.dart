@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -2234,4 +2235,44 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get careTypeRotate => 'Rotire';
+
+  @override
+  String get seedPlantBob => 'Monstera \"Bob\"';
+
+  @override
+  String get seedPlantGreen => 'Pothos \"Green\"';
+
+  @override
+  String get seedPlantSnake => 'Limba soacrei';
+
+  @override
+  String get seedPlantCala => 'Calathea';
+
+  @override
+  String get seedPlantFid => 'Ficus lira';
+
+  @override
+  String get seedPlantFern => 'Ferigă';
+
+  @override
+  String get seedPlantSuc => 'Urechelniță';
+
+  @override
+  String get seedPlantPete => 'Cactus Pete';
+
+  @override
+  String get seedSpaceHome => 'Acasă';
+
+  @override
+  String get seedSpaceLivingRoom => 'Sufragerie';
+
+  @override
+  String get seedSpaceBalcony => 'Balcon';
+
+  @override
+  String get notifChannelName => 'Memento-uri de îngrijire a plantelor';
+
+  @override
+  String get notifChannelDescription =>
+      'Udare, fertilizare și alte memento-uri de îngrijire a plantelor.';
 }

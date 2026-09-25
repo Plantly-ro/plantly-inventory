@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -2200,4 +2201,44 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get careTypeRotate => 'Rotate';
+
+  @override
+  String get seedPlantBob => 'Monstera \"Bob\"';
+
+  @override
+  String get seedPlantGreen => 'Pothos \"Green\"';
+
+  @override
+  String get seedPlantSnake => 'Snake plant';
+
+  @override
+  String get seedPlantCala => 'Calathea';
+
+  @override
+  String get seedPlantFid => 'Fiddle fig';
+
+  @override
+  String get seedPlantFern => 'Fern spray';
+
+  @override
+  String get seedPlantSuc => 'Hens & chicks';
+
+  @override
+  String get seedPlantPete => 'Prickly Pete';
+
+  @override
+  String get seedSpaceHome => 'Home';
+
+  @override
+  String get seedSpaceLivingRoom => 'Living room';
+
+  @override
+  String get seedSpaceBalcony => 'Balcony';
+
+  @override
+  String get notifChannelName => 'Plant care reminders';
+
+  @override
+  String get notifChannelDescription =>
+      'Watering, fertilising, and other plant care reminders.';
 }
