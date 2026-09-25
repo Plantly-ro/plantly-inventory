@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plantly_inventory/domain/services/ical_export.dart';
 
@@ -6,6 +7,29 @@ DateTime _utc(int y, int mo, int d, [int h = 0, int m = 0, int s = 0]) =>
 
 void main() {
   group('ICalExport.fromEvents', () {
+    test('folds long lines without splitting multi-byte UTF-8 (ro diacritics)', () {
+      // 'ș' is 2 bytes; 40 of them = 80 octets, so the 75-octet fold lands
+      // mid-character unless the folder backs off to a boundary.
+      final summary = 'Udă — ${'ș' * 40}';
+      final ics = ICalExport.fromEvents(
+        productId: 'plantly.inventory',
+        events: [
+          ICalEvent(
+            uid: 'evt-2@plantly.inventory',
+            summary: summary,
+            start: _utc(2026, 4, 18, 9),
+            end: _utc(2026, 4, 18, 9, 15),
+          ),
+        ],
+        nowProvider: () => _utc(2026, 4, 18, 9),
+      );
+      // Unfold (CRLF + single space) and the original text must survive intact.
+      expect(ics.replaceAll('\r\n ', ''), contains('SUMMARY:$summary\r\n'));
+      for (final line in ics.split('\r\n')) {
+        expect(utf8.encode(line).length, lessThanOrEqualTo(75), reason: line);
+      }
+    });
+
     test('wraps a single event in a valid VCALENDAR', () {
       final ics = ICalExport.fromEvents(
         productId: 'plantly.inventory',

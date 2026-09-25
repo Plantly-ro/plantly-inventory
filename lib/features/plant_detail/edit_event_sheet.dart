@@ -5,6 +5,7 @@ import '../../data/care_types.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 
@@ -125,7 +126,7 @@ class _EditEventSheetState extends ConsumerState<EditEventSheet> {
                 children: [
                   for (final ct in types)
                     _Chip(
-                      label: ct.pastTenseLabel,
+                      label: careTypePastLabel(t, ct),
                       icon: ct.icon,
                       selected: _selectedType == ct.key,
                       surface: surface,

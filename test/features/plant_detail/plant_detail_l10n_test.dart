@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:plantly_inventory/data/care_types.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
 import 'package:plantly_inventory/data/providers.dart';
 import 'package:plantly_inventory/features/plant_detail/plant_detail_screen.dart';
@@ -52,7 +55,9 @@ Future<void> _pumpDetail(
   WidgetTester tester, {
   required Locale locale,
   required List<CareEventRow> events,
+  Map<String, Object> prefs = const {},
 }) async {
+  SharedPreferences.setMockInitialValues({'plantly_onboarded': true, ...prefs});
   // Tall viewport so every section (stats / upcoming / timeline) actually
   // builds; the default 800×600 surface would clip the list. Wider than a
   // phone because the test font renders every glyph as a fontSize-wide
@@ -137,6 +142,57 @@ void main() {
       expect(find.text('STATS'), findsOneWidget);
       expect(find.text('EVENTS'), findsOneWidget);
       expect(find.text('LAST WATER'), findsOneWidget);
+    });
+  });
+
+  group('PlantDetailScreen · built-in care-type labels (#15 remainder)', () {
+    testWidgets('FAB reads "Udă acum" (imperative), not "Water acum"', (tester) async {
+      await _pumpDetail(tester, locale: const Locale('ro'), events: const []);
+
+      expect(find.text('Udă acum'), findsOneWidget);
+      expect(find.text('Water acum'), findsNothing);
+      expect(find.text('Water now'), findsNothing);
+    });
+
+    testWidgets('FAB keeps English under en', (tester) async {
+      await _pumpDetail(tester, locale: const Locale('en'), events: const []);
+      expect(find.text('Water now'), findsOneWidget);
+    });
+
+    testWidgets('a renamed built-in keeps the user label on the FAB and in the timeline', (tester) async {
+      final renamed = json.encode([
+        for (final t in kBuiltInCareTypes)
+          t.key == 'water' ? t.copyWith(label: 'Apă').toJson() : t.toJson(),
+      ]);
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      await _pumpDetail(
+        tester,
+        locale: const Locale('ro'),
+        events: [_waterEvent(doneAt: now)],
+        prefs: {'plantly_care_types': renamed},
+      );
+
+      expect(find.text('Apă acum'), findsOneWidget);
+      expect(find.text('Udă acum'), findsNothing);
+      // Timeline row + stats card follow the rename too (no "Udată" /
+      // "ULTIMA UDARE" for a type the user calls "Apă").
+      expect(find.text('Apă'), findsOneWidget);
+      expect(find.text('ULTIMA APĂ'), findsOneWidget);
+      expect(find.text('Udată'), findsNothing);
+    });
+
+    testWidgets('a custom care type shows its own label everywhere', (tester) async {
+      final withCustom = json.encode([
+        for (final t in kBuiltInCareTypes) t.toJson(),
+        const CareType(key: 'neem_spray', label: 'Spray cu neem', iconCode: 0, defaultIntervalDays: 14).toJson(),
+      ]);
+      await _pumpDetail(
+        tester,
+        locale: const Locale('ro'),
+        events: [_waterEvent(doneAt: DateTime.now().toUtc().millisecondsSinceEpoch)],
+        prefs: {'plantly_care_types': withCustom, 'plantly_quick_fab_type': 'neem_spray'},
+      );
+      expect(find.text('Spray cu neem acum'), findsOneWidget);
     });
   });
 

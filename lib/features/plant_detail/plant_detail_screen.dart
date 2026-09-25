@@ -27,54 +27,12 @@ import '../../shared/photo_source_sheet.dart';
 import 'add_reminder_sheet.dart';
 import 'edit_event_sheet.dart';
 import 'edit_plant_sheet.dart';
+import '../../shared/care_type_labels.dart';
 import 'edit_reminder_sheet.dart';
 import 'inventory_action_sheet.dart';
 import 'log_event_sheet.dart';
 import 'propagate_dialog.dart';
 import 'tag_chip_input.dart';
-
-/// Past-tense label for a care event type ("Watered"). Built-in keys are
-/// localized; custom types fall back to their user-given label. Shared
-/// with the Activity screen so both timelines read the same.
-String careEventPastLabel(AppLocalizations t, String type, String fallback) {
-  switch (type) {
-    case 'water':
-      return t.detailPastWater;
-    case 'fertilize':
-      return t.detailPastFertilize;
-    case 'mist':
-      return t.detailPastMist;
-    case 'repot':
-      return t.detailPastRepot;
-    case 'prune':
-      return t.detailPastPrune;
-    case 'rotate':
-      return t.detailPastRotate;
-    default:
-      return fallback;
-  }
-}
-
-/// Present-tense label for a schedule type ("Water"); custom types fall
-/// back to their user-given label.
-String _careVerbLabel(AppLocalizations t, String type, String fallback) {
-  switch (type) {
-    case 'water':
-      return t.quickLogWater;
-    case 'fertilize':
-      return t.quickLogFertilize;
-    case 'mist':
-      return t.quickLogMist;
-    case 'repot':
-      return t.detailVerbRepot;
-    case 'prune':
-      return t.detailVerbPrune;
-    case 'rotate':
-      return t.quickLogRotate;
-    default:
-      return fallback;
-  }
-}
 
 String _localeOf(BuildContext context) => Localizations.localeOf(context).toString();
 
@@ -181,7 +139,7 @@ class _PlantDetailBody extends ConsumerWidget {
           backgroundColor: fabType.color ?? surface.green,
           foregroundColor: Colors.white,
           icon: Icon(fabType.icon),
-          label: Text(t.detailFabNow(fabType.label)),
+          label: Text(t.detailFabNow(careTypeVerb(t, fabType))),
           tooltip: t.detailFabTooltip,
           onPressed: () async {
             await ref.read(careEventRepositoryProvider).record(
@@ -492,7 +450,7 @@ class _PlantDetailBody extends ConsumerWidget {
                   ),
                   child: Icon(ct.icon, color: ct.color == null ? surface.green : Colors.white),
                 ),
-                title: Text(ct.label),
+                title: Text(careTypeLabel(t, ct)),
                 trailing: ct.key == current ? Icon(Icons.check, color: surface.green) : null,
                 onTap: () => Navigator.of(ctx).pop(ct.key),
               ),
@@ -909,7 +867,7 @@ class _UpcomingRowView extends ConsumerWidget {
     final t = AppLocalizations.of(context);
     final types = ref.watch(careTypesProvider);
     final ct = resolveCareType(types, schedule.type);
-    final (label, whenText, urgent) = _describe(t, schedule, ct.label);
+    final (label, whenText, urgent) = _describe(t, schedule, careTypeLabel(t, ct));
     final icon = ct.icon;
     final muted = schedule.notificationsMuted;
     // If the user gave this type a colour, use it as the chip fill; the
@@ -1042,9 +1000,8 @@ class _UpcomingRowView extends ConsumerWidget {
   (String label, String when, bool urgent) _describe(
     AppLocalizations t,
     db.CareScheduleRow s,
-    String fallbackLabel,
+    String label,
   ) {
-    final label = _careVerbLabel(t, s.type, fallbackLabel);
     final due = s.nextDueAt;
     if (due == null) return (label, t.detailNoDueDate, false);
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -1172,7 +1129,7 @@ class _Timeline extends ConsumerWidget {
     final t = AppLocalizations.of(context);
     final types = ref.watch(careTypesProvider);
     final when = _fmtDate(context, DateTime.fromMillisecondsSinceEpoch(event.doneAt, isUtc: true).toLocal());
-    final text = _describe(t, event, resolveCareType(types, event.type).label);
+    final text = _describe(t, event, careKeyPastLabel(t, types, event.type));
     Future<void> delete() async {
       final messenger = ScaffoldMessenger.of(context);
       final confirm = await showDialog<bool>(
@@ -1257,8 +1214,7 @@ class _Timeline extends ConsumerWidget {
     );
   }
 
-  String _describe(AppLocalizations t, db.CareEventRow e, String fallback) {
-    final verb = careEventPastLabel(t, e.type, fallback);
+  String _describe(AppLocalizations t, db.CareEventRow e, String verb) {
     final parts = <String>[];
     if (e.product != null && e.product!.isNotEmpty) parts.add(e.product!);
     if (e.dose != null && e.dose!.isNotEmpty) parts.add(e.dose!);
@@ -1659,7 +1615,7 @@ class _StatsCard extends ConsumerWidget {
                 Container(width: 1, height: 32, color: surface.border),
                 Expanded(
                   child: _StatCell(
-                    label: t.statsCardLast(_careVerbLabel(t, lastType, resolveCareType(types, lastType).label)).toUpperCase(),
+                    label: t.statsCardLast(careKeyLabel(t, types, lastType)).toUpperCase(),
                     value: daysAgo == 0 ? t.statsCardToday : t.statsCardDaysShort(daysAgo),
                     surface: surface,
                   ),
@@ -1668,7 +1624,7 @@ class _StatsCard extends ConsumerWidget {
                   Container(width: 1, height: 32, color: surface.border),
                   Expanded(
                     child: _StatCell(
-                      label: t.statsCardAvg(_careVerbLabel(t, mostFrequent!.key, resolveCareType(types, mostFrequent.key).label)).toUpperCase(),
+                      label: t.statsCardAvg(careKeyLabel(t, types, mostFrequent!.key)).toUpperCase(),
                       value: t.statsCardAvgDaysShort(avgDays.toStringAsFixed(avgDays >= 10 ? 0 : 1)),
                       surface: surface,
                     ),

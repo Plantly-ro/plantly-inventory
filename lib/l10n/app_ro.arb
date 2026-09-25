@@ -614,7 +614,7 @@
   "detailPastWater": "Udată",
   "detailPastFertilize": "Fertilizată",
   "detailPastMist": "Pulverizată",
-  "detailPastRepot": "Transplantată",
+  "detailPastRepot": "Replantată",
   "detailPastPrune": "Tunsă",
   "detailPastRotate": "Rotită",
   "detailDeleteEventTitle": "Ștergi acest eveniment?",
@@ -647,5 +647,11 @@
   "sheetChildNickname": "Numele noii plante",
   "sheetPropagateNotesHint": "ex.: tăiat de la nodul 3; înrădăcinare în apă",
   "sheetPropagateDefaultName": "{name} · propagare",
-  "sheetPropagateAction": "Propagă"
+  "sheetPropagateAction": "Propagă",
+  "careTypeWater": "Udare",
+  "careTypeFertilize": "Fertilizare",
+  "careTypeMist": "Pulverizare",
+  "careTypeRepot": "Replantare",
+  "careTypePrune": "Tundere",
+  "careTypeRotate": "Rotire"
 }

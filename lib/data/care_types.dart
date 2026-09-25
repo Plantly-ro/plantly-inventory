@@ -40,28 +40,6 @@ class CareType {
   IconData get icon => kCareIconByCodePoint[iconCode] ?? Icons.notifications_active_outlined;
   Color? get color => colorValue == null ? null : Color(colorValue!);
 
-  /// Past-tense verb for Timeline / Activity rendering. For custom types
-  /// the label itself is the best we can do.
-  String get pastTenseLabel {
-    if (!builtin) return label;
-    switch (key) {
-      case 'water':
-        return 'Watered';
-      case 'fertilize':
-        return 'Fertilized';
-      case 'mist':
-        return 'Misted';
-      case 'repot':
-        return 'Repotted';
-      case 'prune':
-        return 'Pruned';
-      case 'rotate':
-        return 'Rotated';
-      default:
-        return label;
-    }
-  }
-
   CareType copyWith({
     String? label,
     int? iconCode,

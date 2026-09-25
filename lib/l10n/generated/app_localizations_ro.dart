@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -2102,7 +2101,7 @@ class AppLocalizationsRo extends AppLocalizations {
   String get detailPastMist => 'Pulverizată';
 
   @override
-  String get detailPastRepot => 'Transplantată';
+  String get detailPastRepot => 'Replantată';
 
   @override
   String get detailPastPrune => 'Tunsă';
@@ -2217,4 +2216,22 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get sheetPropagateAction => 'Propagă';
+
+  @override
+  String get careTypeWater => 'Udare';
+
+  @override
+  String get careTypeFertilize => 'Fertilizare';
+
+  @override
+  String get careTypeMist => 'Pulverizare';
+
+  @override
+  String get careTypeRepot => 'Replantare';
+
+  @override
+  String get careTypePrune => 'Tundere';
+
+  @override
+  String get careTypeRotate => 'Rotire';
 }

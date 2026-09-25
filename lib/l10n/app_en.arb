@@ -741,5 +741,11 @@
   "sheetPropagateNotesHint": "e.g. cut from node 3; rooting in water",
   "sheetPropagateDefaultName": "{name} · propagation",
   "@sheetPropagateDefaultName": { "placeholders": { "name": { "type": "String" } } },
-  "sheetPropagateAction": "Propagate"
+  "sheetPropagateAction": "Propagate",
+  "careTypeWater": "Water",
+  "careTypeFertilize": "Fertilize",
+  "careTypeMist": "Mist",
+  "careTypeRepot": "Repot",
+  "careTypePrune": "Prune",
+  "careTypeRotate": "Rotate"
 }

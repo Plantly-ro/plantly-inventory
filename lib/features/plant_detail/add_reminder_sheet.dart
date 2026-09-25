@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/care_types.dart';
 import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 
@@ -176,7 +177,7 @@ class _AddReminderSheetState extends ConsumerState<AddReminderSheet> {
                 children: [
                   for (final ct in types)
                     _TypeChip(
-                      label: ct.label,
+                      label: careTypeLabel(t, ct),
                       icon: ct.icon,
                       selected: _selectedKey == ct.key,
                       surface: surface,

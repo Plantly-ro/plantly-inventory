@@ -58,12 +58,12 @@ class ICalExport {
       if (e.end != null) {
         buf..write('DTEND:')..write(_formatUtc(e.end!))..write(_lineBreak);
       }
-      buf..write('SUMMARY:')..write(_fold(_escape(e.summary)))..write(_lineBreak);
+      buf..write(_fold('SUMMARY:${_escape(e.summary)}'))..write(_lineBreak);
       if (e.description != null && e.description!.isNotEmpty) {
-        buf..write('DESCRIPTION:')..write(_fold(_escape(e.description!)))..write(_lineBreak);
+        buf..write(_fold('DESCRIPTION:${_escape(e.description!)}'))..write(_lineBreak);
       }
       if (e.location != null && e.location!.isNotEmpty) {
-        buf..write('LOCATION:')..write(_fold(_escape(e.location!)))..write(_lineBreak);
+        buf..write(_fold('LOCATION:${_escape(e.location!)}'))..write(_lineBreak);
       }
       buf..write('END:VEVENT')..write(_lineBreak);
     }
@@ -72,15 +72,20 @@ class ICalExport {
     return buf.toString();
   }
 
-  /// RFC 5545 line folding: any content line > 75 octets is split, and
-  /// continuation lines start with a single space.
+  /// RFC 5545 line folding: any content line (property name included)
+  /// > 75 octets is split, and continuation lines start with a single space.
   static String _fold(String s) {
     final bytes = utf8.encode(s);
     if (bytes.length <= 75) return s;
     final out = StringBuffer();
     var start = 0;
     while (start < bytes.length) {
-      final end = (start + 75).clamp(0, bytes.length);
+      var end = (start + 75).clamp(0, bytes.length);
+      // Never split inside a multi-byte UTF-8 sequence (ă, ș, ț, emoji…):
+      // back off while the next byte is a continuation byte (10xxxxxx).
+      while (end < bytes.length && end > start && (bytes[end] & 0xC0) == 0x80) {
+        end--;
+      }
       out.write(utf8.decode(bytes.sublist(start, end)));
       start = end;
       if (start < bytes.length) {

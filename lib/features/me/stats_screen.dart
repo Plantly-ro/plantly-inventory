@@ -6,6 +6,7 @@ import '../../data/care_types.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../plant_detail/plant_detail_screen.dart';
@@ -89,7 +90,7 @@ class StatsScreen extends ConsumerWidget {
             _BarList(
               entries: sortedTypes,
               total: recent.length,
-              label: (key) => resolveCareType(types, key).label,
+              label: (key) => careKeyLabel(t, types, key),
               icon: (key) => resolveCareType(types, key).icon,
               surface: surface,
             ),

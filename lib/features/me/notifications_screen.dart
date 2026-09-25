@@ -8,6 +8,7 @@ import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../notifications/dnd_settings.dart';
+import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../plant_detail/plant_detail_screen.dart';
@@ -121,7 +122,7 @@ class NotificationsScreen extends ConsumerWidget {
               const SizedBox(height: 8),
               for (final s in schedules)
                 _MutedRow(
-                  title: '${resolveCareType(types, s.type).label} · ${plantsById[s.plantId]?.nickname ?? s.plantId}',
+                  title: '${careKeyLabel(t, types, s.type)} · ${plantsById[s.plantId]?.nickname ?? s.plantId}',
                   subtitle: t.meMutedReminderBody,
                   icon: resolveCareType(types, s.type).icon,
                   surface: surface,

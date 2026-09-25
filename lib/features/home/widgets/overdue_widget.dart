@@ -8,7 +8,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/tokens.dart';
 import '../../../data/care_types.dart';
 import '../../../shared/care_feedback.dart';
-import 'care_labels.dart';
+import '../../../shared/care_type_labels.dart';
 import 'plant_row.dart';
 import 'swipe_row.dart';
 import 'widget_shell.dart';
@@ -111,11 +111,11 @@ class OverdueWidget extends ConsumerWidget {
     final title = plant?.nickname ?? schedule.plantId;
     final swatch = MockPlants.byId(schedule.plantId);
     final daysLate = ((now.millisecondsSinceEpoch - schedule.nextDueAt!) / (86400 * 1000)).floor();
-    final verb = careVerb(t, schedule.type);
-    final subtitle = daysLate > 0 ? t.homeOverdueLate(daysLate, verb) : t.homeDueNow(verb);
     return Consumer(
       builder: (context, ref, _) {
         final ct = resolveCareType(ref.watch(careTypesProvider), schedule.type);
+        final verb = careTypeVerb(t, ct);
+        final subtitle = daysLate > 0 ? t.homeOverdueLate(daysLate, verb) : t.homeDueNow(verb);
         Future<void> logDone() async {
           await ref.read(careEventRepositoryProvider).record(
                 plantId: schedule.plantId,

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/care_types.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 
@@ -96,7 +97,7 @@ class CareTypesScreen extends ConsumerWidget {
     CareType? existing,
   ) async {
     final t = AppLocalizations.of(context);
-    final labelCtrl = TextEditingController(text: existing?.label ?? '');
+    final labelCtrl = TextEditingController(text: existing == null ? '' : careTypeLabel(t, existing));
     var days = existing?.defaultIntervalDays ?? 7.0;
     var iconCode = existing?.iconCode ?? Icons.notifications_active_outlined.codePoint;
     int? colorValue = existing?.colorValue;
@@ -128,7 +129,7 @@ class CareTypesScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    existing == null ? t.meCareTypeNew : t.meCareTypeEdit(existing.label),
+                    existing == null ? t.meCareTypeNew : t.meCareTypeEdit(careTypeLabel(t, existing)),
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text),
                   ),
                   const SizedBox(height: 14),
@@ -211,7 +212,7 @@ class CareTypesScreen extends ConsumerWidget {
                               await notifier.update(
                                 existing.key,
                                 existing.copyWith(
-                                  label: label,
+                                  label: canonicalCareTypeLabel(t, existing, label),
                                   iconCode: iconCode,
                                   defaultIntervalDays: days,
                                   colorValue: colorValue,
@@ -323,7 +324,7 @@ class _Row extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(type.label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text)),
+                    Text(careTypeLabel(t, type), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text)),
                     Text(t.meCareTypeDefaultEvery(_format(type.defaultIntervalDays), type.defaultIntervalDays.round()),
                         style: TextStyle(fontSize: 11.5, color: surface.muted)),
                   ],

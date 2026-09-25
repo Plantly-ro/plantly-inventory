@@ -8,7 +8,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/tokens.dart';
 import '../../../data/care_types.dart';
 import '../../../shared/care_feedback.dart';
-import 'care_labels.dart';
+import '../../../shared/care_type_labels.dart';
 import 'plant_row.dart';
 import 'swipe_row.dart';
 import 'widget_shell.dart';
@@ -104,10 +104,10 @@ class TodayWidget extends ConsumerWidget {
     final plant = plantsById[schedule.plantId];
     final title = plant?.nickname ?? schedule.plantId;
     final swatch = MockPlants.byId(schedule.plantId);
-    final action = careVerb(t, schedule.type);
     return Consumer(
       builder: (context, ref, _) {
         final ct = resolveCareType(ref.watch(careTypesProvider), schedule.type);
+        final action = careTypeVerb(t, ct);
         Future<void> logDone() async {
           await ref.read(careEventRepositoryProvider).record(
                 plantId: schedule.plantId,

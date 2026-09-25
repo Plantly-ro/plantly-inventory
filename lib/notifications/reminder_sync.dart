@@ -19,7 +19,9 @@ class ReminderSync {
     required this.tenantId,
     Set<String> Function()? mutedTypesSnapshot,
     DateTime Function()? clock,
+    String Function(String type)? typeLabel,
   })  : _mutedTypesSnapshot = mutedTypesSnapshot,
+        _typeLabel = typeLabel,
         _clock = clock ?? DateTime.now;
 
   final AppDatabase db;
@@ -34,6 +36,11 @@ class ReminderSync {
   /// per sync so toggles in the Me screen take effect on the next write
   /// without wiring a listener into this class.
   final Set<String> Function()? _mutedTypesSnapshot;
+  /// Maps a care-type key to the notification-title text. Evaluated on
+  /// every run (not captured at construction) so the boot re-sync, pull-
+  /// to-refresh and every repository write all pick up the *current*
+  /// device locale and any care-type renames. Null = English fallback.
+  final String Function(String type)? _typeLabel;
 
   // Single-flight + trailing run. Every repository mutation calls
   // [syncFromDatabase]; a bulk mute/delete of N plants would otherwise do
@@ -125,6 +132,7 @@ class ReminderSync {
       locationsById: locationsById,
       now: nowUtc,
       window: window,
+      typeLabel: _typeLabel,
     );
     await notifications.syncAll(events);
     return events.length;

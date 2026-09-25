@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -2183,4 +2182,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sheetPropagateAction => 'Propagate';
+
+  @override
+  String get careTypeWater => 'Water';
+
+  @override
+  String get careTypeFertilize => 'Fertilize';
+
+  @override
+  String get careTypeMist => 'Mist';
+
+  @override
+  String get careTypeRepot => 'Repot';
+
+  @override
+  String get careTypePrune => 'Prune';
+
+  @override
+  String get careTypeRotate => 'Rotate';
 }

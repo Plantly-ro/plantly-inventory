@@ -3859,6 +3859,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Propagate'**
   String get sheetPropagateAction;
+
+  /// No description provided for @careTypeWater.
+  ///
+  /// In en, this message translates to:
+  /// **'Water'**
+  String get careTypeWater;
+
+  /// No description provided for @careTypeFertilize.
+  ///
+  /// In en, this message translates to:
+  /// **'Fertilize'**
+  String get careTypeFertilize;
+
+  /// No description provided for @careTypeMist.
+  ///
+  /// In en, this message translates to:
+  /// **'Mist'**
+  String get careTypeMist;
+
+  /// No description provided for @careTypeRepot.
+  ///
+  /// In en, this message translates to:
+  /// **'Repot'**
+  String get careTypeRepot;
+
+  /// No description provided for @careTypePrune.
+  ///
+  /// In en, this message translates to:
+  /// **'Prune'**
+  String get careTypePrune;
+
+  /// No description provided for @careTypeRotate.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate'**
+  String get careTypeRotate;
 }
 
 class _AppLocalizationsDelegate

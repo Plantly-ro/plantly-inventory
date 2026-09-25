@@ -7,7 +7,8 @@ import '../../../data/providers.dart';
 import '../../../theme/tokens.dart';
 import '../../activity/activity_screen.dart';
 import '../../../l10n/generated/app_localizations.dart';
-import 'care_labels.dart';
+import '../../../data/care_types.dart';
+import '../../../shared/care_type_labels.dart';
 import 'widget_shell.dart';
 
 /// Live "Recent activity" card — newest 3 care_events with the plant
@@ -35,6 +36,7 @@ class ActivityWidget extends ConsumerWidget {
     final t = AppLocalizations.of(context);
     final locale = Localizations.localeOf(context).toString();
     final eventsAsync = ref.watch(recentCareEventsProvider);
+    final types = ref.watch(careTypesProvider);
     final plantsAsync = ref.watch(plantsStreamProvider);
     final plantsById = plantsAsync.maybeWhen(
       data: (rows) => {for (final p in rows) p.id: p},
@@ -84,7 +86,7 @@ class ActivityWidget extends ConsumerWidget {
             child: Column(
               children: [
                 for (var i = 0; i < recent.length; i++)
-                  _row(t, locale, recent[i], plantsById, i == recent.length - 1),
+                  _row(t, locale, types, recent[i], plantsById, i == recent.length - 1),
               ],
             ),
           );
@@ -96,13 +98,14 @@ class ActivityWidget extends ConsumerWidget {
   Widget _row(
     AppLocalizations t,
     String locale,
+    List<CareType> types,
     db.CareEventRow event,
     Map<String, db.PlantRow> plantsById,
     bool last,
   ) {
     final plant = plantsById[event.plantId];
     final title = plant?.nickname ?? event.plantId;
-    final subtitle = _describe(t, event);
+    final subtitle = _describe(t, types, event);
     final when = _formatRelative(
       t,
       locale,
@@ -146,8 +149,8 @@ class ActivityWidget extends ConsumerWidget {
     );
   }
 
-  String _describe(AppLocalizations t, db.CareEventRow e) {
-    final verb = carePastLabel(t, e.type);
+  String _describe(AppLocalizations t, List<CareType> types, db.CareEventRow e) {
+    final verb = careKeyPastLabel(t, types, e.type);
     final parts = <String>[];
     if (e.product != null && e.product!.isNotEmpty) parts.add(e.product!);
     if (e.dose != null && e.dose!.isNotEmpty) parts.add(e.dose!);

@@ -7,6 +7,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../shared/location_picker.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
+import '../locations/space_kind_label.dart';
 
 /// Edit the nickname / notes / location for an existing plant. Species
 /// input is free-text for now — we store it as the literal species name
@@ -246,7 +247,7 @@ class _EditPlantSheetState extends ConsumerState<EditPlantSheet> {
   String _locSummary(AppLocalizations t, String? id, List<LocationRow> rows) {
     if (id == null) return t.sheetNoLocation;
     for (final r in rows) {
-      if (r.id == id) return '${r.name} · ${r.kind}';
+      if (r.id == id) return '${r.name} · ${spaceKindLabel(t, r.kind)}';
     }
     return t.sheetLoading;
   }

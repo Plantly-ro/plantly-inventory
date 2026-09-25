@@ -8,6 +8,7 @@ import '../../data/database/app_database.dart' as db;
 import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
+import '../../shared/care_type_labels.dart';
 import '../home/home_providers.dart';
 import '../plant_detail/plant_detail_screen.dart';
 
@@ -170,7 +171,7 @@ class ActivityScreen extends ConsumerWidget {
   }
 
   String _describe(AppLocalizations t, List<CareType> types, db.CareEventRow e) {
-    final verb = careEventPastLabel(t, e.type, resolveCareType(types, e.type).label);
+    final verb = careKeyPastLabel(t, types, e.type);
     final parts = <String>[];
     if (e.product != null && e.product!.isNotEmpty) parts.add(e.product!);
     if (e.dose != null && e.dose!.isNotEmpty) parts.add(e.dose!);
