@@ -3,7 +3,8 @@
 Store metadata in the [Fastlane *supply*](https://docs.fastlane.tools/actions/supply/)
 layout, understood by `fastlane supply`, Triple-T's *gradle-play-publisher*, the
 `r0adkll/upload-google-play` GitHub Action — and by our own `tool/play_listing.py` /
-`tool/play_upload.py`, which is what CI runs. Locales: `en-US` (default) and `ro`.
+`tool/play_upload.py`, which is what CI runs (AAB + R8 mapping / native symbols +
+track; see README "Release"). Locales: `en-US` (default) and `ro`.
 
 ```
 metadata/android/<locale>/

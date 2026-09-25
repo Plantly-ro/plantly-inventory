@@ -49,6 +49,57 @@ void main() {
       expect((await plugin.loadDraft('p2'))!.title, 'Two');
     });
 
+    test('category_label round-trips next to category (issue #11)', () async {
+      final plugin = LocalDraftExportPlugin();
+      await plugin.saveDraft(const ExportDraft(
+        sourcePlantId: 'p1',
+        title: 'Aloe',
+        description: 'd',
+        category: '0f7d1c7e-3a3b-4c1e-9b2a-7d1c3e5f8a90',
+        categoryLabel: 'Plante > Suculente',
+      ));
+
+      final loaded = await plugin.loadDraft('p1');
+      expect(loaded!.category, '0f7d1c7e-3a3b-4c1e-9b2a-7d1c3e5f8a90');
+      expect(loaded.categoryLabel, 'Plante > Suculente');
+
+      final raw = (await SharedPreferences.getInstance())
+          .getString('plantly_export_draft/p1');
+      expect(raw, contains('"category_label":"Plante > Suculente"'));
+    });
+
+    test('category_label is omitted from JSON when null and reads back null',
+        () async {
+      final plugin = LocalDraftExportPlugin();
+      await plugin.saveDraft(const ExportDraft(
+        sourcePlantId: 'p1',
+        title: 'Aloe',
+        description: 'd',
+        category: 'Succulent / Cactus',
+      ));
+      final loaded = await plugin.loadDraft('p1');
+      expect(loaded!.category, 'Succulent / Cactus');
+      expect(loaded.categoryLabel, isNull);
+      final raw = (await SharedPreferences.getInstance())
+          .getString('plantly_export_draft/p1');
+      expect(raw, isNot(contains('category_label')));
+    });
+
+    test('drafts saved before category_label existed still resume', () async {
+      SharedPreferences.setMockInitialValues({
+        'plantly_export_draft/old':
+            '{"title":"Old","description":"d","price_lei":75,'
+                '"category":"0f7d1c7e-3a3b-4c1e-9b2a-7d1c3e5f8a90","photos":[]}',
+      });
+      final loaded = await LocalDraftExportPlugin().loadDraft('old');
+      expect(loaded!.category, '0f7d1c7e-3a3b-4c1e-9b2a-7d1c3e5f8a90');
+      expect(loaded.categoryLabel, isNull);
+      // Re-saving stays additive: no label key materialises from nothing.
+      final plugin = LocalDraftExportPlugin();
+      await plugin.saveDraft(loaded);
+      expect((await plugin.loadDraft('old'))!.categoryLabel, isNull);
+    });
+
     test('legacy `price` string key still resumes', () async {
       // Simulate a pre-plugin draft written with the old key shape.
       SharedPreferences.setMockInitialValues({
