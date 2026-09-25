@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/user_prefs.dart';
 import '../../theme/tokens.dart';
@@ -29,7 +28,7 @@ class PrivacyScreen extends ConsumerWidget {
         ),
         title: Text(
           'Privacy & data',
-          style: GoogleFonts.plusJakartaSans(
+          style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
             fontSize: 22,
             fontWeight: FontWeight.w800,
             color: surface.text,

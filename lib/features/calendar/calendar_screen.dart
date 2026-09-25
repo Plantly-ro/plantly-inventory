@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/care_types.dart';
 import '../../data/database/app_database.dart' as db;
@@ -89,7 +88,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         ),
         title: Text(
           _titleFor(_view, _anchor),
-          style: GoogleFonts.plusJakartaSans(
+          style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
             fontSize: 20,
             fontWeight: FontWeight.w800,
             color: surface.text,
@@ -554,7 +553,7 @@ class _YearView extends StatelessWidget {
                     children: [
                       Text(
                         '${counts[m - 1]}',
-                        style: GoogleFonts.plusJakartaSans(
+                        style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
                           color: counts[m - 1] > 0 ? surface.green : surface.muted,
@@ -709,7 +708,7 @@ class _DayRow extends StatelessWidget {
                 ),
                 Text(
                   bucket.date.day.toString(),
-                  style: GoogleFonts.plusJakartaSans(
+                  style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
                     color: isToday ? surface.green : surface.text,

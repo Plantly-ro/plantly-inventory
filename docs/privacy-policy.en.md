@@ -1,6 +1,6 @@
 # Plantly Inventory — Privacy Policy
 
-**Effective date:** 21 September 2026
+**Effective date:** 25 September 2026
 **Controller:** URUNDEAD LABS S.R.L., Romania (CUI 54762154) — contact: admin@plantly.ro
 *Română: see [privacy-policy.ro.md](privacy-policy.ro.md).*
 
@@ -24,7 +24,6 @@ All of this lives in the app's private storage. We cannot see it, and we do not 
 - **Backups and exports** (JSON, ZIP with photos, CSV, iCal). Created on your device and handed to the app you choose through the system share sheet or file picker. Where they go is up to you.
 - **Links you open.** Some screens can open plantly.ro in your browser, which then applies plantly.ro's own [privacy policy](https://plantly.ro/privacy).
 - **Plant data arriving by link.** The app can receive plant details through a `plantlyinventory://import` or `plantly.ro/app/inventory/import` link, for example from Plantly Assistant or plantly.ro. The data travels inside the link and is processed only on your device; nothing is sent back.
-- **Fonts.** On first launch the app downloads two typefaces (Inter, Plus Jakarta Sans) from Google Fonts and caches them. Like any web request this reveals your IP address to Google ([Google privacy policy](https://policies.google.com/privacy)); no app data is included.
 
 **Notifications** are scheduled locally by the operating system. There is no push server.
 
@@ -47,7 +46,7 @@ An optional "Sell on plantly.ro" feature exists in the code but is **disabled** 
 
 - **Notifications** — to show your care reminders.
 - **Run at start-up** — to re-schedule reminders after a reboot.
-- **Internet** — only for the cases listed above (fonts, opt-in reports, links you open).
+- **Internet** — only for the cases listed above (opt-in reports, links you open).
 - Photos are picked through the system photo picker or taken with your camera app; the app itself requests no camera permission and does not scan your gallery.
 
 ## Children

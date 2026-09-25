@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../theme/tokens.dart';
 
@@ -108,7 +107,7 @@ class _Header extends StatelessWidget {
         children: [
           Text(
             title,
-            style: GoogleFonts.plusJakartaSans(
+            style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: surface.text,

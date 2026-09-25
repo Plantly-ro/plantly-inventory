@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'features/home/home_providers.dart';
 import 'features/home/home_screen.dart';
@@ -40,8 +39,8 @@ class PlantlyApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       navigatorKey: navKey,
       themeMode: mode,
-      theme: _buildTheme(Brightness.light),
-      darkTheme: _buildTheme(Brightness.dark),
+      theme: buildTheme(Brightness.light),
+      darkTheme: buildTheme(Brightness.dark),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => HandoffListener(
@@ -52,7 +51,9 @@ class PlantlyApp extends ConsumerWidget {
     );
   }
 
-  ThemeData _buildTheme(Brightness b) {
+  /// App theme for [b]. Public (static) so tests can assert the bundled
+  /// typefaces are wired in without pumping the whole app.
+  static ThemeData buildTheme(Brightness b) {
     return ThemeData(
       useMaterial3: true,
       brightness: b,
@@ -60,11 +61,9 @@ class PlantlyApp extends ConsumerWidget {
         seedColor: PlantlyTokens.botanical500,
         brightness: b,
       ),
-      textTheme: GoogleFonts.interTextTheme(
-        b == Brightness.light
-            ? ThemeData.light().textTheme
-            : ThemeData.dark().textTheme,
-      ),
+      // Bundled in assets/fonts/ (see pubspec `fonts:`) — no runtime font
+      // download, so the app renders offline and makes no request to Google.
+      fontFamily: PlantlyFonts.inter,
     );
   }
 }

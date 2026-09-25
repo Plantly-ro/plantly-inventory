@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/care_types.dart';
@@ -304,7 +303,7 @@ class _PlantDetailBody extends ConsumerWidget {
                   plantRow.nickname,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
                     fontSize: PlantlyTokens.text2xl,
                     fontWeight: FontWeight.w800,
                     color: surface.text,

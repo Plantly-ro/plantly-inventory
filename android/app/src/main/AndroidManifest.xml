@@ -4,12 +4,21 @@
            declares it too, spelled out here for clarity).
          - RECEIVE_BOOT_COMPLETED: so the boot receiver below can re-arm
            scheduled notifications after a reboot. -->
+    <!-- Declared explicitly (not just inherited from sentry-android's manifest
+         merge): needed for handoff/marketplace links and the opt-in reports.
+         Fonts are bundled, so no first-launch network request. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- Android Auto Backup / device-to-device transfer OFF: the store listing
+         promises "everything stays on your device", and a partial cloud copy of
+         the Drift DB without its photo blobs would restore a broken collection.
+         Users move phones via Me -> Backup (encrypted JSON / ZIP with photos). -->
     <application
         android:label="Plantly Inventory"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/care_types.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -32,7 +31,7 @@ class CareTypesScreen extends ConsumerWidget {
         ),
         title: Text(
           t.careTypesTitle,
-          style: GoogleFonts.plusJakartaSans(
+          style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
             fontSize: 22,
             fontWeight: FontWeight.w800,
             color: surface.text,

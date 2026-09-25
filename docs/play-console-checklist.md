@@ -100,13 +100,14 @@ Data types:
 Declare **no** for every other type — in particular Location, Personal info, Photos and
 videos (photos never leave the device; they are picked via the system picker and stored
 locally), Files and docs (backups are user-initiated exports through the share sheet,
-not collection by us), Device or other IDs (Sentry's random installation id is bundled
+not collection by us; Android Auto Backup and device-to-device transfer are disabled via
+`android:allowBackup="false"`, so no app data ever reaches Google Drive backup), Device or other IDs (Sentry's random installation id is bundled
 into the crash-log declaration; do not tick "Device or other IDs" separately).
 
-Not a Data-safety item but disclosed in the policy: first-launch font download from
-Google Fonts (IP address to Google). Bundling the two typefaces in `assets/fonts/` and
-setting `GoogleFonts.config.allowRuntimeFetching = false` would make the app genuinely
-zero-network — recommended follow-up, not a blocker.
+Fonts (Inter, Plus Jakarta Sans) are bundled in `assets/fonts/` since 1.0.0+19 — the
+`google_fonts` runtime fetch is gone, so there is no first-launch request to Google and
+nothing to disclose for it. With an empty `SENTRY_DSN` the app is genuinely zero-network
+until the user opens a link or enables the opt-in reports.
 
 Alternative if you prefer the strict-current-build answer: "No data collected" is also
 defensible today because nothing can be transmitted with an empty DSN, but the form
