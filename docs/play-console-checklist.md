@@ -8,7 +8,8 @@ Sentry opt-in **and** shipped with an empty DSN, "Sell on plantly.ro" compiled o
 
 Automated by CI (do not hand-edit in the console, it gets overwritten):
 store listing texts + graphics for `en-US` and `ro` (`publish-listing` / `publish-production`),
-AAB upload, release notes, track rollout.
+AAB upload, R8 mapping + native debug symbols (deobfuscation files for the uploaded
+versionCode), release notes, track rollout.
 
 ## 1. Store settings
 
@@ -134,6 +135,11 @@ defensible today because nothing can be transmitted with an empty DSN, but the f
 - `publish-production` commits the **listing before the build starts**, so texts and
   graphics go live (or into review) even if the 25-min build later fails. Either re-run the
   job after the fix, or revert the metadata and run `publish-listing` from `development`.
+- *App bundle explorer → Downloads* should list a **ReTrace mapping file** (and *Native
+  debug symbols*) for every CI-uploaded versionCode — `tool/play_upload.py` attaches them
+  in the same edit as the AAB, so the "no deobfuscation file" warnings must not appear.
+  If they do, check the job log for `uploaded proguard deobfuscation file` /
+  `warning: no native debug symbols found`.
 - If Play refuses the automatic review (`changesNotSentForReview`: unpublished app or a
   console change pending review) the scripts retry as a draft commit and say so in the
   job log — then click **Send for review** in the console.

@@ -111,7 +111,9 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
       final sell = ref.read(sellEnabledProvider);
       if (sell ? PlantlyRoExportPlugin.isCategoryId(draft.category) : draft.category != null) {
         _category = draft.category;
-        _categoryLabel = null; // label isn't persisted; shown as "selected"
+        // Drafts saved before `category_label` existed have none: the field
+        // then shows the generic "Category selected" until re-picked.
+        _categoryLabel = draft.categoryLabel;
       }
       if (draft.county != null) _county = draft.county;
       if (draft.city != null) _city.text = draft.city!;
@@ -128,6 +130,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
       description: _desc.text,
       priceLei: int.tryParse(_price.text.trim()),
       category: _category,
+      categoryLabel: _categoryLabel,
       county: _county,
       city: city.isEmpty ? null : city,
       photoRefs: _selected.toList(),

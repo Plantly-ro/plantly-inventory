@@ -124,6 +124,7 @@ class ExportDraft {
     required this.description,
     this.priceLei,
     this.category,
+    this.categoryLabel,
     this.county,
     this.city,
     this.photoRefs = const [],
@@ -138,6 +139,11 @@ class ExportDraft {
   /// Price in whole lei. Null while the user hasn't entered one.
   final int? priceLei;
   final String? category;
+
+  /// Human-readable name/path of [category] for display when a draft is
+  /// resumed (the marketplace `category` is an opaque UUID). Purely
+  /// presentational — plugins submit [category] only.
+  final String? categoryLabel;
   final String? county;
   final String? city;
 
@@ -153,6 +159,7 @@ class ExportDraft {
     String? description,
     int? priceLei,
     String? category,
+    String? categoryLabel,
     String? county,
     String? city,
     List<String>? photoRefs,
@@ -164,6 +171,7 @@ class ExportDraft {
       description: description ?? this.description,
       priceLei: priceLei ?? this.priceLei,
       category: category ?? this.category,
+      categoryLabel: categoryLabel ?? this.categoryLabel,
       county: county ?? this.county,
       city: city ?? this.city,
       photoRefs: photoRefs ?? this.photoRefs,
@@ -177,6 +185,8 @@ class ExportDraft {
         'description': description,
         if (priceLei != null) 'price_lei': priceLei,
         if (category != null) 'category': category,
+        // Additive (issue #11): absent in drafts saved before it existed.
+        if (categoryLabel != null) 'category_label': categoryLabel,
         if (county != null) 'county': county,
         if (city != null) 'city': city,
         'photos': photoRefs,
@@ -196,6 +206,7 @@ class ExportDraft {
         _ => null,
       },
       category: m['category'] as String?,
+      categoryLabel: m['category_label'] as String?,
       county: m['county'] as String?,
       city: m['city'] as String?,
       photoRefs: (m['photos'] as List?)?.cast<String>() ?? const [],

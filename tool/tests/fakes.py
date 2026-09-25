@@ -20,7 +20,7 @@ class FakeRequest:
         return self._result
 
 
-NESTED = ("listings", "images", "bundles", "tracks")
+NESTED = ("listings", "images", "bundles", "tracks", "deobfuscationfiles")
 
 
 class FakeResource:
