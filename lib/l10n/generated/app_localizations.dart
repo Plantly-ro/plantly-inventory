@@ -98,6 +98,1170 @@ abstract class AppLocalizations {
     Locale('ro'),
   ];
 
+  /// No description provided for @homeTip1Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Check soil moisture before watering'**
+  String get homeTip1Title;
+
+  /// No description provided for @homeTip1Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Most houseplants prefer the top 2–3 cm to dry out between waterings.'**
+  String get homeTip1Body;
+
+  /// No description provided for @homeTip2Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate toward the light'**
+  String get homeTip2Title;
+
+  /// No description provided for @homeTip2Body.
+  ///
+  /// In en, this message translates to:
+  /// **'A quarter turn each week keeps growth even and upright.'**
+  String get homeTip2Body;
+
+  /// No description provided for @homeTip3Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Feed lightly in growing season'**
+  String get homeTip3Title;
+
+  /// No description provided for @homeTip3Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Dilute fertiliser to half-strength to avoid root burn on sensitive species.'**
+  String get homeTip3Body;
+
+  /// No description provided for @homeTip4Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch for pests after seasonal change'**
+  String get homeTip4Title;
+
+  /// No description provided for @homeTip4Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Thrips and spider mites love warm, dry indoor air — check leaf undersides.'**
+  String get homeTip4Body;
+
+  /// No description provided for @homeTip5Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Repot when roots circle the pot'**
+  String get homeTip5Title;
+
+  /// No description provided for @homeTip5Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Go up one pot size only — oversized pots hold too much moisture.'**
+  String get homeTip5Body;
+
+  /// No description provided for @homeTip6Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Wipe dust off leaves'**
+  String get homeTip6Title;
+
+  /// No description provided for @homeTip6Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Clean leaves photosynthesise better and let you spot pests early.'**
+  String get homeTip6Body;
+
+  /// No description provided for @homeTip7Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Humidity helps aroids + calatheas'**
+  String get homeTip7Title;
+
+  /// No description provided for @homeTip7Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Group plants or run a pebble tray — easier than misting all day.'**
+  String get homeTip7Body;
+
+  /// No description provided for @navHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get navHome;
+
+  /// No description provided for @navCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
+  String get navCalendar;
+
+  /// No description provided for @navSpaces.
+  ///
+  /// In en, this message translates to:
+  /// **'Spaces'**
+  String get navSpaces;
+
+  /// No description provided for @navMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Me'**
+  String get navMe;
+
+  /// No description provided for @homeDbOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to open local database.\n{error}'**
+  String homeDbOpenFailed(String error);
+
+  /// No description provided for @homeSearchTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Search plants'**
+  String get homeSearchTooltip;
+
+  /// No description provided for @homeEditHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Long-press to customise your home'**
+  String get homeEditHint;
+
+  /// No description provided for @homeAddWidget.
+  ///
+  /// In en, this message translates to:
+  /// **'ADD WIDGET'**
+  String get homeAddWidget;
+
+  /// No description provided for @homePresets.
+  ///
+  /// In en, this message translates to:
+  /// **'PRESETS'**
+  String get homePresets;
+
+  /// No description provided for @homeResetDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to default'**
+  String get homeResetDefault;
+
+  /// No description provided for @homeAllWidgetsAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Every widget is already on your home screen. Apply a preset below to reshuffle.'**
+  String get homeAllWidgetsAdded;
+
+  /// No description provided for @homeAddBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Add'**
+  String get homeAddBtn;
+
+  /// No description provided for @homeNoPlantsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No plants yet'**
+  String get homeNoPlantsTitle;
+
+  /// No description provided for @homeNoPlantsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the + button to add your first plant. You can set up reminders once it lands.'**
+  String get homeNoPlantsBody;
+
+  /// No description provided for @homeNotifOffBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are off — reminders won\'t fire. Tap to enable.'**
+  String get homeNotifOffBanner;
+
+  /// No description provided for @homeWidgetGreeting.
+  ///
+  /// In en, this message translates to:
+  /// **'Greeting'**
+  String get homeWidgetGreeting;
+
+  /// No description provided for @homeWidgetStats.
+  ///
+  /// In en, this message translates to:
+  /// **'Stats row'**
+  String get homeWidgetStats;
+
+  /// No description provided for @homeWidgetTip.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip of the day'**
+  String get homeWidgetTip;
+
+  /// No description provided for @homeWidgetOverdue.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue'**
+  String get homeWidgetOverdue;
+
+  /// No description provided for @homeWidgetToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Due today'**
+  String get homeWidgetToday;
+
+  /// No description provided for @homeWidgetGrid.
+  ///
+  /// In en, this message translates to:
+  /// **'All plants (grid)'**
+  String get homeWidgetGrid;
+
+  /// No description provided for @homeWidgetActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent activity'**
+  String get homeWidgetActivity;
+
+  /// No description provided for @homeWidgetQuickLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick log'**
+  String get homeWidgetQuickLog;
+
+  /// No description provided for @homePresetGrouped.
+  ///
+  /// In en, this message translates to:
+  /// **'Grouped'**
+  String get homePresetGrouped;
+
+  /// No description provided for @homePresetDashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Dashboard'**
+  String get homePresetDashboard;
+
+  /// No description provided for @homePresetFeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Feed'**
+  String get homePresetFeed;
+
+  /// No description provided for @homePresetMinimal.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimal'**
+  String get homePresetMinimal;
+
+  /// No description provided for @homeMoveUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Move up'**
+  String get homeMoveUp;
+
+  /// No description provided for @homeMoveDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Move down'**
+  String get homeMoveDown;
+
+  /// No description provided for @homeGreetingStillUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Still up?'**
+  String get homeGreetingStillUp;
+
+  /// No description provided for @homeGreetingMorning.
+  ///
+  /// In en, this message translates to:
+  /// **'Good morning'**
+  String get homeGreetingMorning;
+
+  /// No description provided for @homeGreetingAfternoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Good afternoon'**
+  String get homeGreetingAfternoon;
+
+  /// No description provided for @homeGreetingEvening.
+  ///
+  /// In en, this message translates to:
+  /// **'Good evening'**
+  String get homeGreetingEvening;
+
+  /// No description provided for @homeCareWater.
+  ///
+  /// In en, this message translates to:
+  /// **'Water'**
+  String get homeCareWater;
+
+  /// No description provided for @homeCareFertilize.
+  ///
+  /// In en, this message translates to:
+  /// **'Fertilize'**
+  String get homeCareFertilize;
+
+  /// No description provided for @homeCareMist.
+  ///
+  /// In en, this message translates to:
+  /// **'Mist'**
+  String get homeCareMist;
+
+  /// No description provided for @homeCareRepot.
+  ///
+  /// In en, this message translates to:
+  /// **'Repot'**
+  String get homeCareRepot;
+
+  /// No description provided for @homeCarePrune.
+  ///
+  /// In en, this message translates to:
+  /// **'Prune'**
+  String get homeCarePrune;
+
+  /// No description provided for @homeCareRotate.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate'**
+  String get homeCareRotate;
+
+  /// No description provided for @homeCareDoneWater.
+  ///
+  /// In en, this message translates to:
+  /// **'Watered'**
+  String get homeCareDoneWater;
+
+  /// No description provided for @homeCareDoneFertilize.
+  ///
+  /// In en, this message translates to:
+  /// **'Fertilized'**
+  String get homeCareDoneFertilize;
+
+  /// No description provided for @homeCareDoneMist.
+  ///
+  /// In en, this message translates to:
+  /// **'Misted'**
+  String get homeCareDoneMist;
+
+  /// No description provided for @homeCareDoneRepot.
+  ///
+  /// In en, this message translates to:
+  /// **'Repotted'**
+  String get homeCareDoneRepot;
+
+  /// No description provided for @homeCareDonePrune.
+  ///
+  /// In en, this message translates to:
+  /// **'Pruned'**
+  String get homeCareDonePrune;
+
+  /// No description provided for @homeCareDoneRotate.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotated'**
+  String get homeCareDoneRotate;
+
+  /// No description provided for @homeCareDoneGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged'**
+  String get homeCareDoneGeneric;
+
+  /// No description provided for @homeOverdueLate.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} d late · {action}'**
+  String homeOverdueLate(int days, String action);
+
+  /// No description provided for @homeDueNow.
+  ///
+  /// In en, this message translates to:
+  /// **'{action} now'**
+  String homeDueNow(String action);
+
+  /// No description provided for @homeToastLoggedCare.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged care for {name}'**
+  String homeToastLoggedCare(String name);
+
+  /// No description provided for @homeToastActionLogged.
+  ///
+  /// In en, this message translates to:
+  /// **'{action} logged for {name}'**
+  String homeToastActionLogged(String action, String name);
+
+  /// No description provided for @homeViewAll.
+  ///
+  /// In en, this message translates to:
+  /// **'View all'**
+  String get homeViewAll;
+
+  /// No description provided for @homeActivityEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing logged yet — tap \"Done\" on a reminder.'**
+  String get homeActivityEmpty;
+
+  /// No description provided for @homeYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get homeYesterday;
+
+  /// No description provided for @homeDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} d ago'**
+  String homeDaysAgo(int days);
+
+  /// No description provided for @homeSearchAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get homeSearchAction;
+
+  /// No description provided for @homeGridEmptyAll.
+  ///
+  /// In en, this message translates to:
+  /// **'No plants yet — tap the + button to add one.'**
+  String get homeGridEmptyAll;
+
+  /// No description provided for @homeGridEmptyDueToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing due today — all caught up.'**
+  String get homeGridEmptyDueToday;
+
+  /// No description provided for @homeLoadPlantsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load plants.\n{error}'**
+  String homeLoadPlantsFailed(String error);
+
+  /// No description provided for @homeSortTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort plants'**
+  String get homeSortTooltip;
+
+  /// No description provided for @homeSortNameAZ.
+  ///
+  /// In en, this message translates to:
+  /// **'Name A–Z'**
+  String get homeSortNameAZ;
+
+  /// No description provided for @homeSortNameZA.
+  ///
+  /// In en, this message translates to:
+  /// **'Name Z–A'**
+  String get homeSortNameZA;
+
+  /// No description provided for @homeSortNextDue.
+  ///
+  /// In en, this message translates to:
+  /// **'Next due'**
+  String get homeSortNextDue;
+
+  /// No description provided for @homeSortNewest.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest added'**
+  String get homeSortNewest;
+
+  /// No description provided for @homeSortOldest.
+  ///
+  /// In en, this message translates to:
+  /// **'Oldest added'**
+  String get homeSortOldest;
+
+  /// No description provided for @homeSortBySpace.
+  ///
+  /// In en, this message translates to:
+  /// **'By space'**
+  String get homeSortBySpace;
+
+  /// No description provided for @homeDueLateDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} d late'**
+  String homeDueLateDays(int days);
+
+  /// No description provided for @homeDueLateHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h late'**
+  String homeDueLateHours(int hours);
+
+  /// No description provided for @homeDueNowShort.
+  ///
+  /// In en, this message translates to:
+  /// **'now'**
+  String get homeDueNowShort;
+
+  /// No description provided for @homeDueUnderHour.
+  ///
+  /// In en, this message translates to:
+  /// **'< 1h'**
+  String get homeDueUnderHour;
+
+  /// No description provided for @homeDueInHours.
+  ///
+  /// In en, this message translates to:
+  /// **'in {hours} h'**
+  String homeDueInHours(int hours);
+
+  /// No description provided for @homeDueTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'tomorrow'**
+  String get homeDueTomorrow;
+
+  /// No description provided for @homeDueInDays.
+  ///
+  /// In en, this message translates to:
+  /// **'in {days} d'**
+  String homeDueInDays(int days);
+
+  /// No description provided for @homeBulkSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String homeBulkSelected(int count);
+
+  /// No description provided for @homeBulkMove.
+  ///
+  /// In en, this message translates to:
+  /// **'Move'**
+  String get homeBulkMove;
+
+  /// No description provided for @homeBulkMute.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute'**
+  String get homeBulkMute;
+
+  /// No description provided for @homeBulkUnmute.
+  ///
+  /// In en, this message translates to:
+  /// **'Unmute'**
+  String get homeBulkUnmute;
+
+  /// No description provided for @homeBulkRemovedFromSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Removed 1 plant from any space} other{Removed {count} plants from any space}}'**
+  String homeBulkRemovedFromSpace(int count);
+
+  /// No description provided for @homeBulkMoved.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Moved 1 plant} other{Moved {count} plants}}'**
+  String homeBulkMoved(int count);
+
+  /// No description provided for @homeBulkDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Delete 1 plant?} other{Delete {count} plants?}}'**
+  String homeBulkDeleteTitle(int count);
+
+  /// No description provided for @homeBulkDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Gave away / Sold / Marked dead from a single plant if you want a ledger entry instead.'**
+  String get homeBulkDeleteBody;
+
+  /// No description provided for @homeBulkDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Deleted 1 plant} other{Deleted {count} plants}}'**
+  String homeBulkDeleted(int count);
+
+  /// No description provided for @homeBulkUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get homeBulkUndo;
+
+  /// No description provided for @homeQuickLogWhich.
+  ///
+  /// In en, this message translates to:
+  /// **'{action} which plant?'**
+  String homeQuickLogWhich(String action);
+
+  /// No description provided for @homeQuickLogRecordsNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Records a care event immediately.'**
+  String get homeQuickLogRecordsNow;
+
+  /// No description provided for @homeQuickLogEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No plants yet — add one from Home.'**
+  String get homeQuickLogEmpty;
+
+  /// No description provided for @addPlantNicknameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'NICKNAME'**
+  String get addPlantNicknameLabel;
+
+  /// No description provided for @addPlantSpaceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'SPACE'**
+  String get addPlantSpaceLabel;
+
+  /// No description provided for @addPlantNotesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'NOTES'**
+  String get addPlantNotesLabel;
+
+  /// No description provided for @addPlantNoLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'— no location —'**
+  String get addPlantNoLocation;
+
+  /// No description provided for @addPlantLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading…'**
+  String get addPlantLoading;
+
+  /// No description provided for @addPlantAddSpaceFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a space from the Spaces tab first.'**
+  String get addPlantAddSpaceFirst;
+
+  /// No description provided for @addPlantSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Add plant'**
+  String get addPlantSubmit;
+
+  /// No description provided for @onbContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get onbContinue;
+
+  /// No description provided for @onbStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start using Plantly'**
+  String get onbStart;
+
+  /// No description provided for @onbWelcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to Plantly'**
+  String get onbWelcomeTitle;
+
+  /// No description provided for @onbWelcomeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A calm, offline-first way to track your houseplants — watering, fertilising, propagation, spaces, and more. Everything lives on your phone.'**
+  String get onbWelcomeBody;
+
+  /// No description provided for @onbNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'YOUR NAME (OPTIONAL)'**
+  String get onbNameLabel;
+
+  /// No description provided for @onbNameHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'We use this only in the greeting at the top of the home screen. You can change or remove it later in Me.'**
+  String get onbNameHelp;
+
+  /// No description provided for @onbNotifTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Plant reminders'**
+  String get onbNotifTitle;
+
+  /// No description provided for @onbNotifBody.
+  ///
+  /// In en, this message translates to:
+  /// **'We schedule local notifications on your phone when a plant is due for care. Nothing is sent to a server.'**
+  String get onbNotifBody;
+
+  /// No description provided for @onbNotifGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders are enabled.'**
+  String get onbNotifGranted;
+
+  /// No description provided for @onbNotifAsk.
+  ///
+  /// In en, this message translates to:
+  /// **'Grant permission so reminders can fire.'**
+  String get onbNotifAsk;
+
+  /// No description provided for @onbGrant.
+  ///
+  /// In en, this message translates to:
+  /// **'Grant'**
+  String get onbGrant;
+
+  /// No description provided for @onbNotifSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'You can skip this and turn reminders on later in Me → Notifications.'**
+  String get onbNotifSkip;
+
+  /// No description provided for @onbPrivacyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Help us improve'**
+  String get onbPrivacyTitle;
+
+  /// No description provided for @onbPrivacyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Both are off by default. Plant data never leaves your device for any reason. You can change these any time in Me → Privacy & data.'**
+  String get onbPrivacyBody;
+
+  /// No description provided for @onbCrashTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Crash reports'**
+  String get onbCrashTitle;
+
+  /// No description provided for @onbCrashSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a stack trace if the app crashes. No plant data, no photos.'**
+  String get onbCrashSub;
+
+  /// No description provided for @onbUsageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Anonymous usage'**
+  String get onbUsageTitle;
+
+  /// No description provided for @onbUsageSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap counts by screen — helps us know which features are loved.'**
+  String get onbUsageSub;
+
+  /// No description provided for @spaceKindHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get spaceKindHome;
+
+  /// No description provided for @spaceKindRoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Room'**
+  String get spaceKindRoom;
+
+  /// No description provided for @spaceKindZone.
+  ///
+  /// In en, this message translates to:
+  /// **'Zone'**
+  String get spaceKindZone;
+
+  /// No description provided for @spaceKindShelf.
+  ///
+  /// In en, this message translates to:
+  /// **'Shelf'**
+  String get spaceKindShelf;
+
+  /// No description provided for @spaceKindOutdoorBed.
+  ///
+  /// In en, this message translates to:
+  /// **'Outdoor bed'**
+  String get spaceKindOutdoorBed;
+
+  /// No description provided for @spaceLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load locations.\n{error}'**
+  String spaceLoadFailed(String error);
+
+  /// No description provided for @spacePlantCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 plant} other{{count} plants}}'**
+  String spacePlantCount(int count);
+
+  /// No description provided for @spaceAddPlants.
+  ///
+  /// In en, this message translates to:
+  /// **'Add plants'**
+  String get spaceAddPlants;
+
+  /// No description provided for @spaceManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get spaceManage;
+
+  /// No description provided for @spaceNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Name is required'**
+  String get spaceNameRequired;
+
+  /// No description provided for @spaceEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit \"{name}\"'**
+  String spaceEditTitle(String name);
+
+  /// No description provided for @spaceNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'NAME'**
+  String get spaceNameLabel;
+
+  /// No description provided for @spaceNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Living room'**
+  String get spaceNameHint;
+
+  /// No description provided for @spaceKindUpper.
+  ///
+  /// In en, this message translates to:
+  /// **'KIND'**
+  String get spaceKindUpper;
+
+  /// No description provided for @spaceInsideLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'INSIDE (OPTIONAL)'**
+  String get spaceInsideLabel;
+
+  /// No description provided for @spaceTopLevelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Top level'**
+  String get spaceTopLevelHint;
+
+  /// No description provided for @spaceOutdoor.
+  ///
+  /// In en, this message translates to:
+  /// **'Outdoor'**
+  String get spaceOutdoor;
+
+  /// No description provided for @spaceOutdoorSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Exposed to weather'**
+  String get spaceOutdoorSub;
+
+  /// No description provided for @spaceLightLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'LIGHT LEVEL (OPTIONAL)'**
+  String get spaceLightLabel;
+
+  /// No description provided for @spaceUnspecifiedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Unspecified'**
+  String get spaceUnspecifiedHint;
+
+  /// No description provided for @spaceUnspecified.
+  ///
+  /// In en, this message translates to:
+  /// **'— unspecified —'**
+  String get spaceUnspecified;
+
+  /// No description provided for @spaceLightBrightDirect.
+  ///
+  /// In en, this message translates to:
+  /// **'bright direct'**
+  String get spaceLightBrightDirect;
+
+  /// No description provided for @spaceLightBrightIndirect.
+  ///
+  /// In en, this message translates to:
+  /// **'bright indirect'**
+  String get spaceLightBrightIndirect;
+
+  /// No description provided for @spaceLightMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'medium'**
+  String get spaceLightMedium;
+
+  /// No description provided for @spaceLightLow.
+  ///
+  /// In en, this message translates to:
+  /// **'low'**
+  String get spaceLightLow;
+
+  /// No description provided for @spaceHumidityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'HUMIDITY RANGE (% — optional)'**
+  String get spaceHumidityLabel;
+
+  /// No description provided for @spaceMin.
+  ///
+  /// In en, this message translates to:
+  /// **'min'**
+  String get spaceMin;
+
+  /// No description provided for @spaceMax.
+  ///
+  /// In en, this message translates to:
+  /// **'max'**
+  String get spaceMax;
+
+  /// No description provided for @spaceTempLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'TEMPERATURE RANGE (°C — optional)'**
+  String get spaceTempLabel;
+
+  /// No description provided for @spaceNotesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'NOTES'**
+  String get spaceNotesLabel;
+
+  /// No description provided for @spaceAssignTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Plants in \"{name}\"'**
+  String spaceAssignTitle(String name);
+
+  /// No description provided for @spaceAssignSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle to add or remove from this space.'**
+  String get spaceAssignSub;
+
+  /// No description provided for @spaceAssignEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No plants to assign yet.'**
+  String get spaceAssignEmpty;
+
+  /// No description provided for @spaceInThisSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'In this space'**
+  String get spaceInThisSpace;
+
+  /// No description provided for @spaceInAnotherSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'In another space'**
+  String get spaceInAnotherSpace;
+
+  /// No description provided for @spaceNoSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'No space'**
+  String get spaceNoSpace;
+
+  /// No description provided for @spacePickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to space'**
+  String get spacePickerTitle;
+
+  /// No description provided for @spacePickerEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No spaces yet — add one from the Spaces tab.'**
+  String get spacePickerEmpty;
+
+  /// No description provided for @spaceLoadOneFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load location.\n{error}'**
+  String spaceLoadOneFailed(String error);
+
+  /// No description provided for @spaceGone.
+  ///
+  /// In en, this message translates to:
+  /// **'Location no longer exists.'**
+  String get spaceGone;
+
+  /// No description provided for @spaceDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete space?'**
+  String get spaceDeleteTitle;
+
+  /// No description provided for @spaceDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Removes \"{name}\". Plants keep their existing position in other spaces.'**
+  String spaceDeleteBody(String name);
+
+  /// No description provided for @spaceMenuAssign.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign plants…'**
+  String get spaceMenuAssign;
+
+  /// No description provided for @spaceMenuMute.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute notifications'**
+  String get spaceMenuMute;
+
+  /// No description provided for @spaceMenuUnmute.
+  ///
+  /// In en, this message translates to:
+  /// **'Unmute notifications'**
+  String get spaceMenuUnmute;
+
+  /// No description provided for @spaceMenuAddMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Add map image…'**
+  String get spaceMenuAddMap;
+
+  /// No description provided for @spaceMenuRemoveMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove map image'**
+  String get spaceMenuRemoveMap;
+
+  /// No description provided for @spaceMenuDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete space…'**
+  String get spaceMenuDelete;
+
+  /// No description provided for @spaceSectionMap.
+  ///
+  /// In en, this message translates to:
+  /// **'MAP'**
+  String get spaceSectionMap;
+
+  /// No description provided for @spaceDonePlacing.
+  ///
+  /// In en, this message translates to:
+  /// **'Done placing'**
+  String get spaceDonePlacing;
+
+  /// No description provided for @spacePlacePins.
+  ///
+  /// In en, this message translates to:
+  /// **'Place pins'**
+  String get spacePlacePins;
+
+  /// No description provided for @spaceSectionGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'GALLERY'**
+  String get spaceSectionGallery;
+
+  /// No description provided for @spaceSectionPlants.
+  ///
+  /// In en, this message translates to:
+  /// **'PLANTS ({count})'**
+  String spaceSectionPlants(int count);
+
+  /// No description provided for @spaceChipOutdoor.
+  ///
+  /// In en, this message translates to:
+  /// **'outdoor'**
+  String get spaceChipOutdoor;
+
+  /// No description provided for @spaceChipLight.
+  ///
+  /// In en, this message translates to:
+  /// **'light: {light}'**
+  String spaceChipLight(String light);
+
+  /// No description provided for @spaceChipHumidity.
+  ///
+  /// In en, this message translates to:
+  /// **'humidity {range}%'**
+  String spaceChipHumidity(String range);
+
+  /// No description provided for @spaceChipTemp.
+  ///
+  /// In en, this message translates to:
+  /// **'temp {range}°C'**
+  String spaceChipTemp(String range);
+
+  /// No description provided for @spaceChipMuted.
+  ///
+  /// In en, this message translates to:
+  /// **'muted'**
+  String get spaceChipMuted;
+
+  /// No description provided for @spaceAddLayoutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a layout image'**
+  String get spaceAddLayoutTitle;
+
+  /// No description provided for @spaceAddLayoutBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Room photo or a rough sketch — drop plant pins on top.'**
+  String get spaceAddLayoutBody;
+
+  /// No description provided for @spaceMapMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Map image missing'**
+  String get spaceMapMissing;
+
+  /// No description provided for @spacePinHintPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to place • drag to move • long-press to remove'**
+  String get spacePinHintPlace;
+
+  /// No description provided for @spacePinHintDrag.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag pins to move • long-press to remove'**
+  String get spacePinHintDrag;
+
+  /// No description provided for @spacePlaced.
+  ///
+  /// In en, this message translates to:
+  /// **'Placed {name}'**
+  String spacePlaced(String name);
+
+  /// No description provided for @spaceNoPlantsHere.
+  ///
+  /// In en, this message translates to:
+  /// **'No plants here yet.'**
+  String get spaceNoPlantsHere;
+
+  /// No description provided for @spacePhotoEditDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit date'**
+  String get spacePhotoEditDate;
+
+  /// No description provided for @spacePhotoEditCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit caption'**
+  String get spacePhotoEditCaption;
+
+  /// No description provided for @spacePhotoRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from this space'**
+  String get spacePhotoRemove;
+
+  /// No description provided for @spaceCaptionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Caption'**
+  String get spaceCaptionTitle;
+
+  /// No description provided for @spaceCaptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. morning light corner'**
+  String get spaceCaptionHint;
+
   /// Application title shown in task switcher and app bar
   ///
   /// In en, this message translates to:

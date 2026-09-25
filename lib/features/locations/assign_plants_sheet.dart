@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/database/app_database.dart';
 import '../../data/mock_plants.dart';
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../shared/plant_thumb.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
@@ -51,12 +52,12 @@ class AssignPlantsSheet extends ConsumerWidget {
                       ),
                     ),
                     Text(
-                      'Plants in "${location.name}"',
+                      AppLocalizations.of(context).spaceAssignTitle(location.name),
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Toggle to add or remove from this space.',
+                      AppLocalizations.of(context).spaceAssignSub,
                       style: TextStyle(fontSize: 12, color: surface.muted),
                     ),
                   ],
@@ -75,7 +76,7 @@ class AssignPlantsSheet extends ConsumerWidget {
                         padding: const EdgeInsets.all(24),
                         child: Center(
                           child: Text(
-                            'No plants to assign yet.',
+                            AppLocalizations.of(context).spaceAssignEmpty,
                             style: TextStyle(color: surface.muted),
                           ),
                         ),
@@ -155,10 +156,10 @@ class _PlantAssignRow extends ConsumerWidget {
                     ),
                     Text(
                       assignedHere
-                          ? 'In this space'
+                          ? AppLocalizations.of(context).spaceInThisSpace
                           : elsewhere
-                              ? 'In another space'
-                              : 'No space',
+                              ? AppLocalizations.of(context).spaceInAnotherSpace
+                              : AppLocalizations.of(context).spaceNoSpace,
                       style: TextStyle(fontSize: 11.5, color: surface.muted),
                     ),
                   ],

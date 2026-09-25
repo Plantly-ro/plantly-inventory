@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
+import '../locations/space_kind_label.dart';
 import '../../shared/location_picker.dart';
 import '../../theme/tokens.dart';
 import 'home_providers.dart';
@@ -18,12 +20,12 @@ class AddPlantSheet extends ConsumerStatefulWidget {
   ConsumerState<AddPlantSheet> createState() => _AddPlantSheetState();
 }
 
-String _locationLabel(String? id, List<LocationRow> rows) {
-  if (id == null) return '— no location —';
+String _locationLabel(AppLocalizations t, String? id, List<LocationRow> rows) {
+  if (id == null) return t.addPlantNoLocation;
   for (final r in rows) {
-    if (r.id == id) return '${r.name} · ${r.kind}';
+    if (r.id == id) return '${r.name} · ${spaceKindLabel(t, r.kind)}';
   }
-  return 'Loading…';
+  return t.addPlantLoading;
 }
 
 class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
@@ -41,6 +43,7 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
     final repo = ref.watch(plantRepositoryProvider);
@@ -94,7 +97,7 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
                 ),
               ),
               Text(
-                'Add a plant',
+                t.addPlant,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
@@ -104,7 +107,7 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
               ),
               const SizedBox(height: 14),
               Text(
-                'NICKNAME',
+                t.addPlantNicknameLabel,
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -117,15 +120,15 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
                 controller: _nickname,
                 autofocus: true,
                 maxLength: 64,
-                decoration: const InputDecoration(
-                  hintText: 'e.g. Monstera Bob',
+                decoration: InputDecoration(
+                  hintText: t.nicknameHint,
                   counterText: '',
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
               Text(
-                'SPACE',
+                t.addPlantSpaceLabel,
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -159,7 +162,7 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          _locationLabel(_locationId, locations),
+                          _locationLabel(t, _locationId, locations),
                           style: TextStyle(fontSize: 14, color: surface.text),
                         ),
                       ),
@@ -172,13 +175,13 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
-                    'Add a space from the Spaces tab first.',
+                    t.addPlantAddSpaceFirst,
                     style: TextStyle(fontSize: 11, color: surface.muted),
                   ),
                 ),
               const SizedBox(height: 12),
               Text(
-                'NOTES',
+                t.addPlantNotesLabel,
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -190,9 +193,9 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
               TextField(
                 controller: _notes,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                  hintText: 'optional',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  hintText: t.notesHint,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 18),
@@ -205,7 +208,7 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
                   ),
                 ),
                 onPressed: _saving ? null : submit,
-                child: Text(_saving ? 'Saving…' : 'Add plant'),
+                child: Text(_saving ? t.saving : t.addPlantSubmit),
               ),
             ],
           ),

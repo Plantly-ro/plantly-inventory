@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/image_processor.dart';
 import '../../data/mock_plants.dart';
 import '../../data/photo_picker.dart';
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../shared/photo_source_sheet.dart';
 import '../../shared/plant_thumb.dart';
 import '../../shared/stored_photo_image.dart';
@@ -16,6 +18,7 @@ import '../home/home_providers.dart';
 import '../plant_detail/plant_detail_screen.dart';
 import 'assign_plants_sheet.dart';
 import 'location_edit_sheet.dart';
+import 'space_kind_label.dart';
 
 /// Full detail screen for a single location. Shows the metadata (kind,
 /// parent, light/humidity/temp ranges, notes, outdoor flag), every
@@ -34,6 +37,7 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
     final repo = ref.watch(locationRepositoryProvider);
@@ -49,14 +53,14 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Padding(
           padding: const EdgeInsets.all(24),
-          child: Text('Failed to load location.\n$e', style: TextStyle(color: surface.terra)),
+          child: Text(t.spaceLoadOneFailed('$e'), style: TextStyle(color: surface.terra)),
         ),
         data: (loc) {
           if (loc == null) {
             return Scaffold(
               appBar: AppBar(backgroundColor: surface.bg, elevation: 0),
               body: Center(
-                child: Text('Location no longer exists.', style: TextStyle(color: surface.muted)),
+                child: Text(t.spaceGone, style: TextStyle(color: surface.muted)),
               ),
             );
           }
@@ -81,7 +85,7 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                 ),
                 actions: [
                   IconButton(
-                    tooltip: 'Edit',
+                    tooltip: t.commonEdit,
                     onPressed: () {
                       showModalBottomSheet(
                         context: context,
@@ -117,14 +121,14 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                           final ok = await showDialog<bool>(
                             context: context,
                             builder: (dctx) => AlertDialog(
-                              title: const Text('Delete space?'),
-                              content: Text('Removes "${loc.name}". Plants keep their existing position in other spaces.'),
+                              title: Text(t.spaceDeleteTitle),
+                              content: Text(t.spaceDeleteBody(loc.name)),
                               actions: [
-                                TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: const Text('Cancel')),
+                                TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: Text(t.cancel)),
                                 FilledButton(
                                   style: FilledButton.styleFrom(backgroundColor: surface.terra),
                                   onPressed: () => Navigator.of(dctx).pop(true),
-                                  child: const Text('Delete'),
+                                  child: Text(t.commonDelete),
                                 ),
                               ],
                             ),
@@ -137,17 +141,17 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                       }
                     },
                     itemBuilder: (_) => [
-                      const PopupMenuItem(value: 'assign', child: Text('Assign plants…')),
+                      PopupMenuItem(value: 'assign', child: Text(t.spaceMenuAssign)),
                       PopupMenuItem(
                         value: 'mute',
-                        child: Text(loc.notificationsMuted ? 'Unmute notifications' : 'Mute notifications'),
+                        child: Text(loc.notificationsMuted ? t.spaceMenuUnmute : t.spaceMenuMute),
                       ),
                       if (loc.mapPhotoSha == null)
-                        const PopupMenuItem(value: 'map', child: Text('Add map image…'))
+                        PopupMenuItem(value: 'map', child: Text(t.spaceMenuAddMap))
                       else
-                        const PopupMenuItem(value: 'clearmap', child: Text('Remove map image')),
+                        PopupMenuItem(value: 'clearmap', child: Text(t.spaceMenuRemoveMap)),
                       const PopupMenuDivider(),
-                      const PopupMenuItem(value: 'delete', child: Text('Delete space…')),
+                      PopupMenuItem(value: 'delete', child: Text(t.spaceMenuDelete)),
                     ],
                   ),
                 ],
@@ -160,11 +164,11 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                       padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
                       child: Row(
                         children: [
-                          Text('MAP', style: _sectionStyle(surface)),
+                          Text(t.spaceSectionMap, style: _sectionStyle(surface)),
                           const Spacer(),
                           TextButton.icon(
                             icon: Icon(_editingPins ? Icons.check : Icons.edit_location_outlined, size: 16),
-                            label: Text(_editingPins ? 'Done placing' : 'Place pins', style: const TextStyle(fontSize: 11.5)),
+                            label: Text(_editingPins ? t.spaceDonePlacing : t.spacePlacePins, style: const TextStyle(fontSize: 11.5)),
                             onPressed: () => setState(() => _editingPins = !_editingPins),
                           ),
                         ],
@@ -182,7 +186,7 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                   ] else ...[
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-                      child: Text('MAP', style: _sectionStyle(surface)),
+                      child: Text(t.spaceSectionMap, style: _sectionStyle(surface)),
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -194,7 +198,7 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                   ],
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 18, 20, 4),
-                    child: Text('GALLERY', style: _sectionStyle(surface)),
+                    child: Text(t.spaceSectionGallery, style: _sectionStyle(surface)),
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -202,7 +206,7 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 18, 20, 4),
-                    child: Text('PLANTS (${plants.length})', style: _sectionStyle(surface)),
+                    child: Text(t.spaceSectionPlants(plants.length), style: _sectionStyle(surface)),
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -250,18 +254,19 @@ class _Meta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final chips = <Widget>[];
-    chips.add(_Chip(label: loc.kind, surface: surface));
-    if (loc.isOutdoor) chips.add(_Chip(label: 'outdoor', surface: surface, accent: true));
-    if (loc.light != null) chips.add(_Chip(label: 'light: ${loc.light}', surface: surface));
+    chips.add(_Chip(label: spaceKindLabel(t, loc.kind), surface: surface));
+    if (loc.isOutdoor) chips.add(_Chip(label: t.spaceChipOutdoor, surface: surface, accent: true));
+    if (loc.light != null) chips.add(_Chip(label: t.spaceChipLight(spaceLightLabel(t, loc.light!)), surface: surface));
     if (loc.humidityMin != null || loc.humidityMax != null) {
-      chips.add(_Chip(label: 'humidity ${loc.humidityMin ?? '—'}–${loc.humidityMax ?? '—'}%', surface: surface));
+      chips.add(_Chip(label: t.spaceChipHumidity('${loc.humidityMin ?? '—'}–${loc.humidityMax ?? '—'}'), surface: surface));
     }
     if (loc.tempMinC != null || loc.tempMaxC != null) {
-      chips.add(_Chip(label: 'temp ${loc.tempMinC ?? '—'}–${loc.tempMaxC ?? '—'}°C', surface: surface));
+      chips.add(_Chip(label: t.spaceChipTemp('${loc.tempMinC ?? '—'}–${loc.tempMaxC ?? '—'}'), surface: surface));
     }
     if (loc.notificationsMuted) {
-      chips.add(_Chip(label: 'muted', surface: surface, accent: true));
+      chips.add(_Chip(label: t.spaceChipMuted, surface: surface, accent: true));
     }
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
@@ -320,11 +325,11 @@ class _EmptyMapCta extends StatelessWidget {
             Icon(Icons.add_photo_alternate_outlined, size: 30, color: surface.muted),
             const SizedBox(height: 8),
             Text(
-              'Add a layout image',
+              AppLocalizations.of(context).spaceAddLayoutTitle,
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: surface.text),
             ),
             Text(
-              'Room photo or a rough sketch — drop plant pins on top.',
+              AppLocalizations.of(context).spaceAddLayoutBody,
               style: TextStyle(fontSize: 11.5, color: surface.muted),
             ),
           ],
@@ -360,7 +365,7 @@ class _LocationMapView extends ConsumerWidget {
               color: surface.surfaceAlt,
               borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
             ),
-            child: const Center(child: Text('Map image missing')),
+            child: Center(child: Text(AppLocalizations.of(context).spaceMapMissing)),
           );
         }
         return AspectRatio(
@@ -410,8 +415,8 @@ class _LocationMapView extends ConsumerWidget {
                           ),
                           child: Text(
                             plants.any((p) => p.pinX == null || p.pinY == null)
-                                ? 'Tap to place • drag to move • long-press to remove'
-                                : 'Drag pins to move • long-press to remove',
+                                ? AppLocalizations.of(context).spacePinHintPlace
+                                : AppLocalizations.of(context).spacePinHintDrag,
                             style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
                           ),
                         ),
@@ -442,7 +447,7 @@ class _LocationMapView extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text('Placed ${target.nickname}')));
+      ..showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).spacePlaced(target.nickname))));
   }
 }
 
@@ -527,7 +532,7 @@ class _PlantsList extends ConsumerWidget {
           borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
         ),
         alignment: Alignment.center,
-        child: Text('No plants here yet.', style: TextStyle(color: surface.muted, fontSize: 12)),
+        child: Text(AppLocalizations.of(context).spaceNoPlantsHere, style: TextStyle(color: surface.muted, fontSize: 12)),
       );
     }
     return Column(
@@ -647,6 +652,7 @@ class _LocationGallery extends ConsumerWidget {
   }
 
   Future<void> _viewPhoto(BuildContext context, WidgetRef ref, LocationPhotoRow row) async {
+    final t = AppLocalizations.of(context);
     final choice = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -669,17 +675,17 @@ class _LocationGallery extends ConsumerWidget {
             const SizedBox(height: 14),
             ListTile(
               leading: Icon(Icons.edit_calendar_outlined, color: surface.green),
-              title: const Text('Edit date'),
+              title: Text(t.spacePhotoEditDate),
               onTap: () => Navigator.of(ctx).pop('date'),
             ),
             ListTile(
               leading: Icon(Icons.edit_note_outlined, color: surface.green),
-              title: const Text('Edit caption'),
+              title: Text(t.spacePhotoEditCaption),
               onTap: () => Navigator.of(ctx).pop('caption'),
             ),
             ListTile(
               leading: Icon(Icons.delete_outline, color: surface.terra),
-              title: const Text('Remove from this space'),
+              title: Text(t.spacePhotoRemove),
               onTap: () => Navigator.of(ctx).pop('remove'),
             ),
           ],
@@ -691,23 +697,23 @@ class _LocationGallery extends ConsumerWidget {
       final result = await showDialog<String?>(
         context: context,
         builder: (dctx) => AlertDialog(
-          title: const Text('Caption'),
+          title: Text(t.spaceCaptionTitle),
           content: TextField(
             controller: controller,
             autofocus: true,
             maxLength: 200,
-            decoration: const InputDecoration(hintText: 'e.g. morning light corner', border: OutlineInputBorder()),
+            decoration: InputDecoration(hintText: t.spaceCaptionHint, border: const OutlineInputBorder()),
             onSubmitted: (v) => Navigator.of(dctx).pop(v),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(dctx).pop(null), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.of(dctx).pop(null), child: Text(t.cancel)),
             if ((row.caption ?? '').isNotEmpty)
               TextButton(
                 style: TextButton.styleFrom(foregroundColor: surface.terra),
                 onPressed: () => Navigator.of(dctx).pop(''),
-                child: const Text('Clear'),
+                child: Text(t.commonClear),
               ),
-            FilledButton(onPressed: () => Navigator.of(dctx).pop(controller.text), child: const Text('Save')),
+            FilledButton(onPressed: () => Navigator.of(dctx).pop(controller.text), child: Text(t.commonSave)),
           ],
         ),
       );
@@ -746,10 +752,8 @@ DateTime _photoDate(LocationPhotoRow row) {
   return DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toLocal();
 }
 
-String _fmtPhotoDate(DateTime d) {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return '${months[d.month - 1]} ${d.day}, ${d.year}';
-}
+/// "Jan 5, 2026" (en) / "5 ian. 2026" (ro) — month names from intl.
+String _fmtPhotoDate(DateTime d, String locale) => DateFormat.yMMMd(locale).format(d);
 
 class _GalleryTile extends ConsumerWidget {
   const _GalleryTile({required this.row, required this.surface, required this.onTap});
@@ -781,7 +785,7 @@ class _GalleryTile extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  _fmtPhotoDate(_photoDate(row)),
+                  _fmtPhotoDate(_photoDate(row), Localizations.localeOf(context).toString()),
                   style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600),
                 ),
               ),
@@ -831,7 +835,7 @@ class _AddTile extends StatelessWidget {
             children: [
               Icon(Icons.add_photo_alternate_outlined, size: 24, color: surface.muted),
               const SizedBox(height: 4),
-              Text('Add', style: TextStyle(fontSize: 11, color: surface.muted)),
+              Text(AppLocalizations.of(context).addBtn, style: TextStyle(fontSize: 11, color: surface.muted)),
             ],
           ),
         ),

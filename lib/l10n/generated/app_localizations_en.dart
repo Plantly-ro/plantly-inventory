@@ -9,6 +9,695 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get homeTip1Title => 'Check soil moisture before watering';
+
+  @override
+  String get homeTip1Body =>
+      'Most houseplants prefer the top 2–3 cm to dry out between waterings.';
+
+  @override
+  String get homeTip2Title => 'Rotate toward the light';
+
+  @override
+  String get homeTip2Body =>
+      'A quarter turn each week keeps growth even and upright.';
+
+  @override
+  String get homeTip3Title => 'Feed lightly in growing season';
+
+  @override
+  String get homeTip3Body =>
+      'Dilute fertiliser to half-strength to avoid root burn on sensitive species.';
+
+  @override
+  String get homeTip4Title => 'Watch for pests after seasonal change';
+
+  @override
+  String get homeTip4Body =>
+      'Thrips and spider mites love warm, dry indoor air — check leaf undersides.';
+
+  @override
+  String get homeTip5Title => 'Repot when roots circle the pot';
+
+  @override
+  String get homeTip5Body =>
+      'Go up one pot size only — oversized pots hold too much moisture.';
+
+  @override
+  String get homeTip6Title => 'Wipe dust off leaves';
+
+  @override
+  String get homeTip6Body =>
+      'Clean leaves photosynthesise better and let you spot pests early.';
+
+  @override
+  String get homeTip7Title => 'Humidity helps aroids + calatheas';
+
+  @override
+  String get homeTip7Body =>
+      'Group plants or run a pebble tray — easier than misting all day.';
+
+  @override
+  String get navHome => 'Home';
+
+  @override
+  String get navCalendar => 'Calendar';
+
+  @override
+  String get navSpaces => 'Spaces';
+
+  @override
+  String get navMe => 'Me';
+
+  @override
+  String homeDbOpenFailed(String error) {
+    return 'Failed to open local database.\n$error';
+  }
+
+  @override
+  String get homeSearchTooltip => 'Search plants';
+
+  @override
+  String get homeEditHint => 'Long-press to customise your home';
+
+  @override
+  String get homeAddWidget => 'ADD WIDGET';
+
+  @override
+  String get homePresets => 'PRESETS';
+
+  @override
+  String get homeResetDefault => 'Reset to default';
+
+  @override
+  String get homeAllWidgetsAdded =>
+      'Every widget is already on your home screen. Apply a preset below to reshuffle.';
+
+  @override
+  String get homeAddBtn => '+ Add';
+
+  @override
+  String get homeNoPlantsTitle => 'No plants yet';
+
+  @override
+  String get homeNoPlantsBody =>
+      'Tap the + button to add your first plant. You can set up reminders once it lands.';
+
+  @override
+  String get homeNotifOffBanner =>
+      'Notifications are off — reminders won\'t fire. Tap to enable.';
+
+  @override
+  String get homeWidgetGreeting => 'Greeting';
+
+  @override
+  String get homeWidgetStats => 'Stats row';
+
+  @override
+  String get homeWidgetTip => 'Tip of the day';
+
+  @override
+  String get homeWidgetOverdue => 'Overdue';
+
+  @override
+  String get homeWidgetToday => 'Due today';
+
+  @override
+  String get homeWidgetGrid => 'All plants (grid)';
+
+  @override
+  String get homeWidgetActivity => 'Recent activity';
+
+  @override
+  String get homeWidgetQuickLog => 'Quick log';
+
+  @override
+  String get homePresetGrouped => 'Grouped';
+
+  @override
+  String get homePresetDashboard => 'Dashboard';
+
+  @override
+  String get homePresetFeed => 'Feed';
+
+  @override
+  String get homePresetMinimal => 'Minimal';
+
+  @override
+  String get homeMoveUp => 'Move up';
+
+  @override
+  String get homeMoveDown => 'Move down';
+
+  @override
+  String get homeGreetingStillUp => 'Still up?';
+
+  @override
+  String get homeGreetingMorning => 'Good morning';
+
+  @override
+  String get homeGreetingAfternoon => 'Good afternoon';
+
+  @override
+  String get homeGreetingEvening => 'Good evening';
+
+  @override
+  String get homeCareWater => 'Water';
+
+  @override
+  String get homeCareFertilize => 'Fertilize';
+
+  @override
+  String get homeCareMist => 'Mist';
+
+  @override
+  String get homeCareRepot => 'Repot';
+
+  @override
+  String get homeCarePrune => 'Prune';
+
+  @override
+  String get homeCareRotate => 'Rotate';
+
+  @override
+  String get homeCareDoneWater => 'Watered';
+
+  @override
+  String get homeCareDoneFertilize => 'Fertilized';
+
+  @override
+  String get homeCareDoneMist => 'Misted';
+
+  @override
+  String get homeCareDoneRepot => 'Repotted';
+
+  @override
+  String get homeCareDonePrune => 'Pruned';
+
+  @override
+  String get homeCareDoneRotate => 'Rotated';
+
+  @override
+  String get homeCareDoneGeneric => 'Logged';
+
+  @override
+  String homeOverdueLate(int days, String action) {
+    return '$days d late · $action';
+  }
+
+  @override
+  String homeDueNow(String action) {
+    return '$action now';
+  }
+
+  @override
+  String homeToastLoggedCare(String name) {
+    return 'Logged care for $name';
+  }
+
+  @override
+  String homeToastActionLogged(String action, String name) {
+    return '$action logged for $name';
+  }
+
+  @override
+  String get homeViewAll => 'View all';
+
+  @override
+  String get homeActivityEmpty =>
+      'Nothing logged yet — tap \"Done\" on a reminder.';
+
+  @override
+  String get homeYesterday => 'Yesterday';
+
+  @override
+  String homeDaysAgo(int days) {
+    return '$days d ago';
+  }
+
+  @override
+  String get homeSearchAction => 'Search';
+
+  @override
+  String get homeGridEmptyAll => 'No plants yet — tap the + button to add one.';
+
+  @override
+  String get homeGridEmptyDueToday => 'Nothing due today — all caught up.';
+
+  @override
+  String homeLoadPlantsFailed(String error) {
+    return 'Could not load plants.\n$error';
+  }
+
+  @override
+  String get homeSortTooltip => 'Sort plants';
+
+  @override
+  String get homeSortNameAZ => 'Name A–Z';
+
+  @override
+  String get homeSortNameZA => 'Name Z–A';
+
+  @override
+  String get homeSortNextDue => 'Next due';
+
+  @override
+  String get homeSortNewest => 'Newest added';
+
+  @override
+  String get homeSortOldest => 'Oldest added';
+
+  @override
+  String get homeSortBySpace => 'By space';
+
+  @override
+  String homeDueLateDays(int days) {
+    return '$days d late';
+  }
+
+  @override
+  String homeDueLateHours(int hours) {
+    return '$hours h late';
+  }
+
+  @override
+  String get homeDueNowShort => 'now';
+
+  @override
+  String get homeDueUnderHour => '< 1h';
+
+  @override
+  String homeDueInHours(int hours) {
+    return 'in $hours h';
+  }
+
+  @override
+  String get homeDueTomorrow => 'tomorrow';
+
+  @override
+  String homeDueInDays(int days) {
+    return 'in $days d';
+  }
+
+  @override
+  String homeBulkSelected(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get homeBulkMove => 'Move';
+
+  @override
+  String get homeBulkMute => 'Mute';
+
+  @override
+  String get homeBulkUnmute => 'Unmute';
+
+  @override
+  String homeBulkRemovedFromSpace(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Removed $count plants from any space',
+      one: 'Removed 1 plant from any space',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String homeBulkMoved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Moved $count plants',
+      one: 'Moved 1 plant',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String homeBulkDeleteTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Delete $count plants?',
+      one: 'Delete 1 plant?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeBulkDeleteBody =>
+      'Use Gave away / Sold / Marked dead from a single plant if you want a ledger entry instead.';
+
+  @override
+  String homeBulkDeleted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Deleted $count plants',
+      one: 'Deleted 1 plant',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeBulkUndo => 'Undo';
+
+  @override
+  String homeQuickLogWhich(String action) {
+    return '$action which plant?';
+  }
+
+  @override
+  String get homeQuickLogRecordsNow => 'Records a care event immediately.';
+
+  @override
+  String get homeQuickLogEmpty => 'No plants yet — add one from Home.';
+
+  @override
+  String get addPlantNicknameLabel => 'NICKNAME';
+
+  @override
+  String get addPlantSpaceLabel => 'SPACE';
+
+  @override
+  String get addPlantNotesLabel => 'NOTES';
+
+  @override
+  String get addPlantNoLocation => '— no location —';
+
+  @override
+  String get addPlantLoading => 'Loading…';
+
+  @override
+  String get addPlantAddSpaceFirst => 'Add a space from the Spaces tab first.';
+
+  @override
+  String get addPlantSubmit => 'Add plant';
+
+  @override
+  String get onbContinue => 'Continue';
+
+  @override
+  String get onbStart => 'Start using Plantly';
+
+  @override
+  String get onbWelcomeTitle => 'Welcome to Plantly';
+
+  @override
+  String get onbWelcomeBody =>
+      'A calm, offline-first way to track your houseplants — watering, fertilising, propagation, spaces, and more. Everything lives on your phone.';
+
+  @override
+  String get onbNameLabel => 'YOUR NAME (OPTIONAL)';
+
+  @override
+  String get onbNameHelp =>
+      'We use this only in the greeting at the top of the home screen. You can change or remove it later in Me.';
+
+  @override
+  String get onbNotifTitle => 'Plant reminders';
+
+  @override
+  String get onbNotifBody =>
+      'We schedule local notifications on your phone when a plant is due for care. Nothing is sent to a server.';
+
+  @override
+  String get onbNotifGranted => 'Reminders are enabled.';
+
+  @override
+  String get onbNotifAsk => 'Grant permission so reminders can fire.';
+
+  @override
+  String get onbGrant => 'Grant';
+
+  @override
+  String get onbNotifSkip =>
+      'You can skip this and turn reminders on later in Me → Notifications.';
+
+  @override
+  String get onbPrivacyTitle => 'Help us improve';
+
+  @override
+  String get onbPrivacyBody =>
+      'Both are off by default. Plant data never leaves your device for any reason. You can change these any time in Me → Privacy & data.';
+
+  @override
+  String get onbCrashTitle => 'Crash reports';
+
+  @override
+  String get onbCrashSub =>
+      'Send a stack trace if the app crashes. No plant data, no photos.';
+
+  @override
+  String get onbUsageTitle => 'Anonymous usage';
+
+  @override
+  String get onbUsageSub =>
+      'Tap counts by screen — helps us know which features are loved.';
+
+  @override
+  String get spaceKindHome => 'Home';
+
+  @override
+  String get spaceKindRoom => 'Room';
+
+  @override
+  String get spaceKindZone => 'Zone';
+
+  @override
+  String get spaceKindShelf => 'Shelf';
+
+  @override
+  String get spaceKindOutdoorBed => 'Outdoor bed';
+
+  @override
+  String spaceLoadFailed(String error) {
+    return 'Could not load locations.\n$error';
+  }
+
+  @override
+  String spacePlantCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count plants',
+      one: '1 plant',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get spaceAddPlants => 'Add plants';
+
+  @override
+  String get spaceManage => 'Manage';
+
+  @override
+  String get spaceNameRequired => 'Name is required';
+
+  @override
+  String spaceEditTitle(String name) {
+    return 'Edit \"$name\"';
+  }
+
+  @override
+  String get spaceNameLabel => 'NAME';
+
+  @override
+  String get spaceNameHint => 'e.g. Living room';
+
+  @override
+  String get spaceKindUpper => 'KIND';
+
+  @override
+  String get spaceInsideLabel => 'INSIDE (OPTIONAL)';
+
+  @override
+  String get spaceTopLevelHint => 'Top level';
+
+  @override
+  String get spaceOutdoor => 'Outdoor';
+
+  @override
+  String get spaceOutdoorSub => 'Exposed to weather';
+
+  @override
+  String get spaceLightLabel => 'LIGHT LEVEL (OPTIONAL)';
+
+  @override
+  String get spaceUnspecifiedHint => 'Unspecified';
+
+  @override
+  String get spaceUnspecified => '— unspecified —';
+
+  @override
+  String get spaceLightBrightDirect => 'bright direct';
+
+  @override
+  String get spaceLightBrightIndirect => 'bright indirect';
+
+  @override
+  String get spaceLightMedium => 'medium';
+
+  @override
+  String get spaceLightLow => 'low';
+
+  @override
+  String get spaceHumidityLabel => 'HUMIDITY RANGE (% — optional)';
+
+  @override
+  String get spaceMin => 'min';
+
+  @override
+  String get spaceMax => 'max';
+
+  @override
+  String get spaceTempLabel => 'TEMPERATURE RANGE (°C — optional)';
+
+  @override
+  String get spaceNotesLabel => 'NOTES';
+
+  @override
+  String spaceAssignTitle(String name) {
+    return 'Plants in \"$name\"';
+  }
+
+  @override
+  String get spaceAssignSub => 'Toggle to add or remove from this space.';
+
+  @override
+  String get spaceAssignEmpty => 'No plants to assign yet.';
+
+  @override
+  String get spaceInThisSpace => 'In this space';
+
+  @override
+  String get spaceInAnotherSpace => 'In another space';
+
+  @override
+  String get spaceNoSpace => 'No space';
+
+  @override
+  String get spacePickerTitle => 'Move to space';
+
+  @override
+  String get spacePickerEmpty => 'No spaces yet — add one from the Spaces tab.';
+
+  @override
+  String spaceLoadOneFailed(String error) {
+    return 'Failed to load location.\n$error';
+  }
+
+  @override
+  String get spaceGone => 'Location no longer exists.';
+
+  @override
+  String get spaceDeleteTitle => 'Delete space?';
+
+  @override
+  String spaceDeleteBody(String name) {
+    return 'Removes \"$name\". Plants keep their existing position in other spaces.';
+  }
+
+  @override
+  String get spaceMenuAssign => 'Assign plants…';
+
+  @override
+  String get spaceMenuMute => 'Mute notifications';
+
+  @override
+  String get spaceMenuUnmute => 'Unmute notifications';
+
+  @override
+  String get spaceMenuAddMap => 'Add map image…';
+
+  @override
+  String get spaceMenuRemoveMap => 'Remove map image';
+
+  @override
+  String get spaceMenuDelete => 'Delete space…';
+
+  @override
+  String get spaceSectionMap => 'MAP';
+
+  @override
+  String get spaceDonePlacing => 'Done placing';
+
+  @override
+  String get spacePlacePins => 'Place pins';
+
+  @override
+  String get spaceSectionGallery => 'GALLERY';
+
+  @override
+  String spaceSectionPlants(int count) {
+    return 'PLANTS ($count)';
+  }
+
+  @override
+  String get spaceChipOutdoor => 'outdoor';
+
+  @override
+  String spaceChipLight(String light) {
+    return 'light: $light';
+  }
+
+  @override
+  String spaceChipHumidity(String range) {
+    return 'humidity $range%';
+  }
+
+  @override
+  String spaceChipTemp(String range) {
+    return 'temp $range°C';
+  }
+
+  @override
+  String get spaceChipMuted => 'muted';
+
+  @override
+  String get spaceAddLayoutTitle => 'Add a layout image';
+
+  @override
+  String get spaceAddLayoutBody =>
+      'Room photo or a rough sketch — drop plant pins on top.';
+
+  @override
+  String get spaceMapMissing => 'Map image missing';
+
+  @override
+  String get spacePinHintPlace =>
+      'Tap to place • drag to move • long-press to remove';
+
+  @override
+  String get spacePinHintDrag => 'Drag pins to move • long-press to remove';
+
+  @override
+  String spacePlaced(String name) {
+    return 'Placed $name';
+  }
+
+  @override
+  String get spaceNoPlantsHere => 'No plants here yet.';
+
+  @override
+  String get spacePhotoEditDate => 'Edit date';
+
+  @override
+  String get spacePhotoEditCaption => 'Edit caption';
+
+  @override
+  String get spacePhotoRemove => 'Remove from this space';
+
+  @override
+  String get spaceCaptionTitle => 'Caption';
+
+  @override
+  String get spaceCaptionHint => 'e.g. morning light corner';
+
+  @override
   String get appTitle => 'PlantlyInventory';
 
   @override

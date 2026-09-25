@@ -26,28 +26,24 @@ class WeatherWidget extends StatelessWidget {
 
   // Deterministic pick per day — using the day-of-year modulo the tip
   // count keeps the card stable all day, then rotates at midnight.
-  static const _tips = <_Tip>[
-    _Tip(Icons.water_drop_outlined, 'Check soil moisture before watering',
-        'Most houseplants prefer the top 2–3 cm to dry out between waterings.'),
-    _Tip(Icons.wb_sunny_outlined, 'Rotate toward the light',
-        'A quarter turn each week keeps growth even and upright.'),
-    _Tip(Icons.eco_outlined, 'Feed lightly in growing season',
-        'Dilute fertiliser to half-strength to avoid root burn on sensitive species.'),
-    _Tip(Icons.air, 'Watch for pests after seasonal change',
-        'Thrips and spider mites love warm, dry indoor air — check leaf undersides.'),
-    _Tip(Icons.local_florist_outlined, 'Repot when roots circle the pot',
-        'Go up one pot size only — oversized pots hold too much moisture.'),
-    _Tip(Icons.cleaning_services_outlined, 'Wipe dust off leaves',
-        'Clean leaves photosynthesise better and let you spot pests early.'),
-    _Tip(Icons.bubble_chart_outlined, 'Humidity helps aroids + calatheas',
-        'Group plants or run a pebble tray — easier than misting all day.'),
-  ];
+  // Copy lives in the ARB files (homeTipNTitle / homeTipNBody).
+  static List<_Tip> _tips(AppLocalizations t) => [
+        _Tip(Icons.water_drop_outlined, t.homeTip1Title, t.homeTip1Body),
+        _Tip(Icons.wb_sunny_outlined, t.homeTip2Title, t.homeTip2Body),
+        _Tip(Icons.eco_outlined, t.homeTip3Title, t.homeTip3Body),
+        _Tip(Icons.air, t.homeTip4Title, t.homeTip4Body),
+        _Tip(Icons.local_florist_outlined, t.homeTip5Title, t.homeTip5Body),
+        _Tip(Icons.cleaning_services_outlined, t.homeTip6Title, t.homeTip6Body),
+        _Tip(Icons.bubble_chart_outlined, t.homeTip7Title, t.homeTip7Body),
+      ];
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final tips = _tips(t);
     final now = DateTime.now();
     final dayOfYear = _dayOfYear(now);
-    final tip = _tips[dayOfYear % _tips.length];
+    final tip = tips[dayOfYear % tips.length];
     return WidgetShell(
       surface: surface,
       editing: editing,
@@ -81,7 +77,7 @@ class WeatherWidget extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    AppLocalizations.of(context).tipOfTheDay,
+                    t.tipOfTheDay,
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w500,

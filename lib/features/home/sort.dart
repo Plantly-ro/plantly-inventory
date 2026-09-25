@@ -1,8 +1,10 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 /// Plant grid sort modes. Serialised by index into SharedPreferences so
 /// the user's choice persists across restarts.
@@ -16,21 +18,17 @@ enum PlantSort {
 }
 
 extension PlantSortLabel on PlantSort {
-  String get label {
-    switch (this) {
-      case PlantSort.nameAZ:
-        return 'Name A–Z';
-      case PlantSort.nameZA:
-        return 'Name Z–A';
-      case PlantSort.nextDue:
-        return 'Next due';
-      case PlantSort.newestAdded:
-        return 'Newest added';
-      case PlantSort.oldestAdded:
-        return 'Oldest added';
-      case PlantSort.byLocation:
-        return 'By space';
-    }
+  /// Localized label — looks up [AppLocalizations] for the current context.
+  String label(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    return switch (this) {
+      PlantSort.nameAZ => l.homeSortNameAZ,
+      PlantSort.nameZA => l.homeSortNameZA,
+      PlantSort.nextDue => l.homeSortNextDue,
+      PlantSort.newestAdded => l.homeSortNewest,
+      PlantSort.oldestAdded => l.homeSortOldest,
+      PlantSort.byLocation => l.homeSortBySpace,
+    };
   }
 }
 

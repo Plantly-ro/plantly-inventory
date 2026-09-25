@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/providers.dart';
 import '../data/repositories/location_repository.dart';
+import '../features/locations/space_kind_label.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../theme/tokens.dart';
 import '../features/home/home_providers.dart';
 
@@ -42,7 +44,7 @@ class _PickerDialog extends ConsumerWidget {
     final async = ref.watch(locationsStreamProvider);
 
     return AlertDialog(
-      title: const Text('Move to space'),
+      title: Text(AppLocalizations.of(context).spacePickerTitle),
       contentPadding: const EdgeInsets.fromLTRB(0, 16, 0, 0),
       content: SizedBox(
         width: 320,
@@ -60,7 +62,7 @@ class _PickerDialog extends ConsumerWidget {
               return Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  'No spaces yet — add one from the Spaces tab.',
+                  AppLocalizations.of(context).spacePickerEmpty,
                   style: TextStyle(color: surface.muted),
                 ),
               );
@@ -75,7 +77,7 @@ class _PickerDialog extends ConsumerWidget {
                     dense: true,
                     selected: currentLocationId == null,
                     leading: const Icon(Icons.clear),
-                    title: const Text('— no location —'),
+                    title: Text(AppLocalizations.of(context).addPlantNoLocation),
                     onTap: () => Navigator.of(context).pop(const _PickResult(null)),
                   ),
                   const Divider(height: 8),
@@ -89,7 +91,7 @@ class _PickerDialog extends ConsumerWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).maybePop(),
-          child: const Text('Cancel'),
+          child: Text(AppLocalizations.of(context).cancel),
         ),
       ],
     );
@@ -111,7 +113,7 @@ class _PickerDialog extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(node.row.name, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text)),
-                    Text(node.row.kind, style: TextStyle(fontSize: 11, color: surface.muted)),
+                    Text(spaceKindLabel(AppLocalizations.of(context), node.row.kind), style: TextStyle(fontSize: 11, color: surface.muted)),
                   ],
                 ),
               ),
