@@ -4,8 +4,11 @@ import 'ical_export.dart';
 /// Pure "schedules → events" pipeline. Given the current [CareScheduleRow]s
 /// (with `next_due_at` populated by the adaptive scheduler), produces the
 /// list of reminders due within a window, ready to be (a) serialised to
-/// iCal or (b) registered with `flutter_local_notifications` when that
-/// dependency lands.
+/// iCal or (b) registered with `flutter_local_notifications`.
+///
+/// [buildUpcoming]'s `typeLabel` maps a `care_schedules.type` key to the
+/// text used in the event summary (= notification title). Optional so the
+/// pure engine stays locale-free; callers that own a locale pass one in.
 class ReminderEngine {
   ReminderEngine._();
 
@@ -18,6 +21,7 @@ class ReminderEngine {
     required Map<String, LocationRow> locationsById,
     required DateTime now,
     Duration window = const Duration(days: 30),
+    String Function(String type)? typeLabel,
   }) {
     final cutoff = now.add(window);
     final events = <ICalEvent>[];
@@ -31,7 +35,7 @@ class ReminderEngine {
       final effective = at.isBefore(now) ? now : at;
       final plant = plantsById[s.plantId];
       if (plant == null) continue;
-      final summary = '${_verb(s.type)} — ${plant.nickname}';
+      final summary = '${(typeLabel ?? _verb)(s.type)} — ${plant.nickname}';
       events.add(ICalEvent(
         uid: '${s.id}@plantly.inventory',
         summary: summary,
@@ -47,6 +51,10 @@ class ReminderEngine {
     return events;
   }
 
+  /// English fallback used when no [typeLabel] resolver is supplied (pure
+  /// unit tests). The app injects a localized, registry-aware resolver via
+  /// `ReminderSync.typeLabel` so OS notification titles follow the device
+  /// locale and any user renames.
   static String _verb(String type) {
     switch (type) {
       case 'water':

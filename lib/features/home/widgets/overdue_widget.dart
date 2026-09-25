@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/database/app_database.dart' as db;
 import '../../../data/mock_plants.dart';
 import '../../../data/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/tokens.dart';
 import '../../../data/care_types.dart';
 import '../../../shared/care_feedback.dart';
+import '../../../shared/care_type_labels.dart';
 import 'plant_row.dart';
 import 'swipe_row.dart';
 import 'widget_shell.dart';
@@ -26,8 +28,8 @@ class OverdueWidget extends ConsumerWidget {
   final PlantlySurface surface;
   /// Navigates to the detail screen. Receives the real `plants.id`.
   final void Function(String plantId)? onPlantTap;
-  /// Called after a care event is recorded, with the plant's display name.
-  final void Function(String name)? onLogCare;
+  /// Called after a care event is recorded, with a localized toast message.
+  final void Function(String message)? onLogCare;
   final bool editing;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
@@ -35,6 +37,7 @@ class OverdueWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     final async = ref.watch(dueBeforeEodProvider);
     final plantRows = ref.watch(plantsStreamProvider).maybeWhen(
           data: (r) => r,
@@ -63,7 +66,7 @@ class OverdueWidget extends ConsumerWidget {
       onMoveUp: onMoveUp,
       onMoveDown: onMoveDown,
       onRemove: onRemove,
-      title: 'Overdue',
+      title: t.homeWidgetOverdue,
       accentLabel: '${overdue.length}',
       accentColor: surface.terra,
       child: async.when(
@@ -80,7 +83,7 @@ class OverdueWidget extends ConsumerWidget {
               ),
               alignment: Alignment.center,
               child: Text(
-                'Nothing overdue — nice.',
+                t.nothingOverdue,
                 style: TextStyle(fontSize: 12, color: surface.muted),
               ),
             );
@@ -89,7 +92,7 @@ class OverdueWidget extends ConsumerWidget {
             surface: surface,
             rows: [
               for (var i = 0; i < overdue.length; i++)
-                _overdueRow(overdue[i], plantsById, now, i == overdue.length - 1),
+                _overdueRow(t, overdue[i], plantsById, now, i == overdue.length - 1),
             ],
           );
         },
@@ -98,6 +101,7 @@ class OverdueWidget extends ConsumerWidget {
   }
 
   Widget _overdueRow(
+    AppLocalizations t,
     db.CareScheduleRow schedule,
     Map<String, db.PlantRow> plantsById,
     DateTime now,
@@ -107,10 +111,11 @@ class OverdueWidget extends ConsumerWidget {
     final title = plant?.nickname ?? schedule.plantId;
     final swatch = MockPlants.byId(schedule.plantId);
     final daysLate = ((now.millisecondsSinceEpoch - schedule.nextDueAt!) / (86400 * 1000)).floor();
-    final subtitle = daysLate > 0 ? '$daysLate d late · ${_verb(schedule.type)}' : '${_verb(schedule.type)} now';
     return Consumer(
       builder: (context, ref, _) {
         final ct = resolveCareType(ref.watch(careTypesProvider), schedule.type);
+        final verb = careTypeVerb(t, ct);
+        final subtitle = daysLate > 0 ? t.homeOverdueLate(daysLate, verb) : t.homeDueNow(verb);
         Future<void> logDone() async {
           await ref.read(careEventRepositoryProvider).record(
                 plantId: schedule.plantId,
@@ -118,7 +123,7 @@ class OverdueWidget extends ConsumerWidget {
               );
           if (!context.mounted) return;
           await showCareFeedback(context, type: ct, plantName: title, surface: surface);
-          onLogCare?.call(title);
+          onLogCare?.call(t.homeToastLoggedCare(title));
         }
         return SwipeRow(
           key: ValueKey('overdue-${schedule.id}'),
@@ -148,25 +153,6 @@ class OverdueWidget extends ConsumerWidget {
         );
       },
     );
-  }
-
-  String _verb(String type) {
-    switch (type) {
-      case 'water':
-        return 'Water';
-      case 'fertilize':
-        return 'Fertilize';
-      case 'mist':
-        return 'Mist';
-      case 'repot':
-        return 'Repot';
-      case 'prune':
-        return 'Prune';
-      case 'rotate':
-        return 'Rotate';
-      default:
-        return type;
-    }
   }
 
   IconData _iconFor(String type) {
@@ -201,7 +187,7 @@ class _DoneButton extends StatelessWidget {
         ),
       ),
       onPressed: onPressed,
-      child: const Text('Done'),
+      child: Text(AppLocalizations.of(context).doneBtn),
     );
   }
 }

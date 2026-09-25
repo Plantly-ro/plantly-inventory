@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/tokens.dart';
 
 /// Wraps a plant row with horizontal swipe actions:
@@ -31,13 +32,13 @@ class SwipeRow extends StatelessWidget {
       background: _Action(
         color: surface.green,
         icon: Icons.check,
-        label: 'Done',
+        label: AppLocalizations.of(context).doneBtn,
         alignment: Alignment.centerLeft,
       ),
       secondaryBackground: _Action(
         color: surface.terra,
         icon: Icons.snooze,
-        label: 'Snooze',
+        label: AppLocalizations.of(context).snoozeBtn,
         alignment: Alignment.centerRight,
       ),
       confirmDismiss: (direction) async {

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../data/database/app_database.dart' as db;
 import '../../../data/providers.dart';
 import '../../../theme/tokens.dart';
 import '../../activity/activity_screen.dart';
+import '../../../l10n/generated/app_localizations.dart';
+import '../../../data/care_types.dart';
+import '../../../shared/care_type_labels.dart';
 import 'widget_shell.dart';
 
 /// Live "Recent activity" card — newest 3 care_events with the plant
@@ -29,7 +33,10 @@ class ActivityWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).toString();
     final eventsAsync = ref.watch(recentCareEventsProvider);
+    final types = ref.watch(careTypesProvider);
     final plantsAsync = ref.watch(plantsStreamProvider);
     final plantsById = plantsAsync.maybeWhen(
       data: (rows) => {for (final p in rows) p.id: p},
@@ -42,8 +49,8 @@ class ActivityWidget extends ConsumerWidget {
       onMoveUp: onMoveUp,
       onMoveDown: onMoveDown,
       onRemove: onRemove,
-      title: 'Recent activity',
-      action: editing ? null : 'View all',
+      title: t.recentActivity,
+      action: editing ? null : t.homeViewAll,
       onAction: () {
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const ActivityScreen()),
@@ -63,7 +70,7 @@ class ActivityWidget extends ConsumerWidget {
               ),
               alignment: Alignment.center,
               child: Text(
-                'Nothing logged yet — tap "Done" on a reminder.',
+                t.homeActivityEmpty,
                 style: TextStyle(fontSize: 12, color: surface.muted),
               ),
             );
@@ -79,7 +86,7 @@ class ActivityWidget extends ConsumerWidget {
             child: Column(
               children: [
                 for (var i = 0; i < recent.length; i++)
-                  _row(recent[i], plantsById, i == recent.length - 1),
+                  _row(t, locale, types, recent[i], plantsById, i == recent.length - 1),
               ],
             ),
           );
@@ -88,11 +95,22 @@ class ActivityWidget extends ConsumerWidget {
     );
   }
 
-  Widget _row(db.CareEventRow event, Map<String, db.PlantRow> plantsById, bool last) {
+  Widget _row(
+    AppLocalizations t,
+    String locale,
+    List<CareType> types,
+    db.CareEventRow event,
+    Map<String, db.PlantRow> plantsById,
+    bool last,
+  ) {
     final plant = plantsById[event.plantId];
     final title = plant?.nickname ?? event.plantId;
-    final subtitle = _describe(event);
-    final when = _formatRelative(DateTime.fromMillisecondsSinceEpoch(event.doneAt, isUtc: true).toLocal());
+    final subtitle = _describe(t, types, event);
+    final when = _formatRelative(
+      t,
+      locale,
+      DateTime.fromMillisecondsSinceEpoch(event.doneAt, isUtc: true).toLocal(),
+    );
     return Container(
       decoration: BoxDecoration(
         border: last ? null : Border(bottom: BorderSide(color: surface.border)),
@@ -131,33 +149,14 @@ class ActivityWidget extends ConsumerWidget {
     );
   }
 
-  String _describe(db.CareEventRow e) {
-    final verb = _past(e.type);
+  String _describe(AppLocalizations t, List<CareType> types, db.CareEventRow e) {
+    final verb = careKeyPastLabel(t, types, e.type);
     final parts = <String>[];
     if (e.product != null && e.product!.isNotEmpty) parts.add(e.product!);
     if (e.dose != null && e.dose!.isNotEmpty) parts.add(e.dose!);
     if (e.notes != null && e.notes!.isNotEmpty) parts.add(e.notes!);
     if (parts.isEmpty) return verb;
     return '$verb — ${parts.join(' · ')}';
-  }
-
-  String _past(String type) {
-    switch (type) {
-      case 'water':
-        return 'Watered';
-      case 'fertilize':
-        return 'Fertilized';
-      case 'mist':
-        return 'Misted';
-      case 'repot':
-        return 'Repotted';
-      case 'prune':
-        return 'Pruned';
-      case 'rotate':
-        return 'Rotated';
-      default:
-        return type.isEmpty ? 'Logged' : '${type[0].toUpperCase()}${type.substring(1)}';
-    }
   }
 
   IconData _iconFor(String type) {
@@ -179,7 +178,7 @@ class ActivityWidget extends ConsumerWidget {
     }
   }
 
-  String _formatRelative(DateTime then) {
+  String _formatRelative(AppLocalizations t, String locale, DateTime then) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final thenDay = DateTime(then.year, then.month, then.day);
@@ -187,9 +186,8 @@ class ActivityWidget extends ConsumerWidget {
     if (daysApart == 0) {
       return '${then.hour.toString().padLeft(2, '0')}:${then.minute.toString().padLeft(2, '0')}';
     }
-    if (daysApart == 1) return 'Yesterday';
-    if (daysApart < 7) return '$daysApart d ago';
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${months[then.month - 1]} ${then.day.toString().padLeft(2, '0')}';
+    if (daysApart == 1) return t.homeYesterday;
+    if (daysApart < 7) return t.homeDaysAgo(daysApart);
+    return DateFormat.MMMd(locale).format(then);
   }
 }

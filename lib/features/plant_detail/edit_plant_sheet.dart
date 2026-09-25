@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../shared/location_picker.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
+import '../locations/space_kind_label.dart';
 
 /// Edit the nickname / notes / location for an existing plant. Species
 /// input is free-text for now — we store it as the literal species name
@@ -71,7 +73,7 @@ class _EditPlantSheetState extends ConsumerState<EditPlantSheet> {
   Future<void> _save() async {
     final name = _nickname.text.trim();
     if (name.isEmpty) {
-      setState(() => _error = 'Nickname is required');
+      setState(() => _error = AppLocalizations.of(context).sheetNicknameRequired);
       return;
     }
     setState(() {
@@ -101,6 +103,7 @@ class _EditPlantSheetState extends ConsumerState<EditPlantSheet> {
   Widget build(BuildContext context) {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final t = AppLocalizations.of(context);
     final locations = ref.watch(locationsStreamProvider).maybeWhen(
           data: (rows) => rows,
           orElse: () => const <LocationRow>[],
@@ -126,9 +129,9 @@ class _EditPlantSheetState extends ConsumerState<EditPlantSheet> {
               ),
             ),
             const SizedBox(height: 14),
-            Text('Edit plant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text)),
+            Text(t.plantDetailEdit, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text)),
             const SizedBox(height: 14),
-            _label('NICKNAME', surface),
+            _label(t.importNicknameLabel, surface),
             const SizedBox(height: 6),
             TextField(
               controller: _nickname,
@@ -136,7 +139,7 @@ class _EditPlantSheetState extends ConsumerState<EditPlantSheet> {
               decoration: _dec(surface),
             ),
             const SizedBox(height: 12),
-            _label('SPACE', surface),
+            _label(t.sheetFieldSpace, surface),
             const SizedBox(height: 6),
             InkWell(
               onTap: () async {
@@ -161,7 +164,7 @@ class _EditPlantSheetState extends ConsumerState<EditPlantSheet> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        _locSummary(_locationId, locations),
+                        _locSummary(t, _locationId, locations),
                         style: TextStyle(fontSize: 14, color: surface.text),
                       ),
                     ),
@@ -171,20 +174,20 @@ class _EditPlantSheetState extends ConsumerState<EditPlantSheet> {
               ),
             ),
             const SizedBox(height: 12),
-            _label('SPECIES', surface),
+            _label(t.sheetFieldSpecies, surface),
             const SizedBox(height: 6),
             TextField(
               controller: _species,
-              decoration: _dec(surface, hint: 'e.g. Monstera deliciosa'),
+              decoration: _dec(surface, hint: t.sheetSpeciesHint),
             ),
             const SizedBox(height: 12),
-            _label('NOTES', surface),
+            _label(t.sheetFieldNotes, surface),
             const SizedBox(height: 6),
             TextField(
               controller: _notes,
               maxLines: 3,
               textCapitalization: TextCapitalization.sentences,
-              decoration: _dec(surface, hint: 'optional'),
+              decoration: _dec(surface, hint: t.notesHint),
             ),
             if (_error != null) ...[
               const SizedBox(height: 10),
@@ -204,7 +207,7 @@ class _EditPlantSheetState extends ConsumerState<EditPlantSheet> {
                       ),
                     ),
                     onPressed: _saving ? null : () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
+                    child: Text(t.cancel),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -220,7 +223,7 @@ class _EditPlantSheetState extends ConsumerState<EditPlantSheet> {
                       textStyle: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                     onPressed: _saving ? null : _save,
-                    child: Text(_saving ? 'Saving…' : 'Save'),
+                    child: Text(_saving ? t.saving : t.commonSave),
                   ),
                 ),
               ],
@@ -241,12 +244,12 @@ class _EditPlantSheetState extends ConsumerState<EditPlantSheet> {
         ),
       );
 
-  String _locSummary(String? id, List<LocationRow> rows) {
-    if (id == null) return '— no location —';
+  String _locSummary(AppLocalizations t, String? id, List<LocationRow> rows) {
+    if (id == null) return t.sheetNoLocation;
     for (final r in rows) {
-      if (r.id == id) return '${r.name} · ${r.kind}';
+      if (r.id == id) return '${r.name} · ${spaceKindLabel(t, r.kind)}';
     }
-    return 'Loading…';
+    return t.sheetLoading;
   }
 
   InputDecoration _dec(PlantlySurface s, {String? hint}) => InputDecoration(

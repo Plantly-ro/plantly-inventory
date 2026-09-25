@@ -5,6 +5,7 @@ import '../../data/care_types.dart';
 import '../../data/database/app_database.dart' as db;
 import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../plant_detail/plant_detail_screen.dart';
@@ -620,7 +621,7 @@ class _UpcomingScheduleRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(plantName, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: surface.text)),
-                  Text('${ct.label} · $whenLabel', style: TextStyle(fontSize: 11, color: urgent ? surface.terra : surface.muted)),
+                  Text('${careTypeLabel(AppLocalizations.of(context), ct)} · $whenLabel', style: TextStyle(fontSize: 11, color: urgent ? surface.terra : surface.muted)),
                 ],
               ),
             ),
@@ -805,7 +806,7 @@ class _ScheduleChip extends StatelessWidget {
                 style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: surface.text),
               ),
             ),
-            Text(ct.label.toLowerCase(), style: TextStyle(fontSize: 11, color: surface.muted)),
+            Text(careTypeLabel(AppLocalizations.of(context), ct).toLowerCase(), style: TextStyle(fontSize: 11, color: surface.muted)),
           ],
         ),
       ),
@@ -854,7 +855,7 @@ class _DoneChip extends StatelessWidget {
                 style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: surface.text),
               ),
             ),
-            Text(ct.pastTenseLabel.toLowerCase(), style: TextStyle(fontSize: 11, color: surface.muted)),
+            Text(careTypePastLabel(AppLocalizations.of(context), ct).toLowerCase(), style: TextStyle(fontSize: 11, color: surface.muted)),
           ],
         ),
       ),

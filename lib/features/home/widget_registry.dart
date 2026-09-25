@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import 'widgets/activity_widget.dart';
 import 'widgets/greeting_widget.dart';
@@ -26,16 +27,21 @@ class WidgetRegistry {
   ];
 
   static const presets = <LayoutPreset>[
-    LayoutPreset('Grouped', ['greeting', 'overdue', 'today', 'grid']),
-    LayoutPreset('Dashboard', ['greeting', 'stats', 'weather', 'today', 'activity']),
-    LayoutPreset('Feed', ['greeting', 'overdue', 'today', 'activity']),
-    LayoutPreset('Minimal', ['greeting', 'quicklog', 'today']),
+    LayoutPreset(_grouped, ['greeting', 'overdue', 'today', 'grid']),
+    LayoutPreset(_dashboard, ['greeting', 'stats', 'weather', 'today', 'activity']),
+    LayoutPreset(_feed, ['greeting', 'overdue', 'today', 'activity']),
+    LayoutPreset(_minimal, ['greeting', 'quicklog', 'today']),
   ];
+
+  static String _grouped(AppLocalizations t) => t.homePresetGrouped;
+  static String _dashboard(AppLocalizations t) => t.homePresetDashboard;
+  static String _feed(AppLocalizations t) => t.homePresetFeed;
+  static String _minimal(AppLocalizations t) => t.homePresetMinimal;
 
   static final Map<String, WidgetEntry> entries = {
     'greeting': WidgetEntry(
       key: 'greeting',
-      label: 'Greeting',
+      label: (t) => t.homeWidgetGreeting,
       icon: Icons.person_outline,
       render: (p) => GreetingWidget(
         surface: p.surface,
@@ -47,7 +53,7 @@ class WidgetRegistry {
     ),
     'stats': WidgetEntry(
       key: 'stats',
-      label: 'Stats row',
+      label: (t) => t.homeWidgetStats,
       icon: Icons.eco_outlined,
       render: (p) => StatsWidget(
         surface: p.surface,
@@ -62,7 +68,7 @@ class WidgetRegistry {
       // The key stays `weather` for layout-serialisation compatibility;
       // the widget now shows a rotating care tip until a real weather
       // provider lands in Phase 2.
-      label: 'Tip of the day',
+      label: (t) => t.homeWidgetTip,
       icon: Icons.lightbulb_outline,
       render: (p) => WeatherWidget(
         surface: p.surface,
@@ -74,7 +80,7 @@ class WidgetRegistry {
     ),
     'overdue': WidgetEntry(
       key: 'overdue',
-      label: 'Overdue',
+      label: (t) => t.homeWidgetOverdue,
       icon: Icons.water_drop_outlined,
       render: (p) => OverdueWidget(
         surface: p.surface,
@@ -83,12 +89,12 @@ class WidgetRegistry {
         onMoveDown: p.onMoveDown,
         onRemove: p.onRemove,
         onPlantTap: p.onPlantTap,
-        onLogCare: (name) => p.onToast?.call('Logged care for $name'),
+        onLogCare: (message) => p.onToast?.call(message),
       ),
     ),
     'today': WidgetEntry(
       key: 'today',
-      label: 'Due today',
+      label: (t) => t.homeWidgetToday,
       icon: Icons.check,
       render: (p) => TodayWidget(
         surface: p.surface,
@@ -97,12 +103,12 @@ class WidgetRegistry {
         onMoveDown: p.onMoveDown,
         onRemove: p.onRemove,
         onPlantTap: p.onPlantTap,
-        onLogCare: (name, action) => p.onToast?.call('${action}ed $name'),
+        onLogCare: (message) => p.onToast?.call(message),
       ),
     ),
     'grid': WidgetEntry(
       key: 'grid',
-      label: 'All plants (grid)',
+      label: (t) => t.homeWidgetGrid,
       icon: Icons.home_outlined,
       render: (p) => GridWidget(
         surface: p.surface,
@@ -115,7 +121,7 @@ class WidgetRegistry {
     ),
     'activity': WidgetEntry(
       key: 'activity',
-      label: 'Recent activity',
+      label: (t) => t.homeWidgetActivity,
       icon: Icons.calendar_today_outlined,
       render: (p) => ActivityWidget(
         surface: p.surface,
@@ -127,7 +133,7 @@ class WidgetRegistry {
     ),
     'quicklog': WidgetEntry(
       key: 'quicklog',
-      label: 'Quick log',
+      label: (t) => t.homeWidgetQuickLog,
       icon: Icons.add,
       render: (p) => QuickLogWidget(
         surface: p.surface,
@@ -135,7 +141,7 @@ class WidgetRegistry {
         onMoveUp: p.onMoveUp,
         onMoveDown: p.onMoveDown,
         onRemove: p.onRemove,
-        onLog: (action) => p.onToast?.call('$action logged'),
+        onLog: (message) => p.onToast?.call(message),
       ),
     ),
   };
@@ -170,13 +176,15 @@ class WidgetEntry {
     required this.render,
   });
   final String key;
-  final String label;
+  /// Localized label — resolved at render time so it follows the app locale.
+  final String Function(AppLocalizations t) label;
   final IconData icon;
   final Widget Function(WidgetRenderParams params) render;
 }
 
 class LayoutPreset {
   const LayoutPreset(this.name, this.keys);
-  final String name;
+  /// Localized preset name — resolved at render time.
+  final String Function(AppLocalizations t) name;
   final List<String> keys;
 }

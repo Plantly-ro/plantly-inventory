@@ -118,7 +118,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius)),
                   ),
                   onPressed: _next,
-                  child: Text(_step == 2 ? 'Start using Plantly' : 'Continue',
+                  child: Text(_step == 2 ? AppLocalizations.of(context).onbStart : AppLocalizations.of(context).onbContinue,
                       style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, fontSize: 15, fontWeight: FontWeight.w700)),
                 ),
               ),
@@ -137,6 +137,7 @@ class _WelcomeStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
       child: Column(
@@ -151,22 +152,22 @@ class _WelcomeStep extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Text(
-            'Welcome to Plantly',
+            t.onbWelcomeTitle,
             style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, fontSize: 26, fontWeight: FontWeight.w800, color: surface.text, letterSpacing: -0.5),
           ),
           const SizedBox(height: 8),
           Text(
-            'A calm, offline-first way to track your houseplants — watering, fertilising, propagation, spaces, and more. Everything lives on your phone.',
+            t.onbWelcomeBody,
             style: TextStyle(fontSize: 14, color: surface.muted, height: 1.4),
           ),
           const SizedBox(height: 28),
-          Text('YOUR NAME (OPTIONAL)', style: _labelStyle(surface)),
+          Text(t.onbNameLabel, style: _labelStyle(surface)),
           const SizedBox(height: 8),
           TextField(
             controller: nameController,
             textCapitalization: TextCapitalization.words,
             decoration: InputDecoration(
-              hintText: 'e.g. Ana',
+              hintText: t.meYourNameHint,
               hintStyle: TextStyle(color: surface.muted),
               filled: true,
               fillColor: surface.surface,
@@ -187,7 +188,7 @@ class _WelcomeStep extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'We use this only in the greeting at the top of the home screen. You can change or remove it later in Me.',
+            t.onbNameHelp,
             style: TextStyle(fontSize: 12, color: surface.muted),
           ),
         ],
@@ -211,6 +212,7 @@ class _NotifStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
       child: Column(
@@ -225,12 +227,12 @@ class _NotifStep extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Text(
-            'Plant reminders',
+            t.onbNotifTitle,
             style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, fontSize: 26, fontWeight: FontWeight.w800, color: surface.text, letterSpacing: -0.5),
           ),
           const SizedBox(height: 8),
           Text(
-            'We schedule local notifications on your phone when a plant is due for care. Nothing is sent to a server.',
+            t.onbNotifBody,
             style: TextStyle(fontSize: 14, color: surface.muted, height: 1.4),
           ),
           const SizedBox(height: 24),
@@ -249,10 +251,10 @@ class _NotifStep extends StatelessWidget {
                 Expanded(
                   child: Text(
                     !supported
-                        ? AppLocalizations.of(context).notificationsWebUnavailableDetail
+                        ? t.notificationsWebUnavailableDetail
                         : granted
-                            ? 'Reminders are enabled.'
-                            : 'Grant permission so reminders can fire.',
+                            ? t.onbNotifGranted
+                            : t.onbNotifAsk,
                     style: TextStyle(fontSize: 14, color: surface.text, fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -260,7 +262,7 @@ class _NotifStep extends StatelessWidget {
                   TextButton(
                     style: TextButton.styleFrom(foregroundColor: surface.green),
                     onPressed: onRequest,
-                    child: const Text('Grant'),
+                    child: Text(t.onbGrant),
                   ),
               ],
             ),
@@ -268,7 +270,7 @@ class _NotifStep extends StatelessWidget {
           if (supported) ...[
             const SizedBox(height: 12),
             Text(
-              'You can skip this and turn reminders on later in Me → Notifications.',
+              t.onbNotifSkip,
               style: TextStyle(fontSize: 12, color: surface.muted),
             ),
           ],
@@ -294,6 +296,7 @@ class _PrivacyStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
       child: Column(
@@ -308,20 +311,20 @@ class _PrivacyStep extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Text(
-            'Help us improve',
+            t.onbPrivacyTitle,
             style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, fontSize: 26, fontWeight: FontWeight.w800, color: surface.text, letterSpacing: -0.5),
           ),
           const SizedBox(height: 8),
           Text(
-            'Both are off by default. Plant data never leaves your device for any reason. You can change these any time in Me → Privacy & data.',
+            t.onbPrivacyBody,
             style: TextStyle(fontSize: 14, color: surface.muted, height: 1.4),
           ),
           const SizedBox(height: 20),
           _ConsentTile(
             surface: surface,
             icon: Icons.bug_report_outlined,
-            title: 'Crash reports',
-            subtitle: 'Send a stack trace if the app crashes. No plant data, no photos.',
+            title: t.onbCrashTitle,
+            subtitle: t.onbCrashSub,
             value: crash,
             onChanged: onCrash,
           ),
@@ -329,8 +332,8 @@ class _PrivacyStep extends StatelessWidget {
           _ConsentTile(
             surface: surface,
             icon: Icons.insights_outlined,
-            title: 'Anonymous usage',
-            subtitle: 'Tap counts by screen — helps us know which features are loved.',
+            title: t.onbUsageTitle,
+            subtitle: t.onbUsageSub,
             value: analytics,
             onChanged: onAnalytics,
           ),

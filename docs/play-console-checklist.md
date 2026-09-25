@@ -21,7 +21,7 @@ versionCode), release notes, track rollout.
 | Contact website | `https://plantly.ro` |
 | Contact phone | optional — leave empty |
 | External marketing | your call (opt-out is fine) |
-| Default language | English (United States) — `en-US` |
+| Default language | **Romanian — `ro`** (as created in the console; verified via the API: `defaultLanguage: ro`). Both `ro` and `en-US` listings are pushed by CI, so the store shows Romanian to RO users and English elsewhere. |
 | Pricing | **Free** (irreversible: a free app can never become paid) |
 | Countries | Romania first; add EU/worldwide at will (no legal dependency in the app) |
 

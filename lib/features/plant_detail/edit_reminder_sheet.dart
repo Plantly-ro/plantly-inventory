@@ -5,6 +5,7 @@ import '../../data/care_types.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 
@@ -78,7 +79,7 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
   Future<void> _save() async {
     final count = double.tryParse(_interval.text.trim().replaceAll(',', '.'));
     if (count == null || count <= 0) {
-      setState(() => _error = 'Enter a positive number');
+      setState(() => _error = AppLocalizations.of(context).addReminderEnterPositive);
       return;
     }
     setState(() {
@@ -173,7 +174,7 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
                   Icon(ct.icon, color: surface.green),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(t.editReminderTitle(ct.label.toLowerCase()),
+                    child: Text(t.editReminderTitle(careTypeLabel(t, ct).toLowerCase()),
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text)),
                   ),
                 ],

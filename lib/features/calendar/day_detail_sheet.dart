@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/care_types.dart';
 import '../../data/database/app_database.dart' as db;
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
+import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../plant_detail/plant_detail_screen.dart';
@@ -245,7 +247,7 @@ class _ScheduledRow extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(nickname, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text)),
-                    Text('${ct.label} · $time', style: TextStyle(fontSize: 11.5, color: surface.muted)),
+                    Text('${careTypeLabel(AppLocalizations.of(context), ct)} · $time', style: TextStyle(fontSize: 11.5, color: surface.muted)),
                   ],
                 ),
               ),
@@ -338,7 +340,7 @@ class _DoneRow extends StatelessWidget {
                 children: [
                   Text(nickname, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text)),
                   Text(
-                    '${ct.pastTenseLabel} · $time${event.product != null && event.product!.isNotEmpty ? ' · ${event.product}' : ''}',
+                    '${careTypePastLabel(AppLocalizations.of(context), ct)} · $time${event.product != null && event.product!.isNotEmpty ? ' · ${event.product}' : ''}',
                     style: TextStyle(fontSize: 11.5, color: surface.muted),
                   ),
                 ],

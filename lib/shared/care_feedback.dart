@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../data/care_types.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../theme/tokens.dart';
+import 'care_type_labels.dart';
 
 /// Brief, themed feedback for "I just did a thing" care events — richer
 /// than the default white SnackBar. Composed of three pieces, any of
@@ -34,7 +36,7 @@ Future<void> showCareFeedback(
   }
   if (snackbar) {
     final messenger = ScaffoldMessenger.of(context);
-    final effectiveVerb = verb ?? type.pastTenseLabel;
+    final effectiveVerb = verb ?? careTypePastLabel(AppLocalizations.of(context), type);
     messenger
       ..clearSnackBars()
       ..showSnackBar(SnackBar(

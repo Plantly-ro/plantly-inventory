@@ -5,12 +5,14 @@ import '../../data/database/app_database.dart';
 import '../../data/mock_plants.dart';
 import '../../data/providers.dart';
 import '../../data/repositories/location_repository.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../shared/plant_thumb.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import 'assign_plants_sheet.dart';
 import 'location_detail_screen.dart';
 import 'location_edit_sheet.dart';
+import 'space_kind_label.dart';
 
 /// Hierarchical Spaces list + add-dialog + assign-plants flow.
 class LocationsScreen extends ConsumerWidget {
@@ -32,7 +34,7 @@ class LocationsScreen extends ConsumerWidget {
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: Text(
-          'Spaces',
+          AppLocalizations.of(context).spaces,
           style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
             fontSize: 22,
             fontWeight: FontWeight.w800,
@@ -58,7 +60,7 @@ class LocationsScreen extends ConsumerWidget {
         loading: () => Center(child: CircularProgressIndicator(color: surface.green)),
         error: (e, _) => Padding(
           padding: const EdgeInsets.all(24),
-          child: Text('Could not load locations.\n$e', style: TextStyle(color: surface.terra)),
+          child: Text(AppLocalizations.of(context).spaceLoadFailed('$e'), style: TextStyle(color: surface.terra)),
         ),
         data: (rows) {
           if (rows.isEmpty) {
@@ -66,7 +68,7 @@ class LocationsScreen extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.all(32),
                 child: Text(
-                  'No spaces yet. Tap + to add a room, shelf, or balcony.',
+                  AppLocalizations.of(context).noSpacesYet,
                   textAlign: TextAlign.center,
                   style: TextStyle(color: surface.muted, fontSize: 14),
                 ),
@@ -136,7 +138,7 @@ class _LocationTile extends ConsumerWidget {
                             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text),
                           ),
                           Text(
-                            '${node.row.kind}${plants.isEmpty ? '' : ' · ${plants.length} plant${plants.length == 1 ? '' : 's'}'}',
+                            '${spaceKindLabel(AppLocalizations.of(context), node.row.kind)}${plants.isEmpty ? '' : ' · ${AppLocalizations.of(context).spacePlantCount(plants.length)}'}',
                             style: TextStyle(fontSize: 11, color: surface.muted),
                           ),
                         ],
@@ -145,7 +147,7 @@ class _LocationTile extends ConsumerWidget {
                     TextButton.icon(
                       icon: Icon(Icons.eco_outlined, size: 14, color: surface.green),
                       label: Text(
-                        plants.isEmpty ? 'Add plants' : 'Manage',
+                        plants.isEmpty ? AppLocalizations.of(context).spaceAddPlants : AppLocalizations.of(context).spaceManage,
                         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: surface.green),
                       ),
                       style: TextButton.styleFrom(

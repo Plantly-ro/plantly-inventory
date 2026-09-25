@@ -109,7 +109,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           error: (e, _) => Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
-              'Failed to open local database.\n$e',
+              AppLocalizations.of(context).homeDbOpenFailed('$e'),
               style: TextStyle(color: surface.terra),
             ),
           ),
@@ -211,7 +211,7 @@ class _EditToggleBar extends StatelessWidget {
           IconButton(
             visualDensity: VisualDensity.compact,
             icon: Icon(Icons.search, color: surface.muted),
-            tooltip: 'Search plants',
+            tooltip: AppLocalizations.of(context).homeSearchTooltip,
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const SearchScreen()),
@@ -260,7 +260,7 @@ class _EditHint extends StatelessWidget {
           const SizedBox(width: 4),
           Expanded(
             child: Text(
-              'Long-press to customise your home',
+              AppLocalizations.of(context).homeEditHint,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 10.5, color: surface.muted, fontStyle: FontStyle.italic),
@@ -279,6 +279,7 @@ class _EditPanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     // Every widget that isn't currently on the home screen.
     final available = WidgetRegistry.entries.entries
         .where((e) => !current.contains(e.key))
@@ -289,7 +290,7 @@ class _EditPanel extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _sectionLabel('ADD WIDGET', surface.green, surface),
+          _sectionLabel(t.homeAddWidget, surface.green, surface),
           const SizedBox(height: 8),
           if (available.isEmpty)
             _FullPanel(surface: surface)
@@ -309,7 +310,7 @@ class _EditPanel extends ConsumerWidget {
               ],
             ),
           const SizedBox(height: 16),
-          _sectionLabel('PRESETS', surface.muted, surface),
+          _sectionLabel(t.homePresets, surface.muted, surface),
           const SizedBox(height: 8),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -339,7 +340,7 @@ class _EditPanel extends ConsumerWidget {
               ),
               icon: Icon(Icons.restart_alt, size: 14, color: surface.muted),
               label: Text(
-                'Reset to default',
+                t.homeResetDefault,
                 style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: surface.muted),
               ),
               onPressed: () => ref.read(homeLayoutProvider.notifier).reset(),
@@ -382,7 +383,7 @@ class _FullPanel extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Every widget is already on your home screen. Apply a preset below to reshuffle.',
+              AppLocalizations.of(context).homeAllWidgetsAdded,
               style: TextStyle(fontSize: 12, color: surface.muted),
             ),
           ),
@@ -426,11 +427,11 @@ class _AddButton extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  entry.label,
+                  entry.label(AppLocalizations.of(context)),
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: surface.text),
                 ),
               ),
-              Text('+ Add',
+              Text(AppLocalizations.of(context).homeAddBtn,
                   style: TextStyle(color: surface.green, fontSize: 12, fontWeight: FontWeight.w700)),
             ],
           ),
@@ -461,7 +462,7 @@ class _PresetChip extends StatelessWidget {
             border: Border.all(color: surface.border),
           ),
           child: Text(
-            preset.name,
+            preset.name(AppLocalizations.of(context)),
             style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: surface.text),
           ),
         ),
@@ -478,6 +479,7 @@ class _TabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     // Leaves a gap in the middle so the docked FAB doesn't sit on any tab.
     return Container(
       decoration: BoxDecoration(
@@ -489,20 +491,20 @@ class _TabBar extends StatelessWidget {
         top: false,
         child: Row(
           children: [
-            Expanded(child: _TabIcon(icon: Icons.home_outlined, label: 'Home', active: true, surface: surface)),
-            Expanded(child: _TabIcon(icon: Icons.calendar_today_outlined, label: 'Calendar', onTap: onCalendar, surface: surface)),
+            Expanded(child: _TabIcon(icon: Icons.home_outlined, label: t.navHome, active: true, surface: surface)),
+            Expanded(child: _TabIcon(icon: Icons.calendar_today_outlined, label: t.navCalendar, onTap: onCalendar, surface: surface)),
             const SizedBox(width: 72),
             Expanded(
               child: _TabIcon(
                 icon: Icons.place_outlined,
-                label: 'Spaces',
+                label: t.navSpaces,
                 surface: surface,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const LocationsScreen()),
                 ),
               ),
             ),
-            Expanded(child: _TabIcon(icon: Icons.person_outline, label: 'Me', surface: surface, onTap: onMe)),
+            Expanded(child: _TabIcon(icon: Icons.person_outline, label: t.navMe, surface: surface, onTap: onMe)),
           ],
         ),
       ),
@@ -572,12 +574,12 @@ class _FirstRunCallout extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'No plants yet',
+                    AppLocalizations.of(context).homeNoPlantsTitle,
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: surface.text),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Tap the + button to add your first plant. You can set up reminders once it lands.',
+                    AppLocalizations.of(context).homeNoPlantsBody,
                     style: TextStyle(fontSize: 12, color: surface.muted),
                   ),
                 ],
@@ -611,7 +613,7 @@ class _NotificationPermissionBanner extends ConsumerWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Notifications are off — reminders won\'t fire. Tap to enable.',
+                  AppLocalizations.of(context).homeNotifOffBanner,
                   style: TextStyle(fontSize: 12, color: surface.terra, fontWeight: FontWeight.w600),
                 ),
               ),

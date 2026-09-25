@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
+import 'space_kind_label.dart';
 
 /// Edit every user-visible field on a location in one sheet — kind,
 /// parent, outdoor flag, light level, humidity/temp ranges, notes.
@@ -67,7 +69,7 @@ class _LocationEditSheetState extends ConsumerState<LocationEditSheet> {
   Future<void> _save() async {
     final name = _name.text.trim();
     if (name.isEmpty) {
-      setState(() => _error = 'Name is required');
+      setState(() => _error = AppLocalizations.of(context).spaceNameRequired);
       return;
     }
     setState(() {
@@ -132,6 +134,7 @@ class _LocationEditSheetState extends ConsumerState<LocationEditSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
     final locations = ref.watch(locationsStreamProvider).maybeWhen(
@@ -165,37 +168,37 @@ class _LocationEditSheetState extends ConsumerState<LocationEditSheet> {
               ),
               const SizedBox(height: 14),
               Text(
-                widget.existing == null ? 'Add space' : 'Edit "${widget.existing!.name}"',
+                widget.existing == null ? t.addSpace : t.spaceEditTitle(widget.existing!.name),
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text),
               ),
               const SizedBox(height: 14),
-              _label('NAME', surface),
+              _label(t.spaceNameLabel, surface),
               const SizedBox(height: 6),
               TextField(
                 controller: _name,
                 autofocus: widget.existing == null,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: _dec(surface, hint: 'e.g. Living room'),
+                decoration: _dec(surface, hint: t.spaceNameHint),
               ),
               const SizedBox(height: 12),
-              _label('KIND', surface),
+              _label(t.spaceKindUpper, surface),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
                 initialValue: _kind,
                 isExpanded: true,
                 decoration: _dec(surface),
-                items: [for (final k in _kinds) DropdownMenuItem(value: k, child: Text(k))],
+                items: [for (final k in _kinds) DropdownMenuItem(value: k, child: Text(spaceKindLabel(t, k)))],
                 onChanged: (v) => setState(() => _kind = v ?? 'room'),
               ),
               const SizedBox(height: 12),
-              _label('INSIDE (OPTIONAL)', surface),
+              _label(t.spaceInsideLabel, surface),
               const SizedBox(height: 6),
               DropdownButtonFormField<String?>(
                 initialValue: _parentId,
                 isExpanded: true,
-                decoration: _dec(surface, hint: 'Top level'),
+                decoration: _dec(surface, hint: t.spaceTopLevelHint),
                 items: [
-                  const DropdownMenuItem<String?>(value: null, child: Text('— top level —')),
+                  DropdownMenuItem<String?>(value: null, child: Text(t.topLevel)),
                   for (final p in parentCandidates)
                     DropdownMenuItem<String?>(
                       value: p.id,
@@ -207,54 +210,54 @@ class _LocationEditSheetState extends ConsumerState<LocationEditSheet> {
               const SizedBox(height: 12),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text('Outdoor', style: TextStyle(color: surface.text)),
-                subtitle: Text('Exposed to weather', style: TextStyle(color: surface.muted, fontSize: 12)),
+                title: Text(t.spaceOutdoor, style: TextStyle(color: surface.text)),
+                subtitle: Text(t.spaceOutdoorSub, style: TextStyle(color: surface.muted, fontSize: 12)),
                 value: _isOutdoor,
                 activeThumbColor: surface.green,
                 onChanged: (v) => setState(() => _isOutdoor = v),
               ),
               const SizedBox(height: 8),
-              _label('LIGHT LEVEL (OPTIONAL)', surface),
+              _label(t.spaceLightLabel, surface),
               const SizedBox(height: 6),
               DropdownButtonFormField<String?>(
                 initialValue: _light,
                 isExpanded: true,
-                decoration: _dec(surface, hint: 'Unspecified'),
+                decoration: _dec(surface, hint: t.spaceUnspecifiedHint),
                 items: [
-                  const DropdownMenuItem<String?>(value: null, child: Text('— unspecified —')),
+                  DropdownMenuItem<String?>(value: null, child: Text(t.spaceUnspecified)),
                   for (final l in _lights)
-                    DropdownMenuItem<String?>(value: l, child: Text(l)),
+                    DropdownMenuItem<String?>(value: l, child: Text(spaceLightLabel(t, l))),
                 ],
                 onChanged: (v) => setState(() => _light = v),
               ),
               const SizedBox(height: 12),
-              _label('HUMIDITY RANGE (% — optional)', surface),
+              _label(t.spaceHumidityLabel, surface),
               const SizedBox(height: 6),
               Row(
                 children: [
-                  Expanded(child: TextField(controller: _humMin, keyboardType: TextInputType.number, decoration: _dec(surface, hint: 'min'))),
+                  Expanded(child: TextField(controller: _humMin, keyboardType: TextInputType.number, decoration: _dec(surface, hint: t.spaceMin))),
                   const SizedBox(width: 10),
-                  Expanded(child: TextField(controller: _humMax, keyboardType: TextInputType.number, decoration: _dec(surface, hint: 'max'))),
+                  Expanded(child: TextField(controller: _humMax, keyboardType: TextInputType.number, decoration: _dec(surface, hint: t.spaceMax))),
                 ],
               ),
               const SizedBox(height: 12),
-              _label('TEMPERATURE RANGE (°C — optional)', surface),
+              _label(t.spaceTempLabel, surface),
               const SizedBox(height: 6),
               Row(
                 children: [
-                  Expanded(child: TextField(controller: _tempMin, keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), decoration: _dec(surface, hint: 'min'))),
+                  Expanded(child: TextField(controller: _tempMin, keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), decoration: _dec(surface, hint: t.spaceMin))),
                   const SizedBox(width: 10),
-                  Expanded(child: TextField(controller: _tempMax, keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), decoration: _dec(surface, hint: 'max'))),
+                  Expanded(child: TextField(controller: _tempMax, keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), decoration: _dec(surface, hint: t.spaceMax))),
                 ],
               ),
               const SizedBox(height: 12),
-              _label('NOTES', surface),
+              _label(t.spaceNotesLabel, surface),
               const SizedBox(height: 6),
               TextField(
                 controller: _notes,
                 maxLines: 3,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: _dec(surface, hint: 'optional'),
+                decoration: _dec(surface, hint: t.notesHint),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 10),
@@ -272,7 +275,7 @@ class _LocationEditSheetState extends ConsumerState<LocationEditSheet> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius)),
                       ),
                       onPressed: _saving ? null : () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
+                      child: Text(t.cancel),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -286,7 +289,7 @@ class _LocationEditSheetState extends ConsumerState<LocationEditSheet> {
                         textStyle: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       onPressed: _saving ? null : _save,
-                      child: Text(_saving ? 'Saving…' : 'Save'),
+                      child: Text(_saving ? t.saving : t.commonSave),
                     ),
                   ),
                 ],

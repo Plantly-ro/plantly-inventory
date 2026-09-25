@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/tokens.dart';
 import '../../locations/locations_screen.dart';
 import '../../search/search_screen.dart';
@@ -56,11 +57,12 @@ class StatsWidget extends ConsumerWidget {
     final plants = plantsAsync.maybeWhen(data: (r) => r.length, orElse: () => null);
     final spaces = locsAsync.maybeWhen(data: (r) => r.length, orElse: () => null);
 
+    final t = AppLocalizations.of(context);
     final tiles = <_Stat>[
-      _Stat(_fmt(overdue), 'Overdue', Icons.water_drop_outlined, urgent: (overdue ?? 0) > 0, filter: PlantFilter.overdue),
-      _Stat(_fmt(today), 'Due today', Icons.check, urgent: false, filter: PlantFilter.dueToday),
-      _Stat(_fmt(plants), 'Plants', Icons.eco_outlined, urgent: false, filter: PlantFilter.all),
-      _Stat(_fmt(spaces), 'Spaces', Icons.place_outlined, urgent: false),
+      _Stat(_fmt(overdue), t.statOverdue, Icons.water_drop_outlined, urgent: (overdue ?? 0) > 0, filter: PlantFilter.overdue),
+      _Stat(_fmt(today), t.statDueToday, Icons.check, urgent: false, filter: PlantFilter.dueToday),
+      _Stat(_fmt(plants), t.statPlants, Icons.eco_outlined, urgent: false, filter: PlantFilter.all),
+      _Stat(_fmt(spaces), t.statSpaces, Icons.place_outlined, urgent: false),
     ];
 
     return WidgetShell(
@@ -77,16 +79,16 @@ class StatsWidget extends ConsumerWidget {
         mainAxisSpacing: 10,
         crossAxisSpacing: 10,
         children: tiles
-            .map((t) => _TileView(
-                  t,
+            .map((tile) => _TileView(
+                  tile,
                   surface,
                   onTap: () {
-                    if (t.label == 'Spaces') {
+                    if (tile.filter == null) {
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const LocationsScreen()),
                       );
-                    } else if (t.filter != null) {
-                      ref.read(activeFilterProvider.notifier).state = t.filter!;
+                    } else {
+                      ref.read(activeFilterProvider.notifier).state = tile.filter!;
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const SearchScreen()),
                       );

@@ -5,6 +5,7 @@ import '../../data/care_types.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../plant_detail/plant_detail_screen.dart';
@@ -88,7 +89,7 @@ class StatsScreen extends ConsumerWidget {
             _BarList(
               entries: sortedTypes,
               total: recent.length,
-              label: (key) => resolveCareType(types, key).label,
+              label: (key) => careKeyLabel(t, types, key),
               icon: (key) => resolveCareType(types, key).icon,
               surface: surface,
             ),
@@ -150,6 +151,7 @@ class _HeadlineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -159,11 +161,11 @@ class _HeadlineCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(child: _Cell(value: '$plants', label: 'PLANTS', surface: surface)),
+          Expanded(child: _Cell(value: '$plants', label: t.statsCellPlants, surface: surface)),
           Container(width: 1, height: 40, color: surface.border),
-          Expanded(child: _Cell(value: '$events', label: 'EVENTS', surface: surface)),
+          Expanded(child: _Cell(value: '$events', label: t.statsCellEvents, surface: surface)),
           Container(width: 1, height: 40, color: surface.border),
-          Expanded(child: _Cell(value: '$recent30d', label: 'LAST 30d', surface: surface)),
+          Expanded(child: _Cell(value: '$recent30d', label: t.statsCellLast30, surface: surface)),
         ],
       ),
     );
@@ -342,6 +344,7 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -351,7 +354,7 @@ class _EmptyState extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: Text(
-        'No care events yet. Log your first reminder to see stats here.',
+        t.statsEmpty,
         textAlign: TextAlign.center,
         style: TextStyle(color: surface.muted, fontSize: 13),
       ),

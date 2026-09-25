@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../shared/location_picker.dart';
 import '../../theme/tokens.dart';
 import 'selection.dart';
@@ -17,6 +18,7 @@ class BulkActionBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selection = ref.watch(plantSelectionProvider);
     if (selection.isEmpty) return const SizedBox.shrink();
+    final t = AppLocalizations.of(context);
     return Material(
       color: surface.greenDeep,
       child: SafeArea(
@@ -26,33 +28,33 @@ class BulkActionBar extends ConsumerWidget {
           child: Row(
             children: [
               IconButton(
-                tooltip: 'Cancel',
+                tooltip: t.cancel,
                 icon: const Icon(Icons.close, color: Colors.white),
                 onPressed: () => ref.read(plantSelectionProvider.notifier).clear(),
               ),
               Text(
-                '${selection.length} selected',
+                t.homeBulkSelected(selection.length),
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
               ),
               const Spacer(),
               _Action(
                 icon: Icons.place_outlined,
-                label: 'Move',
+                label: t.homeBulkMove,
                 onTap: () => _bulkMove(context, ref, selection.toList()),
               ),
               _Action(
                 icon: Icons.notifications_off_outlined,
-                label: 'Mute',
+                label: t.homeBulkMute,
                 onTap: () => _bulkMute(ref, selection.toList(), true),
               ),
               _Action(
                 icon: Icons.notifications_active_outlined,
-                label: 'Unmute',
+                label: t.homeBulkUnmute,
                 onTap: () => _bulkMute(ref, selection.toList(), false),
               ),
               _Action(
                 icon: Icons.delete_outline,
-                label: 'Delete',
+                label: t.commonDelete,
                 onTap: () => _bulkDelete(context, ref, selection.toList()),
               ),
             ],
@@ -63,6 +65,7 @@ class BulkActionBar extends ConsumerWidget {
   }
 
   Future<void> _bulkMove(BuildContext context, WidgetRef ref, List<String> ids) async {
+    final t = AppLocalizations.of(context);
     final picked = await pickLocation(context, ref: ref, currentLocationId: null);
     // pickLocation returns `currentLocationId` on dismiss — which is null here.
     // Use an explicit sentinel to distinguish dismiss vs. "— no location —".
@@ -81,8 +84,8 @@ class BulkActionBar extends ConsumerWidget {
         ..clearSnackBars()
         ..showSnackBar(SnackBar(
           content: Text(picked == null
-              ? 'Removed ${ids.length} plant${ids.length == 1 ? '' : 's'} from any space'
-              : 'Moved ${ids.length} plant${ids.length == 1 ? '' : 's'}'),
+              ? t.homeBulkRemovedFromSpace(ids.length)
+              : t.homeBulkMoved(ids.length)),
         ));
     }
   }
@@ -98,18 +101,19 @@ class BulkActionBar extends ConsumerWidget {
   }
 
   Future<void> _bulkDelete(BuildContext context, WidgetRef ref, List<String> ids) async {
+    final t = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dctx) => AlertDialog(
-        title: Text('Delete ${ids.length} plant${ids.length == 1 ? '' : 's'}?'),
-        content: const Text('Use Gave away / Sold / Marked dead from a single plant if you want a ledger entry instead.'),
+        title: Text(t.homeBulkDeleteTitle(ids.length)),
+        content: Text(t.homeBulkDeleteBody),
         actions: [
-          TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: Text(t.cancel)),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: surface.terra),
             onPressed: () => Navigator.of(dctx).pop(true),
-            child: const Text('Delete'),
+            child: Text(t.commonDelete),
           ),
         ],
       ),
@@ -121,9 +125,9 @@ class BulkActionBar extends ConsumerWidget {
     messenger
       ..clearSnackBars()
       ..showSnackBar(SnackBar(
-        content: Text('Deleted ${ids.length} plant${ids.length == 1 ? '' : 's'}'),
+        content: Text(t.homeBulkDeleted(ids.length)),
         action: SnackBarAction(
-          label: 'Undo',
+          label: t.homeBulkUndo,
           onPressed: () {
             for (final id in ids) {
               ref.read(plantRepositoryProvider).restoreFromSoftDelete(id);

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../data/user_prefs.dart';
+import '../../../l10n/generated/app_localizations.dart';
+
 import '../../../theme/tokens.dart';
 import 'widget_shell.dart';
 
@@ -26,10 +29,11 @@ class GreetingWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     final now = DateTime.now();
-    final date = _formatDate(now);
+    final date = _formatDate(now, Localizations.localeOf(context).toString());
     final name = ref.watch(userPrefsProvider).userName;
-    final base = _timeOfDayGreeting(now.hour);
+    final base = _timeOfDayGreeting(t, now.hour);
     final greeting = (name != null && name.isNotEmpty) ? '$base, $name' : base;
     return WidgetShell(
       surface: surface,
@@ -82,27 +86,16 @@ class GreetingWidget extends ConsumerWidget {
     );
   }
 
-  String _formatDate(DateTime d) {
-    const days = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
-    ];
-    return '${days[d.weekday - DateTime.monday]} · ${months[d.month - 1]} ${d.day}';
+  /// "Monday · January 5" (en) / "luni · 5 ianuarie" (ro) — weekday and
+  /// month names come from intl for the active locale.
+  String _formatDate(DateTime d, String locale) {
+    return '${DateFormat.EEEE(locale).format(d)} · ${DateFormat.MMMMd(locale).format(d)}';
   }
 
-  String _timeOfDayGreeting(int hour) {
-    if (hour < 5) return 'Still up?';
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
+  String _timeOfDayGreeting(AppLocalizations t, int hour) {
+    if (hour < 5) return t.homeGreetingStillUp;
+    if (hour < 12) return t.homeGreetingMorning;
+    if (hour < 18) return t.homeGreetingAfternoon;
+    return t.homeGreetingEvening;
   }
 }

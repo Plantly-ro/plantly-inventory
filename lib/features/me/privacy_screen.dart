@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/user_prefs.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 
@@ -16,6 +17,7 @@ class PrivacyScreen extends ConsumerWidget {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
     final prefs = ref.watch(userPrefsProvider);
+    final t = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: surface.bg,
@@ -27,7 +29,7 @@ class PrivacyScreen extends ConsumerWidget {
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: Text(
-          'Privacy & data',
+          t.mePrivacyTitle,
           style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
             fontSize: 22,
             fontWeight: FontWeight.w800,
@@ -45,36 +47,36 @@ class PrivacyScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'What leaves your device',
+                  t.mePrivacyWhatLeaves,
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: surface.text),
                 ),
                 const SizedBox(height: 8),
                 _Bullet(
                   surface: surface,
-                  text: 'Nothing by default. Plants, photos, care events, and schedules live in a local SQLite database on your phone.',
+                  text: t.mePrivacyBulletLocal,
                 ),
                 _Bullet(
                   surface: surface,
-                  text: 'Backups (JSON or ZIP) only leave the device when you tap Export — you choose where they go via the share sheet.',
+                  text: t.mePrivacyBulletBackups,
                 ),
                 _Bullet(
                   surface: surface,
-                  text: 'Notifications fire locally via the OS alarm system. We do not use a push server.',
+                  text: t.mePrivacyBulletNotifications,
                 ),
                 _Bullet(
                   surface: surface,
-                  text: 'If you later post a plant to plantly.ro, only the fields you review in the Export dialog are sent — never the full database.',
+                  text: t.mePrivacyBulletMarketplace,
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          _SectionLabel(text: 'OPT-IN TELEMETRY', surface: surface),
+          _SectionLabel(text: t.mePrivacySectionTelemetry, surface: surface),
           const SizedBox(height: 8),
           _ToggleRow(
             surface: surface,
-            title: 'Crash reports',
-            subtitle: 'If the app crashes, send the stack trace to help us fix it. No plant data, no photos.',
+            title: t.mePrivacyCrashTitle,
+            subtitle: t.mePrivacyCrashBody,
             icon: Icons.bug_report_outlined,
             value: prefs.crashConsent,
             onChanged: (v) => ref.read(userPrefsProvider.notifier).setCrashConsent(v),
@@ -82,19 +84,19 @@ class PrivacyScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           _ToggleRow(
             surface: surface,
-            title: 'Anonymous usage',
-            subtitle: 'Tap counts by screen — so we know which features are loved. No identifiers, no text you enter.',
+            title: t.mePrivacyUsageTitle,
+            subtitle: t.mePrivacyUsageBody,
             icon: Icons.insights_outlined,
             value: prefs.analyticsConsent,
             onChanged: (v) => ref.read(userPrefsProvider.notifier).setAnalyticsConsent(v),
           ),
           const SizedBox(height: 16),
-          _SectionLabel(text: 'LEGAL', surface: surface),
+          _SectionLabel(text: t.mePrivacySectionLegal, surface: surface),
           const SizedBox(height: 8),
           _ReadOnlyRow(
             surface: surface,
-            label: 'License',
-            value: 'AGPL-3.0-or-later · source: github.com/URunDEAD/PlantlyInventory',
+            label: t.meAboutLicense,
+            value: t.mePrivacyLicenseValue,
             icon: Icons.description_outlined,
           ),
         ],

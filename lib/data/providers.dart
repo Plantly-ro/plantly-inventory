@@ -15,6 +15,7 @@ import '../notifications/reminder_sync.dart';
 import '../sync/device_id.dart';
 import '../sync/hlc.dart';
 import '../sync/op_log.dart';
+import '../shared/care_type_labels.dart';
 import 'care_types.dart';
 import 'database/app_database.dart';
 import 'photo_blob_store.dart';
@@ -137,6 +138,7 @@ final iCalFutureProvider = FutureProvider.autoDispose<String>((ref) async {
     plantsById: {for (final p in plants) p.id: p},
     locationsById: {for (final l in locations) l.id: l},
     now: DateTime.now().toUtc(),
+    typeLabel: (type) => careKeyVerb(appLocalizationsForPlatform(), ref.read(careTypesProvider), type),
   );
   return ICalExport.fromEvents(
     productId: '-//PlantlyInventory//Phase1//EN',
@@ -151,6 +153,7 @@ final reminderSyncProvider = Provider<ReminderSync>((ref) {
     notifications: ref.watch(notificationServiceProvider),
     tenantId: ctx.opLog.tenantId,
     mutedTypesSnapshot: () => ref.read(mutedCareTypesProvider),
+    typeLabel: (type) => careKeyVerb(appLocalizationsForPlatform(), ref.read(careTypesProvider), type),
   );
 });
 
