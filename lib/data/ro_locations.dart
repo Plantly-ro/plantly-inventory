@@ -5,9 +5,10 @@
 /// the ~3200 localities are too many to bundle usefully, and plantly.ro's own
 /// locality list is the eventual source of truth (see issue #7).
 ///
-/// [exportCategories] is provisional: a reasonable default set until plantly.ro
-/// exposes its real category vocab (issue #7), at which point the networked
-/// plugin's manifest should drive these instead.
+/// [exportCategories] is the category vocabulary of the *local* export form,
+/// i.e. whenever `PlantlyFeatures.sellEnabled` is off (the default build). With
+/// selling on, the dialog searches plantly.ro's real categories instead
+/// (`GET /categories/search`) and this list is not used.
 library;
 
 /// The 42 Romanian counties (județe), including București, alphabetical by the
@@ -57,8 +58,8 @@ const List<String> roCounties = [
   'Vrancea',
 ];
 
-/// Provisional listing categories (see library note). Replaced by plantly.ro's
-/// vocab once the networked plugin lands.
+/// Listing categories for the local (selling-off) export form — see the
+/// library note. Not used when selling is enabled.
 const List<String> exportCategories = [
   'Indoor plant',
   'Outdoor plant',

@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/mock_plants.dart';
@@ -77,7 +76,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           controller: _controller,
           autofocus: true,
           onChanged: _onChanged,
-          style: GoogleFonts.inter(fontSize: 16, color: surface.text),
+          style: TextStyle(fontFamily: PlantlyFonts.inter, fontSize: 16, color: surface.text),
           decoration: InputDecoration(
             hintText: t.search,
             hintStyle: TextStyle(color: surface.muted),

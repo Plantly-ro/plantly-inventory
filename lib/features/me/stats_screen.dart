@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/care_types.dart';
 import '../../data/database/app_database.dart';
@@ -66,7 +65,7 @@ class StatsScreen extends ConsumerWidget {
         ),
         title: Text(
           t.statsTitle,
-          style: GoogleFonts.plusJakartaSans(
+          style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
             fontSize: 22,
             fontWeight: FontWeight.w800,
             color: surface.text,
@@ -185,7 +184,7 @@ class _Cell extends StatelessWidget {
       children: [
         Text(
           value,
-          style: GoogleFonts.plusJakartaSans(
+          style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
             fontSize: 22,
             fontWeight: FontWeight.w800,
             color: surface.text,

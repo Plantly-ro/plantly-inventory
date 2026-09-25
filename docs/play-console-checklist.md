@@ -8,7 +8,8 @@ Sentry opt-in **and** shipped with an empty DSN, "Sell on plantly.ro" compiled o
 
 Automated by CI (do not hand-edit in the console, it gets overwritten):
 store listing texts + graphics for `en-US` and `ro` (`publish-listing` / `publish-production`),
-AAB upload, release notes, track rollout.
+AAB upload, R8 mapping + native debug symbols (deobfuscation files for the uploaded
+versionCode), release notes, track rollout.
 
 ## 1. Store settings
 
@@ -100,13 +101,14 @@ Data types:
 Declare **no** for every other type — in particular Location, Personal info, Photos and
 videos (photos never leave the device; they are picked via the system picker and stored
 locally), Files and docs (backups are user-initiated exports through the share sheet,
-not collection by us), Device or other IDs (Sentry's random installation id is bundled
+not collection by us; Android Auto Backup and device-to-device transfer are disabled via
+`android:allowBackup="false"`, so no app data ever reaches Google Drive backup), Device or other IDs (Sentry's random installation id is bundled
 into the crash-log declaration; do not tick "Device or other IDs" separately).
 
-Not a Data-safety item but disclosed in the policy: first-launch font download from
-Google Fonts (IP address to Google). Bundling the two typefaces in `assets/fonts/` and
-setting `GoogleFonts.config.allowRuntimeFetching = false` would make the app genuinely
-zero-network — recommended follow-up, not a blocker.
+Fonts (Inter, Plus Jakarta Sans) are bundled in `assets/fonts/` since 1.0.0+19 — the
+`google_fonts` runtime fetch is gone, so there is no first-launch request to Google and
+nothing to disclose for it. With an empty `SENTRY_DSN` the app is genuinely zero-network
+until the user opens a link or enables the opt-in reports.
 
 Alternative if you prefer the strict-current-build answer: "No data collected" is also
 defensible today because nothing can be transmitted with an empty DSN, but the form
@@ -134,6 +136,11 @@ defensible today because nothing can be transmitted with an empty DSN, but the f
 - `publish-production` commits the **listing before the build starts**, so texts and
   graphics go live (or into review) even if the 25-min build later fails. Either re-run the
   job after the fix, or revert the metadata and run `publish-listing` from `development`.
+- *App bundle explorer → Downloads* should list a **ReTrace mapping file** (and *Native
+  debug symbols*) for every CI-uploaded versionCode — `tool/play_upload.py` attaches them
+  in the same edit as the AAB, so the "no deobfuscation file" warnings must not appear.
+  If they do, check the job log for `uploaded proguard deobfuscation file` /
+  `warning: no native debug symbols found`.
 - If Play refuses the automatic review (`changesNotSentForReview`: unpublished app or a
   console change pending review) the scripts retry as a draft commit and say so in the
   job log — then click **Send for review** in the console.

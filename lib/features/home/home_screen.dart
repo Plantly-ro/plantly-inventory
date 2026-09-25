@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/providers.dart';
 import '../../data/user_prefs.dart';
@@ -539,7 +538,7 @@ class _TabIcon extends StatelessWidget {
           const SizedBox(height: 3),
           Text(
             label,
-            style: GoogleFonts.inter(
+            style: TextStyle(fontFamily: PlantlyFonts.inter, 
               fontSize: 10,
               fontWeight: active ? FontWeight.w600 : FontWeight.w500,
               color: color,

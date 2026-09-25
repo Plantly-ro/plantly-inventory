@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/mock_plants.dart';
@@ -36,7 +35,7 @@ class LocationsScreen extends ConsumerWidget {
         ),
         title: Text(
           AppLocalizations.of(context).spaces,
-          style: GoogleFonts.plusJakartaSans(
+          style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
             fontSize: 22,
             fontWeight: FontWeight.w800,
             color: surface.text,

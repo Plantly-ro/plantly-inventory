@@ -49,8 +49,8 @@ class PlantlyTokens {
   static const Color zinc950 = Color(0xFF09090B);
 
   // ─── Typography ─────────────────────────────────────────────────────────
-  static const String displayFamily = 'Plus Jakarta Sans';
-  static const String bodyFamily = 'Inter';
+  static const String displayFamily = PlantlyFonts.plusJakartaSans;
+  static const String bodyFamily = PlantlyFonts.inter;
 
   static const double textXs = 12;
   static const double textSm = 14;
@@ -148,4 +148,17 @@ class PlantlySurface {
     terra: PlantlyTokens.terra400,
     terraSoft: Color(0x26E58255), // rgba(229,130,85,0.15)
   );
+}
+
+/// Font families bundled under `assets/fonts/` and registered in
+/// `pubspec.yaml` (`fonts:`). Both are SIL OFL 1.1 (licences sit next to
+/// the TTFs). The names must match the pubspec `family:` entries.
+///
+/// Inter is the app-wide body face (set once via `ThemeData.fontFamily`);
+/// Plus Jakarta Sans is the display face used for screen titles.
+class PlantlyFonts {
+  PlantlyFonts._();
+
+  static const String inter = 'Inter';
+  static const String plusJakartaSans = 'PlusJakartaSans';
 }

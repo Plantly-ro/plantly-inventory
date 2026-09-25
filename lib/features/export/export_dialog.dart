@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/plantly_features.dart';
@@ -111,7 +110,9 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
       final sell = ref.read(sellEnabledProvider);
       if (sell ? PlantlyRoExportPlugin.isCategoryId(draft.category) : draft.category != null) {
         _category = draft.category;
-        _categoryLabel = null; // label isn't persisted; shown as "selected"
+        // Drafts saved before `category_label` existed have none: the field
+        // then shows the generic "Category selected" until re-picked.
+        _categoryLabel = draft.categoryLabel;
       }
       if (draft.county != null) _county = draft.county;
       if (draft.city != null) _city.text = draft.city!;
@@ -128,6 +129,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
       description: _desc.text,
       priceLei: int.tryParse(_price.text.trim()),
       category: _category,
+      categoryLabel: _categoryLabel,
       county: _county,
       city: city.isEmpty ? null : city,
       photoRefs: _selected.toList(),
@@ -168,7 +170,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     title,
-                    style: GoogleFonts.plusJakartaSans(
+                    style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: surface.text,
@@ -269,7 +271,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                           ),
                           Text(
                             sell ? t.exportPostTitle(plant.nickname) : t.exportDraftTitle(plant.nickname),
-                            style: GoogleFonts.plusJakartaSans(
+                            style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
                               fontSize: 19,
                               fontWeight: FontWeight.w800,
                               color: surface.text,

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/plantly_hosts.dart';
@@ -122,7 +121,7 @@ class _PlantlyLoginSheetState extends ConsumerState<PlantlyLoginSheet> {
               const SizedBox(height: 14),
               Text(
                 t.plantlyLoginTitle,
-                style: GoogleFonts.plusJakartaSans(fontSize: 19, fontWeight: FontWeight.w800, color: surface.text),
+                style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, fontSize: 19, fontWeight: FontWeight.w800, color: surface.text),
               ),
               const SizedBox(height: 4),
               Text(t.plantlyLoginSubtitle, style: TextStyle(fontSize: 12.5, color: surface.muted)),

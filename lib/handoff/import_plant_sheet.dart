@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../data/providers.dart';
 import '../features/home/home_providers.dart';
@@ -152,7 +151,7 @@ class _ImportPlantSheetState extends ConsumerState<ImportPlantSheet> {
                 ),
                 Text(
                   t.importTitle,
-                  style: GoogleFonts.plusJakartaSans(fontSize: 19, fontWeight: FontWeight.w800, color: surface.text),
+                  style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, fontSize: 19, fontWeight: FontWeight.w800, color: surface.text),
                 ),
                 const SizedBox(height: 14),
                 Row(
@@ -334,7 +333,7 @@ class _ImportErrorSheet extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(t.importErrorTitle,
-                      style: GoogleFonts.plusJakartaSans(fontSize: 17, fontWeight: FontWeight.w800, color: surface.text)),
+                      style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, fontSize: 17, fontWeight: FontWeight.w800, color: surface.text)),
                 ),
               ],
             ),

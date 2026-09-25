@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../../data/user_prefs.dart';
@@ -71,7 +70,7 @@ class GreetingWidget extends ConsumerWidget {
                   ),
                   Text(
                     greeting,
-                    style: GoogleFonts.plusJakartaSans(
+                    style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
                       fontSize: PlantlyTokens.text2xl,
                       fontWeight: FontWeight.w800,
                       color: surface.text,

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../data/database/app_database.dart';
@@ -76,7 +75,7 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                 ),
                 title: Text(
                   loc.name,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
                     color: surface.text,
