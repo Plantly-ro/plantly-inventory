@@ -217,6 +217,13 @@ def describe_plan(package: str, listings, skip_images: bool):
     return "\n".join(lines)
 
 
+def _is_listing_not_found(exc: Exception) -> bool:
+    """`edits.listings.patch` on a language without a listing -> HTTP 404
+    "Listing for language 'xx' not found." (googleapiclient HttpError)."""
+    status = getattr(getattr(exc, "resp", None), "status", None)
+    return status == 404 or "not found" in str(exc).lower()
+
+
 def push(
     service,
     package: str,
@@ -232,11 +239,20 @@ def push(
         for listing in listings:
             body = {"language": listing.language, **listing.texts}
             # patch, not update: update replaces the whole Listing and would null
-            # a promo `video` set in the console.
-            edits.listings().patch(
-                packageName=package, editId=edit_id, language=listing.language, body=body
-            ).execute(num_retries=play_api.RETRIES)
-            print(f"listing updated: {listing.language}")
+            # a promo `video` set in the console. patch 404s for a language that
+            # has no listing yet (fresh app record) -> create it with update.
+            try:
+                edits.listings().patch(
+                    packageName=package, editId=edit_id, language=listing.language, body=body
+                ).execute(num_retries=play_api.RETRIES)
+                print(f"listing updated: {listing.language}")
+            except Exception as exc:
+                if not _is_listing_not_found(exc):
+                    raise
+                edits.listings().update(
+                    packageName=package, editId=edit_id, language=listing.language, body=body
+                ).execute(num_retries=play_api.RETRIES)
+                print(f"listing created: {listing.language}")
             if skip_images or not listing.images:
                 continue
             for image_type in IMAGE_TYPES:
