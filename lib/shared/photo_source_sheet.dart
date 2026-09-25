@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/photo_picker.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../theme/tokens.dart';
 
 enum PhotoSourceChoice { cameraOne, galleryMulti, galleryOne }
@@ -16,6 +17,7 @@ Future<PhotoSourceChoice?> showPhotoSourceSheet(
     context: context,
     backgroundColor: Colors.transparent,
     builder: (ctx) {
+      final t = AppLocalizations.of(ctx);
       return Container(
         decoration: BoxDecoration(
           color: surface.bg,
@@ -36,16 +38,16 @@ Future<PhotoSourceChoice?> showPhotoSourceSheet(
             _Option(
               surface: surface,
               icon: Icons.camera_alt_outlined,
-              label: 'Take photo',
-              subtitle: 'Open the camera',
+              label: t.photoSrcTakePhoto,
+              subtitle: t.photoSrcTakePhotoSub,
               onTap: () => Navigator.of(ctx).pop(PhotoSourceChoice.cameraOne),
             ),
             const SizedBox(height: 8),
             _Option(
               surface: surface,
               icon: Icons.photo_library_outlined,
-              label: multi ? 'Choose from gallery' : 'Choose one from gallery',
-              subtitle: multi ? 'Select multiple images' : 'Pick a single image',
+              label: multi ? t.photoSrcGalleryMulti : t.photoSrcGalleryOne,
+              subtitle: multi ? t.photoSrcGalleryMultiSub : t.photoSrcGalleryOneSub,
               onTap: () => Navigator.of(ctx).pop(
                 multi ? PhotoSourceChoice.galleryMulti : PhotoSourceChoice.galleryOne,
               ),

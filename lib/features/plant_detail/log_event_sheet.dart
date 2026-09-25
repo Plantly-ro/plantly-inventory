@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../data/care_types.dart';
 import '../../data/providers.dart';
@@ -265,11 +266,10 @@ class _LogEventSheetState extends ConsumerState<LogEventSheet> {
     );
   }
 
+  /// "Sep 25, 2026 · 12:22" / "25 sept. 2026 · 12:22".
   String _fmtDate(DateTime d) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    final h = d.hour.toString().padLeft(2, '0');
-    final m = d.minute.toString().padLeft(2, '0');
-    return '${months[d.month - 1]} ${d.day}, ${d.year} · $h:$m';
+    final locale = Localizations.localeOf(context).toString();
+    return '${DateFormat.yMMMd(locale).format(d)} · ${DateFormat.Hm(locale).format(d)}';
   }
 
   TextStyle _labelStyle(PlantlySurface s) => TextStyle(

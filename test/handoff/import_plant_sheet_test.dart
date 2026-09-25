@@ -49,6 +49,7 @@ Widget host({
   required InMemoryPhotoBlobStore store,
   required GlobalKey<NavigatorState> navKey,
   List<Override> overrides = const [],
+  Locale? locale,
 }) {
   return buildTestApp(
     overrides: [
@@ -59,6 +60,7 @@ Widget host({
     ],
     child: MaterialApp(
       navigatorKey: navKey,
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Consumer(builder: (context, ref, _) {
@@ -209,6 +211,30 @@ void main() {
     links.emit(Uri.parse('http://127.0.0.1:8099/#/import?d=!!!not-base64!!!'));
     await settle(tester);
     expect(find.byKey(const Key('import-error')), findsOneWidget);
+  });
+
+  testWidgets('preview renders health + observation enums localized (ro)', (tester) async {
+    tester.view.physicalSize = const Size(420, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(() => drain(tester));
+
+    final store = InMemoryPhotoBlobStore();
+    final navKey = GlobalKey<NavigatorState>();
+    final payload = PlantlyExportPayload.decodeParam(encodeParam(samplePayload()));
+    await tester.pumpWidget(host(payload: payload, store: store, navKey: navKey, locale: const Locale('ro')));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('open')));
+    await settle(tester);
+
+    expect(find.text('Sănătate: stresată'), findsOneWidget);
+    expect(find.text('îngălbenire'), findsOneWidget);
+    expect(find.text('Health: stressed'), findsNothing);
+    expect(find.text('yellowing'), findsNothing);
+    expect(find.text('DIN PLANTLY ASSISTANT'), findsOneWidget);
+    navKey.currentState!.pop();
+    await settle(tester);
   });
 
   test('notes template localizes en + ro and omits absent parts', () {
