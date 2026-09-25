@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../data/care_types.dart';
 import '../../data/database/app_database.dart' as db;
@@ -58,6 +59,8 @@ class DayDetailSheet extends ConsumerWidget {
     ];
     final today = DateTime.now();
     final isToday = startOfDay == DateTime(today.year, today.month, today.day);
+    final t = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).toString();
 
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
@@ -87,7 +90,7 @@ class DayDetailSheet extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _weekdayLong(day).toUpperCase(),
+                        DateFormat.EEEE(locale).format(day).toUpperCase(),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -96,11 +99,11 @@ class DayDetailSheet extends ConsumerWidget {
                         ),
                       ),
                       Text(
-                        '${_monthLong(day.month)} ${day.day}, ${day.year}',
+                        DateFormat.yMMMMd(locale).format(day),
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: surface.text),
                       ),
                       if (isToday)
-                        Text('Today', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: surface.green)),
+                        Text(t.commonTodayLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: surface.green)),
                     ],
                   ),
                   const Spacer(),
@@ -122,13 +125,13 @@ class DayDetailSheet extends ConsumerWidget {
                       padding: const EdgeInsets.symmetric(vertical: 24),
                       child: Center(
                         child: Text(
-                          'Nothing scheduled or logged on this day.',
+                          t.calendarDayEmpty,
                           style: TextStyle(color: surface.muted, fontSize: 13),
                         ),
                       ),
                     ),
                   if (dayScheduled.isNotEmpty) ...[
-                    Text('SCHEDULED',
+                    Text(t.calendarDayScheduled,
                         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: surface.green, letterSpacing: 0.1 * 11)),
                     const SizedBox(height: 8),
                     Container(
@@ -154,7 +157,7 @@ class DayDetailSheet extends ConsumerWidget {
                     const SizedBox(height: 18),
                   ],
                   if (dayDone.isNotEmpty) ...[
-                    Text('LOGGED',
+                    Text(t.calendarDayDone,
                         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: surface.green, letterSpacing: 0.1 * 11)),
                     const SizedBox(height: 8),
                     Container(
@@ -186,12 +189,6 @@ class DayDetailSheet extends ConsumerWidget {
       ),
     );
   }
-
-  static String _weekdayLong(DateTime d) =>
-      const ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][d.weekday - DateTime.monday];
-  static String _monthLong(int m) =>
-      const ['January', 'February', 'March', 'April', 'May', 'June',
-              'July', 'August', 'September', 'October', 'November', 'December'][m - 1];
 }
 
 class _ScheduledRow extends ConsumerWidget {
@@ -267,7 +264,7 @@ class _ScheduledRow extends ConsumerWidget {
                         type: schedule.type,
                       );
                 },
-                child: const Text('Done'),
+                child: Text(AppLocalizations.of(context).doneBtn),
               ),
               const SizedBox(width: 6),
               TextButton(
@@ -284,7 +281,7 @@ class _ScheduledRow extends ConsumerWidget {
                 onPressed: () => ref
                     .read(careScheduleRepositoryProvider)
                     .snooze(schedule.id, by: const Duration(days: 1)),
-                child: const Text('Snooze'),
+                child: Text(AppLocalizations.of(context).snoozeBtn),
               ),
             ],
           ),

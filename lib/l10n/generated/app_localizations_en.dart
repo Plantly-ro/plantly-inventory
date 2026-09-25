@@ -2200,4 +2200,115 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get careTypeRotate => 'Rotate';
+
+  @override
+  String get seedPlantBob => 'Monstera \"Bob\"';
+
+  @override
+  String get seedPlantGreen => 'Pothos \"Green\"';
+
+  @override
+  String get seedPlantSnake => 'Snake plant';
+
+  @override
+  String get seedPlantCala => 'Calathea';
+
+  @override
+  String get seedPlantFid => 'Fiddle fig';
+
+  @override
+  String get seedPlantFern => 'Fern spray';
+
+  @override
+  String get seedPlantSuc => 'Hens & chicks';
+
+  @override
+  String get seedPlantPete => 'Prickly Pete';
+
+  @override
+  String get seedSpaceHome => 'Home';
+
+  @override
+  String get seedSpaceLivingRoom => 'Living room';
+
+  @override
+  String get seedSpaceBalcony => 'Balcony';
+
+  @override
+  String get notifChannelName => 'Plant care reminders';
+
+  @override
+  String get notifChannelDescription =>
+      'Watering, fertilising, and other plant care reminders.';
+
+  @override
+  String get calPrevious => 'Previous';
+
+  @override
+  String get calDayFree => 'Clear';
+
+  @override
+  String calOverdueMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count min overdue',
+      one: '1 min overdue',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String calOverdueHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hours overdue',
+      one: '1 hour overdue',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String calInMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'in $count min',
+      one: 'in 1 min',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String calInHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'in $count hours',
+      one: 'in 1 hour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get photoSrcTakePhoto => 'Take photo';
+
+  @override
+  String get photoSrcTakePhotoSub => 'Open the camera';
+
+  @override
+  String get photoSrcGalleryMulti => 'Choose from gallery';
+
+  @override
+  String get photoSrcGalleryMultiSub => 'Select multiple images';
+
+  @override
+  String get photoSrcGalleryOne => 'Choose one from gallery';
+
+  @override
+  String get photoSrcGalleryOneSub => 'Pick a single image';
+
+  @override
+  String get spacePickerChooseTitle => 'Choose a space';
 }

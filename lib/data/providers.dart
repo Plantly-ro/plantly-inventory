@@ -69,13 +69,17 @@ final appContextProvider = FutureProvider<AppContext>((ref) async {
   final clock = HlcClock(deviceId: deviceId);
   final opLog = OpLogWriter(db: db, clock: clock, tenantId: kDefaultTenantId);
   await seedIfEmpty(db: db, opLog: opLog);
-  // Ask once at bootstrap so reminders can fire from day 1. Failures are
-  // non-fatal — the user can deny and still use the rest of the app; the
-  // Me screen surfaces the result + a retry button.
+  // Startup only *reads* the permission state — it must never prompt. The
+  // system dialog used to pop over the first onboarding page (and again
+  // ahead of the onboarding "Reminders" step, which has its own Allow
+  // button). Prompting is reserved for user-initiated surfaces:
+  // onboarding_screen.dart `_requestNotif`, the Home banner and
+  // Me → Notifications. Failures are non-fatal: `false` just shows the
+  // banner / retry affordance; reminders silently don't notify.
   unawaited(ref
       .read(notificationServiceProvider)
-      .requestPermissions()
-      .then((ok) => ref.read(notificationPermissionProvider.notifier).state = ok)
+      .checkPermissions()
+      .then((ok) => ref.read(notificationPermissionProvider.notifier).state = ok ?? false)
       .catchError((_) {
     ref.read(notificationPermissionProvider.notifier).state = false;
     return false;
@@ -99,9 +103,10 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
   return svc;
 });
 
-/// Tracks whether the OS notification permission is granted. Updated by
-/// `requestPermissions` calls — `null` while the first request is in
-/// flight. Observers (Me screen) can react to changes.
+/// Tracks whether the OS notification permission is granted. Seeded by the
+/// non-prompting `checkPermissions()` at bootstrap and updated by every
+/// user-initiated `requestPermissions()` — `null` while the first check is
+/// in flight. Observers (Home banner, Me screen) react to changes.
 final notificationPermissionProvider = StateProvider<bool?>((ref) => null);
 
 final backupServiceProvider = Provider<BackupService>((ref) {

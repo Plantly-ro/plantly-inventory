@@ -60,6 +60,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ? FloatingActionButton(
               backgroundColor: surface.green,
               foregroundColor: Colors.white,
+              tooltip: AppLocalizations.of(context).addPlant,
               onPressed: () {
                 showModalBottomSheet(
                   context: context,

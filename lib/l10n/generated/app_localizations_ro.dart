@@ -2234,4 +2234,119 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get careTypeRotate => 'Rotire';
+
+  @override
+  String get seedPlantBob => 'Monstera \"Bob\"';
+
+  @override
+  String get seedPlantGreen => 'Pothos \"Green\"';
+
+  @override
+  String get seedPlantSnake => 'Limba soacrei';
+
+  @override
+  String get seedPlantCala => 'Calathea';
+
+  @override
+  String get seedPlantFid => 'Ficus lira';
+
+  @override
+  String get seedPlantFern => 'Ferigă';
+
+  @override
+  String get seedPlantSuc => 'Urechelniță';
+
+  @override
+  String get seedPlantPete => 'Cactus Pete';
+
+  @override
+  String get seedSpaceHome => 'Acasă';
+
+  @override
+  String get seedSpaceLivingRoom => 'Sufragerie';
+
+  @override
+  String get seedSpaceBalcony => 'Balcon';
+
+  @override
+  String get notifChannelName => 'Memento-uri de îngrijire a plantelor';
+
+  @override
+  String get notifChannelDescription =>
+      'Udare, fertilizare și alte memento-uri de îngrijire a plantelor.';
+
+  @override
+  String get calPrevious => 'Anterior';
+
+  @override
+  String get calDayFree => 'Liber';
+
+  @override
+  String calOverdueMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'restant de $count de minute',
+      few: 'restant de $count minute',
+      one: 'restant de un minut',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String calOverdueHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'restant de $count de ore',
+      few: 'restant de $count ore',
+      one: 'restant de o oră',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String calInMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'în $count de minute',
+      few: 'în $count minute',
+      one: 'într-un minut',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String calInHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'în $count de ore',
+      few: 'în $count ore',
+      one: 'într-o oră',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get photoSrcTakePhoto => 'Fă o poză';
+
+  @override
+  String get photoSrcTakePhotoSub => 'Deschide camera';
+
+  @override
+  String get photoSrcGalleryMulti => 'Alege din galerie';
+
+  @override
+  String get photoSrcGalleryMultiSub => 'Selectează mai multe imagini';
+
+  @override
+  String get photoSrcGalleryOne => 'Alege una din galerie';
+
+  @override
+  String get photoSrcGalleryOneSub => 'Alege o singură imagine';
+
+  @override
+  String get spacePickerChooseTitle => 'Alege spațiul';
 }

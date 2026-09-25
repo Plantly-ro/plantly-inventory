@@ -36,6 +36,14 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- Deep links are handled by app_links (lib/handoff/incoming_links_io.dart:
+                 getInitialLink + uriLinkStream). Without this flag the Flutter embedder
+                 ALSO forwards every VIEW intent to the Navigator as a named route, which
+                 has no matching route and throws "Null check operator used on a null
+                 value" in _WidgetsAppState._onUnknownRoute once per handoff link. -->
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="false" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>

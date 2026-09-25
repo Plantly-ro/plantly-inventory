@@ -3895,6 +3895,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Rotate'**
   String get careTypeRotate;
+
+  /// No description provided for @seedPlantBob.
+  ///
+  /// In en, this message translates to:
+  /// **'Monstera \"Bob\"'**
+  String get seedPlantBob;
+
+  /// No description provided for @seedPlantGreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Pothos \"Green\"'**
+  String get seedPlantGreen;
+
+  /// No description provided for @seedPlantSnake.
+  ///
+  /// In en, this message translates to:
+  /// **'Snake plant'**
+  String get seedPlantSnake;
+
+  /// No description provided for @seedPlantCala.
+  ///
+  /// In en, this message translates to:
+  /// **'Calathea'**
+  String get seedPlantCala;
+
+  /// No description provided for @seedPlantFid.
+  ///
+  /// In en, this message translates to:
+  /// **'Fiddle fig'**
+  String get seedPlantFid;
+
+  /// No description provided for @seedPlantFern.
+  ///
+  /// In en, this message translates to:
+  /// **'Fern spray'**
+  String get seedPlantFern;
+
+  /// No description provided for @seedPlantSuc.
+  ///
+  /// In en, this message translates to:
+  /// **'Hens & chicks'**
+  String get seedPlantSuc;
+
+  /// No description provided for @seedPlantPete.
+  ///
+  /// In en, this message translates to:
+  /// **'Prickly Pete'**
+  String get seedPlantPete;
+
+  /// No description provided for @seedSpaceHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get seedSpaceHome;
+
+  /// No description provided for @seedSpaceLivingRoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Living room'**
+  String get seedSpaceLivingRoom;
+
+  /// No description provided for @seedSpaceBalcony.
+  ///
+  /// In en, this message translates to:
+  /// **'Balcony'**
+  String get seedSpaceBalcony;
+
+  /// No description provided for @notifChannelName.
+  ///
+  /// In en, this message translates to:
+  /// **'Plant care reminders'**
+  String get notifChannelName;
+
+  /// No description provided for @notifChannelDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Watering, fertilising, and other plant care reminders.'**
+  String get notifChannelDescription;
+
+  /// No description provided for @calPrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get calPrevious;
+
+  /// No description provided for @calDayFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get calDayFree;
+
+  /// No description provided for @calOverdueMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 min overdue} other{{count} min overdue}}'**
+  String calOverdueMinutes(int count);
+
+  /// No description provided for @calOverdueHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 hour overdue} other{{count} hours overdue}}'**
+  String calOverdueHours(int count);
+
+  /// No description provided for @calInMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{in 1 min} other{in {count} min}}'**
+  String calInMinutes(int count);
+
+  /// No description provided for @calInHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{in 1 hour} other{in {count} hours}}'**
+  String calInHours(int count);
+
+  /// No description provided for @photoSrcTakePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take photo'**
+  String get photoSrcTakePhoto;
+
+  /// No description provided for @photoSrcTakePhotoSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the camera'**
+  String get photoSrcTakePhotoSub;
+
+  /// No description provided for @photoSrcGalleryMulti.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from gallery'**
+  String get photoSrcGalleryMulti;
+
+  /// No description provided for @photoSrcGalleryMultiSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Select multiple images'**
+  String get photoSrcGalleryMultiSub;
+
+  /// No description provided for @photoSrcGalleryOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose one from gallery'**
+  String get photoSrcGalleryOne;
+
+  /// No description provided for @photoSrcGalleryOneSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a single image'**
+  String get photoSrcGalleryOneSub;
+
+  /// No description provided for @spacePickerChooseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a space'**
+  String get spacePickerChooseTitle;
 }
 
 class _AppLocalizationsDelegate

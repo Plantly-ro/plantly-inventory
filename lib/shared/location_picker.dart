@@ -15,14 +15,19 @@ import '../features/home/home_providers.dart';
 ///
 /// Returns the picked location id (or `null` for "— no location —"), or
 /// undefined if the user dismissed the dialog.
+///
+/// [title] overrides the dialog title; defaults to "Move to space", which
+/// suits Edit / Move flows — pass a neutral one (e.g. `spacePickerChooseTitle`)
+/// when the plant doesn't exist yet.
 Future<String?> pickLocation(
   BuildContext context, {
   required WidgetRef ref,
   String? currentLocationId,
+  String? title,
 }) async {
   final pickedWrapped = await showDialog<_PickResult>(
     context: context,
-    builder: (_) => _PickerDialog(currentLocationId: currentLocationId),
+    builder: (_) => _PickerDialog(currentLocationId: currentLocationId, title: title),
   );
   if (pickedWrapped == null) return currentLocationId; // dismissed
   return pickedWrapped.locationId;
@@ -34,8 +39,9 @@ class _PickResult {
 }
 
 class _PickerDialog extends ConsumerWidget {
-  const _PickerDialog({required this.currentLocationId});
+  const _PickerDialog({required this.currentLocationId, this.title});
   final String? currentLocationId;
+  final String? title;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -44,7 +50,7 @@ class _PickerDialog extends ConsumerWidget {
     final async = ref.watch(locationsStreamProvider);
 
     return AlertDialog(
-      title: Text(AppLocalizations.of(context).spacePickerTitle),
+      title: Text(title ?? AppLocalizations.of(context).spacePickerTitle),
       contentPadding: const EdgeInsets.fromLTRB(0, 16, 0, 0),
       content: SizedBox(
         width: 320,

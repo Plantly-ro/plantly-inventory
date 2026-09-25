@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../data/care_types.dart';
 import '../../data/providers.dart';
@@ -381,11 +382,10 @@ class _AddReminderSheetState extends ConsumerState<AddReminderSheet> {
     });
   }
 
+  /// "Sep 26, 2026 · 12:22" / "26 sept. 2026 · 12:22".
   String _formatWhen(DateTime d) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    final h = d.hour.toString().padLeft(2, '0');
-    final m = d.minute.toString().padLeft(2, '0');
-    return '${months[d.month - 1]} ${d.day}, ${d.year} · $h:$m';
+    final locale = Localizations.localeOf(context).toString();
+    return '${DateFormat.yMMMd(locale).format(d)} · ${DateFormat.Hm(locale).format(d)}';
   }
 
   Text _label(String text, PlantlySurface s) => Text(
@@ -532,6 +532,8 @@ class _Preview extends StatelessWidget {
   Widget build(BuildContext context) {
     final count = double.tryParse(intervalText.replaceAll(',', '.'));
     if (count == null || count <= 0) return const SizedBox.shrink();
+    final t = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).toString();
     final intervalMs = (unit.toDays(count) * 86400 * 1000).round();
     final firings = <DateTime>[];
     var at = firstDue;
@@ -552,13 +554,13 @@ class _Preview extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            mode == 'once' ? 'FIRES ONCE' : 'NEXT ${firings.length} REMINDERS',
+            mode == 'once' ? t.addReminderFiresOnce : t.addReminderNextReminders(firings.length),
             style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: surface.green, letterSpacing: 1.1),
           ),
           const SizedBox(height: 4),
           for (final d in firings)
             Text(
-              _formatFull(d),
+              _formatFull(d, locale),
               style: TextStyle(fontSize: 12, color: surface.text),
             ),
         ],
@@ -566,14 +568,9 @@ class _Preview extends StatelessWidget {
     );
   }
 
-  String _formatFull(DateTime d) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final wd = weekdays[d.weekday - DateTime.monday];
-    final h = d.hour.toString().padLeft(2, '0');
-    final m = d.minute.toString().padLeft(2, '0');
-    return '$wd, ${months[d.month - 1]} ${d.day} · $h:$m';
-  }
+  /// "Sat, Sep 26 · 12:22" / "sâm., 26 sept. · 12:22".
+  String _formatFull(DateTime d, String locale) =>
+      '${DateFormat.MMMEd(locale).format(d)} · ${DateFormat.Hm(locale).format(d)}';
 }
 
 class _Presets extends StatelessWidget {

@@ -293,6 +293,10 @@ class _PlantDetailBody extends ConsumerWidget {
         ],
       ),
       body: ListView(
+        // Clear the extended FAB (56 + 16 margin, plus the gesture-nav
+        // inset) so the last card — the listing-draft CTA — stays tappable
+        // when scrolled to the bottom instead of sitting under the button.
+        padding: EdgeInsets.only(bottom: 96 + MediaQuery.paddingOf(context).bottom),
         children: [
           AspectRatio(
             aspectRatio: 1.3,

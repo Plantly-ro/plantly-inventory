@@ -359,12 +359,12 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                         Expanded(
                           child: _PickerInput(
                             value: _county,
-                            placeholder: 'County',
+                            placeholder: t.exportCountyPlaceholder,
                             surface: surface,
                             leadingIcon: Icons.place_outlined,
                             trailingIcon: Icons.expand_more,
                             onTap: () => _pickFrom(
-                              title: 'County',
+                              title: t.exportCountyTitle,
                               options: roCounties,
                               current: _county,
                               onSelected: (v) => setState(() => _county = v),
