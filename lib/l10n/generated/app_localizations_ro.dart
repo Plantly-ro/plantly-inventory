@@ -9,6 +9,711 @@ class AppLocalizationsRo extends AppLocalizations {
   AppLocalizationsRo([String locale = 'ro']) : super(locale);
 
   @override
+  String get homeTip1Title => 'Verifică umiditatea solului înainte de udare';
+
+  @override
+  String get homeTip1Body =>
+      'Majoritatea plantelor de apartament preferă ca primii 2–3 cm de sol să se usuce între udări.';
+
+  @override
+  String get homeTip2Title => 'Rotește planta spre lumină';
+
+  @override
+  String get homeTip2Body =>
+      'Un sfert de rotație pe săptămână menține creșterea uniformă și dreaptă.';
+
+  @override
+  String get homeTip3Title => 'Fertilizează ușor în sezonul de creștere';
+
+  @override
+  String get homeTip3Body =>
+      'Diluează îngrășământul la jumătate ca să eviți arsurile rădăcinilor la speciile sensibile.';
+
+  @override
+  String get homeTip4Title =>
+      'Fii atent la dăunători la schimbarea anotimpului';
+
+  @override
+  String get homeTip4Body =>
+      'Tripșii și păianjenii roșii adoră aerul cald și uscat din casă — verifică dosul frunzelor.';
+
+  @override
+  String get homeTip5Title =>
+      'Replantează când rădăcinile înconjoară ghiveciul';
+
+  @override
+  String get homeTip5Body =>
+      'Treci doar cu o mărime de ghiveci mai sus — ghivecele prea mari rețin prea multă umezeală.';
+
+  @override
+  String get homeTip6Title => 'Șterge praful de pe frunze';
+
+  @override
+  String get homeTip6Body =>
+      'Frunzele curate fac fotosinteză mai bine și te ajută să observi dăunătorii din timp.';
+
+  @override
+  String get homeTip7Title => 'Umiditatea ajută aroideele și calateele';
+
+  @override
+  String get homeTip7Body =>
+      'Grupează plantele sau folosește o tavă cu pietriș și apă — mai simplu decât să pulverizezi toată ziua.';
+
+  @override
+  String get navHome => 'Acasă';
+
+  @override
+  String get navCalendar => 'Calendar';
+
+  @override
+  String get navSpaces => 'Spații';
+
+  @override
+  String get navMe => 'Eu';
+
+  @override
+  String homeDbOpenFailed(String error) {
+    return 'Nu s-a putut deschide baza de date locală.\n$error';
+  }
+
+  @override
+  String get homeSearchTooltip => 'Caută plante';
+
+  @override
+  String get homeEditHint =>
+      'Ține apăsat pentru a personaliza ecranul principal';
+
+  @override
+  String get homeAddWidget => 'ADAUGĂ WIDGET';
+
+  @override
+  String get homePresets => 'PRESETĂRI';
+
+  @override
+  String get homeResetDefault => 'Resetează la implicit';
+
+  @override
+  String get homeAllWidgetsAdded =>
+      'Toate widgeturile sunt deja pe ecranul principal. Aplică o presetare de mai jos ca să le rearanjezi.';
+
+  @override
+  String get homeAddBtn => '+ Adaugă';
+
+  @override
+  String get homeNoPlantsTitle => 'Nicio plantă încă';
+
+  @override
+  String get homeNoPlantsBody =>
+      'Apasă butonul + ca să adaugi prima plantă. Poți seta memento-uri după ce o adaugi.';
+
+  @override
+  String get homeNotifOffBanner =>
+      'Notificările sunt oprite — memento-urile nu vor porni. Apasă pentru a le activa.';
+
+  @override
+  String get homeWidgetGreeting => 'Salut';
+
+  @override
+  String get homeWidgetStats => 'Statistici';
+
+  @override
+  String get homeWidgetTip => 'Sfatul zilei';
+
+  @override
+  String get homeWidgetOverdue => 'Întârziate';
+
+  @override
+  String get homeWidgetToday => 'Astăzi';
+
+  @override
+  String get homeWidgetGrid => 'Toate plantele (grilă)';
+
+  @override
+  String get homeWidgetActivity => 'Activitate recentă';
+
+  @override
+  String get homeWidgetQuickLog => 'Înregistrare rapidă';
+
+  @override
+  String get homePresetGrouped => 'Grupat';
+
+  @override
+  String get homePresetDashboard => 'Panou';
+
+  @override
+  String get homePresetFeed => 'Flux';
+
+  @override
+  String get homePresetMinimal => 'Minimal';
+
+  @override
+  String get homeMoveUp => 'Mută în sus';
+
+  @override
+  String get homeMoveDown => 'Mută în jos';
+
+  @override
+  String get homeGreetingStillUp => 'Încă treaz?';
+
+  @override
+  String get homeGreetingMorning => 'Bună dimineața';
+
+  @override
+  String get homeGreetingAfternoon => 'Bună ziua';
+
+  @override
+  String get homeGreetingEvening => 'Bună seara';
+
+  @override
+  String get homeCareWater => 'Udă';
+
+  @override
+  String get homeCareFertilize => 'Fertilizează';
+
+  @override
+  String get homeCareMist => 'Pulverizează';
+
+  @override
+  String get homeCareRepot => 'Replantează';
+
+  @override
+  String get homeCarePrune => 'Tunde';
+
+  @override
+  String get homeCareRotate => 'Rotește';
+
+  @override
+  String get homeCareDoneWater => 'Udare';
+
+  @override
+  String get homeCareDoneFertilize => 'Fertilizare';
+
+  @override
+  String get homeCareDoneMist => 'Pulverizare';
+
+  @override
+  String get homeCareDoneRepot => 'Replantare';
+
+  @override
+  String get homeCareDonePrune => 'Tundere';
+
+  @override
+  String get homeCareDoneRotate => 'Rotire';
+
+  @override
+  String get homeCareDoneGeneric => 'Înregistrat';
+
+  @override
+  String homeOverdueLate(int days, String action) {
+    return '$days z întârziere · $action';
+  }
+
+  @override
+  String homeDueNow(String action) {
+    return '$action acum';
+  }
+
+  @override
+  String homeToastLoggedCare(String name) {
+    return 'Îngrijire înregistrată pentru $name';
+  }
+
+  @override
+  String homeToastActionLogged(String action, String name) {
+    return '$action — înregistrat pentru $name';
+  }
+
+  @override
+  String get homeViewAll => 'Vezi tot';
+
+  @override
+  String get homeActivityEmpty =>
+      'Nimic înregistrat încă — apasă „Gata” pe un memento.';
+
+  @override
+  String get homeYesterday => 'Ieri';
+
+  @override
+  String homeDaysAgo(int days) {
+    return 'acum $days z';
+  }
+
+  @override
+  String get homeSearchAction => 'Caută';
+
+  @override
+  String get homeGridEmptyAll =>
+      'Nicio plantă încă — apasă butonul + ca să adaugi una.';
+
+  @override
+  String get homeGridEmptyDueToday => 'Nimic programat azi — totul e la zi.';
+
+  @override
+  String homeLoadPlantsFailed(String error) {
+    return 'Nu s-au putut încărca plantele.\n$error';
+  }
+
+  @override
+  String get homeSortTooltip => 'Sortează plantele';
+
+  @override
+  String get homeSortNameAZ => 'Nume A–Z';
+
+  @override
+  String get homeSortNameZA => 'Nume Z–A';
+
+  @override
+  String get homeSortNextDue => 'Următoarea scadență';
+
+  @override
+  String get homeSortNewest => 'Adăugate recent';
+
+  @override
+  String get homeSortOldest => 'Adăugate demult';
+
+  @override
+  String get homeSortBySpace => 'După spațiu';
+
+  @override
+  String homeDueLateDays(int days) {
+    return '$days z întârziere';
+  }
+
+  @override
+  String homeDueLateHours(int hours) {
+    return '$hours h întârziere';
+  }
+
+  @override
+  String get homeDueNowShort => 'acum';
+
+  @override
+  String get homeDueUnderHour => '< 1h';
+
+  @override
+  String homeDueInHours(int hours) {
+    return 'în $hours h';
+  }
+
+  @override
+  String get homeDueTomorrow => 'mâine';
+
+  @override
+  String homeDueInDays(int days) {
+    return 'în $days z';
+  }
+
+  @override
+  String homeBulkSelected(int count) {
+    return '$count selectate';
+  }
+
+  @override
+  String get homeBulkMove => 'Mută';
+
+  @override
+  String get homeBulkMute => 'Oprește';
+
+  @override
+  String get homeBulkUnmute => 'Pornește';
+
+  @override
+  String homeBulkRemovedFromSpace(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count de plante scoase din spațiu',
+      few: '$count plante scoase din spațiu',
+      one: '1 plantă scoasă din spațiu',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String homeBulkMoved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count de plante mutate',
+      few: '$count plante mutate',
+      one: '1 plantă mutată',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String homeBulkDeleteTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Ștergi $count de plante?',
+      few: 'Ștergi $count plante?',
+      one: 'Ștergi 1 plantă?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeBulkDeleteBody =>
+      'Dacă vrei o intrare în registru, folosește Am dăruit / Am vândut / Marcată decedată din pagina plantei.';
+
+  @override
+  String homeBulkDeleted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count de plante șterse',
+      few: '$count plante șterse',
+      one: '1 plantă ștearsă',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeBulkUndo => 'Anulează';
+
+  @override
+  String homeQuickLogWhich(String action) {
+    return '$action — care plantă?';
+  }
+
+  @override
+  String get homeQuickLogRecordsNow =>
+      'Înregistrează imediat un eveniment de îngrijire.';
+
+  @override
+  String get homeQuickLogEmpty =>
+      'Nicio plantă încă — adaugă una din ecranul principal.';
+
+  @override
+  String get addPlantNicknameLabel => 'NUME';
+
+  @override
+  String get addPlantSpaceLabel => 'SPAȚIU';
+
+  @override
+  String get addPlantNotesLabel => 'NOTE';
+
+  @override
+  String get addPlantNoLocation => '— fără spațiu —';
+
+  @override
+  String get addPlantLoading => 'Se încarcă…';
+
+  @override
+  String get addPlantAddSpaceFirst =>
+      'Adaugă mai întâi un spațiu din fila Spații.';
+
+  @override
+  String get addPlantSubmit => 'Adaugă planta';
+
+  @override
+  String get onbContinue => 'Continuă';
+
+  @override
+  String get onbStart => 'Începe să folosești Plantly';
+
+  @override
+  String get onbWelcomeTitle => 'Bun venit la Plantly';
+
+  @override
+  String get onbWelcomeBody =>
+      'Un mod calm, offline, de a-ți urmări plantele de apartament — udare, fertilizare, înmulțire, spații și altele. Totul rămâne pe telefonul tău.';
+
+  @override
+  String get onbNameLabel => 'NUMELE TĂU (OPȚIONAL)';
+
+  @override
+  String get onbNameHelp =>
+      'Îl folosim doar în salutul din partea de sus a ecranului principal. Îl poți schimba sau șterge mai târziu din Eu.';
+
+  @override
+  String get onbNotifTitle => 'Memento-uri pentru plante';
+
+  @override
+  String get onbNotifBody =>
+      'Programăm notificări locale pe telefonul tău când o plantă are nevoie de îngrijire. Nimic nu se trimite către un server.';
+
+  @override
+  String get onbNotifGranted => 'Memento-urile sunt activate.';
+
+  @override
+  String get onbNotifAsk =>
+      'Acordă permisiunea ca memento-urile să poată porni.';
+
+  @override
+  String get onbGrant => 'Permite';
+
+  @override
+  String get onbNotifSkip =>
+      'Poți sări peste acest pas și activa memento-urile mai târziu din Eu → Notificări.';
+
+  @override
+  String get onbPrivacyTitle => 'Ajută-ne să îmbunătățim';
+
+  @override
+  String get onbPrivacyBody =>
+      'Ambele sunt oprite implicit. Datele despre plante nu părăsesc niciodată dispozitivul tău. Le poți schimba oricând din Eu → Confidențialitate și date.';
+
+  @override
+  String get onbCrashTitle => 'Rapoarte de erori';
+
+  @override
+  String get onbCrashSub =>
+      'Trimite un raport tehnic dacă aplicația se blochează. Fără date despre plante, fără poze.';
+
+  @override
+  String get onbUsageTitle => 'Utilizare anonimă';
+
+  @override
+  String get onbUsageSub =>
+      'Număr de atingeri pe ecran — ne ajută să aflăm ce funcții sunt îndrăgite.';
+
+  @override
+  String get spaceKindHome => 'Acasă';
+
+  @override
+  String get spaceKindRoom => 'Cameră';
+
+  @override
+  String get spaceKindZone => 'Zonă';
+
+  @override
+  String get spaceKindShelf => 'Raft';
+
+  @override
+  String get spaceKindOutdoorBed => 'Strat exterior';
+
+  @override
+  String spaceLoadFailed(String error) {
+    return 'Nu s-au putut încărca spațiile.\n$error';
+  }
+
+  @override
+  String spacePlantCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count de plante',
+      few: '$count plante',
+      one: '1 plantă',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get spaceAddPlants => 'Adaugă plante';
+
+  @override
+  String get spaceManage => 'Gestionează';
+
+  @override
+  String get spaceNameRequired => 'Numele este obligatoriu';
+
+  @override
+  String spaceEditTitle(String name) {
+    return 'Editează „$name”';
+  }
+
+  @override
+  String get spaceNameLabel => 'NUME';
+
+  @override
+  String get spaceNameHint => 'ex.: Sufragerie';
+
+  @override
+  String get spaceKindUpper => 'TIP';
+
+  @override
+  String get spaceInsideLabel => 'SPAȚIU PĂRINTE (OPȚIONAL)';
+
+  @override
+  String get spaceTopLevelHint => 'Nivel principal';
+
+  @override
+  String get spaceOutdoor => 'Exterior';
+
+  @override
+  String get spaceOutdoorSub => 'Expus la vreme';
+
+  @override
+  String get spaceLightLabel => 'NIVEL DE LUMINĂ (OPȚIONAL)';
+
+  @override
+  String get spaceUnspecifiedHint => 'Nespecificat';
+
+  @override
+  String get spaceUnspecified => '— nespecificat —';
+
+  @override
+  String get spaceLightBrightDirect => 'directă puternică';
+
+  @override
+  String get spaceLightBrightIndirect => 'indirectă puternică';
+
+  @override
+  String get spaceLightMedium => 'medie';
+
+  @override
+  String get spaceLightLow => 'slabă';
+
+  @override
+  String get spaceHumidityLabel => 'INTERVAL UMIDITATE (% — opțional)';
+
+  @override
+  String get spaceMin => 'min';
+
+  @override
+  String get spaceMax => 'max';
+
+  @override
+  String get spaceTempLabel => 'INTERVAL TEMPERATURĂ (°C — opțional)';
+
+  @override
+  String get spaceNotesLabel => 'NOTE';
+
+  @override
+  String spaceAssignTitle(String name) {
+    return 'Plante în „$name”';
+  }
+
+  @override
+  String get spaceAssignSub =>
+      'Comută pentru a adăuga sau scoate din acest spațiu.';
+
+  @override
+  String get spaceAssignEmpty => 'Nicio plantă de alocat încă.';
+
+  @override
+  String get spaceInThisSpace => 'În acest spațiu';
+
+  @override
+  String get spaceInAnotherSpace => 'În alt spațiu';
+
+  @override
+  String get spaceNoSpace => 'Fără spațiu';
+
+  @override
+  String get spacePickerTitle => 'Mută în spațiu';
+
+  @override
+  String get spacePickerEmpty =>
+      'Niciun spațiu încă — adaugă unul din fila Spații.';
+
+  @override
+  String spaceLoadOneFailed(String error) {
+    return 'Nu s-a putut încărca spațiul.\n$error';
+  }
+
+  @override
+  String get spaceGone => 'Spațiul nu mai există.';
+
+  @override
+  String get spaceDeleteTitle => 'Ștergi spațiul?';
+
+  @override
+  String spaceDeleteBody(String name) {
+    return 'Șterge „$name”. Plantele își păstrează poziția în celelalte spații.';
+  }
+
+  @override
+  String get spaceMenuAssign => 'Alocă plante…';
+
+  @override
+  String get spaceMenuMute => 'Oprește notificările';
+
+  @override
+  String get spaceMenuUnmute => 'Pornește notificările';
+
+  @override
+  String get spaceMenuAddMap => 'Adaugă imagine hartă…';
+
+  @override
+  String get spaceMenuRemoveMap => 'Șterge imaginea hărții';
+
+  @override
+  String get spaceMenuDelete => 'Șterge spațiul…';
+
+  @override
+  String get spaceSectionMap => 'HARTĂ';
+
+  @override
+  String get spaceDonePlacing => 'Gata cu plasarea';
+
+  @override
+  String get spacePlacePins => 'Plasează pini';
+
+  @override
+  String get spaceSectionGallery => 'GALERIE';
+
+  @override
+  String spaceSectionPlants(int count) {
+    return 'PLANTE ($count)';
+  }
+
+  @override
+  String get spaceChipOutdoor => 'exterior';
+
+  @override
+  String spaceChipLight(String light) {
+    return 'lumină: $light';
+  }
+
+  @override
+  String spaceChipHumidity(String range) {
+    return 'umiditate $range%';
+  }
+
+  @override
+  String spaceChipTemp(String range) {
+    return 'temp. $range°C';
+  }
+
+  @override
+  String get spaceChipMuted => 'fără notificări';
+
+  @override
+  String get spaceAddLayoutTitle => 'Adaugă o imagine a spațiului';
+
+  @override
+  String get spaceAddLayoutBody =>
+      'O poză a camerei sau o schiță — pune pinii plantelor deasupra.';
+
+  @override
+  String get spaceMapMissing => 'Imaginea hărții lipsește';
+
+  @override
+  String get spacePinHintPlace =>
+      'Atinge pentru a plasa • trage pentru a muta • ține apăsat pentru a șterge';
+
+  @override
+  String get spacePinHintDrag =>
+      'Trage pinii pentru a muta • ține apăsat pentru a șterge';
+
+  @override
+  String spacePlaced(String name) {
+    return '$name plasată';
+  }
+
+  @override
+  String get spaceNoPlantsHere => 'Nicio plantă aici încă.';
+
+  @override
+  String get spacePhotoEditDate => 'Editează data';
+
+  @override
+  String get spacePhotoEditCaption => 'Editează descrierea';
+
+  @override
+  String get spacePhotoRemove => 'Scoate din acest spațiu';
+
+  @override
+  String get spaceCaptionTitle => 'Descriere';
+
+  @override
+  String get spaceCaptionHint => 'ex.: colțul cu lumină de dimineață';
+
+  @override
   String get appTitle => 'PlantlyInventory';
 
   @override
@@ -354,7 +1059,8 @@ class AppLocalizationsRo extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count MEMENTO-URI',
+      other: '$count DE MEMENTO-URI',
+      few: '$count MEMENTO-URI',
       one: 'MEMENTO',
     );
     return 'URMĂTOARELE $_temp0';

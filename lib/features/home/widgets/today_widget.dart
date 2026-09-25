@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/database/app_database.dart' as db;
 import '../../../data/mock_plants.dart';
 import '../../../data/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/tokens.dart';
 import '../../../data/care_types.dart';
 import '../../../shared/care_feedback.dart';
+import 'care_labels.dart';
 import 'plant_row.dart';
 import 'swipe_row.dart';
 import 'widget_shell.dart';
@@ -25,7 +27,8 @@ class TodayWidget extends ConsumerWidget {
 
   final PlantlySurface surface;
   final void Function(String plantId)? onPlantTap;
-  final void Function(String name, String action)? onLogCare;
+  /// Called after a care event is recorded, with a localized toast message.
+  final void Function(String message)? onLogCare;
   final bool editing;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
@@ -33,6 +36,7 @@ class TodayWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     final async = ref.watch(dueBeforeEodProvider);
     final plantRows = ref.watch(plantsStreamProvider).maybeWhen(
           data: (r) => r,
@@ -57,7 +61,7 @@ class TodayWidget extends ConsumerWidget {
       onMoveUp: onMoveUp,
       onMoveDown: onMoveDown,
       onRemove: onRemove,
-      title: 'Due today',
+      title: t.homeWidgetToday,
       accentLabel: '${today.length}',
       accentColor: surface.green,
       child: async.when(
@@ -74,7 +78,7 @@ class TodayWidget extends ConsumerWidget {
               ),
               alignment: Alignment.center,
               child: Text(
-                'All caught up for today.',
+                t.allCaughtUp,
                 style: TextStyle(fontSize: 12, color: surface.muted),
               ),
             );
@@ -83,7 +87,7 @@ class TodayWidget extends ConsumerWidget {
             surface: surface,
             rows: [
               for (var i = 0; i < today.length; i++)
-                _todayRow(today[i], plantsById, i == today.length - 1),
+                _todayRow(t, today[i], plantsById, i == today.length - 1),
             ],
           );
         },
@@ -92,6 +96,7 @@ class TodayWidget extends ConsumerWidget {
   }
 
   Widget _todayRow(
+    AppLocalizations t,
     db.CareScheduleRow schedule,
     Map<String, db.PlantRow> plantsById,
     bool last,
@@ -99,7 +104,7 @@ class TodayWidget extends ConsumerWidget {
     final plant = plantsById[schedule.plantId];
     final title = plant?.nickname ?? schedule.plantId;
     final swatch = MockPlants.byId(schedule.plantId);
-    final action = _verb(schedule.type);
+    final action = careVerb(t, schedule.type);
     return Consumer(
       builder: (context, ref, _) {
         final ct = resolveCareType(ref.watch(careTypesProvider), schedule.type);
@@ -110,7 +115,7 @@ class TodayWidget extends ConsumerWidget {
               );
           if (!context.mounted) return;
           await showCareFeedback(context, type: ct, plantName: title, surface: surface);
-          onLogCare?.call(title, action);
+          onLogCare?.call(t.homeToastActionLogged(action, title));
         }
         return SwipeRow(
           key: ValueKey('today-${schedule.id}'),
@@ -140,25 +145,6 @@ class TodayWidget extends ConsumerWidget {
         );
       },
     );
-  }
-
-  String _verb(String type) {
-    switch (type) {
-      case 'water':
-        return 'Water';
-      case 'fertilize':
-        return 'Fertilize';
-      case 'mist':
-        return 'Mist';
-      case 'repot':
-        return 'Repot';
-      case 'prune':
-        return 'Prune';
-      case 'rotate':
-        return 'Rotate';
-      default:
-        return type;
-    }
   }
 
   IconData _iconFor(String type) {

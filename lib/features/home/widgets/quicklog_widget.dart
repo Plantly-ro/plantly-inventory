@@ -65,6 +65,7 @@ class QuickLogWidget extends ConsumerWidget {
   }
 
   Future<void> _pickPlant(BuildContext context, WidgetRef ref, _Action action) async {
+    final t = AppLocalizations.of(context);
     final plant = await showModalBottomSheet<PlantRow>(
       context: context,
       isScrollControlled: true,
@@ -76,7 +77,7 @@ class QuickLogWidget extends ConsumerWidget {
           plantId: plant.id,
           type: action.type,
         );
-    onLog?.call('${action.label}ed ${plant.nickname}');
+    onLog?.call(t.homeToastActionLogged(action.label, plant.nickname));
   }
 }
 
@@ -175,8 +176,8 @@ class _PlantPickerSheet extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('${action.label} which plant?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: surface.text)),
-                          Text('Records a care event immediately.', style: TextStyle(fontSize: 12, color: surface.muted)),
+                          Text(AppLocalizations.of(context).homeQuickLogWhich(action.label), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: surface.text)),
+                          Text(AppLocalizations.of(context).homeQuickLogRecordsNow, style: TextStyle(fontSize: 12, color: surface.muted)),
                         ],
                       ),
                     ),
@@ -187,7 +188,7 @@ class _PlantPickerSheet extends ConsumerWidget {
               Expanded(
                 child: plants.isEmpty
                     ? Center(
-                        child: Text('No plants yet — add one from Home.', style: TextStyle(color: surface.muted)),
+                        child: Text(AppLocalizations.of(context).homeQuickLogEmpty, style: TextStyle(color: surface.muted)),
                       )
                     : ListView.separated(
                         controller: scrollCtrl,

@@ -5,6 +5,7 @@ import '../../../data/care_types.dart';
 import '../../../data/database/app_database.dart';
 import '../../../data/mock_plants.dart';
 import '../../../data/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/plant_thumb.dart';
 import '../../../theme/tokens.dart';
 import '../../search/search_screen.dart';
@@ -36,6 +37,7 @@ class GridWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     final filter = ref.watch(activeFilterProvider);
     final async = ref.watch(filteredPlantsProvider);
     final sort = ref.watch(plantSortProvider);
@@ -65,13 +67,13 @@ class GridWidget extends ConsumerWidget {
       onMoveUp: onMoveUp,
       onMoveDown: onMoveDown,
       onRemove: onRemove,
-      title: 'All plants',
+      title: t.allPlants,
       accentLabel: async.maybeWhen(
         data: (rows) => '${rows.length}',
         orElse: () => null,
       ),
       accentColor: surface.muted,
-      action: editing ? null : 'Search',
+      action: editing ? null : t.homeSearchAction,
       onAction: () {
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const SearchScreen()),
@@ -115,7 +117,7 @@ class GridWidget extends ConsumerWidget {
                   final nextType = nextTypeByPlant[row.id];
                   final dueLabel = nextDueMs == null
                       ? null
-                      : _DueLabel.forMs(nextDueMs - nowMs);
+                      : _DueLabel.forMs(t, nextDueMs - nowMs);
                   final selection = ref.watch(plantSelectionProvider);
                   final selected = selection.contains(row.id);
                   final inSelectionMode = selection.isNotEmpty;
@@ -304,7 +306,7 @@ class _Card extends StatelessWidget {
                       const SizedBox(width: 3),
                       Flexible(
                         child: Text(
-                          locationName ?? 'No space',
+                          locationName ?? AppLocalizations.of(context).spaceNoSpace,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 10, color: surface.muted),
@@ -329,10 +331,11 @@ class _EmptyPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final message = switch (filter) {
-      PlantFilter.all => 'No plants yet — tap the + button to add one.',
-      PlantFilter.overdue => 'Nothing overdue — nice.',
-      PlantFilter.dueToday => 'Nothing due today — all caught up.',
+      PlantFilter.all => t.homeGridEmptyAll,
+      PlantFilter.overdue => t.nothingOverdue,
+      PlantFilter.dueToday => t.homeGridEmptyDueToday,
     };
     return Container(
       padding: const EdgeInsets.all(24),
@@ -433,7 +436,7 @@ class _ErrorPlaceholder extends StatelessWidget {
         borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
       ),
       child: Text(
-        'Could not load plants.\n$message',
+        AppLocalizations.of(context).homeLoadPlantsFailed(message),
         style: TextStyle(fontSize: 12, color: surface.terra),
       ),
     );
@@ -450,7 +453,7 @@ class _SortMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<PlantSort>(
-      tooltip: 'Sort plants',
+      tooltip: AppLocalizations.of(context).homeSortTooltip,
       icon: Icon(Icons.sort, size: 18, color: surface.muted),
       onSelected: onChanged,
       itemBuilder: (_) => [
@@ -462,7 +465,7 @@ class _SortMenu extends StatelessWidget {
                 Icon(s == value ? Icons.check : Icons.radio_button_unchecked,
                     size: 14, color: s == value ? surface.green : surface.muted),
                 const SizedBox(width: 8),
-                Text(s.label),
+                Text(s.label(context)),
               ],
             ),
           ),
@@ -474,22 +477,22 @@ class _SortMenu extends StatelessWidget {
 /// Stand-alone short-form due-time formatter. Kept out of the `Card`
 /// widget so it's cheap to compute per item in the grid loop.
 class _DueLabel {
-  static String forMs(int diffMs) {
+  static String forMs(AppLocalizations t, int diffMs) {
     if (diffMs < 0) {
       final late = (-diffMs / (86400 * 1000)).floor();
-      if (late >= 1) return '$late d late';
+      if (late >= 1) return t.homeDueLateDays(late);
       final h = (-diffMs / (3600 * 1000)).floor();
-      if (h >= 1) return '$h h late';
-      return 'now';
+      if (h >= 1) return t.homeDueLateHours(h);
+      return t.homeDueNowShort;
     }
     final days = (diffMs / (86400 * 1000)).round();
     if (days == 0) {
       final h = (diffMs / (3600 * 1000)).round();
-      if (h < 1) return '< 1h';
-      return 'in $h h';
+      if (h < 1) return t.homeDueUnderHour;
+      return t.homeDueInHours(h);
     }
-    if (days == 1) return 'tomorrow';
-    return 'in $days d';
+    if (days == 1) return t.homeDueTomorrow;
+    return t.homeDueInDays(days);
   }
 }
 
