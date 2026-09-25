@@ -3895,6 +3895,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Rotate'**
   String get careTypeRotate;
+
+  /// No description provided for @calPrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get calPrevious;
+
+  /// No description provided for @calDayFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get calDayFree;
+
+  /// No description provided for @calOverdueMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 min overdue} other{{count} min overdue}}'**
+  String calOverdueMinutes(int count);
+
+  /// No description provided for @calOverdueHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 hour overdue} other{{count} hours overdue}}'**
+  String calOverdueHours(int count);
+
+  /// No description provided for @calInMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{in 1 min} other{in {count} min}}'**
+  String calInMinutes(int count);
+
+  /// No description provided for @calInHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{in 1 hour} other{in {count} hours}}'**
+  String calInHours(int count);
+
+  /// No description provided for @photoSrcTakePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take photo'**
+  String get photoSrcTakePhoto;
+
+  /// No description provided for @photoSrcTakePhotoSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the camera'**
+  String get photoSrcTakePhotoSub;
+
+  /// No description provided for @photoSrcGalleryMulti.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from gallery'**
+  String get photoSrcGalleryMulti;
+
+  /// No description provided for @photoSrcGalleryMultiSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Select multiple images'**
+  String get photoSrcGalleryMultiSub;
+
+  /// No description provided for @photoSrcGalleryOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose one from gallery'**
+  String get photoSrcGalleryOne;
+
+  /// No description provided for @photoSrcGalleryOneSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a single image'**
+  String get photoSrcGalleryOneSub;
+
+  /// No description provided for @spacePickerChooseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a space'**
+  String get spacePickerChooseTitle;
 }
 
 class _AppLocalizationsDelegate

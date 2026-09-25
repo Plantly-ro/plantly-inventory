@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../data/care_types.dart';
 import '../../data/database/app_database.dart' as db;
@@ -22,6 +23,55 @@ void showDayDetail(BuildContext context, DateTime day) {
 
 enum CalendarView { week, month, year }
 
+String _localeOf(BuildContext context) => Localizations.localeOf(context).toString();
+
+/// First day of the week as a `DateTime.weekday` value (Monday = 1 … Sunday
+/// = 7), taken from the Material locale so an en_US device gets a
+/// Sunday-first grid while ro_RO stays Monday-first.
+int _firstWeekdayOf(BuildContext context) {
+  final index = MaterialLocalizations.of(context).firstDayOfWeekIndex; // 0 = Sunday
+  return index == 0 ? DateTime.sunday : index;
+}
+
+/// Midnight of the first day of the week containing [d].
+DateTime weekStartOf(DateTime d, int firstWeekday) {
+  final s = DateTime(d.year, d.month, d.day);
+  return s.subtract(Duration(days: (s.weekday - firstWeekday + 7) % 7));
+}
+
+/// Relative "when" copy for an upcoming reminder: ("24 min overdue", urgent)
+/// / ("restant de 24 de minute", urgent). Plural forms (one/few/other) come
+/// from the ARB so Romanian gets "2 zile" vs "20 de zile" right. Exposed for
+/// unit tests.
+(String label, bool urgent) upcomingDueLabel(AppLocalizations t, Duration d) {
+  if (d.isNegative) {
+    final days = -d.inDays;
+    final hrs = -d.inHours;
+    final mins = -d.inMinutes;
+    if (days > 0) return (t.detailOverdueDays(days), true);
+    if (hrs > 0) return (t.calOverdueHours(hrs), true);
+    return (t.calOverdueMinutes(mins > 0 ? mins : 1), true);
+  }
+  if (d.inMinutes < 60) return (t.calInMinutes(d.inMinutes), d.inMinutes < 30);
+  if (d.inHours < 24) return (t.calInHours(d.inHours), false);
+  if (d.inDays == 1) return (t.detailDueTomorrow, false);
+  return (t.detailDueInDays(d.inDays), false);
+}
+
+/// "Sep 21–27" / "21–27 sept." when the week sits in one month, otherwise
+/// "Sep 28 – Oct 4" / "28 sept. – 4 oct.". Whether the day precedes the month
+/// is read off the locale's own MMMd pattern instead of being hard-coded.
+String weekRangeLabel(String locale, DateTime from, DateTime to) {
+  final fmt = DateFormat.MMMd(locale);
+  if (from.month == to.month) {
+    final month = DateFormat.MMM(locale).format(from);
+    final pattern = fmt.pattern ?? '';
+    if (pattern.startsWith('d')) return '${from.day}–${to.day} $month';
+    if (pattern.startsWith('M')) return '$month ${from.day}–${to.day}';
+  }
+  return '${fmt.format(from)} – ${fmt.format(to)}';
+}
+
 /// Calendar with Week / Month / Year toggles, plus an "Upcoming" shortcut
 /// list pinned at the top so users always see their next reminders even
 /// when the current visible period is empty.
@@ -40,11 +90,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   void initState() {
     super.initState();
     _anchor = DateTime.now();
-  }
-
-  static DateTime _mondayOf(DateTime d) {
-    final s = DateTime(d.year, d.month, d.day);
-    return s.subtract(Duration(days: s.weekday - DateTime.monday));
   }
 
   @override
@@ -88,7 +133,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: Text(
-          _titleFor(_view, _anchor),
+          _titleFor(context, _view, _anchor),
           style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
             fontSize: 20,
             fontWeight: FontWeight.w800,
@@ -98,7 +143,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         ),
         actions: [
           IconButton(
-            tooltip: 'Previous',
+            tooltip: t.calPrevious,
             onPressed: () => setState(() => _anchor = _step(_anchor, _view, -1)),
             icon: Icon(Icons.arrow_back_ios_new, size: 18, color: surface.text),
           ),
@@ -198,16 +243,17 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     );
   }
 
-  String _titleFor(CalendarView v, DateTime d) {
+  String _titleFor(BuildContext context, CalendarView v, DateTime d) {
+    final locale = _localeOf(context);
     switch (v) {
       case CalendarView.week:
-        final mon = _mondayOf(d);
-        final sun = mon.add(const Duration(days: 6));
-        return _rangeLabel(mon, sun);
+        final start = weekStartOf(d, _firstWeekdayOf(context));
+        final end = start.add(const Duration(days: 6));
+        return weekRangeLabel(locale, start, end);
       case CalendarView.month:
-        return '${_monthName(d.month)} ${d.year}';
+        return DateFormat.yMMM(locale).format(d);
       case CalendarView.year:
-        return '${d.year}';
+        return DateFormat.y(locale).format(d);
     }
   }
 
@@ -235,18 +281,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           ),
         ),
       );
-
-  static String _rangeLabel(DateTime from, DateTime to) {
-    if (from.month == to.month) {
-      return '${_monthName(from.month)} ${from.day}–${to.day}';
-    }
-    return '${_monthName(from.month)} ${from.day} – ${_monthName(to.month)} ${to.day}';
-  }
-
-  static String _monthName(int m) => const [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ][m - 1];
 }
 
 class _WeekView extends StatelessWidget {
@@ -269,7 +303,7 @@ class _WeekView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final weekStart = _CalendarScreenState._mondayOf(anchor);
+    final weekStart = weekStartOf(anchor, _firstWeekdayOf(context));
     final weekEnd = weekStart.add(const Duration(days: 7));
     final days = <_DayBucket>[for (var i = 0; i < 7; i++) _DayBucket(date: weekStart.add(Duration(days: i)))];
 
@@ -334,8 +368,9 @@ class _MonthView extends StatelessWidget {
   Widget build(BuildContext context) {
     final first = DateTime(anchor.year, anchor.month, 1);
     final daysInMonth = DateTime(anchor.year, anchor.month + 1, 0).day;
-    // Pad to Monday start.
-    final leadingBlanks = first.weekday - DateTime.monday;
+    // Pad to the locale's first day of the week.
+    final firstWeekday = _firstWeekdayOf(context);
+    final leadingBlanks = (first.weekday - firstWeekday + 7) % 7;
     final gridCells = leadingBlanks + daysInMonth;
     final totalCells = ((gridCells + 6) ~/ 7) * 7;
 
@@ -355,7 +390,9 @@ class _MonthView extends StatelessWidget {
     }
 
     final today = DateTime.now();
-    const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    // intl's narrow weekday symbols are Sunday-first; rotate to firstWeekday.
+    final narrow = DateFormat.E(_localeOf(context)).dateSymbols.NARROWWEEKDAYS;
+    final dayLabels = [for (var i = 0; i < 7; i++) narrow[(firstWeekday + i) % 7]];
 
     return Container(
       padding: const EdgeInsets.all(10),
@@ -546,7 +583,7 @@ class _YearView extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    _CalendarScreenState._monthName(m),
+                    DateFormat.MMM(_localeOf(context)).format(DateTime(year, m)),
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: surface.text),
                   ),
                   Row(
@@ -588,11 +625,12 @@ class _UpcomingScheduleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final ct = resolveCareType(types, schedule.type);
     final due = DateTime.fromMillisecondsSinceEpoch(schedule.nextDueAt!, isUtc: true).toLocal();
     final now = DateTime.now();
     final delta = due.difference(now);
-    final (whenLabel, urgent) = _format(delta);
+    final (whenLabel, urgent) = upcomingDueLabel(t, delta);
     return InkWell(
       onTap: () {
         Navigator.of(context).push(
@@ -621,36 +659,18 @@ class _UpcomingScheduleRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(plantName, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: surface.text)),
-                  Text('${careTypeLabel(AppLocalizations.of(context), ct)} · $whenLabel', style: TextStyle(fontSize: 11, color: urgent ? surface.terra : surface.muted)),
+                  Text('${careTypeVerb(t, ct)} · $whenLabel', style: TextStyle(fontSize: 11, color: urgent ? surface.terra : surface.muted)),
                 ],
               ),
             ),
-            Text(_shortDate(due), style: TextStyle(fontSize: 11, color: surface.muted, fontWeight: FontWeight.w500)),
+            Text(
+              DateFormat.MMMd(_localeOf(context)).format(due),
+              style: TextStyle(fontSize: 11, color: surface.muted, fontWeight: FontWeight.w500),
+            ),
           ],
         ),
       ),
     );
-  }
-
-  (String label, bool urgent) _format(Duration d) {
-    if (d.isNegative) {
-      final days = -d.inDays;
-      final hrs = -d.inHours;
-      final mins = -d.inMinutes;
-      if (days > 0) return ('$days day${days == 1 ? '' : 's'} overdue', true);
-      if (hrs > 0) return ('$hrs hour${hrs == 1 ? '' : 's'} overdue', true);
-      return ('${mins > 0 ? mins : 1} min overdue', true);
-    }
-    if (d.inMinutes < 60) return ('in ${d.inMinutes} min', d.inMinutes < 30);
-    if (d.inHours < 24) return ('in ${d.inHours} hr', false);
-    if (d.inDays == 1) return ('tomorrow', false);
-    if (d.inDays < 7) return ('in ${d.inDays} days', false);
-    return ('in ${d.inDays} days', false);
-  }
-
-  String _shortDate(DateTime d) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${months[d.month - 1]} ${d.day}';
   }
 }
 
@@ -679,8 +699,10 @@ class _DayRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const weekdayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final weekday = weekdayNames[bucket.date.weekday - DateTime.monday];
+    final t = AppLocalizations.of(context);
+    // "MON" / "LUN" — intl abbreviations carry a trailing dot in ro; drop it
+    // for the stacked label.
+    final weekday = DateFormat.E(_localeOf(context)).format(bucket.date).replaceAll('.', '');
 
     return InkWell(
       onTap: () => showDayDetail(context, bucket.date),
@@ -721,7 +743,7 @@ class _DayRow extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
-                      'TODAY',
+                      t.commonTodayLabel.toUpperCase(),
                       style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: surface.green),
                     ),
                   ),
@@ -734,7 +756,7 @@ class _DayRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (bucket.scheduled.isEmpty && bucket.done.isEmpty)
-                  Text('Clear', style: TextStyle(fontSize: 12, color: surface.muted, fontStyle: FontStyle.italic)),
+                  Text(t.calDayFree, style: TextStyle(fontSize: 12, color: surface.muted, fontStyle: FontStyle.italic)),
                 for (final s in bucket.scheduled) ...[
                   _ScheduleChip(
                     schedule: s,

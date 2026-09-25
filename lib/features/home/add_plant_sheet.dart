@@ -144,6 +144,7 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
                           context,
                           ref: ref,
                           currentLocationId: _locationId,
+                          title: AppLocalizations.of(context).spacePickerChooseTitle,
                         );
                         if (picked != _locationId) setState(() => _locationId = picked);
                       },

@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -2200,4 +2201,75 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get careTypeRotate => 'Rotate';
+
+  @override
+  String get calPrevious => 'Previous';
+
+  @override
+  String get calDayFree => 'Clear';
+
+  @override
+  String calOverdueMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count min overdue',
+      one: '1 min overdue',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String calOverdueHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hours overdue',
+      one: '1 hour overdue',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String calInMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'in $count min',
+      one: 'in 1 min',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String calInHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'in $count hours',
+      one: 'in 1 hour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get photoSrcTakePhoto => 'Take photo';
+
+  @override
+  String get photoSrcTakePhotoSub => 'Open the camera';
+
+  @override
+  String get photoSrcGalleryMulti => 'Choose from gallery';
+
+  @override
+  String get photoSrcGalleryMultiSub => 'Select multiple images';
+
+  @override
+  String get photoSrcGalleryOne => 'Choose one from gallery';
+
+  @override
+  String get photoSrcGalleryOneSub => 'Pick a single image';
+
+  @override
+  String get spacePickerChooseTitle => 'Choose a space';
 }

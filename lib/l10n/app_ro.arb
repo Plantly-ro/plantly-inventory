@@ -653,5 +653,18 @@
   "careTypeMist": "Pulverizare",
   "careTypeRepot": "Replantare",
   "careTypePrune": "Tundere",
-  "careTypeRotate": "Rotire"
+  "careTypeRotate": "Rotire",
+  "calPrevious": "Anterior",
+  "calDayFree": "Liber",
+  "calOverdueMinutes": "{count, plural, =1{restant de un minut} few{restant de {count} minute} other{restant de {count} de minute}}",
+  "calOverdueHours": "{count, plural, =1{restant de o oră} few{restant de {count} ore} other{restant de {count} de ore}}",
+  "calInMinutes": "{count, plural, =1{într-un minut} few{în {count} minute} other{în {count} de minute}}",
+  "calInHours": "{count, plural, =1{într-o oră} few{în {count} ore} other{în {count} de ore}}",
+  "photoSrcTakePhoto": "Fă o poză",
+  "photoSrcTakePhotoSub": "Deschide camera",
+  "photoSrcGalleryMulti": "Alege din galerie",
+  "photoSrcGalleryMultiSub": "Selectează mai multe imagini",
+  "photoSrcGalleryOne": "Alege una din galerie",
+  "photoSrcGalleryOneSub": "Alege o singură imagine",
+  "spacePickerChooseTitle": "Alege spațiul"
 }

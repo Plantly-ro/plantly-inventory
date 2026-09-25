@@ -104,7 +104,11 @@ void main() {
     // Picking the space shows "Balcon · Strat exterior", never the raw enum.
     await tester.tap(find.text('— fără spațiu —'));
     await tester.pumpAndSettle();
-    expect(find.text('Mută în spațiu'), findsOneWidget);
+    // Picking a space for a NEW plant gets the neutral title; "Mută în
+    // spațiu" (move) is reserved for Edit / Move flows.
+    expect(find.text('Alege spațiul'), findsOneWidget);
+    expect(find.text('Mută în spațiu'), findsNothing);
+    expect(find.text('Choose a space'), findsNothing);
     expect(find.text('Strat exterior'), findsOneWidget);
     expect(find.textContaining('outdoor_bed'), findsNothing);
     // The grid's location filter chip also says "Balcon" — tap the picker row.
