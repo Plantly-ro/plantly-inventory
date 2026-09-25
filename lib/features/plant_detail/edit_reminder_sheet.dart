@@ -78,7 +78,7 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
   Future<void> _save() async {
     final count = double.tryParse(_interval.text.trim().replaceAll(',', '.'));
     if (count == null || count <= 0) {
-      setState(() => _error = 'Enter a positive number');
+      setState(() => _error = AppLocalizations.of(context).addReminderEnterPositive);
       return;
     }
     setState(() {

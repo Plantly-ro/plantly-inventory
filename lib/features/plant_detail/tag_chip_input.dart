@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 
 /// Tag chip row on Plant Detail. Shows the currently-attached tags as
@@ -42,6 +43,7 @@ class TagChipInput extends ConsumerWidget {
   }
 
   Future<void> _openDialog(BuildContext context, WidgetRef ref, List<String> attached) async {
+    final t = AppLocalizations.of(context);
     final controller = TextEditingController();
     await showDialog<void>(
       context: context,
@@ -60,7 +62,7 @@ class TagChipInput extends ConsumerWidget {
                   .where((t) => query.isEmpty || t.name.contains(query))
                   .toList();
               return AlertDialog(
-                title: const Text('Add a tag'),
+                title: Text(t.tagAdd),
                 content: SizedBox(
                   width: 320,
                   child: Column(
@@ -71,8 +73,8 @@ class TagChipInput extends ConsumerWidget {
                         controller: controller,
                         autofocus: true,
                         textCapitalization: TextCapitalization.none,
-                        decoration: const InputDecoration(
-                          hintText: 'e.g. variegated',
+                        decoration: InputDecoration(
+                          hintText: t.tagHint,
                           border: OutlineInputBorder(),
                         ),
                         onChanged: (_) => setLocal(() {}),
@@ -80,10 +82,10 @@ class TagChipInput extends ConsumerWidget {
                       ),
                       const SizedBox(height: 10),
                       if (suggestions.isNotEmpty) ...[
-                        const Align(
+                        Align(
                           alignment: Alignment.centerLeft,
-                          child: Text('OR PICK EXISTING',
-                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.1)),
+                          child: Text(t.tagPickExisting,
+                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.1)),
                         ),
                         const SizedBox(height: 6),
                         Flexible(
@@ -92,12 +94,12 @@ class TagChipInput extends ConsumerWidget {
                               spacing: 6,
                               runSpacing: 6,
                               children: [
-                                for (final t in suggestions)
+                                for (final tag in suggestions)
                                   ActionChip(
-                                    label: Text('#${t.name}'),
+                                    label: Text('#${tag.name}'),
                                     onPressed: () async {
                                       final navigator = Navigator.of(ctx);
-                                      await dialogRef.read(plantTagRepositoryProvider).attach(plantId, t.id);
+                                      await dialogRef.read(plantTagRepositoryProvider).attach(plantId, tag.id);
                                       navigator.maybePop();
                                     },
                                   ),
@@ -110,12 +112,12 @@ class TagChipInput extends ConsumerWidget {
                   ),
                 ),
                 actions: [
-                  TextButton(onPressed: () => Navigator.of(ctx).maybePop(), child: const Text('Cancel')),
+                  TextButton(onPressed: () => Navigator.of(ctx).maybePop(), child: Text(t.cancel)),
                   FilledButton(
                     onPressed: controller.text.trim().isEmpty
                         ? null
                         : () => _commit(ctx, dialogRef, controller.text),
-                    child: const Text('Add'),
+                    child: Text(t.addBtn),
                   ),
                 ],
               );
@@ -179,6 +181,7 @@ class _AddChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Material(
       color: surface.surface,
       borderRadius: BorderRadius.circular(999),
@@ -197,7 +200,7 @@ class _AddChip extends StatelessWidget {
               Icon(Icons.add, size: 12, color: surface.muted),
               const SizedBox(width: 3),
               Text(
-                'Add tag',
+                t.tagAddTitle,
                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: surface.muted),
               ),
             ],

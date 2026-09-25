@@ -95,6 +95,7 @@ class CareTypesScreen extends ConsumerWidget {
     PlantlySurface surface,
     CareType? existing,
   ) async {
+    final t = AppLocalizations.of(context);
     final labelCtrl = TextEditingController(text: existing?.label ?? '');
     var days = existing?.defaultIntervalDays ?? 7.0;
     var iconCode = existing?.iconCode ?? Icons.notifications_active_outlined.codePoint;
@@ -127,20 +128,20 @@ class CareTypesScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    existing == null ? 'New care type' : 'Edit "${existing.label}"',
+                    existing == null ? t.meCareTypeNew : t.meCareTypeEdit(existing.label),
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text),
                   ),
                   const SizedBox(height: 14),
-                  _label('LABEL', surface),
+                  _label(t.meCareTypeLabelField, surface),
                   const SizedBox(height: 6),
                   TextField(
                     controller: labelCtrl,
                     autofocus: true,
                     textCapitalization: TextCapitalization.sentences,
-                    decoration: _dec(surface, hint: 'e.g. Neem spray'),
+                    decoration: _dec(surface, hint: t.meCareTypeLabelHint),
                   ),
                   const SizedBox(height: 12),
-                  _label('DEFAULT INTERVAL (DAYS)', surface),
+                  _label(t.meCareTypeIntervalField, surface),
                   const SizedBox(height: 6),
                   TextField(
                     controller: TextEditingController(text: _fmt(days))
@@ -153,7 +154,7 @@ class CareTypesScreen extends ConsumerWidget {
                     },
                   ),
                   const SizedBox(height: 12),
-                  _label('ICON', surface),
+                  _label(t.meCareTypeIconField, surface),
                   const SizedBox(height: 6),
                   _IconPicker(
                     value: iconCode,
@@ -161,7 +162,7 @@ class CareTypesScreen extends ConsumerWidget {
                     onChanged: (code) => setLocal(() => iconCode = code),
                   ),
                   const SizedBox(height: 12),
-                  _label('COLOUR', surface),
+                  _label(t.meCareTypeColourField, surface),
                   const SizedBox(height: 6),
                   _ColorPicker(
                     value: colorValue,
@@ -180,7 +181,7 @@ class CareTypesScreen extends ConsumerWidget {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius)),
                           ),
                           onPressed: () => Navigator.of(ctx).pop(),
-                          child: const Text('Cancel'),
+                          child: Text(t.cancel),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -220,7 +221,7 @@ class CareTypesScreen extends ConsumerWidget {
                             }
                             if (ctx.mounted) Navigator.of(ctx).pop();
                           },
-                          child: const Text('Save'),
+                          child: Text(t.commonSave),
                         ),
                       ),
                     ],
@@ -289,6 +290,7 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Material(
       color: surface.surface,
       borderRadius: BorderRadius.circular(PlantlyTokens.radius),
@@ -322,7 +324,7 @@ class _Row extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(type.label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text)),
-                    Text('Default: every ${_format(type.defaultIntervalDays)} day${type.defaultIntervalDays == 1 ? '' : 's'}',
+                    Text(t.meCareTypeDefaultEvery(_format(type.defaultIntervalDays), type.defaultIntervalDays.round()),
                         style: TextStyle(fontSize: 11.5, color: surface.muted)),
                   ],
                 ),
@@ -332,14 +334,14 @@ class _Row extends StatelessWidget {
                   muted ? Icons.notifications_off_outlined : Icons.notifications_outlined,
                   color: muted ? surface.terra : surface.muted,
                 ),
-                tooltip: muted ? 'Unmute this care type everywhere' : 'Mute this care type everywhere',
+                tooltip: muted ? t.meCareTypeUnmuteTooltip : t.meCareTypeMuteTooltip,
                 onPressed: onToggleMute,
               ),
               if (onDelete != null)
                 IconButton(
                   icon: Icon(Icons.delete_outline, color: surface.terra),
                   onPressed: onDelete,
-                  tooltip: 'Delete',
+                  tooltip: t.commonDelete,
                 ),
               Icon(Icons.chevron_right, color: surface.muted),
             ],
@@ -410,11 +412,12 @@ class _ColorPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
-        _swatch(null, 'Default'),
+        _swatch(null, t.meCareTypeColourDefault),
         for (final c in _palette) _swatch(c, null),
       ],
     );

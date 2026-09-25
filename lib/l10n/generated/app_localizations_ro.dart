@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -1612,4 +1613,608 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get importErrorDismiss => 'OK';
+
+  @override
+  String get meTitle => 'Eu';
+
+  @override
+  String get meStatCardPlants => 'PLANTE';
+
+  @override
+  String get meStatCardSpaces => 'SPAȚII';
+
+  @override
+  String get meAboutApp => 'Aplicație';
+
+  @override
+  String get meAboutAppValue => 'PlantlyInventory · Faza 1';
+
+  @override
+  String get meAboutLicense => 'Licență';
+
+  @override
+  String get meThemeLabel => 'Temă';
+
+  @override
+  String get meThemeDark => 'Întunecată';
+
+  @override
+  String get meThemeLight => 'Luminoasă';
+
+  @override
+  String get meNotificationsLabel => 'Notificări';
+
+  @override
+  String get meNotifChecking => 'Se verifică…';
+
+  @override
+  String get meNotifEnabled => 'Activate';
+
+  @override
+  String get meNotifDisabledRetry => 'Dezactivate — apasă pentru a reîncerca';
+
+  @override
+  String get meNotifEnabledToast => 'Notificări activate';
+
+  @override
+  String get meNotifStillDenied =>
+      'Încă refuzate — activează-le din setările sistemului';
+
+  @override
+  String get meExportZipLabel => 'Exportă ZIP (cu fotografii)';
+
+  @override
+  String get meExportJsonLabel => 'Exportă JSON (semnat)';
+
+  @override
+  String get meExportZipValue =>
+      'Include toate fotografiile atașate. Fișier mai mare.';
+
+  @override
+  String get meExportJsonValue =>
+      'JSON semnat HMAC cu toate plantele / programele / evenimentele.';
+
+  @override
+  String get meBackupPassphrase => 'Parola copiei de siguranță';
+
+  @override
+  String get meBackupPassphraseHint => 'Alege orice — îți trebuie la import';
+
+  @override
+  String meBackupSaved(String where) {
+    return 'Copie de siguranță salvată: $where';
+  }
+
+  @override
+  String meExportFailed(String error) {
+    return 'Exportul a eșuat: $error';
+  }
+
+  @override
+  String get meImportLabel => 'Importă o copie de siguranță';
+
+  @override
+  String get meImportValue =>
+      'Alege un fișier .json sau .zip de pe acest dispozitiv.';
+
+  @override
+  String get meImportFileType => 'Copie de siguranță Plantly';
+
+  @override
+  String get meImportWrongPassphrase =>
+      'Parolă greșită pentru această copie de siguranță.';
+
+  @override
+  String meImportInvalidBackup(String message) {
+    return 'Copie de siguranță invalidă: $message';
+  }
+
+  @override
+  String meImportInvalidZip(String message) {
+    return 'ZIP invalid: $message';
+  }
+
+  @override
+  String meImportFailed(String error) {
+    return 'Importul a eșuat: $error';
+  }
+
+  @override
+  String meImportedRows(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Importate $count de rânduri',
+      few: 'Importate $count rânduri',
+      one: 'Importat 1 rând',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String meImportedPhotos(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count de fotografii',
+      few: '$count fotografii',
+      one: '1 fotografie',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get meIcsLabel => 'Descarcă .ics';
+
+  @override
+  String get meIcsValue =>
+      'Deschide mementourile din următoarele 30 de zile în orice aplicație de calendar.';
+
+  @override
+  String get meIcsShareText => 'Mementouri PlantlyInventory';
+
+  @override
+  String meIcsSaved(String where) {
+    return '.ics salvat: $where';
+  }
+
+  @override
+  String get meCsvLabel => 'Exportă CSV';
+
+  @override
+  String get meCsvValue =>
+      'Plante + evenimente de îngrijire, într-un fișier pentru foi de calcul.';
+
+  @override
+  String get meCsvShareText => 'CSV PlantlyInventory';
+
+  @override
+  String meCsvSaved(String where) {
+    return 'CSV salvat: $where';
+  }
+
+  @override
+  String meCsvFailed(String error) {
+    return 'Exportul CSV a eșuat: $error';
+  }
+
+  @override
+  String get mePrivacyTitle => 'Confidențialitate și date';
+
+  @override
+  String get mePrivacyWhatLeaves => 'Ce părăsește dispozitivul tău';
+
+  @override
+  String get mePrivacyBulletLocal =>
+      'Nimic, implicit. Plantele, fotografiile, evenimentele de îngrijire și programele stau într-o bază de date SQLite locală, pe telefonul tău.';
+
+  @override
+  String get mePrivacyBulletBackups =>
+      'Copiile de siguranță (JSON sau ZIP) părăsesc dispozitivul doar când apeși Exportă — tu alegi unde ajung, prin meniul de partajare.';
+
+  @override
+  String get mePrivacyBulletNotifications =>
+      'Notificările se declanșează local, prin sistemul de alarme al telefonului. Nu folosim un server de push.';
+
+  @override
+  String get mePrivacyBulletMarketplace =>
+      'Dacă publici ulterior o plantă pe plantly.ro, se trimit doar câmpurile pe care le verifici în dialogul de publicare — niciodată întreaga bază de date.';
+
+  @override
+  String get mePrivacySectionTelemetry => 'TELEMETRIE OPȚIONALĂ';
+
+  @override
+  String get mePrivacyCrashTitle => 'Rapoarte de eroare';
+
+  @override
+  String get mePrivacyCrashBody =>
+      'Dacă aplicația se blochează, trimite detaliile erorii ca să o putem repara. Fără date despre plante, fără fotografii.';
+
+  @override
+  String get mePrivacyUsageTitle => 'Utilizare anonimă';
+
+  @override
+  String get mePrivacyUsageBody =>
+      'Număr de atingeri pe ecran — ca să știm ce funcții sunt îndrăgite. Fără identificatori, fără textul pe care îl introduci.';
+
+  @override
+  String get mePrivacySectionLegal => 'LEGAL';
+
+  @override
+  String get mePrivacyLicenseValue =>
+      'AGPL-3.0-or-later · sursă: github.com/URunDEAD/PlantlyInventory';
+
+  @override
+  String get meCareTypeNew => 'Tip de îngrijire nou';
+
+  @override
+  String meCareTypeEdit(String label) {
+    return 'Modifică „$label”';
+  }
+
+  @override
+  String get meCareTypeLabelField => 'DENUMIRE';
+
+  @override
+  String get meCareTypeLabelHint => 'ex.: stropitor cu neem';
+
+  @override
+  String get meCareTypeIntervalField => 'INTERVAL IMPLICIT (ZILE)';
+
+  @override
+  String get meCareTypeIconField => 'PICTOGRAMĂ';
+
+  @override
+  String get meCareTypeColourField => 'CULOARE';
+
+  @override
+  String get meCareTypeColourDefault => 'Implicită';
+
+  @override
+  String meCareTypeDefaultEvery(String days, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'de zile',
+      few: 'zile',
+      one: 'zi',
+    );
+    return 'Implicit: la fiecare $days $_temp0';
+  }
+
+  @override
+  String get meCareTypeMuteTooltip =>
+      'Oprește acest tip de îngrijire peste tot';
+
+  @override
+  String get meCareTypeUnmuteTooltip =>
+      'Reactivează acest tip de îngrijire peste tot';
+
+  @override
+  String meMutedPlantsHeader(int count) {
+    return 'PLANTE OPRITE ($count)';
+  }
+
+  @override
+  String meMutedRemindersHeader(int count) {
+    return 'MEMENTO-URI OPRITE ($count)';
+  }
+
+  @override
+  String meMutedSpacesHeader(int count) {
+    return 'SPAȚII OPRITE ($count)';
+  }
+
+  @override
+  String get meMutedPlantBody =>
+      'Toate mementourile acestei plante sunt oprite.';
+
+  @override
+  String get meMutedReminderBody =>
+      'Un singur program oprit — celelalte mementouri ale plantei rămân active.';
+
+  @override
+  String get meMutedSpaceBody => 'Toate plantele din acest spațiu sunt oprite.';
+
+  @override
+  String get meNothingMuted => 'Nimic oprit';
+
+  @override
+  String get meNothingMutedBody =>
+      'Oprește mementourile per plantă, program sau spațiu din ecranul de detalii respectiv.';
+
+  @override
+  String get meUnmute => 'Reactivează';
+
+  @override
+  String get meDndTitle => 'Nu deranja';
+
+  @override
+  String meDndActive(String start, String end) {
+    return 'Liniște între $start și $end (mementourile sunt amânate)';
+  }
+
+  @override
+  String get meDndInactive => 'Trimite mementourile când sunt scadente';
+
+  @override
+  String get meDndStart => 'Început';
+
+  @override
+  String get meDndEnd => 'Sfârșit';
+
+  @override
+  String get meNotifPermChecking => 'Se verifică permisiunea sistemului…';
+
+  @override
+  String get meNotifPermGranted =>
+      'Notificările de sistem sunt permise pentru PlantlyInventory.';
+
+  @override
+  String get meNotifPermDenied =>
+      'Notificările de sistem sunt OPRITE. Mementourile nu vor fi trimise.';
+
+  @override
+  String get statsCellPlants => 'PLANTE';
+
+  @override
+  String get statsCellEvents => 'EVENIMENTE';
+
+  @override
+  String get statsCellLast30 => 'ULTIMELE 30 Z';
+
+  @override
+  String get statsEmpty =>
+      'Niciun eveniment de îngrijire încă. Înregistrează primul memento pentru a vedea statistici aici.';
+
+  @override
+  String statsCardLast(String type) {
+    return 'ULTIMA $type';
+  }
+
+  @override
+  String statsCardAvg(String type) {
+    return 'MEDIE $type';
+  }
+
+  @override
+  String get statsCardToday => 'azi';
+
+  @override
+  String statsCardDaysShort(int count) {
+    return '$count z';
+  }
+
+  @override
+  String statsCardAvgDaysShort(String value) {
+    return '~$value z';
+  }
+
+  @override
+  String get activityToday => 'ASTĂZI';
+
+  @override
+  String get activityYesterday => 'IERI';
+
+  @override
+  String detailLoadFailed(String error) {
+    return 'Nu s-a putut încărca planta.\n$error';
+  }
+
+  @override
+  String get detailNoLocation => 'Fără spațiu setat';
+
+  @override
+  String get detailLoadingLocation => 'Se încarcă spațiul…';
+
+  @override
+  String detailFabNow(String action) {
+    return '$action acum';
+  }
+
+  @override
+  String get detailFabTooltip => 'Ține apăsat pentru a schimba';
+
+  @override
+  String get detailDeleteTitle => 'Ștergi planta?';
+
+  @override
+  String detailDeleteBody(String name) {
+    return 'Elimină „$name” din colecția ta. Folosește Am dăruit / Am vândut / Marcată decedată dacă vrei o intrare în registru.';
+  }
+
+  @override
+  String detailDeletedToast(String name) {
+    return '„$name” a fost ștearsă';
+  }
+
+  @override
+  String get detailUndo => 'Anulează';
+
+  @override
+  String detailAddedOn(String date) {
+    return 'Adăugată $date';
+  }
+
+  @override
+  String detailAcquiredOn(String date) {
+    return 'Achiziționată $date';
+  }
+
+  @override
+  String get detailRemovedFromSpace => 'Scoasă din orice spațiu';
+
+  @override
+  String detailMovedTo(String space) {
+    return 'Mutată în $space';
+  }
+
+  @override
+  String get detailThatSpace => 'acel spațiu';
+
+  @override
+  String get detailReorderTooltip => 'Reordonează';
+
+  @override
+  String get detailEditDateTooltip => 'Modifică data';
+
+  @override
+  String get detailCaptionTooltip => 'Descriere';
+
+  @override
+  String get detailMuteReminderTooltip => 'Oprește acest memento';
+
+  @override
+  String get detailUnmuteReminderTooltip => 'Reactivează acest memento';
+
+  @override
+  String get detailSnoozedToast => 'Amânat 3 zile';
+
+  @override
+  String get detailNoDueDate => 'Fără scadență';
+
+  @override
+  String get detailOverdue => 'restant';
+
+  @override
+  String detailOverdueDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'restant de $count de zile',
+      few: 'restant de $count zile',
+      one: 'restant de o zi',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get detailDueToday => 'astăzi';
+
+  @override
+  String get detailDueTomorrow => 'mâine';
+
+  @override
+  String detailDueInDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'în $count de zile',
+      few: 'în $count zile',
+      one: 'într-o zi',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get detailVerbRepot => 'Transplantare';
+
+  @override
+  String get detailVerbPrune => 'Tundere';
+
+  @override
+  String get detailPastWater => 'Udată';
+
+  @override
+  String get detailPastFertilize => 'Fertilizată';
+
+  @override
+  String get detailPastMist => 'Pulverizată';
+
+  @override
+  String get detailPastRepot => 'Transplantată';
+
+  @override
+  String get detailPastPrune => 'Tunsă';
+
+  @override
+  String get detailPastRotate => 'Rotită';
+
+  @override
+  String get detailDeleteEventTitle => 'Ștergi acest eveniment?';
+
+  @override
+  String detailDeleteEventBody(String text) {
+    return 'Elimină înregistrarea „$text” din istoric.';
+  }
+
+  @override
+  String get detailLedgerPropagatedOut => 'Propagată din această plantă';
+
+  @override
+  String get detailLedgerPropagatedIn => 'Propagată dintr-o plantă-mamă';
+
+  @override
+  String detailLedgerGaveTo(String who) {
+    return 'Dăruită către $who';
+  }
+
+  @override
+  String get detailLedgerSomeone => 'cineva';
+
+  @override
+  String get detailLedgerSold => 'Vândută';
+
+  @override
+  String detailLedgerSoldTo(String buyer) {
+    return 'Vândută către $buyer';
+  }
+
+  @override
+  String get detailLedgerMarkedDead => 'Marcată decedată';
+
+  @override
+  String get detailReorderPhotosTitle => 'Reordonează fotografiile';
+
+  @override
+  String detailPhotoN(int n) {
+    return 'Fotografia $n';
+  }
+
+  @override
+  String get sheetNicknameRequired => 'Numele este obligatoriu';
+
+  @override
+  String get sheetFieldSpace => 'SPAȚIU';
+
+  @override
+  String get sheetFieldSpecies => 'SPECIE';
+
+  @override
+  String get sheetSpeciesHint => 'ex.: Monstera deliciosa';
+
+  @override
+  String get sheetFieldNotes => 'NOTE';
+
+  @override
+  String get sheetNoLocation => '— fără spațiu —';
+
+  @override
+  String get sheetLoading => 'Se încarcă…';
+
+  @override
+  String get sheetGaveAwayTitle => 'Am dăruit';
+
+  @override
+  String get sheetGaveAwayHint => 'Cui ai dăruit-o? (opțional)';
+
+  @override
+  String get sheetSoldTitle => 'Am vândut';
+
+  @override
+  String get sheetSoldHint => 'Cumpărător (opțional)';
+
+  @override
+  String get sheetMarkedDeadTitle => 'Marcată decedată';
+
+  @override
+  String sheetInventoryRemoveBody(String name) {
+    return '„$name” va fi eliminată din colecția ta activă.';
+  }
+
+  @override
+  String get sheetPriceHint => 'Preț (opțional)';
+
+  @override
+  String get sheetNotesOptionalHint => 'Note (opțional)';
+
+  @override
+  String sheetPropagateTitle(String name) {
+    return 'Propagă $name';
+  }
+
+  @override
+  String get sheetChildNickname => 'Numele noii plante';
+
+  @override
+  String get sheetPropagateNotesHint =>
+      'ex.: tăiat de la nodul 3; înrădăcinare în apă';
+
+  @override
+  String sheetPropagateDefaultName(String name) {
+    return '$name · propagare';
+  }
+
+  @override
+  String get sheetPropagateAction => 'Propagă';
 }

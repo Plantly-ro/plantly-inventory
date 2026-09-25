@@ -49,31 +49,32 @@ class BackupActions {
         );
   }
 
-  /// Import a `.json` or `.zip` backup picked by the user. Returns a short
-  /// human-readable summary. Throws `BackupSignatureError`,
+  /// Import a `.json` or `.zip` backup picked by the user. Returns the row
+  /// count (+ restored photo count for ZIPs) so the caller can word the
+  /// toast in the active locale. Throws `BackupSignatureError`,
   /// `BackupFormatError` or `ZipBackupFormatError` exactly like the
   /// underlying services so the caller can word the toast.
-  Future<String> importBackup({
+  Future<({int rows, int? photos})> importBackup({
     required String fileName,
     required Uint8List bytes,
     required String secret,
   }) async {
     final opLog = _ref.read(appContextProvider).requireValue.opLog;
-    String msg;
+    ({int rows, int? photos}) summary;
     if (fileName.toLowerCase().endsWith('.zip')) {
       final result = await _ref.read(zipBackupServiceProvider).importZip(
             bytes: bytes,
             secret: secret,
             opLog: opLog,
           );
-      msg = 'Imported ${result.json.total} rows + ${result.photosRestored} photos';
+      summary = (rows: result.json.total, photos: result.photosRestored);
     } else {
       final result = await _ref.read(backupServiceProvider).import(
             blob: BackupService.decodeBlob(bytes),
             secret: secret,
             opLog: opLog,
           );
-      msg = 'Imported ${result.total} rows';
+      summary = (rows: result.total, photos: null);
     }
     // The restored schedules carry `next_due_at` values the OS knows
     // nothing about yet — same class of gap as issue #13. Best-effort.
@@ -82,7 +83,7 @@ class BackupActions {
     } catch (e) {
       if (kDebugMode) debugPrint('reminder re-sync failed: $e');
     }
-    return msg;
+    return summary;
   }
 }
 

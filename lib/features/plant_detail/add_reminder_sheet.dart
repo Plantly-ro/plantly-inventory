@@ -85,16 +85,17 @@ class _AddReminderSheetState extends ConsumerState<AddReminderSheet> {
   }
 
   Future<void> _save() async {
+    final t = AppLocalizations.of(context);
     final count = double.tryParse(_intervalController.text.trim().replaceAll(',', '.'));
     if (count == null || count <= 0) {
-      setState(() => _error = 'Enter a positive number');
+      setState(() => _error = t.addReminderEnterPositive);
       return;
     }
     String typeKey;
     if (_isCustom) {
       final raw = _customTypeController.text.trim();
       if (raw.isEmpty) {
-        setState(() => _error = 'Name the custom reminder');
+        setState(() => _error = t.addReminderNameCustom);
         return;
       }
       typeKey = raw.toLowerCase().replaceAll(RegExp(r'\s+'), '_');
@@ -582,6 +583,7 @@ class _Presets extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     DateTime nextWeekday(int targetWeekday, {int hour = 9}) {
       final now = DateTime.now();
       var d = DateTime(now.year, now.month, now.day, hour);
@@ -593,32 +595,32 @@ class _Presets extends StatelessWidget {
 
     final presets = <({String label, IconData icon, void Function() apply})>[
       (
-        label: 'Daily',
+        label: t.addReminderPresetDaily,
         icon: Icons.sunny,
         apply: () => onApply(1, _Unit.days, 'after_completion', null),
       ),
       (
-        label: 'Every other day',
+        label: t.addReminderPresetEveryOtherDay,
         icon: Icons.today,
         apply: () => onApply(2, _Unit.days, 'after_completion', null),
       ),
       (
-        label: 'Weekly',
+        label: t.addReminderPresetWeekly,
         icon: Icons.view_week_outlined,
         apply: () => onApply(7, _Unit.days, 'after_completion', null),
       ),
       (
-        label: 'Mondays 09:00',
+        label: t.addReminderPresetMondays,
         icon: Icons.calendar_month,
         apply: () => onApply(7, _Unit.days, 'fixed', nextWeekday(DateTime.monday)),
       ),
       (
-        label: 'Bi-weekly',
+        label: t.addReminderPresetBiweekly,
         icon: Icons.date_range_outlined,
         apply: () => onApply(14, _Unit.days, 'after_completion', null),
       ),
       (
-        label: 'Monthly',
+        label: t.addReminderPresetMonthly,
         icon: Icons.calendar_view_month,
         apply: () => onApply(1, _Unit.months, 'after_completion', null),
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/care_types.dart';
@@ -32,6 +33,57 @@ import 'log_event_sheet.dart';
 import 'propagate_dialog.dart';
 import 'tag_chip_input.dart';
 
+/// Past-tense label for a care event type ("Watered"). Built-in keys are
+/// localized; custom types fall back to their user-given label. Shared
+/// with the Activity screen so both timelines read the same.
+String careEventPastLabel(AppLocalizations t, String type, String fallback) {
+  switch (type) {
+    case 'water':
+      return t.detailPastWater;
+    case 'fertilize':
+      return t.detailPastFertilize;
+    case 'mist':
+      return t.detailPastMist;
+    case 'repot':
+      return t.detailPastRepot;
+    case 'prune':
+      return t.detailPastPrune;
+    case 'rotate':
+      return t.detailPastRotate;
+    default:
+      return fallback;
+  }
+}
+
+/// Present-tense label for a schedule type ("Water"); custom types fall
+/// back to their user-given label.
+String _careVerbLabel(AppLocalizations t, String type, String fallback) {
+  switch (type) {
+    case 'water':
+      return t.quickLogWater;
+    case 'fertilize':
+      return t.quickLogFertilize;
+    case 'mist':
+      return t.quickLogMist;
+    case 'repot':
+      return t.detailVerbRepot;
+    case 'prune':
+      return t.detailVerbPrune;
+    case 'rotate':
+      return t.quickLogRotate;
+    default:
+      return fallback;
+  }
+}
+
+String _localeOf(BuildContext context) => Localizations.localeOf(context).toString();
+
+/// "Sep 25" / "25 sept." — locale-aware short date for timeline rows.
+String _fmtDate(BuildContext context, DateTime d) => DateFormat.MMMd(_localeOf(context)).format(d);
+
+/// "Sep 25, 2026" / "25 sept. 2026" — locale-aware date with year.
+String _fmtDateLong(BuildContext context, DateTime d) => DateFormat.yMMMd(_localeOf(context)).format(d);
+
 /// Live Plant Detail screen. Reads everything from Drift; `MockPlants` is
 /// only consulted for the decorative colour swatch used by the photo
 /// fallback stub.
@@ -41,6 +93,7 @@ class PlantDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
     final plantAsync = ref.watch(plantByIdProvider(plantId));
@@ -56,7 +109,7 @@ class PlantDetailScreen extends ConsumerWidget {
         appBar: AppBar(backgroundColor: surface.bg, elevation: 0),
         body: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text('Failed to load plant.\n$e', style: TextStyle(color: surface.terra)),
+          child: Text(t.detailLoadFailed('$e'), style: TextStyle(color: surface.terra)),
         ),
       ),
       data: (plantRow) {
@@ -75,7 +128,7 @@ class PlantDetailScreen extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(
-                  'This plant is no longer in your collection.',
+                  t.plantDetailNotInCollection,
                   style: TextStyle(color: surface.muted),
                   textAlign: TextAlign.center,
                 ),
@@ -106,6 +159,7 @@ class _PlantDetailBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     final plantId = plantRow.id;
     final locationAsync = plantRow.locationId == null
         ? null
@@ -114,7 +168,7 @@ class _PlantDetailBody extends ConsumerWidget {
           data: (loc) => loc?.name,
           orElse: () => null,
         ) ??
-        (plantRow.locationId == null ? 'No location set' : 'Loading location…');
+        (plantRow.locationId == null ? t.detailNoLocation : t.detailLoadingLocation);
 
     final types = ref.watch(careTypesProvider);
     final fabKey = ref.watch(quickFabTypeProvider);
@@ -127,8 +181,8 @@ class _PlantDetailBody extends ConsumerWidget {
           backgroundColor: fabType.color ?? surface.green,
           foregroundColor: Colors.white,
           icon: Icon(fabType.icon),
-          label: Text('${fabType.label} now'),
-          tooltip: 'Long-press to change',
+          label: Text(t.detailFabNow(fabType.label)),
+          tooltip: t.detailFabTooltip,
           onPressed: () async {
             await ref.read(careEventRepositoryProvider).record(
                   plantId: plantRow.id,
@@ -154,7 +208,7 @@ class _PlantDetailBody extends ConsumerWidget {
         actions: [
           IconButton(
             icon: Icon(Icons.edit_outlined, color: surface.text),
-            tooltip: 'Edit plant',
+            tooltip: t.plantDetailEdit,
             onPressed: () {
               showModalBottomSheet(
                 context: context,
@@ -166,7 +220,7 @@ class _PlantDetailBody extends ConsumerWidget {
           ),
           IconButton(
             icon: Icon(Icons.add_a_photo_outlined, color: surface.text),
-            tooltip: 'Add photos',
+            tooltip: t.plantDetailAddPhotos,
             onPressed: () async {
               final picker = ref.read(photoPickerProvider);
               final picked = await pickMultiPhotoWithSource(context, picker, surface);
@@ -233,17 +287,14 @@ class _PlantDetailBody extends ConsumerWidget {
                   final confirm = await showDialog<bool>(
                     context: context,
                     builder: (dctx) => AlertDialog(
-                      title: const Text('Delete plant?'),
-                      content: Text(
-                        'Removes "${plantRow.nickname}" from your collection. '
-                        'Use Gave away / Sold / Marked dead if you want a ledger entry.',
-                      ),
+                      title: Text(t.detailDeleteTitle),
+                      content: Text(t.detailDeleteBody(plantRow.nickname)),
                       actions: [
-                        TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: const Text('Cancel')),
+                        TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: Text(t.cancel)),
                         FilledButton(
                           style: FilledButton.styleFrom(backgroundColor: surface.terra),
                           onPressed: () => Navigator.of(dctx).pop(true),
-                          child: const Text('Delete'),
+                          child: Text(t.commonDelete),
                         ),
                       ],
                     ),
@@ -254,9 +305,9 @@ class _PlantDetailBody extends ConsumerWidget {
                     messenger
                       ..clearSnackBars()
                       ..showSnackBar(SnackBar(
-                        content: Text('Deleted "${plantRow.nickname}"'),
+                        content: Text(t.detailDeletedToast(plantRow.nickname)),
                         action: SnackBarAction(
-                          label: 'Undo',
+                          label: t.detailUndo,
                           onPressed: () {
                             ref.read(plantRepositoryProvider).restoreFromSoftDelete(plantRow.id);
                           },
@@ -267,21 +318,19 @@ class _PlantDetailBody extends ConsumerWidget {
               }
             },
             itemBuilder: (_) => [
-              const PopupMenuItem(value: 'move', child: Text('Move to space…')),
-              const PopupMenuItem(value: 'duplicate', child: Text('Duplicate plant')),
-              const PopupMenuItem(value: 'propagate', child: Text('Propagate…')),
+              PopupMenuItem(value: 'move', child: Text(t.plantDetailMoveToSpace)),
+              PopupMenuItem(value: 'duplicate', child: Text(t.plantDetailDuplicate)),
+              PopupMenuItem(value: 'propagate', child: Text(t.plantDetailPropagate)),
               PopupMenuItem(
                 value: 'mute',
-                child: Text(plantRow.notificationsMuted
-                    ? 'Unmute notifications'
-                    : 'Mute all notifications'),
+                child: Text(plantRow.notificationsMuted ? t.plantDetailUnmuteAll : t.plantDetailMuteAll),
               ),
               const PopupMenuDivider(),
-              const PopupMenuItem(value: 'gift', child: Text('Gave away…')),
-              const PopupMenuItem(value: 'sale', child: Text('Sold…')),
-              const PopupMenuItem(value: 'death', child: Text('Marked dead…')),
+              PopupMenuItem(value: 'gift', child: Text(t.plantDetailGift)),
+              PopupMenuItem(value: 'sale', child: Text(t.plantDetailSold)),
+              PopupMenuItem(value: 'death', child: Text(t.plantDetailMarkDead)),
               const PopupMenuDivider(),
-              const PopupMenuItem(value: 'delete', child: Text('Delete plant…')),
+              PopupMenuItem(value: 'delete', child: Text(t.plantDetailDelete)),
             ],
           ),
         ],
@@ -336,8 +385,11 @@ class _PlantDetailBody extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Text(
                   plantRow.acquiredAt == null
-                      ? 'Added ${_dateShort(DateTime.now())}'
-                      : 'Acquired ${_dateShort(DateTime.fromMillisecondsSinceEpoch(plantRow.acquiredAt!, isUtc: true).toLocal())}',
+                      ? t.detailAddedOn(_fmtDateLong(context, DateTime.now()))
+                      : t.detailAcquiredOn(_fmtDateLong(
+                          context,
+                          DateTime.fromMillisecondsSinceEpoch(plantRow.acquiredAt!, isUtc: true).toLocal(),
+                        )),
                   style: TextStyle(fontSize: 12, color: surface.muted),
                 ),
                 if (plantRow.notes != null && plantRow.notes!.isNotEmpty) ...[
@@ -354,19 +406,16 @@ class _PlantDetailBody extends ConsumerWidget {
               ],
             ),
           ),
-          _SectionLabel(text: 'STATS', surface: surface),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: _StatsCard(plantId: plantId, surface: surface),
-          ),
-          const SizedBox(height: 4),
-          _SectionLabel(text: 'UPCOMING CARE', surface: surface),
+          // Header + card live together in _StatsCard so a plant with no
+          // events shows neither (issue #15: orphan "STATS" header).
+          _StatsCard(plantId: plantId, surface: surface),
+          _SectionLabel(text: t.plantDetailSectionUpcoming, surface: surface),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: _UpcomingCare(surface: surface, plantId: plantId),
           ),
           const SizedBox(height: 16),
-          _SectionLabel(text: 'TIMELINE', surface: surface),
+          _SectionLabel(text: t.plantDetailSectionTimeline, surface: surface),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: _Timeline(surface: surface, plantId: plantId),
@@ -397,6 +446,7 @@ class _PlantDetailBody extends ConsumerWidget {
   }
 
   Future<void> _pickFabType(BuildContext context, WidgetRef ref, List<CareType> types) async {
+    final t = AppLocalizations.of(context);
     final current = ref.read(quickFabTypeProvider);
     final mode = ref.read(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
@@ -422,29 +472,29 @@ class _PlantDetailBody extends ConsumerWidget {
             ),
             const SizedBox(height: 14),
             Text(
-              'Quick-action button',
+              t.plantDetailQuickAction,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text),
             ),
             Text(
-              'Pick which care action the FAB performs with one tap.',
+              t.plantDetailQuickActionHelp,
               style: TextStyle(fontSize: 12, color: surface.muted),
             ),
             const SizedBox(height: 14),
-            for (final t in types)
+            for (final ct in types)
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 6),
                 leading: Container(
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: t.color ?? surface.greenSoft,
+                    color: ct.color ?? surface.greenSoft,
                     borderRadius: BorderRadius.circular(9),
                   ),
-                  child: Icon(t.icon, color: t.color == null ? surface.green : Colors.white),
+                  child: Icon(ct.icon, color: ct.color == null ? surface.green : Colors.white),
                 ),
-                title: Text(t.label),
-                trailing: t.key == current ? Icon(Icons.check, color: surface.green) : null,
-                onTap: () => Navigator.of(ctx).pop(t.key),
+                title: Text(ct.label),
+                trailing: ct.key == current ? Icon(Icons.check, color: surface.green) : null,
+                onTap: () => Navigator.of(ctx).pop(ct.key),
               ),
           ],
         ),
@@ -460,6 +510,7 @@ class _PlantDetailBody extends ConsumerWidget {
     WidgetRef ref,
     db.PlantRow plant,
   ) async {
+    final t = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final picked = await pickLocation(context, ref: ref, currentLocationId: plant.locationId);
     if (picked == plant.locationId) return;
@@ -469,16 +520,11 @@ class _PlantDetailBody extends ConsumerWidget {
           orElse: () => const <db.LocationRow>[],
         );
     final label = picked == null
-        ? 'Removed from any space'
-        : 'Moved to ${locations.where((l) => l.id == picked).map((l) => l.name).firstOrNull ?? 'that space'}';
+        ? t.detailRemovedFromSpace
+        : t.detailMovedTo(locations.where((l) => l.id == picked).map((l) => l.name).firstOrNull ?? t.detailThatSpace);
     messenger
       ..clearSnackBars()
       ..showSnackBar(SnackBar(content: Text(label)));
-  }
-
-  static String _dateShort(DateTime d) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${months[d.month - 1]} ${d.day}, ${d.year}';
   }
 }
 
@@ -503,31 +549,32 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
   }
 
   Future<void> _editAnnotation(db.PlantPhotoRow row) async {
+    final t = AppLocalizations.of(context);
     final controller = TextEditingController(text: row.caption ?? '');
     final result = await showDialog<String?>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Caption this photo'),
+        title: Text(t.plantDetailCaptionTitle),
         content: TextField(
           controller: controller,
           autofocus: true,
           maxLength: 200,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(
-            hintText: 'e.g. yellow leaf spotted',
+          decoration: InputDecoration(
+            hintText: t.plantDetailCaptionHint,
             border: OutlineInputBorder(),
           ),
           onSubmitted: (v) => Navigator.of(ctx).pop(v),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: Text(t.cancel)),
           if ((row.caption ?? '').isNotEmpty)
             TextButton(
               style: TextButton.styleFrom(foregroundColor: widget.surface.terra),
               onPressed: () => Navigator.of(ctx).pop(''),
-              child: const Text('Clear'),
+              child: Text(t.commonClear),
             ),
-          FilledButton(onPressed: () => Navigator.of(ctx).pop(controller.text), child: const Text('Save')),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(controller.text), child: Text(t.commonSave)),
         ],
       ),
     );
@@ -567,11 +614,6 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
     return DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toLocal();
   }
 
-  String _fmtPhotoDate(DateTime d) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${months[d.month - 1]} ${d.day}, ${d.year}';
-  }
-
   Future<void> _openReorder(List<db.PlantPhotoRow> rows) async {
     final reordered = await Navigator.of(context).push<List<db.PlantPhotoRow>>(
       MaterialPageRoute(builder: (_) => _ReorderPhotosScreen(rows: rows, fallback: widget.fallback)),
@@ -582,6 +624,7 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final attachedAsync = ref.watch(attachedPhotosProvider(widget.plantId));
     final rows = ref.watch(plantPhotoRowsProvider(widget.plantId)).maybeWhen(
           data: (r) => r,
@@ -657,13 +700,13 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
                   if (rows.length > 1)
                     _CarouselIconBtn(
                       icon: Icons.swap_vert,
-                      tooltip: 'Reorder',
+                      tooltip: t.detailReorderTooltip,
                       onTap: () => _openReorder(rows),
                     ),
                   if (rows.length > 1) const SizedBox(width: 6),
                   _CarouselIconBtn(
                     icon: Icons.edit_calendar_outlined,
-                    tooltip: 'Edit date',
+                    tooltip: t.detailEditDateTooltip,
                     onTap: () {
                       if (_index < rows.length) _editCapturedAt(rows[_index]);
                     },
@@ -671,7 +714,7 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
                   const SizedBox(width: 6),
                   _CarouselIconBtn(
                     icon: Icons.edit_note_outlined,
-                    tooltip: 'Caption',
+                    tooltip: t.detailCaptionTooltip,
                     onTap: () {
                       if (_index < rows.length) _editAnnotation(rows[_index]);
                     },
@@ -679,7 +722,7 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
                   const SizedBox(width: 6),
                   _CarouselIconBtn(
                     icon: Icons.delete_outline,
-                    tooltip: 'Remove',
+                    tooltip: t.commonRemove,
                     onTap: () => _confirmDetach(shas[_index]),
                   ),
                 ],
@@ -703,7 +746,7 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
                         const Icon(Icons.event_outlined, size: 11, color: Colors.white),
                         const SizedBox(width: 4),
                         Text(
-                          _fmtPhotoDate(_photoDate(rows[_index])),
+                          _fmtDateLong(context, _photoDate(rows[_index])),
                           style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
                         ),
                       ],
@@ -736,14 +779,15 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
   }
 
   Future<void> _confirmDetach(String sha) async {
+    final t = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Remove photo?'),
-        content: const Text('The file stays on disk (other plants may use it) — it just detaches from this plant.'),
+        title: Text(t.plantDetailRemovePhotoTitle),
+        content: Text(t.plantDetailRemovePhotoBody),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Remove')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.cancel)),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(t.commonRemove)),
         ],
       ),
     );
@@ -797,6 +841,7 @@ class _UpcomingCare extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     final schedulesAsync = ref.watch(schedulesForPlantProvider(plantId));
     return Container(
       decoration: BoxDecoration(
@@ -821,7 +866,7 @@ class _UpcomingCare extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.all(14),
                   child: Text(
-                    'No reminders yet — tap below to add one.',
+                    t.plantDetailNoReminders,
                     style: TextStyle(fontSize: 12, color: surface.muted),
                   ),
                 ),
@@ -861,9 +906,10 @@ class _UpcomingRowView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     final types = ref.watch(careTypesProvider);
     final ct = resolveCareType(types, schedule.type);
-    final (label, whenText, urgent) = _describe(schedule);
+    final (label, whenText, urgent) = _describe(t, schedule, ct.label);
     final icon = ct.icon;
     final muted = schedule.notificationsMuted;
     // If the user gave this type a colour, use it as the chip fill; the
@@ -921,7 +967,7 @@ class _UpcomingRowView extends ConsumerWidget {
             ),
           ),
           IconButton(
-            tooltip: muted ? 'Unmute this reminder' : 'Mute this reminder',
+            tooltip: muted ? t.detailUnmuteReminderTooltip : t.detailMuteReminderTooltip,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             icon: Icon(
@@ -959,7 +1005,7 @@ class _UpcomingRowView extends ConsumerWidget {
                 surface: surface,
               );
             },
-            child: const Text('Done'),
+            child: Text(t.doneBtn),
           ),
           const SizedBox(width: 6),
           TextButton(
@@ -977,9 +1023,9 @@ class _UpcomingRowView extends ConsumerWidget {
               await ref
                   .read(careScheduleRepositoryProvider)
                   .snooze(schedule.id, by: const Duration(days: 3));
-              if (context.mounted) _toast(context, 'Snoozed 3 days');
+              if (context.mounted) _toast(context, t.detailSnoozedToast);
             },
-            child: const Text('Snooze'),
+            child: Text(t.snoozeBtn),
           ),
         ],
       ),
@@ -993,41 +1039,25 @@ class _UpcomingRowView extends ConsumerWidget {
       ..showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  (String label, String when, bool urgent) _describe(db.CareScheduleRow s) {
-    final label = _verb(s.type);
+  (String label, String when, bool urgent) _describe(
+    AppLocalizations t,
+    db.CareScheduleRow s,
+    String fallbackLabel,
+  ) {
+    final label = _careVerbLabel(t, s.type, fallbackLabel);
     final due = s.nextDueAt;
-    if (due == null) return (label, 'No due date', false);
+    if (due == null) return (label, t.detailNoDueDate, false);
     final now = DateTime.now().millisecondsSinceEpoch;
     final diffMs = due - now;
     final days = (diffMs / (86400 * 1000)).round();
     if (diffMs < 0) {
       final late = -days;
-      return (label, late == 0 ? 'overdue' : '$late day${late == 1 ? '' : 's'} overdue', true);
+      return (label, late == 0 ? t.detailOverdue : t.detailOverdueDays(late), true);
     }
-    if (days == 0) return (label, 'today', true);
-    if (days == 1) return (label, 'tomorrow', false);
-    return (label, 'in $days days', false);
+    if (days == 0) return (label, t.detailDueToday, true);
+    if (days == 1) return (label, t.detailDueTomorrow, false);
+    return (label, t.detailDueInDays(days), false);
   }
-
-  String _verb(String type) {
-    switch (type) {
-      case 'water':
-        return 'Water';
-      case 'fertilize':
-        return 'Fertilize';
-      case 'mist':
-        return 'Mist';
-      case 'repot':
-        return 'Repot';
-      case 'prune':
-        return 'Prune';
-      case 'rotate':
-        return 'Rotate';
-      default:
-        return type.isEmpty ? 'Care' : '${type[0].toUpperCase()}${type.substring(1)}';
-    }
-  }
-
 }
 
 class _AddReminderButton extends StatelessWidget {
@@ -1042,6 +1072,7 @@ class _AddReminderButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Container(
       decoration: BoxDecoration(
         border: leadingDivider ? Border(top: BorderSide(color: surface.border)) : null,
@@ -1062,7 +1093,7 @@ class _AddReminderButton extends StatelessWidget {
               Icon(Icons.add_circle_outline, size: 18, color: surface.green),
               const SizedBox(width: 10),
               Text(
-                'Add reminder',
+                t.plantDetailAddReminder,
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: surface.green),
               ),
             ],
@@ -1080,6 +1111,7 @@ class _Timeline extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     final eventsAsync = ref.watch(careEventsForPlantProvider(plantId));
     return Container(
       decoration: BoxDecoration(
@@ -1109,7 +1141,7 @@ class _Timeline extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.all(14),
                   child: Text(
-                    'No events yet — log your first watering below.',
+                    t.plantDetailNoEvents,
                     style: TextStyle(fontSize: 12, color: surface.muted),
                   ),
                 ),
@@ -1137,18 +1169,20 @@ class _Timeline extends ConsumerWidget {
   }
 
   Widget _timelineRow(BuildContext context, WidgetRef ref, db.CareEventRow event, bool last) {
-    final when = _formatDate(DateTime.fromMillisecondsSinceEpoch(event.doneAt, isUtc: true).toLocal());
-    final text = _describe(event);
+    final t = AppLocalizations.of(context);
+    final types = ref.watch(careTypesProvider);
+    final when = _fmtDate(context, DateTime.fromMillisecondsSinceEpoch(event.doneAt, isUtc: true).toLocal());
+    final text = _describe(t, event, resolveCareType(types, event.type).label);
     Future<void> delete() async {
       final messenger = ScaffoldMessenger.of(context);
       final confirm = await showDialog<bool>(
         context: context,
         builder: (dctx) => AlertDialog(
-          title: const Text('Delete this event?'),
-          content: Text('Removes this "$text" record from the timeline.'),
+          title: Text(t.detailDeleteEventTitle),
+          content: Text(t.detailDeleteEventBody(text)),
           actions: [
-            TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.of(dctx).pop(true), child: const Text('Delete')),
+            TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: Text(t.cancel)),
+            TextButton(onPressed: () => Navigator.of(dctx).pop(true), child: Text(t.commonDelete)),
           ],
         ),
       );
@@ -1157,9 +1191,9 @@ class _Timeline extends ConsumerWidget {
         messenger
           ..clearSnackBars()
           ..showSnackBar(SnackBar(
-            content: Text('Event removed'),
+            content: Text(t.plantDetailEventRemoved),
             action: SnackBarAction(
-              label: 'Undo',
+              label: t.detailUndo,
               onPressed: () async {
                 // "Undo" an undo → re-record the same event verbatim.
                 await ref.read(careEventRepositoryProvider).record(
@@ -1212,7 +1246,7 @@ class _Timeline extends ConsumerWidget {
             const SizedBox(width: 4),
             IconButton(
               icon: Icon(Icons.delete_outline, size: 16, color: surface.muted),
-              tooltip: 'Delete event',
+              tooltip: t.plantDetailDeleteEvent,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               onPressed: delete,
@@ -1223,8 +1257,8 @@ class _Timeline extends ConsumerWidget {
     );
   }
 
-  String _describe(db.CareEventRow e) {
-    final verb = _past(e.type);
+  String _describe(AppLocalizations t, db.CareEventRow e, String fallback) {
+    final verb = careEventPastLabel(t, e.type, fallback);
     final parts = <String>[];
     if (e.product != null && e.product!.isNotEmpty) parts.add(e.product!);
     if (e.dose != null && e.dose!.isNotEmpty) parts.add(e.dose!);
@@ -1233,30 +1267,6 @@ class _Timeline extends ConsumerWidget {
     return '$verb — ${parts.join(' · ')}';
   }
 
-  String _past(String type) {
-    switch (type) {
-      case 'water':
-        return 'Watered';
-      case 'fertilize':
-        return 'Fertilized';
-      case 'mist':
-        return 'Misted';
-      case 'repot':
-        return 'Repotted';
-      case 'prune':
-        return 'Pruned';
-      case 'rotate':
-        return 'Rotated';
-      default:
-        return type.isEmpty ? 'Logged' : '${type[0].toUpperCase()}${type.substring(1)}';
-    }
-  }
-
-
-  String _formatDate(DateTime d) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${months[d.month - 1]} ${d.day.toString().padLeft(2, '0')}';
-  }
 }
 
 class _LogEventButton extends StatelessWidget {
@@ -1271,6 +1281,7 @@ class _LogEventButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Container(
       decoration: BoxDecoration(
         border: leadingDivider ? Border(top: BorderSide(color: surface.border)) : null,
@@ -1291,7 +1302,7 @@ class _LogEventButton extends StatelessWidget {
               Icon(Icons.note_add_outlined, size: 18, color: surface.green),
               const SizedBox(width: 10),
               Text(
-                'Log event',
+                t.logEventTitle,
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: surface.green),
               ),
             ],
@@ -1312,6 +1323,7 @@ class _InventoryLedger extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     final async = ref.watch(inventoryForPlantProvider(plantId));
     return async.maybeWhen(
       data: (txs) {
@@ -1319,7 +1331,7 @@ class _InventoryLedger extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _SectionLabel(text: 'LEDGER', surface: surface),
+            _SectionLabel(text: t.plantDetailSectionLedger, surface: surface),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Container(
@@ -1332,7 +1344,7 @@ class _InventoryLedger extends ConsumerWidget {
                 child: Column(
                   children: [
                     for (var i = 0; i < txs.length; i++)
-                      _ledgerRow(txs[i], i == txs.length - 1),
+                      _ledgerRow(context, t, txs[i], i == txs.length - 1),
                   ],
                 ),
               ),
@@ -1344,10 +1356,10 @@ class _InventoryLedger extends ConsumerWidget {
     );
   }
 
-  Widget _ledgerRow(db.InventoryTransactionRow tx, bool last) {
+  Widget _ledgerRow(BuildContext context, AppLocalizations t, db.InventoryTransactionRow tx, bool last) {
     final when = DateTime.fromMillisecondsSinceEpoch(tx.at, isUtc: true).toLocal();
-    final dateLabel = _dateLabel(when);
-    final (label, icon, color) = _descriptor(tx);
+    final dateLabel = _fmtDate(context, when);
+    final (label, icon, color) = _descriptor(t, tx);
     return Container(
       decoration: BoxDecoration(
         border: last ? null : Border(bottom: BorderSide(color: surface.border)),
@@ -1378,30 +1390,26 @@ class _InventoryLedger extends ConsumerWidget {
     );
   }
 
-  (String label, IconData icon, Color color) _descriptor(db.InventoryTransactionRow tx) {
+  (String label, IconData icon, Color color) _descriptor(AppLocalizations t, db.InventoryTransactionRow tx) {
     switch (tx.type) {
       case 'propagation':
-        final from = tx.parentPlantId == plantId ? 'out' : 'in';
-        return (from == 'out' ? 'Propagated off this plant' : 'Propagated from a parent', Icons.content_copy_outlined, surface.green);
+        final out = tx.parentPlantId == plantId;
+        return (out ? t.detailLedgerPropagatedOut : t.detailLedgerPropagatedIn, Icons.content_copy_outlined, surface.green);
       case 'gift':
-        final who = tx.counterparty == null || tx.counterparty!.isEmpty ? 'someone' : tx.counterparty!;
-        return ('Gave to $who', Icons.card_giftcard_outlined, surface.green);
+        final who = tx.counterparty == null || tx.counterparty!.isEmpty ? t.detailLedgerSomeone : tx.counterparty!;
+        return (t.detailLedgerGaveTo(who), Icons.card_giftcard_outlined, surface.green);
       case 'sale':
-        final buyer = tx.counterparty == null || tx.counterparty!.isEmpty ? null : ' to ${tx.counterparty}';
+        final buyer = tx.counterparty == null || tx.counterparty!.isEmpty ? null : tx.counterparty!;
         final price = tx.amountMinor == null || tx.currency == null
             ? ''
             : ' · ${(tx.amountMinor! / 100).toStringAsFixed(2)} ${tx.currency}';
-        return ('Sold${buyer ?? ''}$price', Icons.sell_outlined, surface.terra);
+        final sold = buyer == null ? t.detailLedgerSold : t.detailLedgerSoldTo(buyer);
+        return ('$sold$price', Icons.sell_outlined, surface.terra);
       case 'death':
-        return ('Marked dead', Icons.local_fire_department_outlined, surface.terra);
+        return (t.detailLedgerMarkedDead, Icons.local_fire_department_outlined, surface.terra);
       default:
         return (tx.type, Icons.history_toggle_off, surface.muted);
     }
-  }
-
-  String _dateLabel(DateTime d) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${months[d.month - 1]} ${d.day.toString().padLeft(2, '0')}';
   }
 }
 
@@ -1599,6 +1607,8 @@ class _StatsCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
+    final types = ref.watch(careTypesProvider);
     final events = ref.watch(careEventsForPlantProvider(plantId)).maybeWhen(
           data: (rows) => rows,
           orElse: () => const <db.CareEventRow>[],
@@ -1630,36 +1640,46 @@ class _StatsCard extends ConsumerWidget {
       }
       avgDays = (sum / (sorted.length - 1)) / (86400 * 1000);
     }
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: surface.surface,
-        border: Border.all(color: surface.border),
-        borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
-      ),
-      child: Row(
-        children: [
-          Expanded(child: _StatCell(label: 'EVENTS', value: '$total', surface: surface)),
-          Container(width: 1, height: 32, color: surface.border),
-          Expanded(
-            child: _StatCell(
-              label: 'LAST $lastType'.toUpperCase(),
-              value: daysAgo == 0 ? 'today' : '${daysAgo}d',
-              surface: surface,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionLabel(text: t.plantDetailSectionStats, surface: surface),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: surface.surface,
+              border: Border.all(color: surface.border),
+              borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
+            ),
+            child: Row(
+              children: [
+                Expanded(child: _StatCell(label: t.statsCellEvents, value: '$total', surface: surface)),
+                Container(width: 1, height: 32, color: surface.border),
+                Expanded(
+                  child: _StatCell(
+                    label: t.statsCardLast(_careVerbLabel(t, lastType, resolveCareType(types, lastType).label)).toUpperCase(),
+                    value: daysAgo == 0 ? t.statsCardToday : t.statsCardDaysShort(daysAgo),
+                    surface: surface,
+                  ),
+                ),
+                if (avgDays != null) ...[
+                  Container(width: 1, height: 32, color: surface.border),
+                  Expanded(
+                    child: _StatCell(
+                      label: t.statsCardAvg(_careVerbLabel(t, mostFrequent!.key, resolveCareType(types, mostFrequent.key).label)).toUpperCase(),
+                      value: t.statsCardAvgDaysShort(avgDays.toStringAsFixed(avgDays >= 10 ? 0 : 1)),
+                      surface: surface,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-          if (avgDays != null) ...[
-            Container(width: 1, height: 32, color: surface.border),
-            Expanded(
-              child: _StatCell(
-                label: 'AVG ${mostFrequent!.key}'.toUpperCase(),
-                value: '~${avgDays.toStringAsFixed(avgDays >= 10 ? 0 : 1)}d',
-                surface: surface,
-              ),
-            ),
-          ],
-        ],
-      ),
+        ),
+        const SizedBox(height: 4),
+      ],
     );
   }
 }
@@ -1737,12 +1757,13 @@ class _ReorderPhotosScreenState extends ConsumerState<_ReorderPhotosScreen> {
   Widget build(BuildContext context) {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final t = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: surface.bg,
       appBar: AppBar(
         backgroundColor: surface.bg,
         elevation: 0,
-        title: Text('Reorder photos', style: TextStyle(color: surface.text)),
+        title: Text(t.detailReorderPhotosTitle, style: TextStyle(color: surface.text)),
         leading: IconButton(
           icon: Icon(Icons.close, color: surface.text),
           onPressed: () => Navigator.of(context).pop(),
@@ -1750,7 +1771,7 @@ class _ReorderPhotosScreenState extends ConsumerState<_ReorderPhotosScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(_order),
-            child: Text('Save', style: TextStyle(color: surface.green, fontWeight: FontWeight.w700)),
+            child: Text(t.commonSave, style: TextStyle(color: surface.green, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -1793,7 +1814,7 @@ class _ReorderPhotosScreenState extends ConsumerState<_ReorderPhotosScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Photo ${i + 1}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: surface.text)),
+                        Text(t.detailPhotoN(i + 1), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: surface.text)),
                         if ((row.caption ?? '').isNotEmpty)
                           Text(row.caption!, style: TextStyle(fontSize: 11.5, color: surface.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ],
