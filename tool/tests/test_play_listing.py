@@ -218,6 +218,28 @@ class PushTests(unittest.TestCase):
         self.assertEqual(names[-1], "edits.delete")
         self.assertNotIn("edits.commit", names)
 
+    def test_missing_listing_is_created_with_update_after_patch_404(self):
+        class NotFound(Exception):
+            class resp:
+                status = 404
+
+        svc = FakeService(results={"edits.listings.patch": [NotFound("Listing for language 'en-US' not found."), {}]})
+        play_listing.push(svc, "ro.plantly.inventory", self.listings, skip_images=True, media_factory=fake_media)
+        names = svc.names()
+        self.assertEqual(names.count("edits.listings.patch"), 2)
+        self.assertEqual(names.count("edits.listings.update"), 1)
+        created = svc.kwargs("edits.listings.update")[0]
+        self.assertEqual(created["language"], "en-US")
+        self.assertEqual(created["body"]["title"], "Plantly Inventory")
+        self.assertEqual(names[-1], "edits.commit")
+
+    def test_patch_error_other_than_not_found_still_aborts(self):
+        svc = FakeService(results={"edits.listings.patch": RuntimeError("quota exceeded")})
+        with self.assertRaises(RuntimeError):
+            play_listing.push(svc, "ro.plantly.inventory", self.listings, skip_images=True, media_factory=fake_media)
+        self.assertNotIn("edits.listings.update", svc.names())
+        self.assertEqual(svc.names()[-1], "edits.delete")
+
     def test_commit_retries_as_draft_when_play_refuses_auto_review(self):
         refusal = RuntimeError(
             "Changes cannot be sent for review automatically. Please set the query parameter "
