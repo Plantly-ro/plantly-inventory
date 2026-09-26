@@ -222,6 +222,10 @@ publish-internal:
 # builds, uploads with release notes and rolls out to 100 % — set
 # PLAY_UPLOAD_EXTRA_ARGS="--user-fraction 0.2" in the Run-job form for a
 # staged rollout instead.
+# Until the app is published Play only accepts draft releases: on "Only releases
+# with status draft may be created on draft app" play_upload.py re-stages the
+# release as a draft in the same edit and commits again (no rebuild needed);
+# then click "Send for review" in Play Console.
 # `allow_failure: true` keeps a pending manual job from leaving main "blocked".
 publish-production:
   extends: .play-publish

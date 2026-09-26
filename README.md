@@ -68,7 +68,7 @@ the click on `publish-production`.
 |---|---|---|
 | `development` | `publish-internal` (automatic) | signed AAB → Play **internal** track, release notes from `android/fastlane/metadata/android/<locale>/changelogs/` |
 | `development` | `publish-listing` (manual) | store listing texts + graphics only, no build |
-| `main` | `publish-production` (manual) | listing push (validated first, fails fast) → build → AAB → **production**, 100 % rollout; set `PLAY_UPLOAD_EXTRA_ARGS="--user-fraction 0.2"` in the Run-job form for a staged rollout |
+| `main` | `publish-production` (manual) | listing push (validated first, fails fast) → build → AAB → **production**, 100 % rollout; set `PLAY_UPLOAD_EXTRA_ARGS="--user-fraction 0.2"` in the Run-job form for a staged rollout. While the app is still unpublished Play only accepts draft releases — the script falls back to `status: draft` automatically; send it for review in Play Console |
 
 - `versionCode` = the CI pipeline id (`--build-number=$CI_PIPELINE_ID`); `versionName` = `version:` in `pubspec.yaml`.
 - Release notes: `changelogs/default.txt` applies to every build; add `changelogs/<versionCode>.txt` to override for one build (≤500 chars).

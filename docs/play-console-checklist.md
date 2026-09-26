@@ -144,6 +144,12 @@ defensible today because nothing can be transmitted with an empty DSN, but the f
 - If Play refuses the automatic review (`changesNotSentForReview`: unpublished app or a
   console change pending review) the scripts retry as a draft commit and say so in the
   job log — then click **Send for review** in the console.
+- **First production release of an unpublished ("draft") app:** Play only accepts
+  `status: draft` releases until the app is published, so `tool/play_upload.py` re-stages
+  the release as a draft when the commit is refused with "Only releases with status draft
+  may be created on draft app" (job log: `app is unpublished — committing the release as a
+  draft`) — no need to re-run with `PLAY_UPLOAD_EXTRA_ARGS="--status draft"`; just click
+  **Send for review** on the draft in *Production → Releases*.
 - After the first `publish-production` run, review the release in *Production → Releases*
   and click **Send for review** if the console asks (managed publishing is off by default,
   so an API commit normally goes straight to review).
