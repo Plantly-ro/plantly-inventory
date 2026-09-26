@@ -254,6 +254,80 @@ class RunTests(unittest.TestCase):
         self.assertEqual(len(commits), 1)
         self.assertIs(commits[0]["changesNotSentForReview"], True)
 
+    # --- draft app (never published) -----------------------------------------
+
+    DRAFT_APP_REFUSAL = RuntimeError(
+        '<HttpError 400 when requesting .../edits/edit-1:commit returned "Only releases with status '
+        'draft may be created on draft app.". Details: "[{\'message\': \'Only releases with status '
+        'draft may be created on draft app.\', \'domain\': \'androidpublisher\'}]">'
+    )
+
+    def test_draft_app_refusal_restages_release_as_draft_and_commits_once_more(self):
+        write(os.path.join(self.root, "ro", "changelogs", "777.txt"), "RO 777")
+        svc = self._run(
+            "--track", "production", "--user-fraction", "0.2", "--release-notes-dir", self.root,
+            results={"edits.commit": [self.DRAFT_APP_REFUSAL, {"id": "edit-1"}]},
+        )
+        self.assertEqual(
+            svc.names(),
+            ["edits.insert", "edits.bundles.upload", "edits.tracks.update", "edits.commit", "edits.tracks.update", "edits.commit"],
+        )
+        first, second = svc.kwargs("edits.tracks.update")
+        self.assertEqual(first["body"]["releases"][0]["status"], "inProgress")
+        self.assertEqual(second["editId"], "edit-1")
+        self.assertEqual(second["track"], "production")
+        (release,) = second["body"]["releases"]
+        self.assertEqual(release["status"], "draft")
+        self.assertNotIn("userFraction", release)
+        self.assertEqual(release["versionCodes"], ["777"])
+        self.assertEqual(release["releaseNotes"], first["body"]["releases"][0]["releaseNotes"])
+        self.assertEqual(len(svc.kwargs("edits.commit")), 2)
+        self.assertNotIn("edits.delete", svc.names())
+        self.assertIn("app is unpublished — committing the release as a draft", svc.stderr)
+
+    def test_draft_app_refusal_is_matched_case_insensitively(self):
+        self.assertTrue(play_upload.is_draft_app_refusal(RuntimeError("ONLY RELEASES WITH STATUS DRAFT MAY BE CREATED ON DRAFT APP")))
+        self.assertFalse(play_upload.is_draft_app_refusal(RuntimeError("status draft is fine")))
+        self.assertFalse(play_upload.is_draft_app_refusal(RuntimeError("Please set changesNotSentForReview")))
+
+    def test_unrelated_commit_error_does_not_restage_and_discards_the_edit(self):
+        svc = FakeService(results={
+            "edits.bundles.upload": {"versionCode": 777},
+            "edits.commit": RuntimeError("HttpError 500 backend error"),
+        })
+        with self.assertRaises(RuntimeError), contextlib.redirect_stderr(io.StringIO()):
+            play_upload.run(svc, self._args(), media_factory=fake_media, root=self.repo.name)
+        self.assertEqual(
+            svc.names(), ["edits.insert", "edits.bundles.upload", "edits.tracks.update", "edits.commit", "edits.delete"]
+        )
+
+    def test_draft_app_fallback_is_attempted_only_once(self):
+        svc = FakeService(results={
+            "edits.bundles.upload": {"versionCode": 777},
+            "edits.commit": self.DRAFT_APP_REFUSAL,  # keeps failing even after the draft re-stage
+        })
+        with self.assertRaises(RuntimeError), contextlib.redirect_stderr(io.StringIO()):
+            play_upload.run(svc, self._args(), media_factory=fake_media, root=self.repo.name)
+        self.assertEqual(svc.names().count("edits.tracks.update"), 2)
+        self.assertEqual(svc.names().count("edits.commit"), 2)
+        self.assertEqual(svc.names()[-1], "edits.delete")
+
+    def test_explicit_status_draft_commits_first_time_with_one_tracks_update(self):
+        svc = self._run("--track", "production", "--status", "draft")
+        self.assertEqual(svc.names(), ["edits.insert", "edits.bundles.upload", "edits.tracks.update", "edits.commit"])
+        (update,) = svc.kwargs("edits.tracks.update")
+        self.assertEqual(update["body"]["releases"][0]["status"], "draft")
+        self.assertNotIn("app is unpublished", svc.stderr)
+
+    def test_explicit_status_draft_refused_again_is_not_retried(self):
+        svc = FakeService(results={
+            "edits.bundles.upload": {"versionCode": 777},
+            "edits.commit": self.DRAFT_APP_REFUSAL,
+        })
+        with self.assertRaises(RuntimeError), contextlib.redirect_stderr(io.StringIO()):
+            play_upload.run(svc, self._args("--status", "draft"), media_factory=fake_media, root=self.repo.name)
+        self.assertEqual(svc.names(), ["edits.insert", "edits.bundles.upload", "edits.tracks.update", "edits.commit", "edits.delete"])
+
     def test_parse_args_defaults_to_auto_detection(self):
         args = self._args()
         self.assertEqual(args.mapping, play_upload.AUTO)
