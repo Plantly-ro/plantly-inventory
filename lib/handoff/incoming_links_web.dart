@@ -32,6 +32,12 @@ class HashIncomingLinks implements IncomingLinks {
   @override
   void consume() {
     final loc = web.window.location;
+    if (isImportPath(loc.pathname)) {
+      // Canonical `/import?d=` form: drop path + query so a reload lands
+      // on Home (the router redirects `/import` there anyway).
+      web.window.history.replaceState(null, '', '/');
+      return;
+    }
     if (loc.hash.isEmpty) return;
     web.window.history.replaceState(null, '', loc.pathname + loc.search);
   }

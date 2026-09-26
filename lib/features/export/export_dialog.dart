@@ -20,6 +20,7 @@ import '../../shared/stored_photo_image.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import 'category_search_field.dart';
+import '../../app/side_sheet.dart';
 
 /// Draft a plantly.ro listing. Reads live data from the DB:
 ///   - Title/description seeded from the plant row (nickname + notes).
@@ -153,8 +154,8 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
     final mode = ref.read(themeModeProvider);
     final surface =
         mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
-    final picked = await showModalBottomSheet<String>(
-      context: context,
+    final picked = await showAdaptiveSheet<String>(
+      context,
       backgroundColor: surface.bg,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),

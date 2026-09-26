@@ -13,6 +13,7 @@ import '../filter.dart';
 import '../selection.dart';
 import '../sort.dart';
 import 'widget_shell.dart';
+import '../../../app/breakpoints.dart';
 
 /// DB-backed plant grid. Streams `plants.watchAll()` from the repository
 /// and renders each row as a tappable card. Status colour (ok / terra) is
@@ -101,8 +102,8 @@ class GridWidget extends ConsumerWidget {
                 earliestDueByPlantId: earliestDue,
                 locationNameById: locationsById,
               );
-              return GridView.count(
-                crossAxisCount: 2,
+              return LayoutBuilder(builder: (context, constraints) => GridView.count(
+                crossAxisCount: adaptiveColumns(context, constraints.maxWidth, phone: 2, minTileWidth: 180),
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 childAspectRatio: 0.78,
@@ -140,7 +141,7 @@ class GridWidget extends ConsumerWidget {
                         ref.read(plantSelectionProvider.notifier).toggle(row.id),
                   );
                 }).toList(growable: false),
-              );
+              ));
             },
           ),
         ],

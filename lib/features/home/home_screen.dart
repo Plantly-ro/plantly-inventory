@@ -3,19 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/providers.dart';
 import '../../data/user_prefs.dart';
+import '../../app/breakpoints.dart';
+import '../../app/navigation.dart';
 import '../../theme/tokens.dart';
-import '../calendar/calendar_screen.dart';
-import '../plant_detail/plant_detail_screen.dart';
 import '../../l10n/generated/app_localizations.dart';
-import '../locations/locations_screen.dart';
 import '../onboarding/onboarding_screen.dart';
 import '../search/search_screen.dart';
-import '../me/me_screen.dart';
 import 'add_plant_sheet.dart';
 import 'bulk_action_bar.dart';
 import 'home_providers.dart';
 import 'selection.dart';
 import 'widget_registry.dart';
+import '../../app/side_sheet.dart';
 
 /// Port of `CustomHome` in `web/prototype/components/screens.jsx`.
 class HomeScreen extends ConsumerStatefulWidget {
@@ -54,16 +53,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       });
     }
 
+    // Tablet/desktop: the shell's rail / side nav owns section navigation
+    // and the primary "Add plant" action, so the phone chrome steps aside.
+    final phoneChrome = !context.isWide;
+    final hasSelection = ref.watch(plantSelectionProvider).isNotEmpty;
+
     return Scaffold(
       backgroundColor: surface.bg,
-      floatingActionButton: bootstrap.hasValue
+      floatingActionButton: bootstrap.hasValue && phoneChrome
           ? FloatingActionButton(
               backgroundColor: surface.green,
               foregroundColor: Colors.white,
               tooltip: AppLocalizations.of(context).addPlant,
               onPressed: () {
-                showModalBottomSheet(
-                  context: context,
+                showAdaptiveSheet(
+                  context,
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
                   builder: (_) => const AddPlantSheet(),
@@ -73,25 +77,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             )
           : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: bootstrap.hasValue
+      bottomNavigationBar: bootstrap.hasValue && (phoneChrome || hasSelection)
           ? Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (ref.watch(plantSelectionProvider).isNotEmpty)
-                  BulkActionBar(surface: surface),
-                _TabBar(
-                  surface: surface,
-                  onCalendar: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const CalendarScreen()),
-                    );
-                  },
-                  onMe: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const MeScreen()),
-                    );
-                  },
-                ),
+                if (hasSelection) BulkActionBar(surface: surface),
+                if (phoneChrome)
+                  _TabBar(
+                    surface: surface,
+                    onCalendar: () => openCalendar(context),
+                    onMe: () => openMe(context),
+                  ),
               ],
             )
           : null,
@@ -184,11 +180,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  void _openPlantDetail(String plantId) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: plantId)),
-    );
-  }
+  void _openPlantDetail(String plantId) => openPlant(context, plantId);
 
   void _toast(String msg) {
     ScaffoldMessenger.of(context)
@@ -500,9 +492,7 @@ class _TabBar extends StatelessWidget {
                 icon: Icons.place_outlined,
                 label: t.navSpaces,
                 surface: surface,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const LocationsScreen()),
-                ),
+                onTap: () => openSpaces(context),
               ),
             ),
             Expanded(child: _TabIcon(icon: Icons.person_outline, label: t.navMe, surface: surface, onTap: onMe)),

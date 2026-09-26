@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/photo_picker.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../theme/tokens.dart';
+import '../app/side_sheet.dart';
 
 enum PhotoSourceChoice { cameraOne, galleryMulti, galleryOne }
 
@@ -13,8 +14,8 @@ Future<PhotoSourceChoice?> showPhotoSourceSheet(
   required PlantlySurface surface,
   bool multi = true,
 }) async {
-  return showModalBottomSheet<PhotoSourceChoice>(
-    context: context,
+  return showAdaptiveSheet<PhotoSourceChoice>(
+    context,
     backgroundColor: Colors.transparent,
     builder: (ctx) {
       final t = AppLocalizations.of(ctx);

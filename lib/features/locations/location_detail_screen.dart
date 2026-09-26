@@ -14,10 +14,11 @@ import '../../shared/stored_photo_image.dart';
 import '../../sync/hlc.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
-import '../plant_detail/plant_detail_screen.dart';
 import 'assign_plants_sheet.dart';
 import 'location_edit_sheet.dart';
 import 'space_kind_label.dart';
+import '../../app/side_sheet.dart';
+import '../../app/navigation.dart';
 
 /// Full detail screen for a single location. Shows the metadata (kind,
 /// parent, light/humidity/temp ranges, notes, outdoor flag), every
@@ -69,10 +70,7 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                 backgroundColor: surface.bg,
                 elevation: 0,
                 pinned: true,
-                leading: IconButton(
-                  icon: Icon(Icons.chevron_left, color: surface.text),
-                  onPressed: () => Navigator.of(context).maybePop(),
-                ),
+                leading: detailLeading(context, surface, parent: AppRoutes.spaces),
                 title: Text(
                   loc.name,
                   style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
@@ -86,8 +84,8 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                   IconButton(
                     tooltip: t.commonEdit,
                     onPressed: () {
-                      showModalBottomSheet(
-                        context: context,
+                      showAdaptiveSheet(
+                        context,
                         isScrollControlled: true,
                         backgroundColor: Colors.transparent,
                         builder: (_) => LocationEditSheet(existing: loc),
@@ -100,8 +98,8 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                     onSelected: (v) async {
                       switch (v) {
                         case 'assign':
-                          showModalBottomSheet(
-                            context: context,
+                          showAdaptiveSheet(
+                            context,
                             isScrollControlled: true,
                             backgroundColor: Colors.transparent,
                             builder: (_) => AssignPlantsSheet(location: loc),
@@ -134,7 +132,7 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                           );
                           if (ok == true) {
                             await repo.softDelete(loc.id);
-                            if (context.mounted) Navigator.of(context).maybePop();
+                            if (context.mounted) goBack(context, fallback: AppRoutes.spaces);
                           }
                           break;
                       }
@@ -490,9 +488,7 @@ class _PositionedPin extends StatelessWidget {
         onTap: editing
             ? null
             : () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: plant.id)),
-                );
+                openPlant(context, plant.id);
               },
         child: Container(
           decoration: BoxDecoration(
@@ -565,9 +561,7 @@ class _Row extends StatelessWidget {
       ),
       child: InkWell(
         onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: plant.id)),
-          );
+          openPlant(context, plant.id);
         },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -652,8 +646,8 @@ class _LocationGallery extends ConsumerWidget {
 
   Future<void> _viewPhoto(BuildContext context, WidgetRef ref, LocationPhotoRow row) async {
     final t = AppLocalizations.of(context);
-    final choice = await showModalBottomSheet<String>(
-      context: context,
+    final choice = await showAdaptiveSheet<String>(
+      context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         decoration: BoxDecoration(

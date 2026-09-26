@@ -2311,4 +2311,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get spacePickerChooseTitle => 'Choose a space';
+
+  @override
+  String get shellSelectPlant => 'Select a plant to see its care history';
+
+  @override
+  String get shellSelectSpace => 'Select a space to see what grows there';
+
+  @override
+  String get shellSelectSection => 'Choose a section on the left';
+
+  @override
+  String get historyColDate => 'Date';
+
+  @override
+  String get historyColCare => 'Care';
+
+  @override
+  String get historyColDetails => 'Details';
 }

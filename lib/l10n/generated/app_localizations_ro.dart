@@ -2349,4 +2349,23 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get spacePickerChooseTitle => 'Alege spațiul';
+
+  @override
+  String get shellSelectPlant =>
+      'Alege o plantă ca să-i vezi istoricul de îngrijire';
+
+  @override
+  String get shellSelectSpace => 'Alege un spațiu ca să vezi ce crește acolo';
+
+  @override
+  String get shellSelectSection => 'Alege o secțiune din stânga';
+
+  @override
+  String get historyColDate => 'Data';
+
+  @override
+  String get historyColCare => 'Îngrijire';
+
+  @override
+  String get historyColDetails => 'Detalii';
 }

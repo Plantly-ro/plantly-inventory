@@ -4,10 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/providers.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/tokens.dart';
-import '../../locations/locations_screen.dart';
 import '../../search/search_screen.dart';
 import '../filter.dart';
 import 'widget_shell.dart';
+import '../../../app/navigation.dart';
+import '../../../app/breakpoints.dart';
 
 /// Live 2×2 stats grid: overdue, due today, plants, spaces.
 class StatsWidget extends ConsumerWidget {
@@ -71,8 +72,8 @@ class StatsWidget extends ConsumerWidget {
       onMoveUp: onMoveUp,
       onMoveDown: onMoveDown,
       onRemove: onRemove,
-      child: GridView.count(
-        crossAxisCount: 2,
+      child: LayoutBuilder(builder: (context, constraints) => GridView.count(
+        crossAxisCount: adaptiveColumns(context, constraints.maxWidth, phone: 2, minTileWidth: 170),
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         childAspectRatio: 1.75,
@@ -84,9 +85,7 @@ class StatsWidget extends ConsumerWidget {
                   surface,
                   onTap: () {
                     if (tile.filter == null) {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const LocationsScreen()),
-                      );
+                      openSpaces(context);
                     } else {
                       ref.read(activeFilterProvider.notifier).state = tile.filter!;
                       Navigator.of(context).push(
@@ -96,7 +95,7 @@ class StatsWidget extends ConsumerWidget {
                   },
                 ))
             .toList(growable: false),
-      ),
+      )),
     );
   }
 

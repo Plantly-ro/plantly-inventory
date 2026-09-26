@@ -9,7 +9,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../../shared/care_type_labels.dart';
 import '../home/home_providers.dart';
-import '../plant_detail/plant_detail_screen.dart';
+import '../../app/navigation.dart';
 
 /// Full activity log — every care event ever recorded, newest first.
 /// Reached via the Recent Activity widget's "View all" action.
@@ -125,11 +125,7 @@ class ActivityScreen extends ConsumerWidget {
     return InkWell(
       onTap: plant == null
           ? null
-          : () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: plant.id)),
-              );
-            },
+          : () => openPlant(context, plant.id),
       child: Container(
         decoration: BoxDecoration(
           border: last ? null : Border(bottom: BorderSide(color: surface.border)),

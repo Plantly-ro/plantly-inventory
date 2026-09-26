@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import 'app/desktop_theme.dart';
+import 'app/router.dart';
+import 'app/scroll_behavior.dart';
+import 'app/url_strategy.dart';
 import 'features/home/home_providers.dart';
-import 'features/home/home_screen.dart';
 import 'handoff/handoff_listener.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'services/telemetry.dart';
@@ -11,6 +15,7 @@ import 'theme/tokens.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  configureUrlStrategy();
   final container = ProviderContainer();
   final telemetry = container.read(telemetryServiceProvider);
   await telemetry.init();
@@ -24,32 +29,18 @@ Future<void> main() async {
 /// whatever route is current without threading contexts around.
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
-class PlantlyApp extends ConsumerWidget {
-  const PlantlyApp({super.key, this.navigatorKey});
+class PlantlyApp extends ConsumerStatefulWidget {
+  const PlantlyApp({super.key, this.navigatorKey, this.initialLocation});
 
   /// Override for tests; production uses [rootNavigatorKey].
   final GlobalKey<NavigatorState>? navigatorKey;
 
+  /// Start URL for tests / previews (`/plants/<id>`, `/calendar`, …).
+  /// Ignored when the platform supplies one (browser address bar).
+  final String? initialLocation;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final mode = ref.watch(themeModeProvider);
-    final navKey = navigatorKey ?? rootNavigatorKey;
-    return MaterialApp(
-      title: 'PlantlyInventory',
-      debugShowCheckedModeBanner: false,
-      navigatorKey: navKey,
-      themeMode: mode,
-      theme: buildTheme(Brightness.light),
-      darkTheme: buildTheme(Brightness.dark),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      builder: (context, child) => HandoffListener(
-        navigatorKey: navKey,
-        child: child ?? const SizedBox.shrink(),
-      ),
-      home: const HomeScreen(),
-    );
-  }
+  ConsumerState<PlantlyApp> createState() => _PlantlyAppState();
 
   /// App theme for [b]. Public (static) so tests can assert the bundled
   /// typefaces are wired in without pumping the whole app.
@@ -64,6 +55,42 @@ class PlantlyApp extends ConsumerWidget {
       // Bundled in assets/fonts/ (see pubspec `fonts:`) — no runtime font
       // download, so the app renders offline and makes no request to Google.
       fontFamily: PlantlyFonts.inter,
+    );
+  }
+}
+
+class _PlantlyAppState extends ConsumerState<PlantlyApp> {
+  late final GlobalKey<NavigatorState> _navKey = widget.navigatorKey ?? rootNavigatorKey;
+  late final GoRouter _router = buildAppRouter(
+    navigatorKey: _navKey,
+    initialLocation: widget.initialLocation,
+  );
+
+  @override
+  void dispose() {
+    _router.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = ref.watch(themeModeProvider);
+    return MaterialApp.router(
+      title: 'PlantlyInventory',
+      debugShowCheckedModeBanner: false,
+      routerConfig: _router,
+      themeMode: mode,
+      theme: PlantlyApp.buildTheme(Brightness.light),
+      darkTheme: PlantlyApp.buildTheme(Brightness.dark),
+      scrollBehavior: const AppScrollBehavior(),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      builder: (context, child) => DesktopThemeScope(
+        child: HandoffListener(
+          navigatorKey: _navKey,
+          child: child ?? const SizedBox.shrink(),
+        ),
+      ),
     );
   }
 }

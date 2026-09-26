@@ -777,5 +777,11 @@
   "photoSrcGalleryMultiSub": "Select multiple images",
   "photoSrcGalleryOne": "Choose one from gallery",
   "photoSrcGalleryOneSub": "Pick a single image",
-  "spacePickerChooseTitle": "Choose a space"
+  "spacePickerChooseTitle": "Choose a space",
+  "shellSelectPlant": "Select a plant to see its care history",
+  "shellSelectSpace": "Select a space to see what grows there",
+  "shellSelectSection": "Choose a section on the left",
+  "historyColDate": "Date",
+  "historyColCare": "Care",
+  "historyColDetails": "Details"
 }

@@ -10,8 +10,7 @@ import '../../notifications/dnd_settings.dart';
 import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
-import '../plant_detail/plant_detail_screen.dart';
-import '../locations/location_detail_screen.dart';
+import '../../app/navigation.dart';
 
 /// Streams every row that has `notifications_muted = true` across
 /// plants, schedules, and locations. Same provider scope
@@ -73,10 +72,8 @@ class NotificationsScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: surface.bg,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.chevron_left, color: surface.text),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
+        automaticallyImplyLeading: false,
+        leading: adaptiveBackButton(context, surface, fallback: AppRoutes.me),
         title: Text(
           t.meNotificationsLabel,
           style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
@@ -106,11 +103,7 @@ class NotificationsScreen extends ConsumerWidget {
                   subtitle: t.meMutedPlantBody,
                   icon: Icons.eco_outlined,
                   surface: surface,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: p.id)),
-                    );
-                  },
+                  onTap: () => openPlant(context, p.id),
                   onUnmute: () =>
                       ref.read(plantRepositoryProvider).setNotificationsMuted(p.id, false),
                 ),
@@ -125,11 +118,7 @@ class NotificationsScreen extends ConsumerWidget {
                   subtitle: t.meMutedReminderBody,
                   icon: resolveCareType(types, s.type).icon,
                   surface: surface,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: s.plantId)),
-                    );
-                  },
+                  onTap: () => openPlant(context, s.plantId),
                   onUnmute: () => ref
                       .read(careScheduleRepositoryProvider)
                       .setNotificationsMuted(s.id, false),
@@ -145,11 +134,7 @@ class NotificationsScreen extends ConsumerWidget {
                   subtitle: t.meMutedSpaceBody,
                   icon: Icons.place_outlined,
                   surface: surface,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => LocationDetailScreen(locationId: l.id)),
-                    );
-                  },
+                  onTap: () => openSpace(context, l.id),
                   onUnmute: () =>
                       ref.read(locationRepositoryProvider).setNotificationsMuted(l.id, false),
                 ),

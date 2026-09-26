@@ -5,6 +5,7 @@ import '../../data/user_prefs.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
+import '../../app/navigation.dart';
 
 /// Privacy & Data — the plain-English statement of what leaves the
 /// device, plus two toggles the user must opt in to explicitly. Both
@@ -24,10 +25,8 @@ class PrivacyScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: surface.bg,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.chevron_left, color: surface.text),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
+        automaticallyImplyLeading: false,
+        leading: adaptiveBackButton(context, surface, fallback: AppRoutes.me),
         title: Text(
           t.mePrivacyTitle,
           style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 

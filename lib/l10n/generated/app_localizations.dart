@@ -4051,6 +4051,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Choose a space'**
   String get spacePickerChooseTitle;
+
+  /// No description provided for @shellSelectPlant.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a plant to see its care history'**
+  String get shellSelectPlant;
+
+  /// No description provided for @shellSelectSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a space to see what grows there'**
+  String get shellSelectSpace;
+
+  /// No description provided for @shellSelectSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a section on the left'**
+  String get shellSelectSection;
+
+  /// No description provided for @historyColDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get historyColDate;
+
+  /// No description provided for @historyColCare.
+  ///
+  /// In en, this message translates to:
+  /// **'Care'**
+  String get historyColCare;
+
+  /// No description provided for @historyColDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get historyColDetails;
 }
 
 class _AppLocalizationsDelegate

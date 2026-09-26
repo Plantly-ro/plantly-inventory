@@ -8,6 +8,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/plant_thumb.dart';
 import '../../../theme/tokens.dart';
 import 'widget_shell.dart';
+import '../../../app/side_sheet.dart';
 
 /// "Quick log" — shortcut to record Water / Fertilize / Mist across any
 /// plant in the collection in two taps. Each tile opens a plant picker;
@@ -66,8 +67,8 @@ class QuickLogWidget extends ConsumerWidget {
 
   Future<void> _pickPlant(BuildContext context, WidgetRef ref, _Action action) async {
     final t = AppLocalizations.of(context);
-    final plant = await showModalBottomSheet<PlantRow>(
-      context: context,
+    final plant = await showAdaptiveSheet<PlantRow>(
+      context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _PlantPickerSheet(surface: surface, action: action),

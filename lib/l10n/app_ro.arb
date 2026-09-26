@@ -679,5 +679,11 @@
   "photoSrcGalleryMultiSub": "Selectează mai multe imagini",
   "photoSrcGalleryOne": "Alege una din galerie",
   "photoSrcGalleryOneSub": "Alege o singură imagine",
-  "spacePickerChooseTitle": "Alege spațiul"
+  "spacePickerChooseTitle": "Alege spațiul",
+  "shellSelectPlant": "Alege o plantă ca să-i vezi istoricul de îngrijire",
+  "shellSelectSpace": "Alege un spațiu ca să vezi ce crește acolo",
+  "shellSelectSection": "Alege o secțiune din stânga",
+  "historyColDate": "Data",
+  "historyColCare": "Îngrijire",
+  "historyColDetails": "Detalii"
 }

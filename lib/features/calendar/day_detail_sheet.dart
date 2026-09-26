@@ -9,7 +9,8 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
-import '../plant_detail/plant_detail_screen.dart';
+import '../../app/breakpoints.dart';
+import '../../app/navigation.dart';
 
 /// Bottom sheet that zooms into a single calendar day. Lists every
 /// schedule due on the date plus every care event already recorded on
@@ -62,24 +63,25 @@ class DayDetailSheet extends ConsumerWidget {
     final t = AppLocalizations.of(context);
     final locale = Localizations.localeOf(context).toString();
 
-    return DraggableScrollableSheet(
-      initialChildSize: 0.6,
-      minChildSize: 0.3,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (context, scrollCtrl) => Container(
+    // Desktop: rendered inside a right-side panel (see `showAdaptiveSheet`)
+    // — full height, no drag handle, no draggable sizing.
+    final panel = context.isDesktop;
+    Widget content(BuildContext context, ScrollController? scrollCtrl) => Container(
         decoration: BoxDecoration(
           color: surface.bg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(PlantlyTokens.radius2xl)),
+          borderRadius: panel
+              ? BorderRadius.zero
+              : const BorderRadius.vertical(top: Radius.circular(PlantlyTokens.radius2xl)),
         ),
         child: Column(
           children: [
             const SizedBox(height: 10),
-            Container(
-              height: 4,
-              width: 40,
-              decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
-            ),
+            if (!panel)
+              Container(
+                height: 4,
+                width: 40,
+                decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
+              ),
             const SizedBox(height: 10),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -118,6 +120,7 @@ class DayDetailSheet extends ConsumerWidget {
             Expanded(
               child: ListView(
                 controller: scrollCtrl,
+                primary: scrollCtrl == null ? false : null,
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                 children: [
                   if (dayScheduled.isEmpty && dayDone.isEmpty)
@@ -186,7 +189,15 @@ class DayDetailSheet extends ConsumerWidget {
             ),
           ],
         ),
-      ),
+      );
+
+    if (panel) return content(context, null);
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.3,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: content,
     );
   }
 }
@@ -217,9 +228,10 @@ class _ScheduledRow extends ConsumerWidget {
       ),
       child: InkWell(
         onTap: () {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: schedule.plantId)),
-          );
+          // Close the sheet, then open the plant (desktop: select in place).
+          final opener = preparePlantOpener(context);
+          Navigator.of(context).pop();
+          opener.open(schedule.plantId);
         },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -313,9 +325,9 @@ class _DoneRow extends StatelessWidget {
     final time = '${when.hour.toString().padLeft(2, '0')}:${when.minute.toString().padLeft(2, '0')}';
     return InkWell(
       onTap: () {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: event.plantId)),
-        );
+        final opener = preparePlantOpener(context);
+        Navigator.of(context).pop();
+        opener.open(event.plantId);
       },
       child: Container(
         decoration: BoxDecoration(

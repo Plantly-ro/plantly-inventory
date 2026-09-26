@@ -42,11 +42,13 @@ class FakeIncomingLinks implements IncomingLinks {
   Future<void> dispose() => _controller.close();
 }
 
-/// Pull the PlantlyExport `d` parameter out of any of the three accepted
-/// link forms (CONTRACT §4a), or null when [uri] is not an import link:
+/// Pull the PlantlyExport `d` parameter out of any of the accepted link
+/// forms (CONTRACT §4a + §5), or null when [uri] is not an import link:
 ///  1. `plantlyinventory://import#d=<d>`
 ///  2. `https://<host>/app/inventory/import#d=<d>`
-///  3. `<inventory web>/#/import?d=<d>`
+///  3. `<inventory web>/#/import?d=<d>` (legacy hash route — still honoured)
+///  4. `<inventory web>/import?d=<d>` (canonical path route since the
+///     web build moved to path URLs; the router redirects it to `/`)
 String? extractImportParam(Uri uri) {
   final fragment = uri.fragment;
   if (uri.scheme == 'plantlyinventory') {
@@ -54,12 +56,18 @@ String? extractImportParam(Uri uri) {
     return _paramFromQueryString(fragment) ?? uri.queryParameters['d'];
   }
   if (uri.scheme == 'https' || uri.scheme == 'http') {
-    if (uri.path.endsWith('/app/inventory/import')) {
+    if (uri.path.endsWith('/app/inventory/import') || isImportPath(uri.path)) {
       return _paramFromQueryString(fragment) ?? uri.queryParameters['d'];
     }
     return extractImportParamFromHash(fragment);
   }
   return null;
+}
+
+/// `/import` (optionally under a base href, e.g. `/inventory/import`).
+bool isImportPath(String path) {
+  final p = path.endsWith('/') && path.length > 1 ? path.substring(0, path.length - 1) : path;
+  return p == '/import' || p.endsWith('/import');
 }
 
 /// Form 3 — the fragment `/import?d=<d>` (with or without the leading `#`).

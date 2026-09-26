@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app/breakpoints.dart';
+import '../../app/desktop_theme.dart';
+import '../../app/navigation.dart';
 import '../../data/care_types.dart';
 import '../../data/database/app_database.dart' as db;
 import '../../data/image_processor.dart';
@@ -32,6 +35,7 @@ import 'inventory_action_sheet.dart';
 import 'log_event_sheet.dart';
 import 'propagate_dialog.dart';
 import 'tag_chip_input.dart';
+import '../../app/side_sheet.dart';
 
 String _localeOf(BuildContext context) => Localizations.localeOf(context).toString();
 
@@ -76,10 +80,7 @@ class PlantDetailScreen extends ConsumerWidget {
             appBar: AppBar(
               backgroundColor: surface.bg,
               elevation: 0,
-              leading: IconButton(
-                icon: Icon(Icons.chevron_left, color: surface.text),
-                onPressed: () => Navigator.of(context).maybePop(),
-              ),
+              leading: detailLeading(context, surface, parent: AppRoutes.home),
             ),
             body: Center(
               child: Padding(
@@ -158,17 +159,14 @@ class _PlantDetailBody extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: surface.bg,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.chevron_left, color: surface.text),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
+        leading: detailLeading(context, surface, parent: AppRoutes.home),
         actions: [
           IconButton(
             icon: Icon(Icons.edit_outlined, color: surface.text),
             tooltip: t.plantDetailEdit,
             onPressed: () {
-              showModalBottomSheet(
-                context: context,
+              showAdaptiveSheet(
+                context,
                 isScrollControlled: true,
                 backgroundColor: Colors.transparent,
                 builder: (_) => EditPlantSheet(plantRow: plantRow),
@@ -203,9 +201,7 @@ class _PlantDetailBody extends ConsumerWidget {
                     parentName: plantRow.nickname,
                   );
                   if (child != null && context.mounted) {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: child.id)),
-                    );
+                    replaceWithPlant(context, child.id);
                   }
                   break;
                 case 'move':
@@ -214,9 +210,7 @@ class _PlantDetailBody extends ConsumerWidget {
                 case 'duplicate':
                   final child = await ref.read(plantRepositoryProvider).duplicate(plantRow.id);
                   if (context.mounted) {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: child.id)),
-                    );
+                    replaceWithPlant(context, child.id);
                   }
                   break;
                 case 'mute':
@@ -227,19 +221,17 @@ class _PlantDetailBody extends ConsumerWidget {
                 case 'gift':
                 case 'sale':
                 case 'death':
-                  final navigator = Navigator.of(context);
-                  final closed = await showModalBottomSheet<bool>(
-                    context: context,
+                  final closed = await showAdaptiveSheet<bool>(
+                    context,
                     isScrollControlled: true,
                     backgroundColor: Colors.transparent,
                     builder: (_) => InventoryActionSheet(plantRow: plantRow, type: value),
                   );
                   if (closed == true && context.mounted) {
-                    navigator.maybePop();
+                    goBack(context);
                   }
                   break;
                 case 'delete':
-                  final nav = Navigator.of(context);
                   final messenger = ScaffoldMessenger.of(context);
                   final confirm = await showDialog<bool>(
                     context: context,
@@ -258,7 +250,7 @@ class _PlantDetailBody extends ConsumerWidget {
                   );
                   if (confirm == true) {
                     await ref.read(plantRepositoryProvider).softDelete(plantRow.id);
-                    if (context.mounted) nav.maybePop();
+                    if (context.mounted) goBack(context);
                     messenger
                       ..clearSnackBars()
                       ..showSnackBar(SnackBar(
@@ -298,13 +290,24 @@ class _PlantDetailBody extends ConsumerWidget {
         // when scrolled to the bottom instead of sitting under the button.
         padding: EdgeInsets.only(bottom: 96 + MediaQuery.paddingOf(context).bottom),
         children: [
-          AspectRatio(
-            aspectRatio: 1.3,
-            child: Container(
-              color: surface.surfaceAlt,
-              child: _HeroCarousel(plantId: plantId, fallback: swatch, surface: surface),
+          // Phone: the prototype's 1.3 hero. Wide panes cap the height so
+          // a 700 px pane doesn't spend 540 px on the photo.
+          if (context.isWide)
+            SizedBox(
+              height: 360,
+              child: Container(
+                color: surface.surfaceAlt,
+                child: _HeroCarousel(plantId: plantId, fallback: swatch, surface: surface),
+              ),
+            )
+          else
+            AspectRatio(
+              aspectRatio: 1.3,
+              child: Container(
+                color: surface.surfaceAlt,
+                child: _HeroCarousel(plantId: plantId, fallback: swatch, surface: surface),
+              ),
             ),
-          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
             child: Column(
@@ -392,8 +395,8 @@ class _PlantDetailBody extends ConsumerWidget {
             child: _ExportCTA(
               surface: surface,
               onPressed: () {
-                showModalBottomSheet(
-                  context: context,
+                showAdaptiveSheet(
+                  context,
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
                   builder: (_) => ExportDialog(plantRow: plantRow),
@@ -411,8 +414,8 @@ class _PlantDetailBody extends ConsumerWidget {
     final current = ref.read(quickFabTypeProvider);
     final mode = ref.read(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
-    final picked = await showModalBottomSheet<String>(
-      context: context,
+    final picked = await showAdaptiveSheet<String>(
+      context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         decoration: BoxDecoration(
@@ -879,8 +882,8 @@ class _UpcomingRowView extends ConsumerWidget {
     final chipFg = urgent ? surface.terra : (ct.color == null ? surface.green : Colors.white);
     return InkWell(
       onLongPress: () {
-        showModalBottomSheet(
-          context: context,
+        showAdaptiveSheet(
+          context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
           builder: (_) => EditReminderSheet(schedule: schedule),
@@ -1039,8 +1042,8 @@ class _AddReminderButton extends StatelessWidget {
       ),
       child: InkWell(
         onTap: () {
-          showModalBottomSheet(
-            context: context,
+          showAdaptiveSheet(
+            context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
             builder: (_) => AddReminderSheet(plantId: plantId),
@@ -1109,6 +1112,7 @@ class _Timeline extends ConsumerWidget {
               ],
             );
           }
+          if (context.isDesktop) return _desktopTable(context, ref, events, logButton);
           return Column(
             children: [
               Padding(
@@ -1128,54 +1132,144 @@ class _Timeline extends ConsumerWidget {
     );
   }
 
+  /// Desktop: care history as a proper table (date · care · details · ⌫)
+  /// instead of the stacked phone rows — the pane is wide enough and
+  /// scanning a column of dates is what a desk user expects.
+  Widget _desktopTable(BuildContext context, WidgetRef ref, List<db.CareEventRow> events, Widget logButton) {
+    final t = AppLocalizations.of(context);
+    final types = ref.watch(careTypesProvider);
+    final rowHeight = Theme.of(context).extension<PlantlyDensity>()?.tableRowHeight ?? 44;
+    final headStyle = TextStyle(
+      fontSize: 11,
+      fontWeight: FontWeight.w700,
+      color: surface.muted,
+      letterSpacing: 0.08 * 11,
+    );
+    final cellStyle = TextStyle(fontSize: 13, color: surface.text);
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: DataTable(
+            showCheckboxColumn: false,
+            headingRowHeight: 36,
+            dataRowMinHeight: rowHeight,
+            dataRowMaxHeight: rowHeight,
+            horizontalMargin: 14,
+            columnSpacing: 20,
+            dividerThickness: 1,
+            headingTextStyle: headStyle,
+            dataTextStyle: cellStyle,
+            columns: [
+              DataColumn(label: Text(t.historyColDate.toUpperCase())),
+              DataColumn(label: Text(t.historyColCare.toUpperCase())),
+              DataColumn(label: Text(t.historyColDetails.toUpperCase())),
+              const DataColumn(label: SizedBox.shrink()),
+            ],
+            rows: [
+              for (final event in events)
+                () {
+                  final ct = resolveCareType(types, event.type);
+                  final verb = careKeyPastLabel(t, types, event.type);
+                  final details = _detailsOf(event);
+                  final when = _fmtDateLong(
+                    context,
+                    DateTime.fromMillisecondsSinceEpoch(event.doneAt, isUtc: true).toLocal(),
+                  );
+                  return DataRow(
+                    onSelectChanged: (_) {
+                      showAdaptiveSheet(
+                        context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => EditEventSheet(event: event),
+                      );
+                    },
+                    cells: [
+                      DataCell(Text(when, style: TextStyle(fontSize: 12, color: surface.muted, fontWeight: FontWeight.w500))),
+                      DataCell(Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(color: ct.color ?? surface.greenSoft, shape: BoxShape.circle),
+                            child: Icon(ct.icon, size: 12, color: ct.color == null ? surface.green : Colors.white),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(verb, style: cellStyle),
+                        ],
+                      )),
+                      DataCell(Text(details ?? '—', overflow: TextOverflow.ellipsis)),
+                      DataCell(IconButton(
+                        icon: Icon(Icons.delete_outline, size: 16, color: surface.muted),
+                        tooltip: t.plantDetailDeleteEvent,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        onPressed: () => _deleteEvent(context, ref, event, _describe(t, event, verb)),
+                      )),
+                    ],
+                  );
+                }(),
+            ],
+          ),
+        ),
+        logButton,
+      ],
+    );
+  }
+
+  Future<void> _deleteEvent(BuildContext context, WidgetRef ref, db.CareEventRow event, String text) async {
+    final t = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dctx) => AlertDialog(
+        title: Text(t.detailDeleteEventTitle),
+        content: Text(t.detailDeleteEventBody(text)),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: Text(t.cancel)),
+          TextButton(onPressed: () => Navigator.of(dctx).pop(true), child: Text(t.commonDelete)),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await ref.read(careEventRepositoryProvider).undo(event.id);
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(
+          content: Text(t.plantDetailEventRemoved),
+          action: SnackBarAction(
+            label: t.detailUndo,
+            onPressed: () async {
+              // "Undo" an undo → re-record the same event verbatim.
+              await ref.read(careEventRepositoryProvider).record(
+                    plantId: event.plantId,
+                    type: event.type,
+                    doneAt: event.doneAt,
+                    notes: event.notes,
+                    dose: event.dose,
+                    product: event.product,
+                    photoSha: event.photoSha,
+                  );
+            },
+          ),
+        ));
+    }
+  }
+
   Widget _timelineRow(BuildContext context, WidgetRef ref, db.CareEventRow event, bool last) {
     final t = AppLocalizations.of(context);
     final types = ref.watch(careTypesProvider);
     final when = _fmtDate(context, DateTime.fromMillisecondsSinceEpoch(event.doneAt, isUtc: true).toLocal());
     final text = _describe(t, event, careKeyPastLabel(t, types, event.type));
-    Future<void> delete() async {
-      final messenger = ScaffoldMessenger.of(context);
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (dctx) => AlertDialog(
-          title: Text(t.detailDeleteEventTitle),
-          content: Text(t.detailDeleteEventBody(text)),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: Text(t.cancel)),
-            TextButton(onPressed: () => Navigator.of(dctx).pop(true), child: Text(t.commonDelete)),
-          ],
-        ),
-      );
-      if (confirm == true) {
-        await ref.read(careEventRepositoryProvider).undo(event.id);
-        messenger
-          ..clearSnackBars()
-          ..showSnackBar(SnackBar(
-            content: Text(t.plantDetailEventRemoved),
-            action: SnackBarAction(
-              label: t.detailUndo,
-              onPressed: () async {
-                // "Undo" an undo → re-record the same event verbatim.
-                await ref.read(careEventRepositoryProvider).record(
-                      plantId: event.plantId,
-                      type: event.type,
-                      doneAt: event.doneAt,
-                      notes: event.notes,
-                      dose: event.dose,
-                      product: event.product,
-                      photoSha: event.photoSha,
-                    );
-              },
-            ),
-          ));
-      }
-    }
+    Future<void> delete() => _deleteEvent(context, ref, event, text);
 
     return InkWell(
       onLongPress: delete,
       onTap: () {
-        showModalBottomSheet(
-          context: context,
+        showAdaptiveSheet(
+          context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
           builder: (_) => EditEventSheet(event: event),
@@ -1218,12 +1312,17 @@ class _Timeline extends ConsumerWidget {
   }
 
   String _describe(AppLocalizations t, db.CareEventRow e, String verb) {
+    final details = _detailsOf(e);
+    return details == null ? verb : '$verb — $details';
+  }
+
+  /// "product · dose · notes", or null when the event carries none.
+  String? _detailsOf(db.CareEventRow e) {
     final parts = <String>[];
     if (e.product != null && e.product!.isNotEmpty) parts.add(e.product!);
     if (e.dose != null && e.dose!.isNotEmpty) parts.add(e.dose!);
     if (e.notes != null && e.notes!.isNotEmpty) parts.add(e.notes!);
-    if (parts.isEmpty) return verb;
-    return '$verb — ${parts.join(' · ')}';
+    return parts.isEmpty ? null : parts.join(' · ');
   }
 
 }
@@ -1247,8 +1346,8 @@ class _LogEventButton extends StatelessWidget {
       ),
       child: InkWell(
         onTap: () {
-          showModalBottomSheet(
-            context: context,
+          showAdaptiveSheet(
+            context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
             builder: (_) => LogEventSheet(plantId: plantId),

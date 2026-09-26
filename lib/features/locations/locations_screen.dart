@@ -10,9 +10,10 @@ import '../../shared/plant_thumb.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import 'assign_plants_sheet.dart';
-import 'location_detail_screen.dart';
 import 'location_edit_sheet.dart';
 import 'space_kind_label.dart';
+import '../../app/side_sheet.dart';
+import '../../app/navigation.dart';
 
 /// Hierarchical Spaces list + add-dialog + assign-plants flow.
 class LocationsScreen extends ConsumerWidget {
@@ -29,10 +30,8 @@ class LocationsScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: surface.bg,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.chevron_left, color: surface.text),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
+        automaticallyImplyLeading: false,
+        leading: adaptiveBackButton(context, surface),
         title: Text(
           AppLocalizations.of(context).spaces,
           style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
@@ -48,8 +47,8 @@ class LocationsScreen extends ConsumerWidget {
         foregroundColor: Colors.white,
         tooltip: AppLocalizations.of(context).addSpace,
         onPressed: () {
-          showModalBottomSheet(
-            context: context,
+          showAdaptiveSheet(
+            context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
             builder: (_) => const LocationEditSheet(),
@@ -113,11 +112,7 @@ class _LocationTile extends ConsumerWidget {
             borderRadius: BorderRadius.circular(PlantlyTokens.radius),
             child: InkWell(
               borderRadius: BorderRadius.circular(PlantlyTokens.radius),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => LocationDetailScreen(locationId: node.row.id)),
-                );
-              },
+              onTap: () => openSpace(context, node.row.id),
               child: Container(
               decoration: BoxDecoration(
                 border: Border.all(color: surface.border),
@@ -162,8 +157,8 @@ class _LocationTile extends ConsumerWidget {
                         ),
                       ),
                       onPressed: () {
-                        showModalBottomSheet(
-                          context: context,
+                        showAdaptiveSheet(
+                          context,
                           isScrollControlled: true,
                           backgroundColor: Colors.transparent,
                           builder: (_) => AssignPlantsSheet(location: node.row),
