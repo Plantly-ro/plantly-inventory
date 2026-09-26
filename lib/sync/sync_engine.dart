@@ -1,19 +1,21 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/database/app_database.dart';
 import 'sync_transport.dart';
 
-/// Persists the `last_seen_server_hlc` cursor — the high-water mark of ops the
-/// client has pulled from the server. Push sends it so the server can stream
-/// back anything newer; pull advances it. Abstracted so tests inject an
-/// in-memory cursor.
+/// Persists the server cursor (`server_seq`, opaque string) — the high-water
+/// mark of ops the client has received. Push sends it as `since` so the
+/// server can stream back anything newer; every push/pull reply advances it.
+/// Abstracted so tests inject an in-memory cursor.
 abstract class SyncCursor {
   Future<String> get();
-  Future<void> set(String hlc);
+  Future<void> set(String cursor);
 }
 
-/// SharedPreferences-backed cursor, keyed per tenant.
+/// SharedPreferences-backed cursor, keyed per tenant (= collection id).
 class PrefsSyncCursor implements SyncCursor {
   PrefsSyncCursor({required this.prefs, required this.tenantId});
   final SharedPreferences prefs;
@@ -25,7 +27,7 @@ class PrefsSyncCursor implements SyncCursor {
   Future<String> get() async => prefs.getString(_key) ?? '';
 
   @override
-  Future<void> set(String hlc) async => prefs.setString(_key, hlc);
+  Future<void> set(String cursor) async => prefs.setString(_key, cursor);
 }
 
 /// Outcome of a [SyncEngine.pushPending] run.
@@ -35,7 +37,10 @@ class SyncPushResult {
     required this.accepted,
     required this.rejected,
     required this.batches,
-    required this.serverHlc,
+    required this.cursor,
+    required this.hasMore,
+    required this.freshOps,
+    this.tooLarge = const [],
   });
 
   final int sent;
@@ -45,9 +50,21 @@ class SyncPushResult {
   /// offending row so callers can surface / quarantine it.
   final List<({int seq, String reason})> rejected;
   final int batches;
-  final String serverHlc;
 
-  bool get allAccepted => rejected.isEmpty;
+  /// Cursor after the last push (empty when nothing was pushed).
+  final String cursor;
+
+  /// The last reply signalled more fresh ops beyond [cursor].
+  final bool hasMore;
+
+  /// Total fresh ops handed to `onFresh`.
+  final int freshOps;
+
+  /// Ops the server refused as a batch of one (413): marked `pushed_at` so
+  /// they can't wedge the queue, reported here for the UI.
+  final List<({int seq, String entity, String entityId})> tooLarge;
+
+  bool get allAccepted => rejected.isEmpty && tooLarge.isEmpty;
 }
 
 /// Drives op-log push against `sync_ops`.
@@ -58,11 +75,9 @@ class SyncPushResult {
 /// scan advances past them by `seq` so a persistent reject can't wedge the loop
 /// into re-sending the same op forever.
 ///
-/// Pull/apply (field-level LWW + OR-Set reconciliation, PLAN.md §"Conflict
-/// semantics") is intentionally NOT here yet — applying remote ops touches
-/// every entity table and is best built and tested against the real server.
-/// The transport's [SyncTransport.pull] shape is defined so that work is
-/// purely additive. Tracked as a follow-up.
+/// Each reply's `fresh_ops` (ops from other devices since `since`) are handed
+/// to `onFresh` before the cursor advances, so a crash between the two leaves
+/// the cursor behind — replaying is safe (the applier is idempotent).
 class SyncEngine {
   SyncEngine({
     required this.db,
@@ -71,17 +86,34 @@ class SyncEngine {
     required this.tenantId,
     required this.deviceId,
     this.batchSize = 500,
+    this.maxBatchBytes = 3 * 1024 * 1024,
     int Function()? nowMillis,
-  }) : _nowMillis = nowMillis ??
-            (() => DateTime.now().toUtc().millisecondsSinceEpoch);
+  })  : _nowMillis = nowMillis ??
+            (() => DateTime.now().toUtc().millisecondsSinceEpoch),
+        _batchLimit = batchSize;
 
   final AppDatabase db;
   final SyncTransport transport;
   final SyncCursor cursor;
   final String tenantId;
   final String deviceId;
+
+  /// Upper bound on ops per push (contract: ≤ 500).
   final int batchSize;
+
+  /// Upper bound on the summed encoded size of the ops in one push. The
+  /// server caps the body at 4 MiB; 3 MiB leaves headroom for the envelope.
+  final int maxBatchBytes;
   final int Function() _nowMillis;
+
+  /// Current count limit — halved on every 413 (min 1). Only shrinks within
+  /// a run (resetting after each success would thrash: 8→4→2→ok→8→413…);
+  /// doubles once at the start of every run so it probes back up to
+  /// [batchSize] once payloads shrink again.
+  int _batchLimit;
+
+  /// Effective count limit right now (for tests / diagnostics).
+  int get currentBatchLimit => _batchLimit;
 
   Future<int> pendingCount() async {
     final q = db.selectOnly(db.syncOps)
@@ -94,35 +126,52 @@ class SyncEngine {
 
   /// Push all currently-pending ops. Returns a summary; on transport error the
   /// batches already accepted stay marked (partial progress is durable).
-  Future<SyncPushResult> pushPending() async {
-    final lastSeen = await cursor.get();
+  ///
+  /// Batches are bounded by BOTH count ([batchSize], halved after a 413) and
+  /// bytes ([maxBatchBytes], measured as the UTF-8 JSON of each op). A 413 on
+  /// a multi-op batch halves the count limit and retries the same rows; a 413
+  /// on a single op marks that op `pushed_at` and reports it in
+  /// [SyncPushResult.tooLarge] so the queue never wedges on it.
+  Future<SyncPushResult> pushPending({
+    Future<void> Function(List<SyncOpDto> fresh)? onFresh,
+  }) async {
     var afterSeq = 0;
     var sent = 0;
     var accepted = 0;
     var batches = 0;
-    var serverHlc = '';
+    var fresh = 0;
+    var lastCursor = '';
+    var hasMore = false;
     final rejected = <({int seq, String reason})>[];
+    final tooLarge = <({int seq, String entity, String entityId})>[];
+    _batchLimit = (_batchLimit * 2).clamp(1, batchSize);
 
     while (true) {
-      final rows = await (db.select(db.syncOps)
-            ..where((o) =>
-                o.pushedAt.isNull() &
-                o.tenantId.equals(tenantId) &
-                o.seq.isBiggerThanValue(afterSeq))
-            ..orderBy([(o) => OrderingTerm.asc(o.seq)])
-            ..limit(batchSize))
-          .get();
+      final rows = await _nextBatch(afterSeq);
       if (rows.isEmpty) break;
 
       final ops = [for (final r in rows) SyncOpDto.fromRow(r)];
-      final resp = await transport.push(PushRequest(
-        deviceId: deviceId,
-        ops: ops,
-        lastSeenServerHlc: lastSeen,
-      ));
+      final PushResponse resp;
+      try {
+        resp = await transport.push(PushRequest(
+          deviceId: deviceId,
+          ops: ops,
+          since: await cursor.get(),
+        ));
+      } on SyncBatchTooLargeError {
+        if (rows.length > 1) {
+          _batchLimit = (rows.length ~/ 2).clamp(1, batchSize);
+          continue; // same afterSeq → retry the head of the queue, smaller
+        }
+        // A single op the server will never take: park it.
+        await (db.update(db.syncOps)..where((o) => o.seq.equals(rows.single.seq)))
+            .write(SyncOpsCompanion(pushedAt: Value(_nowMillis())));
+        tooLarge.add((seq: rows.single.seq, entity: rows.single.entity, entityId: rows.single.entityId));
+        afterSeq = rows.single.seq;
+        continue;
+      }
       batches++;
       sent += rows.length;
-      serverHlc = resp.serverHlc;
 
       final rejectedIndexes = {for (final r in resp.rejected) r.opIndex};
       final acceptedSeqs = <int>[];
@@ -141,6 +190,16 @@ class SyncEngine {
         accepted += acceptedSeqs.length;
       }
 
+      if (resp.freshOps.isNotEmpty && onFresh != null) {
+        await onFresh(resp.freshOps);
+        fresh += resp.freshOps.length;
+      }
+      if (resp.cursor.isNotEmpty) {
+        await cursor.set(resp.cursor);
+        lastCursor = resp.cursor;
+      }
+      hasMore = resp.hasMore;
+
       // Advance past this batch (including rejects) so the loop terminates.
       afterSeq = rows.last.seq;
     }
@@ -150,8 +209,65 @@ class SyncEngine {
       accepted: accepted,
       rejected: rejected,
       batches: batches,
-      serverHlc: serverHlc,
+      cursor: lastCursor,
+      hasMore: hasMore,
+      freshOps: fresh,
+      tooLarge: tooLarge,
     );
+  }
+
+  /// Next pending rows after [afterSeq], cut by count ([_batchLimit]) and by
+  /// cumulative encoded bytes ([maxBatchBytes]). Always returns at least one
+  /// row when any is pending, even if that row alone exceeds the byte cap.
+  Future<List<SyncOpRow>> _nextBatch(int afterSeq) async {
+    final rows = await (db.select(db.syncOps)
+          ..where((o) =>
+              o.pushedAt.isNull() &
+              o.tenantId.equals(tenantId) &
+              o.seq.isBiggerThanValue(afterSeq))
+          ..orderBy([(o) => OrderingTerm.asc(o.seq)])
+          ..limit(_batchLimit))
+        .get();
+    var bytes = 0;
+    final out = <SyncOpRow>[];
+    for (final r in rows) {
+      final size = encodedOpSize(r);
+      if (out.isNotEmpty && bytes + size > maxBatchBytes) break;
+      out.add(r);
+      bytes += size;
+    }
+    return out;
+  }
+
+  /// UTF-8 length of one op as it appears in the push body.
+  static int encodedOpSize(SyncOpRow row) =>
+      utf8.encode(json.encode(SyncOpDto.fromRow(row).toJson())).length;
+
+  /// Pull from the persisted cursor until the server reports no more,
+  /// handing each page to [onOps] before advancing the cursor.
+  /// Returns the number of ops received.
+  Future<int> pullAll({
+    required Future<void> Function(List<SyncOpDto> ops) onOps,
+    int maxPages = 1000,
+  }) async {
+    var received = 0;
+    for (var page = 0; page < maxPages; page++) {
+      final since = await cursor.get();
+      final resp = await transport.pull(PullRequest(since: since, limit: batchSize));
+      if (resp.ops.isNotEmpty) {
+        await onOps(resp.ops);
+        received += resp.ops.length;
+      }
+      if (resp.cursor.isNotEmpty && resp.cursor != since) {
+        await cursor.set(resp.cursor);
+      } else if (resp.hasMore) {
+        // A server that says "more" without moving the cursor would loop us
+        // forever; stop and let the next cycle retry.
+        break;
+      }
+      if (!resp.hasMore) break;
+    }
+    return received;
   }
 
   String _reasonFor(List<OpRejection> rejections, int index) {

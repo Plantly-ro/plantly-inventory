@@ -1,0 +1,449 @@
+import 'package:drift/drift.dart';
+
+import '../data/database/app_database.dart';
+import 'entity_codecs.dart';
+import 'hlc.dart';
+import 'op_log.dart';
+import 'sync_transport.dart';
+
+/// Outcome of one [SyncApplier.applyBatch].
+class SyncApplyResult {
+  int applied = 0;
+
+  /// Ops persisted without touching a row (duplicates, unknown entities,
+  /// ops for rows we do not have yet, losers of the LWW comparison).
+  int skipped = 0;
+
+  /// `photos` rows created from remote ops whose blob is not on this device
+  /// (`remote_state='remote'`). Callers may prefetch; the UI fetches lazily
+  /// through `PhotoFetcher`.
+  final List<String> remotePhotoShas = [];
+
+  @override
+  String toString() => 'SyncApplyResult(applied: $applied, skipped: $skipped)';
+}
+
+/// Applies remote ops per CLOUD-SYNC-CONTRACT §2.3.
+///
+/// One Drift transaction per batch. For every op:
+///   1. duplicate (same entity/id/field/hlc/device) → skip;
+///   2. the HLC clock absorbs the remote HLC;
+///   3. the op is applied iff its HLC beats the local HLC for the same
+///      (entity, entity_id, field) — the latest `sync_ops` row for that field
+///      or for `*` (a whole-row op writes every field), else the row's
+///      `updated_hlc` / `added_hlc`; ties fall to the HLC's device suffix;
+///   4. the op is recorded in `sync_ops` with its origin `device_id` and
+///      `pushed_at` set, so it informs future comparisons but is never
+///      pushed back.
+///
+/// Tombstones are final: a tombstoned row ignores every later op. A field op
+/// for a row we have not received yet is kept and materialised when the `*`
+/// op arrives (newer field ops override the `*` payload).
+class SyncApplier {
+  SyncApplier({
+    required this.db,
+    required this.opLog,
+    required this.clock,
+    int Function()? nowMillis,
+  }) : _nowMillis = nowMillis ?? (() => DateTime.now().toUtc().millisecondsSinceEpoch);
+
+  final AppDatabase db;
+  final OpLogWriter opLog;
+  final HlcClock clock;
+  final int Function() _nowMillis;
+
+  String get tenantId => opLog.tenantId;
+  EntityCodecs get codecs => opLog.codecs;
+
+  Future<SyncApplyResult> applyBatch(List<SyncOpDto> ops) async {
+    final result = SyncApplyResult();
+    if (ops.isEmpty) return result;
+    await db.transaction(() async {
+      for (final op in ops) {
+        await _applyOne(op, result);
+      }
+    });
+    return result;
+  }
+
+  Future<void> _applyOne(SyncOpDto op, SyncApplyResult result) async {
+    final Hlc opHlc;
+    try {
+      opHlc = Hlc.parse(op.hlc);
+    } on FormatException {
+      result.skipped++;
+      return;
+    }
+    final deviceId = op.deviceId ?? opHlc.deviceId;
+    final codec = codecs.forEntity(op.entity);
+    if (codec == null) {
+      result.skipped++;
+      return;
+    }
+    if (await opLog.hasOp(
+      entity: op.entity,
+      entityId: op.entityId,
+      field: op.field,
+      hlc: op.hlc,
+      deviceId: deviceId,
+    )) {
+      result.skipped++;
+      return;
+    }
+    clock.merge(opHlc);
+
+    final bool applied;
+    if (op.field == kTombstoneField) {
+      applied = await _applyTombstone(codec, op, opHlc, deviceId);
+    } else if (op.field == kWholeRowField) {
+      applied = await _applyWholeRow(codec, op, opHlc, deviceId, result);
+    } else if (codec.isOrSet && op.field == 'removed_hlc' && op.entityId.contains('/')) {
+      applied = await _applyLegacyPairRemove(codec, op, opHlc, deviceId);
+    } else {
+      applied = await _applyField(codec, op, opHlc, deviceId);
+    }
+    if (applied) {
+      result.applied++;
+    } else {
+      result.skipped++;
+    }
+    await opLog.recordRemote(op, deviceId: deviceId, nowMillis: _nowMillis());
+  }
+
+  // --- op kinds ------------------------------------------------------------
+
+  Future<bool> _applyTombstone(EntityCodec codec, SyncOpDto op, Hlc opHlc, String deviceId) async {
+    final row = await _readRow(codec, op.entityId);
+    if (row == null) return false;
+    if (_rowIsDeleted(codec, row)) return false;
+    final rowHlc = _rowHlc(codec, row);
+    final bump = rowHlc == null || opHlc > rowHlc;
+    await _update(codec, op.entityId, {
+      if (codec.isOrSet) 'removed_hlc': op.hlc else 'deleted_at': opHlc.physicalMs,
+      if (bump && !codec.isOrSet) codec.hlcColumn: op.hlc,
+      if (bump) 'device_id': deviceId,
+    });
+    return true;
+  }
+
+  Future<bool> _applyWholeRow(
+    EntityCodec codec,
+    SyncOpDto op,
+    Hlc opHlc,
+    String deviceId,
+    SyncApplyResult result,
+  ) async {
+    final value = op.value;
+    if (value is! Map) return false;
+    final wire = value.map((k, v) => MapEntry('$k', v));
+    final row = await _readRow(codec, op.entityId);
+    if (row != null && _rowIsDeleted(codec, row)) return false;
+    final ops = await opLog.opsFor(entity: op.entity, entityId: op.entityId);
+    if (ops.any((o) => o.field == kTombstoneField)) return false;
+
+    final fieldMax = _fieldMaxHlcs(ops);
+    final starHlc = fieldMax[kWholeRowField];
+
+    if (row == null) {
+      return _insertFromWholeRow(codec, op, opHlc, deviceId, wire, ops, result);
+    }
+
+    final rowHlc = _rowHlc(codec, row);
+    final decoded = codec.decodeRow(wire);
+    final updates = <String, Object?>{};
+    for (final e in decoded.entries) {
+      final c = e.key;
+      if (_isMetaColumn(codec, c)) continue;
+      final local = _maxHlc(fieldMax[c], starHlc) ?? rowHlc;
+      if (local == null || opHlc > local) updates[c] = e.value;
+    }
+    if (updates.isEmpty) return false;
+    if (rowHlc == null || opHlc > rowHlc) {
+      updates[codec.hlcColumn] = op.hlc;
+      updates['device_id'] = deviceId;
+    }
+    await _update(codec, op.entityId, updates);
+    return true;
+  }
+
+  Future<bool> _insertFromWholeRow(
+    EntityCodec codec,
+    SyncOpDto op,
+    Hlc opHlc,
+    String deviceId,
+    Map<String, dynamic> wire,
+    List<SyncOpRow> ops,
+    SyncApplyResult result,
+  ) async {
+    final sql = codec.decodeRow(wire, fillDefaults: true);
+    sql[codec.idColumn] = op.entityId;
+    sql['tenant_id'] = tenantId;
+
+    // Row HLC: the payload's own stamp when it parses, else the op HLC.
+    var rowHlc = opHlc;
+    final wireHlc = sql[codec.hlcColumn];
+    if (wireHlc is String) {
+      try {
+        final h = Hlc.parse(wireHlc);
+        if (h > rowHlc) rowHlc = h;
+      } on FormatException {
+        // fall through to opHlc
+      }
+    }
+    if (sql['device_id'] is! String || (sql['device_id'] as String).isEmpty) {
+      sql['device_id'] = deviceId;
+    }
+
+    // Field ops that arrived before the row: the newest per field wins over
+    // the `*` payload.
+    final newest = <String, SyncOpRow>{};
+    for (final o in ops) {
+      if (o.field == kWholeRowField || o.field == kTombstoneField) continue;
+      if (!codec.isWireColumn(o.field)) continue;
+      final h = Hlc.parse(o.hlc);
+      if (h <= opHlc) continue;
+      final prev = newest[o.field];
+      if (prev == null || h > Hlc.parse(prev.hlc)) newest[o.field] = o;
+    }
+    for (final e in newest.entries) {
+      final dto = SyncOpDto.fromRow(e.value);
+      sql[e.key] = codec.decodeField(e.key, dto.value);
+      final h = Hlc.parse(e.value.hlc);
+      if (h > rowHlc) {
+        rowHlc = h;
+        sql['device_id'] = e.value.deviceId;
+      }
+    }
+    sql[codec.hlcColumn] = rowHlc.encode();
+
+    if (codec.entity == 'photos') {
+      sql['remote_state'] = 'remote';
+      sql['local_path'] = null;
+    }
+
+    if (!await _resolveUniqueConflict(codec, op.entityId, opHlc, sql)) return false;
+
+    try {
+      await db.into(codec.table).insert(codec.insertable(sql));
+    } on Exception {
+      // Constraint violation we could not resolve (e.g. duplicate OR-Set add
+      // with an identical added_hlc): keep the op, drop the row.
+      return false;
+    }
+    if (codec.entity == 'photos') result.remotePhotoShas.add(op.entityId);
+    return true;
+  }
+
+  Future<bool> _applyField(EntityCodec codec, SyncOpDto op, Hlc opHlc, String deviceId) async {
+    if (!codec.isWireColumn(op.field) || _isMetaColumn(codec, op.field) && op.field != 'removed_hlc') {
+      return false;
+    }
+    final row = await _readRow(codec, op.entityId);
+    if (row == null) return false; // materialised by the `*` op later
+    if (_rowIsDeleted(codec, row)) return false;
+    final latest = await opLog.latestOpFor(
+      entity: op.entity,
+      entityId: op.entityId,
+      fields: [op.field, kWholeRowField, kTombstoneField],
+    );
+    if (latest != null && latest.field == kTombstoneField) return false;
+    final rowHlc = _rowHlc(codec, row);
+    final local = latest == null ? rowHlc : Hlc.parse(latest.hlc);
+    if (local != null && opHlc <= local) return false;
+
+    Object? value = codec.decodeField(op.field, op.value);
+    if (codec.isOrSet && op.field == 'removed_hlc') value ??= op.hlc;
+    final bump = rowHlc == null || opHlc > rowHlc;
+    await _update(codec, op.entityId, {
+      op.field: value,
+      if (bump) codec.hlcColumn: op.hlc,
+      if (bump) 'device_id': deviceId,
+    });
+    return true;
+  }
+
+  /// Pre-cloud clients recorded detaches as `removed_hlc` ops keyed
+  /// `<parent_id>/<child_id>`; honour them by stamping every live add-row of
+  /// the pair.
+  Future<bool> _applyLegacyPairRemove(EntityCodec codec, SyncOpDto op, Hlc opHlc, String deviceId) async {
+    final slash = op.entityId.indexOf('/');
+    final parentId = op.entityId.substring(0, slash);
+    final childId = op.entityId.substring(slash + 1);
+    final parentCol = codec.entity == 'location_photos' ? 'location_id' : 'plant_id';
+    final childCol = codec.entity == 'plant_tags' ? 'tag_id' : 'photo_sha';
+    final removedAt = op.value is String ? op.value as String : op.hlc;
+    final n = await db.customUpdate(
+      'UPDATE ${codec.table.actualTableName} SET removed_hlc = ?, device_id = ? '
+      'WHERE tenant_id = ? AND $parentCol = ? AND $childCol = ? AND removed_hlc IS NULL '
+      'AND added_hlc < ?',
+      variables: [
+        Variable<String>(removedAt),
+        Variable<String>(deviceId),
+        Variable<String>(tenantId),
+        Variable<String>(parentId),
+        Variable<String>(childId),
+        Variable<String>(op.hlc),
+      ],
+      updates: {codec.table},
+      updateKind: UpdateKind.update,
+    );
+    return n > 0;
+  }
+
+  // --- unique constraints ---------------------------------------------------
+
+  /// `care_schedules UNIQUE(tenant_id, plant_id, type)` and
+  /// `tags UNIQUE(tenant_id, name)` can collide when two devices created the
+  /// "same" row independently. Deterministic resolution: the row with the
+  /// greater HLC survives; the loser is tombstoned through a LOCAL op so
+  /// every device converges on the same survivor (a local loser row is
+  /// physically removed — see below). Returns false when the incoming row
+  /// lost (caller must not insert). For `tags`, live `plant_tags` rows are
+  /// re-pointed at the survivor first (see [_repointPlantTags]).
+  Future<bool> _resolveUniqueConflict(
+    EntityCodec codec,
+    String incomingId,
+    Hlc incomingHlc,
+    Map<String, Object?> sql,
+  ) async {
+    final List<(String, Object?)> key;
+    switch (codec.entity) {
+      case 'care_schedules':
+        key = [('plant_id', sql['plant_id']), ('type', sql['type'])];
+      case 'tags':
+        key = [('name', sql['name'])];
+      default:
+        return true;
+    }
+    if (key.any((k) => k.$2 == null)) return true;
+    final where = key.map((k) => '${k.$1} = ?').join(' AND ');
+    final existing = await db
+        .customSelect(
+          'SELECT * FROM ${codec.table.actualTableName} '
+          'WHERE tenant_id = ? AND deleted_at IS NULL AND ${codec.idColumn} != ? AND $where',
+          variables: [
+            Variable<String>(tenantId),
+            Variable<String>(incomingId),
+            for (final k in key) Variable<String>('${k.$2}'),
+          ],
+          readsFrom: {codec.table},
+        )
+        .getSingleOrNull();
+    if (existing == null) return true;
+    final existingId = existing.data[codec.idColumn] as String;
+    final existingHlc = _rowHlc(codec, existing.data) ?? const Hlc(0, 0, '');
+    if (incomingHlc > existingHlc) {
+      if (codec.entity == 'tags') await _repointPlantTags(loserId: existingId, survivorId: incomingId);
+      // The unique index is not partial, so a soft-deleted loser would still
+      // block the insert: emit its tombstone op (what other devices need)
+      // and drop the physical row.
+      await opLog.recordTombstone(entity: codec.entity, entityId: existingId);
+      await db.customUpdate(
+        'DELETE FROM ${codec.table.actualTableName} WHERE ${codec.idColumn} = ? AND tenant_id = ?',
+        variables: [Variable<String>(existingId), Variable<String>(tenantId)],
+        updates: {codec.table},
+        updateKind: UpdateKind.delete,
+      );
+      return true;
+    }
+    if (codec.entity == 'tags') await _repointPlantTags(loserId: incomingId, survivorId: existingId);
+    await opLog.recordTombstone(entity: codec.entity, entityId: incomingId);
+    return false;
+  }
+
+  /// Move live `plant_tags` rows off a losing tag onto the survivor, as
+  /// ordinary LOCAL field ops so every device converges. Where the plant
+  /// already carries the survivor, the loser's row is detached instead
+  /// (`removed_hlc`), so nothing keeps pointing at a deleted tag.
+  Future<void> _repointPlantTags({required String loserId, required String survivorId}) async {
+    final rows = await (db.select(db.plantTags)
+          ..where((r) => r.tenantId.equals(tenantId) & r.tagId.equals(loserId) & r.removedHlc.isNull()))
+        .get();
+    if (rows.isEmpty) return;
+    final alreadyOnSurvivor = {
+      for (final r in await (db.select(db.plantTags)
+            ..where((r) => r.tenantId.equals(tenantId) & r.tagId.equals(survivorId) & r.removedHlc.isNull()))
+          .get())
+        r.plantId,
+    };
+    for (final row in rows) {
+      if (alreadyOnSurvivor.contains(row.plantId)) {
+        final h = await opLog.recordFieldUpdate(
+            entity: 'plant_tags', entityId: row.id, field: 'removed_hlc', value: null);
+        await (db.update(db.plantTags)..where((r) => r.id.equals(row.id))).write(
+          PlantTagsCompanion(removedHlc: Value(h.encode()), deviceId: Value(clock.deviceId)),
+        );
+      } else {
+        final h = await opLog.recordFieldUpdate(
+            entity: 'plant_tags', entityId: row.id, field: 'tag_id', value: survivorId);
+        await (db.update(db.plantTags)..where((r) => r.id.equals(row.id))).write(
+          PlantTagsCompanion(
+            tagId: Value(survivorId),
+            addedHlc: Value(h.encode()),
+            deviceId: Value(clock.deviceId),
+          ),
+        );
+        alreadyOnSurvivor.add(row.plantId);
+      }
+    }
+  }
+
+  // --- row helpers -----------------------------------------------------------
+
+  Future<Map<String, Object?>?> _readRow(EntityCodec codec, String id) async {
+    final row = await db
+        .customSelect(
+          'SELECT * FROM ${codec.table.actualTableName} WHERE ${codec.idColumn} = ? AND tenant_id = ?',
+          variables: [Variable<String>(id), Variable<String>(tenantId)],
+          readsFrom: {codec.table},
+        )
+        .getSingleOrNull();
+    return row?.data;
+  }
+
+  Future<void> _update(EntityCodec codec, String id, Map<String, Object?> sql) async {
+    if (sql.isEmpty) return;
+    final idCol = codec.table.columnsByName[codec.idColumn]! as GeneratedColumn<String>;
+    final tenantCol = codec.table.columnsByName['tenant_id']! as GeneratedColumn<String>;
+    await (db.update(codec.table)..where((_) => idCol.equals(id) & tenantCol.equals(tenantId)))
+        .write(codec.insertable(sql));
+  }
+
+  bool _rowIsDeleted(EntityCodec codec, Map<String, Object?> row) =>
+      codec.isOrSet ? row['removed_hlc'] != null : row['deleted_at'] != null;
+
+  Hlc? _rowHlc(EntityCodec codec, Map<String, Object?> row) {
+    final raw = row[codec.hlcColumn];
+    if (raw is! String) return null;
+    try {
+      return Hlc.parse(raw);
+    } on FormatException {
+      return null;
+    }
+  }
+
+  /// Columns the applier manages itself rather than as LWW fields.
+  bool _isMetaColumn(EntityCodec codec, String c) =>
+      c == codec.idColumn || c == 'tenant_id' || c == codec.hlcColumn || c == 'device_id';
+
+  Map<String, Hlc> _fieldMaxHlcs(List<SyncOpRow> ops) {
+    final out = <String, Hlc>{};
+    for (final o in ops) {
+      final Hlc h;
+      try {
+        h = Hlc.parse(o.hlc);
+      } on FormatException {
+        continue;
+      }
+      final prev = out[o.field];
+      if (prev == null || h > prev) out[o.field] = h;
+    }
+    return out;
+  }
+
+  Hlc? _maxHlc(Hlc? a, Hlc? b) {
+    if (a == null) return b;
+    if (b == null) return a;
+    return a > b ? a : b;
+  }
+}
