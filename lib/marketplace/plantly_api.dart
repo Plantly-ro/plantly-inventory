@@ -91,6 +91,22 @@ class CreatePostResult {
   final List<String> uploadWarnings;
 }
 
+/// One server-side inventory collection (CLOUD-SYNC-CONTRACT §2.2).
+class CloudCollection {
+  const CloudCollection({required this.id, required this.name, required this.role, this.createdAt});
+  final String id;
+  final String name;
+  final String role;
+  final DateTime? createdAt;
+
+  factory CloudCollection.fromJson(Map<String, dynamic> m) => CloudCollection(
+        id: m['id'] as String? ?? '',
+        name: m['name'] as String? ?? '',
+        role: m['role'] as String? ?? 'owner',
+        createdAt: DateTime.tryParse(m['created_at'] as String? ?? ''),
+      );
+}
+
 /// Thin client over the marketplace REST API (CONTRACT §0/§1/§5). One
 /// method per endpoint we use; no caching, no retries — callers decide.
 class PlantlyApi {
@@ -113,11 +129,14 @@ class PlantlyApi {
   Uri _uri(String path, [Map<String, String>? query]) =>
       Uri.parse('${PlantlyHosts.apiBase(host)}$path').replace(queryParameters: query);
 
-  Map<String, String> _headers({String? token, bool json = false}) => {
+  Map<String, String> _headers({String? token, bool json = false, bool inventoryClient = false}) => {
         if (_sendUserAgent) 'User-Agent': PlantlyHosts.userAgent,
         'Accept': 'application/json',
         if (json) 'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
+        // Only on the cloud routes (§2.2) — a custom header forces a CORS
+        // preflight on web, so the marketplace-only calls keep the old set.
+        if (inventoryClient) 'X-Plantly-Client': PlantlyHosts.clientHeader,
       };
 
   /// `POST /auth/login` → token + user. 401 invalid credentials; 403 with
@@ -220,6 +239,31 @@ class PlantlyApi {
       id: id,
       uploadWarnings: warnings is List ? warnings.map((w) => '$w').toList() : const [],
     );
+  }
+
+  /// `GET /subscriptions/me` (CLOUD-SYNC-CONTRACT §1.2) — raw envelope; the
+  /// `entitlements.inventory_cloud` parsing lives in `cloud/entitlement.dart`.
+  Future<Map<String, dynamic>> getMySubscription(String token) async {
+    final res = await _send(() => _client.get(
+          _uri('/subscriptions/me'),
+          headers: _headers(token: token, inventoryClient: true),
+        ));
+    return _decodeObject(res);
+  }
+
+  /// `POST /inventory/collections/default` (§2.2) — the caller's default
+  /// collection, created on first call. Idempotent.
+  Future<CloudCollection> ensureDefaultCollection(String token) async {
+    final res = await _send(() => _client.post(
+          _uri('/inventory/collections/default'),
+          headers: _headers(token: token, inventoryClient: true),
+        ));
+    final body = _decodeObject(res);
+    final col = body['collection'];
+    if (col is! Map<String, dynamic> || (col['id'] as String? ?? '').isEmpty) {
+      throw PlantlyApiException(status: res.statusCode, message: 'collection reply has no id');
+    }
+    return CloudCollection.fromJson(col);
   }
 
   /// `POST /posts/{id}/sold` — owner-only, idempotent.

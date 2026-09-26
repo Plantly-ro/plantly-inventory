@@ -2349,4 +2349,235 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get spacePickerChooseTitle => 'Alege spațiul';
+
+  @override
+  String get cloudSectionTitle => 'Cloud';
+
+  @override
+  String get cloudScreenTitle => 'Cloud';
+
+  @override
+  String get cloudScreenIntro =>
+      'Plantele, pozele și istoricul de îngrijire sunt salvate în contul tău plantly.ro și ținute sincronizate pe orice dispozitiv pe care te conectezi. Nimic nu părăsește acest dispozitiv până nu îl conectezi.';
+
+  @override
+  String get cloudSignInLabel => 'Conectează-te la plantly.ro';
+
+  @override
+  String get cloudSignInPitch =>
+      'Fă backup plantelor tale și sincronizează-le între dispozitive';
+
+  @override
+  String get cloudNotIncludedLabel => 'Backup și sincronizare în cloud';
+
+  @override
+  String get cloudNotIncludedValue =>
+      'Inclus în Plantly Pro sau Plantly Inventory Cloud';
+
+  @override
+  String get cloudChecking => 'Se verifică abonamentul…';
+
+  @override
+  String get cloudSubscribeLabel => 'Abonează-te pe plantly.ro';
+
+  @override
+  String get cloudSubscribeValue => 'Deschide contul tău plantly.ro în browser';
+
+  @override
+  String get cloudRefreshStatusLabel => 'Reîmprospătează starea';
+
+  @override
+  String get cloudRefreshStatusValue => 'Verifică din nou abonamentul';
+
+  @override
+  String get cloudStatusLabel => 'Sincronizare cloud';
+
+  @override
+  String get cloudSettingUp => 'Se pregătește colecția ta în cloud…';
+
+  @override
+  String get cloudSetupFailed =>
+      'Nu s-a putut activa sincronizarea. Apasă pentru a reîncerca.';
+
+  @override
+  String get cloudSyncing => 'Se sincronizează…';
+
+  @override
+  String get cloudLastSyncNever => 'Încă nesincronizat';
+
+  @override
+  String get cloudLastSyncJustNow => 'Sincronizat chiar acum';
+
+  @override
+  String cloudLastSyncMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Sincronizat acum $count de minute',
+      few: 'Sincronizat acum $count minute',
+      one: 'Sincronizat acum un minut',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cloudLastSyncHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Sincronizat acum $count de ore',
+      few: 'Sincronizat acum $count ore',
+      one: 'Sincronizat acum o oră',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cloudLastSyncDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Sincronizat acum $count de zile',
+      few: 'Sincronizat acum $count zile',
+      one: 'Sincronizat acum o zi',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cloudPendingOps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count de modificări în așteptare',
+      few: '$count modificări în așteptare',
+      one: 'o modificare în așteptare',
+      zero: 'toate modificările încărcate',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cloudStorageUsed(String used, String quota) {
+    return '$used din $quota folosiți';
+  }
+
+  @override
+  String get cloudSyncNowLabel => 'Sincronizează acum';
+
+  @override
+  String get cloudSyncNowValue =>
+      'Încarcă modificările în așteptare și preia noutățile';
+
+  @override
+  String get cloudPlanLabel => 'Plan';
+
+  @override
+  String get cloudEntitlementSourcePro => 'Inclus în Plantly Pro';
+
+  @override
+  String get cloudEntitlementSourceCloud => 'Plantly Inventory Cloud';
+
+  @override
+  String cloudRenewsOn(String date) {
+    return 'se reînnoiește $date';
+  }
+
+  @override
+  String get cloudCollectionLabel => 'Colecție';
+
+  @override
+  String get cloudLastErrorLabel => 'Ultima eroare';
+
+  @override
+  String get cloudAccountLabel => 'Cont';
+
+  @override
+  String cloudAccountValue(String username) {
+    return 'Conectat ca $username · apasă pentru deconectare';
+  }
+
+  @override
+  String get cloudSignOutTitle => 'Te deconectezi de la plantly.ro?';
+
+  @override
+  String cloudSignOutBody(String username) {
+    return 'Sincronizarea se oprește până când $username se conectează din nou. Plantele rămân pe acest dispozitiv.';
+  }
+
+  @override
+  String get cloudSignOut => 'Deconectare';
+
+  @override
+  String get cloudUnlinkLabel => 'Deconectează acest dispozitiv';
+
+  @override
+  String get cloudUnlinkValue =>
+      'Oprește sincronizarea aici; datele locale și din cloud rămân';
+
+  @override
+  String get cloudUnlinkTitle => 'Deconectezi acest dispozitiv?';
+
+  @override
+  String get cloudUnlinkBody =>
+      'Sincronizarea se oprește pe acest dispozitiv. Nimic nu se șterge: plantele rămân aici, iar datele rămân în contul tău plantly.ro. Te poți conecta din nou oricând.';
+
+  @override
+  String get cloudUnlink => 'Deconectează';
+
+  @override
+  String get cloudUnlinked => 'Dispozitiv deconectat';
+
+  @override
+  String get cloudLoginGoogle => 'Continuă cu Google';
+
+  @override
+  String get cloudLoginFacebook => 'Continuă cu Facebook';
+
+  @override
+  String get cloudLoginOr => 'sau';
+
+  @override
+  String get cloudLoginOauthWaiting =>
+      'Finalizează conectarea în browser — continuăm automat aici.';
+
+  @override
+  String get cloudSyncOffHere =>
+      'Sincronizarea este oprită pe acest dispozitiv — apasă pentru a o porni';
+
+  @override
+  String cloudHeldByOther(String username) {
+    return 'Pe acest dispozitiv sunt plante sincronizate de $username.';
+  }
+
+  @override
+  String cloudMoveToMeLabel(String username) {
+    return 'Mută plantele de pe acest dispozitiv în cloud-ul lui $username';
+  }
+
+  @override
+  String cloudMoveToMeValue(String username) {
+    return 'Părăsesc colecția lui $username și se sincronizează în a ta';
+  }
+
+  @override
+  String get cloudMoveConfirmTitle => 'Muți plantele în cloud-ul tău?';
+
+  @override
+  String cloudMoveConfirmBody(String from, String to) {
+    return 'Tot ce e pe acest dispozitiv părăsește colecția lui $from și se încarcă în cea a lui $to. $from păstrează ce era deja sincronizat de pe alte dispozitive.';
+  }
+
+  @override
+  String get cloudMove => 'Mută';
+
+  @override
+  String cloudStartEmptyLabel(String username) {
+    return 'Începe de la zero pentru $username';
+  }
+
+  @override
+  String cloudStartEmptyValue(String username) {
+    return 'Plantele lui $username rămân ascunse pe acest dispozitiv; conectează-l din nou pe $username ca să le vezi';
+  }
 }

@@ -44,10 +44,38 @@ final sharedPreferencesProvider = FutureProvider<SharedPreferences>((_) {
   return SharedPreferences.getInstance();
 });
 
-/// Default tenant for the single-user Phase 1 app. PLAN.md reserves
-/// tenant_id for Phase 4 household sharing; every synced row needs a value
-/// now so the schema doesn't rewrite later.
+/// Tenant every row is born under until the device links a cloud
+/// collection (CLOUD-SYNC-CONTRACT §2.4). Linking rewrites `tenant_id` to
+/// the collection id in one transaction and flips [currentTenantIdProvider].
 const String kDefaultTenantId = 'local';
+
+/// SharedPreferences key holding the active tenant id. Survives an unlink:
+/// data keeps the collection id as its tenant, only the link is forgotten.
+const String kTenantIdPrefKey = 'plantly_tenant_id';
+
+/// Set when the user explicitly chose "Start empty" on an account switch:
+/// from then on a tenant with no rows is left empty instead of getting the
+/// demo plants (they asked for empty, not for a fresh install).
+const String kSkipSeedPrefKey = 'plantly_skip_seed';
+
+/// The tenant every repository / query scopes to. Seeded from prefs (else
+/// [kDefaultTenantId]); `CollectionLinkService.link()` sets it after the
+/// tenant migration commits. [appContextProvider] watches it, so a flip
+/// rebuilds the [OpLogWriter] and every repository provider downstream —
+/// callers must `ref.read(...RepositoryProvider)` at call time rather than
+/// hold a repository across the flip.
+final currentTenantIdProvider = StateProvider<String>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider).asData?.value;
+  return prefs?.getString(kTenantIdPrefKey) ?? kDefaultTenantId;
+});
+
+/// Device id + HLC clock, independent of the tenant so a link/unlink never
+/// resets the clock's monotonic state.
+final hlcClockProvider = FutureProvider<HlcClock>((ref) async {
+  final prefs = await ref.watch(sharedPreferencesProvider.future);
+  final deviceId = await DeviceId.load(prefs);
+  return HlcClock(deviceId: deviceId);
+});
 
 class AppContext {
   const AppContext({
@@ -60,15 +88,24 @@ class AppContext {
   final HlcClock clock;
   final OpLogWriter opLog;
   final String deviceId;
+
+  /// The tenant this context (and its [opLog]) writes under.
+  String get tenantId => opLog.tenantId;
 }
 
 final appContextProvider = FutureProvider<AppContext>((ref) async {
   final db = ref.watch(databaseProvider);
+  // Prefs first: `currentTenantIdProvider` reads them synchronously, so by
+  // the time we watch it the persisted tenant is in — never bootstrap (and
+  // seed) against a stale `'local'` when the data already moved.
   final prefs = await ref.watch(sharedPreferencesProvider.future);
-  final deviceId = await DeviceId.load(prefs);
-  final clock = HlcClock(deviceId: deviceId);
-  final opLog = OpLogWriter(db: db, clock: clock, tenantId: kDefaultTenantId);
-  await seedIfEmpty(db: db, opLog: opLog);
+  final clock = await ref.watch(hlcClockProvider.future);
+  final deviceId = clock.deviceId;
+  final tenantId = ref.watch(currentTenantIdProvider);
+  final opLog = OpLogWriter(db: db, clock: clock, tenantId: tenantId);
+  if (!(prefs.getBool(kSkipSeedPrefKey) ?? false)) {
+    await seedIfEmpty(db: db, opLog: opLog);
+  }
   // Startup only *reads* the permission state — it must never prompt. The
   // system dialog used to pop over the first onboarding page (and again
   // ahead of the onboarding "Reminders" step, which has its own Allow

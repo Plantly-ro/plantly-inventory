@@ -4051,6 +4051,336 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Choose a space'**
   String get spacePickerChooseTitle;
+
+  /// No description provided for @cloudSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud'**
+  String get cloudSectionTitle;
+
+  /// No description provided for @cloudScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud'**
+  String get cloudScreenTitle;
+
+  /// No description provided for @cloudScreenIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Your plants, photos and care history are backed up to your plantly.ro account and kept in sync on every device you sign in on. Nothing leaves this device until you link it.'**
+  String get cloudScreenIntro;
+
+  /// No description provided for @cloudSignInLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to plantly.ro'**
+  String get cloudSignInLabel;
+
+  /// No description provided for @cloudSignInPitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Back up your plants and sync them across devices'**
+  String get cloudSignInPitch;
+
+  /// No description provided for @cloudNotIncludedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud backup & sync'**
+  String get cloudNotIncludedLabel;
+
+  /// No description provided for @cloudNotIncludedValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Included with Plantly Pro or Plantly Inventory Cloud'**
+  String get cloudNotIncludedValue;
+
+  /// No description provided for @cloudChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking your subscription…'**
+  String get cloudChecking;
+
+  /// No description provided for @cloudSubscribeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe on plantly.ro'**
+  String get cloudSubscribeLabel;
+
+  /// No description provided for @cloudSubscribeValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens your plantly.ro account in the browser'**
+  String get cloudSubscribeValue;
+
+  /// No description provided for @cloudRefreshStatusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh status'**
+  String get cloudRefreshStatusLabel;
+
+  /// No description provided for @cloudRefreshStatusValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your subscription again'**
+  String get cloudRefreshStatusValue;
+
+  /// No description provided for @cloudStatusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud sync'**
+  String get cloudStatusLabel;
+
+  /// No description provided for @cloudSettingUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Setting up your cloud collection…'**
+  String get cloudSettingUp;
+
+  /// No description provided for @cloudSetupFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t set up cloud sync. Tap to retry.'**
+  String get cloudSetupFailed;
+
+  /// No description provided for @cloudSyncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing…'**
+  String get cloudSyncing;
+
+  /// No description provided for @cloudLastSyncNever.
+  ///
+  /// In en, this message translates to:
+  /// **'Not synced yet'**
+  String get cloudLastSyncNever;
+
+  /// No description provided for @cloudLastSyncJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced just now'**
+  String get cloudLastSyncJustNow;
+
+  /// No description provided for @cloudLastSyncMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Synced 1 min ago} other{Synced {count} min ago}}'**
+  String cloudLastSyncMinutes(int count);
+
+  /// No description provided for @cloudLastSyncHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Synced 1 hour ago} other{Synced {count} hours ago}}'**
+  String cloudLastSyncHours(int count);
+
+  /// No description provided for @cloudLastSyncDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Synced 1 day ago} other{Synced {count} days ago}}'**
+  String cloudLastSyncDays(int count);
+
+  /// No description provided for @cloudPendingOps.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{all changes uploaded} =1{1 change waiting} other{{count} changes waiting}}'**
+  String cloudPendingOps(int count);
+
+  /// No description provided for @cloudStorageUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'{used} of {quota} used'**
+  String cloudStorageUsed(String used, String quota);
+
+  /// No description provided for @cloudSyncNowLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync now'**
+  String get cloudSyncNowLabel;
+
+  /// No description provided for @cloudSyncNowValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload pending changes and fetch updates'**
+  String get cloudSyncNowValue;
+
+  /// No description provided for @cloudPlanLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan'**
+  String get cloudPlanLabel;
+
+  /// No description provided for @cloudEntitlementSourcePro.
+  ///
+  /// In en, this message translates to:
+  /// **'Included with Plantly Pro'**
+  String get cloudEntitlementSourcePro;
+
+  /// No description provided for @cloudEntitlementSourceCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Plantly Inventory Cloud'**
+  String get cloudEntitlementSourceCloud;
+
+  /// No description provided for @cloudRenewsOn.
+  ///
+  /// In en, this message translates to:
+  /// **'renews {date}'**
+  String cloudRenewsOn(String date);
+
+  /// No description provided for @cloudCollectionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Collection'**
+  String get cloudCollectionLabel;
+
+  /// No description provided for @cloudLastErrorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Last error'**
+  String get cloudLastErrorLabel;
+
+  /// No description provided for @cloudAccountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get cloudAccountLabel;
+
+  /// No description provided for @cloudAccountValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in as {username} · tap to sign out'**
+  String cloudAccountValue(String username);
+
+  /// No description provided for @cloudSignOutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out of plantly.ro?'**
+  String get cloudSignOutTitle;
+
+  /// No description provided for @cloudSignOutBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud sync pauses until {username} signs in again. Your plants stay on this device.'**
+  String cloudSignOutBody(String username);
+
+  /// No description provided for @cloudSignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get cloudSignOut;
+
+  /// No description provided for @cloudUnlinkLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlink this device'**
+  String get cloudUnlinkLabel;
+
+  /// No description provided for @cloudUnlinkValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop syncing here; keeps local and server data'**
+  String get cloudUnlinkValue;
+
+  /// No description provided for @cloudUnlinkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlink this device?'**
+  String get cloudUnlinkTitle;
+
+  /// No description provided for @cloudUnlinkBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync stops on this device. Nothing is deleted: your plants stay here and your data stays in your plantly.ro account. Sign in again any time to relink.'**
+  String get cloudUnlinkBody;
+
+  /// No description provided for @cloudUnlink.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlink'**
+  String get cloudUnlink;
+
+  /// No description provided for @cloudUnlinked.
+  ///
+  /// In en, this message translates to:
+  /// **'Device unlinked'**
+  String get cloudUnlinked;
+
+  /// No description provided for @cloudLoginGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Google'**
+  String get cloudLoginGoogle;
+
+  /// No description provided for @cloudLoginFacebook.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Facebook'**
+  String get cloudLoginFacebook;
+
+  /// No description provided for @cloudLoginOr.
+  ///
+  /// In en, this message translates to:
+  /// **'or'**
+  String get cloudLoginOr;
+
+  /// No description provided for @cloudLoginOauthWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish signing in in your browser — we\'ll pick it up here.'**
+  String get cloudLoginOauthWaiting;
+
+  /// No description provided for @cloudSyncOffHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync is off on this device — tap to turn it on'**
+  String get cloudSyncOffHere;
+
+  /// No description provided for @cloudHeldByOther.
+  ///
+  /// In en, this message translates to:
+  /// **'This device holds plants synced by {username}.'**
+  String cloudHeldByOther(String username);
+
+  /// No description provided for @cloudMoveToMeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Move this device\'s plants to {username}\'s cloud'**
+  String cloudMoveToMeLabel(String username);
+
+  /// No description provided for @cloudMoveToMeValue.
+  ///
+  /// In en, this message translates to:
+  /// **'They leave {username}\'s collection and sync to yours'**
+  String cloudMoveToMeValue(String username);
+
+  /// No description provided for @cloudMoveConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Move plants to your cloud?'**
+  String get cloudMoveConfirmTitle;
+
+  /// No description provided for @cloudMoveConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything on this device leaves {from}\'s collection and is uploaded to {to}\'s. {from} keeps what was already synced from other devices.'**
+  String cloudMoveConfirmBody(String from, String to);
+
+  /// No description provided for @cloudMove.
+  ///
+  /// In en, this message translates to:
+  /// **'Move'**
+  String get cloudMove;
+
+  /// No description provided for @cloudStartEmptyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Start empty for {username}'**
+  String cloudStartEmptyLabel(String username);
+
+  /// No description provided for @cloudStartEmptyValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{username}\'s plants stay hidden on this device; sign {username} in again to see them'**
+  String cloudStartEmptyValue(String username);
 }
 
 class _AppLocalizationsDelegate
