@@ -6,10 +6,34 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
 import 'package:plantly_inventory/data/repositories/care_event_repository.dart';
 import 'package:plantly_inventory/data/repositories/plant_repository.dart';
+import 'package:plantly_inventory/data/repositories/species_repository.dart';
 import 'package:plantly_inventory/sync/hlc.dart';
 import 'package:plantly_inventory/sync/op_log.dart';
+import 'package:plantly_inventory/data/repositories/care_schedule_repository.dart';
+import '../helpers/recording_reminder_sync.dart';
 
 void main() {
+  group('SpeciesRepository.byScientificName', () {
+    test('matches case-insensitively and tolerates duplicate rows differing by case', () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      final opLog = OpLogWriter(db: db, clock: HlcClock(deviceId: 'd'), tenantId: 'local');
+      final species = SpeciesRepository(db: db, opLog: opLog);
+      final a = await species.upsertByScientificName('Monstera deliciosa');
+      expect((await species.upsertByScientificName('MONSTERA DELICIOSA', commonName: 'Swiss cheese')).id, a.id);
+      expect((await species.byScientificName('  monstera Deliciosa '))!.id, a.id);
+      expect(await species.displayName(a.id), 'Monstera deliciosa');
+      expect(await species.displayName('free text'), 'free text');
+      // Two rows differing only in case (e.g. restored from an older backup)
+      // must not make the lookup throw.
+      await db.into(db.species).insert(SpeciesCompanion.insert(
+            id: 'dup', tenantId: 'local', scientificName: 'monstera deliciosa', commonNamesJson: '[]',
+            updatedHlc: 'z', deviceId: 'd',
+          ));
+      expect(await species.byScientificName('Monstera deliciosa'), isNotNull);
+    });
+  });
+
   late AppDatabase db;
   late HlcClock clock;
   late OpLogWriter opLog;
@@ -135,6 +159,51 @@ void main() {
         SyncOpsCompanion(pushedAt: Value(DateTime.now().millisecondsSinceEpoch)),
       );
       expect(await opLog.pendingCount(), 0);
+    });
+  });
+
+  group('PlantRepository — OS reminder re-sync (issue #13 follow-up)', () {
+    late RecordingReminderSync sync;
+    late PlantRepository synced;
+    late CareScheduleRepository schedules;
+
+    setUp(() {
+      sync = RecordingReminderSync(db: db);
+      synced = PlantRepository(db: db, opLog: opLog, reminderSync: sync);
+      schedules = CareScheduleRepository(db: db, opLog: opLog);
+    });
+
+    Future<PlantRow> plantWithSchedule(String nickname) async {
+      final p = await synced.create(nickname: nickname);
+      await schedules.upsert(plantId: p.id, type: 'water', baseIntervalDays: 7);
+      await sync.syncFromDatabase();
+      expect(sync.fake.calls, hasLength(1));
+      sync.calls = 0;
+      return p;
+    }
+
+    test('setNotificationsMuted re-syncs so the muted plant drops out immediately', () async {
+      final p = await plantWithSchedule('Muted');
+      await synced.setNotificationsMuted(p.id, true);
+      expect(sync.calls, 1);
+      expect(sync.fake.calls, isEmpty);
+      await synced.setNotificationsMuted(p.id, false);
+      expect(sync.calls, 2);
+      expect(sync.fake.calls, hasLength(1));
+    });
+
+    test('softDelete re-syncs so cascade-deleted schedules stop firing', () async {
+      final p = await plantWithSchedule('Gone');
+      await synced.softDelete(p.id);
+      expect(sync.calls, 1);
+      expect(sync.fake.calls, isEmpty);
+    });
+
+    test('duplicate re-syncs so the copied schedules are scheduled', () async {
+      final p = await plantWithSchedule('Original');
+      await synced.duplicate(p.id, nicknameOverride: 'Copy');
+      expect(sync.calls, 1);
+      expect(sync.fake.calls, hasLength(2));
     });
   });
 }

@@ -1,36 +1,28 @@
-import 'dart:io';
-
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+import 'package:flutter/painting.dart';
 import 'package:ulid/ulid.dart';
 
 import '../../sync/op_log.dart';
 import '../database/app_database.dart';
+import '../photo_blob_store.dart';
 
 /// Content-addressed photo store (PLAN.md §"Schema non-negotiables").
 ///
 /// Photos are keyed by SHA-256 of their raw bytes, not a random id, so
 /// importing the same image twice is a no-op and sync has a natural
-/// dedup key. On disk we use a 2-char shard (`$docs/photos/ab/<sha>.jpg`)
-/// so a hot directory never gets millions of siblings.
+/// dedup key. Bytes live in the platform [PhotoBlobStore] (sharded files
+/// on io, IndexedDB on web); this class owns the metadata row.
 class PhotoRepository {
   PhotoRepository({
     required this.db,
     required this.opLog,
-    Directory? rootOverride,
-  }) : _rootOverride = rootOverride;
+    required this.store,
+  });
 
   final AppDatabase db;
   final OpLogWriter opLog;
-  final Directory? _rootOverride;
-
-  Future<Directory> _rootDir() async {
-    if (_rootOverride != null) return _rootOverride;
-    final docs = await getApplicationDocumentsDirectory();
-    return Directory(p.join(docs.path, 'photos'));
-  }
+  final PhotoBlobStore store;
 
   /// Compute SHA-256 + write to the sharded store + insert a `photos` row.
   /// Idempotent: the same bytes always produce the same sha, and the
@@ -44,15 +36,7 @@ class PhotoRepository {
     int? takenAtMs,
   }) async {
     final shaHex = sha256.convert(bytes).toString();
-    final root = await _rootDir();
-    final shardDir = Directory(p.join(root.path, shaHex.substring(0, 2)));
-    if (!await shardDir.exists()) {
-      await shardDir.create(recursive: true);
-    }
-    final file = File(p.join(shardDir.path, '$shaHex.${_extension(mime)}'));
-    if (!await file.exists()) {
-      await file.writeAsBytes(bytes, flush: true);
-    }
+    final localPath = await store.write(sha: shaHex, mime: mime, bytes: bytes);
 
     await db.transaction(() async {
       final existing = await (db.select(db.photos)..where((t) => t.sha256.equals(shaHex))).getSingleOrNull();
@@ -68,7 +52,7 @@ class PhotoRepository {
           'width': width,
           'height': height,
           'taken_at': takenAtMs,
-          'local_path': file.path,
+          'local_path': localPath,
           'remote_state': 'local',
         },
       );
@@ -81,7 +65,7 @@ class PhotoRepository {
               width: Value(width),
               height: Value(height),
               takenAt: Value(takenAtMs),
-              localPath: Value(file.path),
+              localPath: Value(localPath),
               updatedHlc: hlc.encode(),
               deviceId: opLog.clock.deviceId,
             ),
@@ -95,17 +79,17 @@ class PhotoRepository {
     return (db.select(db.photos)..where((p) => p.sha256.equals(sha))).getSingleOrNull();
   }
 
-  String _extension(String mime) {
-    switch (mime) {
-      case 'image/png':
-        return 'png';
-      case 'image/webp':
-        return 'webp';
-      case 'image/heic':
-        return 'heic';
-      default:
-        return 'jpg';
-    }
+  /// Raw bytes for a stored photo row, or null if the blob is gone.
+  Future<Uint8List?> bytesFor(PhotoRow photo) {
+    return store.read(sha: photo.sha256, mime: photo.mime, localPath: photo.localPath);
+  }
+
+  /// Image for the widget tree — null when the row or its blob is missing,
+  /// so callers fall back to the gradient stub.
+  Future<ImageProvider?> imageFor(String sha) async {
+    final row = await byHash(sha);
+    if (row == null) return null;
+    return store.imageFor(sha: row.sha256, mime: row.mime, localPath: row.localPath);
   }
 }
 
@@ -188,6 +172,104 @@ class PlantPhotoRepository {
         .map(_resolveOrSet);
   }
 
+  /// Full live rows for a plant — lets the UI read `display_order` and
+  /// `caption` alongside the sha. Same OR-set rules as [watchAttached].
+  Stream<List<PlantPhotoRow>> watchAttachedRows(String plantId) {
+    return (db.select(db.plantPhotos)
+          ..where((r) => r.tenantId.equals(opLog.tenantId) & r.plantId.equals(plantId))
+          ..orderBy([
+            (r) => OrderingTerm(expression: r.displayOrder),
+            (r) => OrderingTerm(expression: r.addedHlc),
+          ]))
+        .watch()
+        .map(_resolveOrSetRows);
+  }
+
+  List<PlantPhotoRow> _resolveOrSetRows(List<PlantPhotoRow> rows) {
+    final grouped = <String, List<PlantPhotoRow>>{};
+    for (final r in rows) {
+      grouped.putIfAbsent('${r.plantId}/${r.photoSha}', () => []).add(r);
+    }
+    final result = <PlantPhotoRow>[];
+    for (final entry in grouped.entries) {
+      final live = entry.value.where((r) => r.removedHlc == null).toList();
+      if (live.isEmpty) continue;
+      final max = live.reduce((a, b) => a.addedHlc.compareTo(b.addedHlc) > 0 ? a : b);
+      final tombs = entry.value.where((r) => r.removedHlc != null).map((r) => r.removedHlc!).toList();
+      final maxTomb = tombs.isEmpty ? null : tombs.reduce((a, b) => a.compareTo(b) > 0 ? a : b);
+      if (maxTomb == null || max.addedHlc.compareTo(maxTomb) > 0) result.add(max);
+    }
+    result.sort((a, b) {
+      final c = a.displayOrder.compareTo(b.displayOrder);
+      return c != 0 ? c : a.addedHlc.compareTo(b.addedHlc);
+    });
+    return result;
+  }
+
+  /// Update the caption of a specific attachment.
+  Future<void> setCaption(String plantPhotoRowId, String? caption) async {
+    return db.transaction(() async {
+      final hlc = await opLog.recordFieldUpdate(
+        entity: 'plant_photos',
+        entityId: plantPhotoRowId,
+        field: 'caption',
+        value: caption,
+      );
+      await (db.update(db.plantPhotos)..where((r) => r.id.equals(plantPhotoRowId))).write(
+        PlantPhotosCompanion(
+          caption: Value(caption),
+          addedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+  }
+
+  /// Override the display-only "date added" for an attachment. Pass null to
+  /// fall back to the HLC physicalMs.
+  Future<void> setCapturedAt(String plantPhotoRowId, int? capturedAtMs) async {
+    return db.transaction(() async {
+      final hlc = await opLog.recordFieldUpdate(
+        entity: 'plant_photos',
+        entityId: plantPhotoRowId,
+        field: 'captured_at',
+        value: capturedAtMs,
+      );
+      await (db.update(db.plantPhotos)..where((r) => r.id.equals(plantPhotoRowId))).write(
+        PlantPhotosCompanion(
+          capturedAt: Value(capturedAtMs),
+          addedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+  }
+
+  /// Reorder a plant's attachments. Writes the supplied list's index as
+  /// `display_order` for each row so the UI's PageView picks up the new
+  /// sequence on its next rebuild.
+  Future<void> reorder(List<PlantPhotoRow> orderedRows) async {
+    return db.transaction(() async {
+      for (var i = 0; i < orderedRows.length; i++) {
+        final row = orderedRows[i];
+        if (row.displayOrder == i) continue;
+        final hlc = await opLog.recordFieldUpdate(
+          entity: 'plant_photos',
+          entityId: row.id,
+          field: 'display_order',
+          value: i,
+        );
+        await (db.update(db.plantPhotos)..where((r) => r.id.equals(row.id))).write(
+          PlantPhotosCompanion(
+            displayOrder: Value(i),
+            addedHlc: Value(hlc.encode()),
+            deviceId: Value(opLog.clock.deviceId),
+          ),
+        );
+      }
+    });
+  }
+
   Future<List<String>> currentAttached(String plantId) async {
     final rows = await (db.select(db.plantPhotos)
           ..where((r) => r.tenantId.equals(opLog.tenantId) & r.plantId.equals(plantId))
@@ -219,5 +301,134 @@ class PlantPhotoRepository {
       }
     }
     return result;
+  }
+}
+
+/// OR-set attachments for the `location_photos` table — mirror of
+/// `PlantPhotoRepository` but keyed on locationId. Separate so the two
+/// gallery surfaces can evolve independently.
+class LocationPhotoRepository {
+  LocationPhotoRepository({required this.db, required this.opLog});
+
+  final AppDatabase db;
+  final OpLogWriter opLog;
+
+  Future<void> attach(String locationId, String photoSha, {String? caption}) async {
+    return db.transaction(() async {
+      final id = Ulid().toString();
+      final hlc = await opLog.recordCreate(
+        entity: 'location_photos',
+        entityId: id,
+        value: {
+          'id': id,
+          'tenant_id': opLog.tenantId,
+          'location_id': locationId,
+          'photo_sha': photoSha,
+          'caption': caption,
+        },
+      );
+      await db.into(db.locationPhotos).insert(
+            LocationPhotosCompanion.insert(
+              id: id,
+              tenantId: opLog.tenantId,
+              locationId: locationId,
+              photoSha: photoSha,
+              caption: Value(caption),
+              addedHlc: hlc.encode(),
+              deviceId: opLog.clock.deviceId,
+            ),
+          );
+    });
+  }
+
+  Future<void> detach(String locationId, String photoSha) async {
+    return db.transaction(() async {
+      final hlc = await opLog.recordFieldUpdate(
+        entity: 'location_photos',
+        entityId: '$locationId/$photoSha',
+        field: 'removed_hlc',
+        value: null,
+      );
+      await (db.update(db.locationPhotos)
+            ..where((r) =>
+                r.tenantId.equals(opLog.tenantId) &
+                r.locationId.equals(locationId) &
+                r.photoSha.equals(photoSha) &
+                r.removedHlc.isNull()))
+          .write(
+        LocationPhotosCompanion(
+          removedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+  }
+
+  Future<void> setCaption(String rowId, String? caption) async {
+    return db.transaction(() async {
+      final hlc = await opLog.recordFieldUpdate(
+        entity: 'location_photos',
+        entityId: rowId,
+        field: 'caption',
+        value: caption,
+      );
+      await (db.update(db.locationPhotos)..where((r) => r.id.equals(rowId))).write(
+        LocationPhotosCompanion(
+          caption: Value(caption),
+          addedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+  }
+
+  Future<void> setCapturedAt(String rowId, int? capturedAtMs) async {
+    return db.transaction(() async {
+      final hlc = await opLog.recordFieldUpdate(
+        entity: 'location_photos',
+        entityId: rowId,
+        field: 'captured_at',
+        value: capturedAtMs,
+      );
+      await (db.update(db.locationPhotos)..where((r) => r.id.equals(rowId))).write(
+        LocationPhotosCompanion(
+          capturedAt: Value(capturedAtMs),
+          addedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+  }
+
+  Stream<List<LocationPhotoRow>> watchAttached(String locationId) {
+    return (db.select(db.locationPhotos)
+          ..where((r) => r.tenantId.equals(opLog.tenantId) & r.locationId.equals(locationId))
+          ..orderBy([
+            (r) => OrderingTerm(expression: r.displayOrder),
+            (r) => OrderingTerm(expression: r.addedHlc),
+          ]))
+        .watch()
+        .map(_resolveOrSet);
+  }
+
+  List<LocationPhotoRow> _resolveOrSet(List<LocationPhotoRow> rows) {
+    final grouped = <String, List<LocationPhotoRow>>{};
+    for (final r in rows) {
+      grouped.putIfAbsent('${r.locationId}/${r.photoSha}', () => []).add(r);
+    }
+    final out = <LocationPhotoRow>[];
+    for (final entry in grouped.entries) {
+      final live = entry.value.where((r) => r.removedHlc == null).toList();
+      if (live.isEmpty) continue;
+      final max = live.reduce((a, b) => a.addedHlc.compareTo(b.addedHlc) > 0 ? a : b);
+      final tombs = entry.value.where((r) => r.removedHlc != null).map((r) => r.removedHlc!).toList();
+      final maxTomb = tombs.isEmpty ? null : tombs.reduce((a, b) => a.compareTo(b) > 0 ? a : b);
+      if (maxTomb == null || max.addedHlc.compareTo(maxTomb) > 0) out.add(max);
+    }
+    out.sort((a, b) {
+      final c = a.displayOrder.compareTo(b.displayOrder);
+      return c != 0 ? c : a.addedHlc.compareTo(b.addedHlc);
+    });
+    return out;
   }
 }

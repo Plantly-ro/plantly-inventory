@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 abstract class PhotoPicker {
   Future<PickedPhoto?> pickFromGallery();
   Future<PickedPhoto?> pickFromCamera();
+  Future<List<PickedPhoto>> pickMultipleFromGallery();
 }
 
 class PickedPhoto {
@@ -34,6 +35,19 @@ class ImagePickerPhotoPicker implements PhotoPicker {
     if (xfile == null) return null;
     final bytes = await xfile.readAsBytes();
     return PickedPhoto(bytes: bytes, mime: xfile.mimeType ?? 'image/jpeg');
+  }
+
+  @override
+  Future<List<PickedPhoto>> pickMultipleFromGallery() async {
+    final xfiles = await _picker.pickMultiImage(maxWidth: 1600);
+    final out = <PickedPhoto>[];
+    for (final x in xfiles) {
+      out.add(PickedPhoto(
+        bytes: await x.readAsBytes(),
+        mime: x.mimeType ?? 'image/jpeg',
+      ));
+    }
+    return out;
   }
 }
 

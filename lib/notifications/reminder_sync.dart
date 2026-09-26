@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart';
 
 import '../data/database/app_database.dart';
@@ -15,26 +17,93 @@ class ReminderSync {
     required this.db,
     required this.notifications,
     required this.tenantId,
-  });
+    Set<String> Function()? mutedTypesSnapshot,
+    DateTime Function()? clock,
+    String Function(String type)? typeLabel,
+  })  : _mutedTypesSnapshot = mutedTypesSnapshot,
+        _typeLabel = typeLabel,
+        _clock = clock ?? DateTime.now;
 
   final AppDatabase db;
   final NotificationService notifications;
   final String tenantId;
 
+  /// Source of "now" for reminder windowing. Injectable so the record /
+  /// snooze re-sync path (which doesn't pass an explicit `now`) is
+  /// deterministic under test instead of reading the wall clock.
+  final DateTime Function() _clock;
+  /// Returns the current set of globally-muted care-type keys. Called
+  /// per sync so toggles in the Me screen take effect on the next write
+  /// without wiring a listener into this class.
+  final Set<String> Function()? _mutedTypesSnapshot;
+  /// Maps a care-type key to the notification-title text. Evaluated on
+  /// every run (not captured at construction) so the boot re-sync, pull-
+  /// to-refresh and every repository write all pick up the *current*
+  /// device locale and any care-type renames. Null = English fallback.
+  final String Function(String type)? _typeLabel;
+
+  // Single-flight + trailing run. Every repository mutation calls
+  // [syncFromDatabase]; a bulk mute/delete of N plants would otherwise do
+  // N full cancelAll+schedule rounds against the OS. While a run is in
+  // flight, later callers mark the state dirty and share ONE trailing
+  // run that starts after the current one finishes — so 20 overlapping
+  // calls cost at most 2 pipeline runs, and the trailing run always sees
+  // the newest rows.
+  Future<int>? _inflight;
+  Completer<int>? _trailing;
+  bool _dirty = false;
+  DateTime? _pendingNow;
+  Duration _pendingWindow = const Duration(days: 30);
+
   /// Rebuild the entire reminder set from the current schedule rows and
-  /// hand it to the platform plugin. Called on care-event record /
-  /// snooze / schedule edit — conservative but cheap.
+  /// hand it to the platform plugin. Called on every schedule-affecting
+  /// mutation — conservative but cheap, and coalesced (see above).
+  ///
+  /// Callers that arrive while a run is in flight get the future of the
+  /// trailing run, so `await syncFromDatabase()` always means "a rebuild
+  /// that observed my write has completed".
   Future<int> syncFromDatabase({
     DateTime? now,
     Duration window = const Duration(days: 30),
+  }) {
+    if (_inflight != null) {
+      _dirty = true;
+      _pendingNow = now;
+      _pendingWindow = window;
+      return (_trailing ??= Completer<int>()).future;
+    }
+    return _inflight = _drive(now, window);
+  }
+
+  Future<int> _drive(DateTime? now, Duration window) async {
+    try {
+      return await _runOnce(now: now, window: window);
+    } finally {
+      _inflight = null;
+      if (_dirty) {
+        _dirty = false;
+        final completer = _trailing!;
+        _trailing = null;
+        // The trailing run becomes the new in-flight run, so anything that
+        // arrives while it executes coalesces onto the next one.
+        final next = _inflight = _drive(_pendingNow, _pendingWindow);
+        next.then(completer.complete, onError: completer.completeError);
+      }
+    }
+  }
+
+  Future<int> _runOnce({
+    required DateTime? now,
+    required Duration window,
   }) async {
-    final nowUtc = (now ?? DateTime.now()).toUtc();
+    final nowUtc = (now ?? _clock()).toUtc();
     final schedules = await (db.select(db.careSchedules)
           ..where((s) =>
               s.tenantId.equals(tenantId) &
               s.deletedAt.isNull() &
               s.enabled.equals(true) &
-              s.nextDueAt.isNotNull()))
+              s.nextDueAt.isNotNull() &
+              s.notificationsMuted.equals(false)))
         .get();
     final plantRows = await (db.select(db.plants)
           ..where((p) => p.tenantId.equals(tenantId) & p.deletedAt.isNull()))
@@ -45,12 +114,32 @@ class ReminderSync {
     final plantsById = {for (final p in plantRows) p.id: p};
     final locationsById = {for (final l in locationRows) l.id: l};
 
+    final mutedTypes = _mutedTypesSnapshot?.call() ?? const <String>{};
+    // Drop schedules whose plant is muted, whose location is muted, or
+    // whose care-type is globally silenced.
+    final activeSchedules = [
+      for (final s in schedules)
+        if (!mutedTypes.contains(s.type) &&
+            !(plantsById[s.plantId]?.notificationsMuted ?? false) &&
+            !((plantsById[s.plantId]?.locationId != null &&
+                (locationsById[plantsById[s.plantId]!.locationId]?.notificationsMuted ?? false))))
+          s
+    ];
+
     final events = ReminderEngine.buildUpcoming(
-      schedules: schedules,
+      schedules: activeSchedules,
       plantsById: plantsById,
       locationsById: locationsById,
       now: nowUtc,
       window: window,
+      // Only future fire times reach the OS. Anything already overdue at
+      // sync time would otherwise be clamped to `now` and fire on the spot
+      // (flutter_local_notifications rejects past dates, and the service
+      // used to nudge them 1s ahead) — one notification per overdue plant
+      // the instant the permission is granted. Overdue rows still render
+      // in Home / Calendar, which read the schedule table directly.
+      includeOverdue: false,
+      typeLabel: _typeLabel,
     );
     await notifications.syncAll(events);
     return events.length;

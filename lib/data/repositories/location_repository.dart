@@ -1,16 +1,22 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:ulid/ulid.dart';
 
+import '../../notifications/reminder_sync.dart';
 import '../../sync/op_log.dart';
 import '../database/app_database.dart';
 
 /// CRUD for the hierarchical `locations` table. Locations form a tree via
 /// `parent_id`; children of null are top-level ("Home", "Balcony").
 class LocationRepository {
-  LocationRepository({required this.db, required this.opLog});
+  LocationRepository({required this.db, required this.opLog, this.reminderSync});
 
   final AppDatabase db;
   final OpLogWriter opLog;
+
+  /// Optional: re-synced after mute/delete since ReminderSync silences
+  /// every plant in a muted location. Null in seed/tests.
+  final ReminderSync? reminderSync;
 
   Stream<List<LocationRow>> watchAll() {
     return (db.select(db.locations)
@@ -81,8 +87,99 @@ class LocationRepository {
     });
   }
 
-  Future<void> softDelete(String id) async {
+  /// Full-row edit: covers every user-editable field in one transaction
+  /// so the op-log emits a coherent burst. Pass `null` to clear a field
+  /// (light / humidity / temp / notes can all be null-able).
+  Future<void> edit(
+    String id, {
+    required String name,
+    required String kind,
+    required String? parentId,
+    required bool isOutdoor,
+    required String? light,
+    required int? humidityMin,
+    required int? humidityMax,
+    required double? tempMinC,
+    required double? tempMaxC,
+    required String? notes,
+  }) async {
     return db.transaction(() async {
+      await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'name', value: name);
+      await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'kind', value: kind);
+      await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'parent_id', value: parentId);
+      await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'is_outdoor', value: isOutdoor);
+      await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'light', value: light);
+      await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'humidity_min', value: humidityMin);
+      await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'humidity_max', value: humidityMax);
+      await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'temp_min_c', value: tempMinC);
+      await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'temp_max_c', value: tempMaxC);
+      final hlc = await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'notes', value: notes);
+      await (db.update(db.locations)..where((l) => l.id.equals(id))).write(
+        LocationsCompanion(
+          name: Value(name),
+          kind: Value(kind),
+          parentId: Value(parentId),
+          isOutdoor: Value(isOutdoor),
+          light: Value(light),
+          humidityMin: Value(humidityMin),
+          humidityMax: Value(humidityMax),
+          tempMinC: Value(tempMinC),
+          tempMaxC: Value(tempMaxC),
+          notes: Value(notes),
+          updatedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+  }
+
+  /// Attach or clear the map-photo SHA — rendered as the backdrop on
+  /// `LocationDetailScreen` with plant pins overlaid.
+  Future<void> setMapPhoto(String id, String? sha) async {
+    return db.transaction(() async {
+      final hlc = await opLog.recordFieldUpdate(
+        entity: 'locations',
+        entityId: id,
+        field: 'map_photo_sha',
+        value: sha,
+      );
+      await (db.update(db.locations)..where((l) => l.id.equals(id))).write(
+        LocationsCompanion(
+          mapPhotoSha: Value(sha),
+          updatedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+  }
+
+  Stream<LocationRow?> watchById(String id) {
+    return (db.select(db.locations)..where((l) => l.id.equals(id))).watchSingleOrNull();
+  }
+
+  /// Toggle per-location notification mute — silences OS notifications
+  /// for every plant in this location.
+  Future<void> setNotificationsMuted(String id, bool muted) async {
+    await db.transaction(() async {
+      final hlc = await opLog.recordFieldUpdate(
+        entity: 'locations',
+        entityId: id,
+        field: 'notifications_muted',
+        value: muted,
+      );
+      await (db.update(db.locations)..where((l) => l.id.equals(id))).write(
+        LocationsCompanion(
+          notificationsMuted: Value(muted),
+          updatedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+    await _resync();
+  }
+
+  Future<void> softDelete(String id) async {
+    await db.transaction(() async {
       final hlc = await opLog.recordTombstone(entity: 'locations', entityId: id);
       await (db.update(db.locations)..where((l) => l.id.equals(id))).write(
         LocationsCompanion(
@@ -92,6 +189,16 @@ class LocationRepository {
         ),
       );
     });
+    await _resync();
+  }
+
+  /// Best-effort OS reminder rebuild after a committed mutation (issue #13).
+  Future<void> _resync() async {
+    try {
+      await reminderSync?.syncFromDatabase();
+    } catch (e) {
+      if (kDebugMode) debugPrint('reminder re-sync failed: $e');
+    }
   }
 }
 

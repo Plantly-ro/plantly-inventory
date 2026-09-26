@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/database/app_database.dart';
 import '../../sync/hlc.dart';
@@ -26,6 +27,13 @@ class BackupService {
   /// JSON blob. [secret] is the passphrase the user will also need to
   /// import this file — we never persist it.
   Future<String> export({required String secret}) async {
+    // Pull user preferences that live outside Drift so the round-trip is
+    // complete: custom care types, home-widget layout, theme mode.
+    final prefs = await SharedPreferences.getInstance();
+    final prefSnapshot = <String, Object?>{
+      for (final key in const ['plantly_care_types', 'plantly_layout', 'plantly_theme', 'plantly_plant_sort'])
+        if (prefs.containsKey(key)) key: prefs.get(key),
+    };
     final body = <String, Object?>{
       'format': 'plantly_inventory.backup',
       'version': currentFormatVersion,
@@ -39,6 +47,9 @@ class BackupService {
       'plant_tags': await _rows(db.plantTags),
       'care_events': await _rows(db.careEvents),
       'care_schedules': await _rows(db.careSchedules),
+      'inventory_transactions': await _rows(db.inventoryTransactions),
+      'location_photos': await _rows(db.locationPhotos),
+      'prefs': prefSnapshot,
     };
     final canonical = json.encode(body);
     final mac = _hmac(canonical, secret);
@@ -95,7 +106,40 @@ class BackupService {
       counts['plant_tags'] = await _restore(db.plantTags, payload['plant_tags'], opLog, 'plant_tags');
       counts['care_events'] = await _restore(db.careEvents, payload['care_events'], opLog, 'care_events');
       counts['care_schedules'] = await _restore(db.careSchedules, payload['care_schedules'], opLog, 'care_schedules');
+      counts['inventory_transactions'] = await _restore(
+        db.inventoryTransactions,
+        payload['inventory_transactions'],
+        opLog,
+        'inventory_transactions',
+      );
+      counts['location_photos'] = await _restore(
+        db.locationPhotos,
+        payload['location_photos'],
+        opLog,
+        'location_photos',
+      );
     });
+    // Replay the user preferences blob (custom care types / layout /
+    // theme / sort). Guards each value against the expected type so a
+    // broken backup can't crash the app on read.
+    final prefsBlob = payload['prefs'];
+    if (prefsBlob is Map<String, dynamic>) {
+      final prefs = await SharedPreferences.getInstance();
+      for (final entry in prefsBlob.entries) {
+        final v = entry.value;
+        if (v is String) {
+          await prefs.setString(entry.key, v);
+        } else if (v is int) {
+          await prefs.setInt(entry.key, v);
+        } else if (v is bool) {
+          await prefs.setBool(entry.key, v);
+        } else if (v is double) {
+          await prefs.setDouble(entry.key, v);
+        } else if (v is List) {
+          await prefs.setStringList(entry.key, v.whereType<String>().toList());
+        }
+      }
+    }
     return BackupImportResult(rowsImported: counts);
   }
 
@@ -168,6 +212,20 @@ class BackupService {
     if (v is String) return Variable<String>(v);
     // Fall back to JSON-encoded string for any other map/list.
     return Variable<String>(json.encode(v));
+  }
+
+  /// Bytes of an exported JSON document — always UTF-8.
+  static Uint8List encodeBlob(String blob) => Uint8List.fromList(utf8.encode(blob));
+
+  /// Inverse of [encodeBlob]. Backups written before 2026-09 went through
+  /// `String.codeUnits`, i.e. Latin-1 (and silently truncated anything
+  /// beyond it); those aren't valid UTF-8, so fall back to Latin-1 for them.
+  static String decodeBlob(List<int> bytes) {
+    try {
+      return utf8.decode(bytes);
+    } on FormatException {
+      return latin1.decode(bytes);
+    }
   }
 
   String _hmac(String canonical, String secret) {

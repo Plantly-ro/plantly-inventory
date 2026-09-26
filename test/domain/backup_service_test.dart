@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +8,7 @@ import 'package:plantly_inventory/data/repositories/plant_repository.dart';
 import 'package:plantly_inventory/domain/services/backup_service.dart';
 import 'package:plantly_inventory/sync/hlc.dart';
 import 'package:plantly_inventory/sync/op_log.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 const _secret = 'correct-horse-battery-staple';
 
@@ -23,6 +25,12 @@ Future<(AppDatabase, PlantRepository, OpLogWriter, BackupService)> _stack() asyn
 }
 
 void main() {
+  setUp(() {
+    // BackupService snapshots SharedPreferences into the payload; prime
+    // it empty so the plugin platform channel doesn't throw in tests.
+    SharedPreferences.setMockInitialValues({});
+  });
+
   test('export → import round-trips all plants', () async {
     final (db, plants, opLog, service) = await _stack();
     addTearDown(db.close);
@@ -128,5 +136,40 @@ void main() {
     await service.import(blob: blob, secret: _secret, opLog: opLog);
     final countAfter = (await plants.watchAll().first).length;
     expect(countAfter, countBefore);
+  });
+
+  group('blob bytes encoding', () {
+    test('Romanian diacritics survive the byte round-trip and still verify', () async {
+      final (db, plants, opLog, service) = await _stack();
+      addTearDown(db.close);
+      await plants.create(nickname: 'Ficus ș ț ă', notes: 'lângă fereastră');
+
+      final bytes = BackupService.encodeBlob(await service.export(secret: _secret));
+      // What the wire actually carries is UTF-8, not truncated code units.
+      expect(utf8.decode(bytes), contains('Ficus ș ț ă'));
+
+      final (db2, plants2, opLog2, service2) = await _stack();
+      addTearDown(db2.close);
+      await service2.import(blob: BackupService.decodeBlob(bytes), secret: _secret, opLog: opLog2);
+      final names = (await plants2.watchAll().first).map((p) => p.nickname);
+      expect(names, contains('Ficus ș ț ă'));
+    });
+
+    test('legacy Latin-1 (codeUnits) backups still import', () async {
+      final (db, plants, opLog, service) = await _stack();
+      addTearDown(db.close);
+      await plants.create(nickname: 'Café Fern', notes: 'naïve, señor');
+      final blob = await service.export(secret: _secret);
+      // Pre-2026-09 exports wrote `blob.codeUnits` into a Uint8List, i.e.
+      // Latin-1 for anything ≤ U+00FF. Such bytes are not valid UTF-8.
+      final legacy = Uint8List.fromList(blob.codeUnits);
+      expect(() => utf8.decode(legacy), throwsFormatException);
+
+      final (db2, plants2, opLog2, service2) = await _stack();
+      addTearDown(db2.close);
+      final r = await service2.import(blob: BackupService.decodeBlob(legacy), secret: _secret, opLog: opLog2);
+      expect(r.rowsImported['plants'], 1);
+      expect((await plants2.watchAll().first).single.nickname, 'Café Fern');
+    });
   });
 }

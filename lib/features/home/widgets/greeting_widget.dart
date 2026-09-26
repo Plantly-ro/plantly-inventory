@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+
+import '../../../data/user_prefs.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 import '../../../theme/tokens.dart';
 import 'widget_shell.dart';
 
-/// Port of `widgetRegistry.greeting.render` in
-/// `web/prototype/components/widgets.jsx`.
-class GreetingWidget extends StatelessWidget {
+/// Greeting header — shows today's date and a time-of-day-aware
+/// salutation. If the user has set a name in Me, we append it; otherwise
+/// the greeting is anonymous.
+class GreetingWidget extends ConsumerWidget {
   const GreetingWidget({
     super.key,
     required this.surface,
@@ -23,7 +28,13 @@ class GreetingWidget extends StatelessWidget {
   final VoidCallback? onRemove;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
+    final now = DateTime.now();
+    final date = _formatDate(now, Localizations.localeOf(context).toString());
+    final name = ref.watch(userPrefsProvider).userName;
+    final base = _timeOfDayGreeting(t, now.hour);
+    final greeting = (name != null && name.isNotEmpty) ? '$base, $name' : base;
     return WidgetShell(
       surface: surface,
       editing: editing,
@@ -42,14 +53,7 @@ class GreetingWidget extends StatelessWidget {
                 borderRadius: BorderRadius.circular(PlantlyTokens.radius3xl),
               ),
               alignment: Alignment.center,
-              child: Text(
-                'AM',
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 17,
-                  color: surface.green,
-                ),
-              ),
+              child: Icon(Icons.person_outline, color: surface.green),
             ),
             const SizedBox(width: PlantlyTokens.space3),
             Expanded(
@@ -57,7 +61,7 @@ class GreetingWidget extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Friday · April 18',
+                    date,
                     style: TextStyle(
                       fontSize: PlantlyTokens.textXs,
                       color: surface.muted,
@@ -65,8 +69,8 @@ class GreetingWidget extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'Good morning, Ana',
-                    style: GoogleFonts.plusJakartaSans(
+                    greeting,
+                    style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
                       fontSize: PlantlyTokens.text2xl,
                       fontWeight: FontWeight.w800,
                       color: surface.text,
@@ -76,36 +80,22 @@ class GreetingWidget extends StatelessWidget {
                 ],
               ),
             ),
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: surface.surface,
-                border: Border.all(color: surface.border),
-                borderRadius: BorderRadius.circular(PlantlyTokens.radius),
-              ),
-              child: Stack(
-                children: [
-                  Center(child: Icon(Icons.notifications_outlined, size: 18, color: surface.text)),
-                  Positioned(
-                    top: 6,
-                    right: 7,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: surface.terra,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: surface.surface, width: 2),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
     );
+  }
+
+  /// "Monday · January 5" (en) / "luni · 5 ianuarie" (ro) — weekday and
+  /// month names come from intl for the active locale.
+  String _formatDate(DateTime d, String locale) {
+    return '${DateFormat.EEEE(locale).format(d)} · ${DateFormat.MMMMd(locale).format(d)}';
+  }
+
+  String _timeOfDayGreeting(AppLocalizations t, int hour) {
+    if (hour < 5) return t.homeGreetingStillUp;
+    if (hour < 12) return t.homeGreetingMorning;
+    if (hour < 18) return t.homeGreetingAfternoon;
+    return t.homeGreetingEvening;
   }
 }

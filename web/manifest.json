@@ -1,11 +1,11 @@
 {
-    "name": "plantly_inventory",
-    "short_name": "plantly_inventory",
+    "name": "Plantly Inventory",
+    "short_name": "Plantly",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#3D7A5F",
+    "theme_color": "#3D7A5F",
+    "description": "Offline-first plant care tracker — collection, watering and care history, reminders calendar, plantly.ro export.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

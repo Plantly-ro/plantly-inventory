@@ -33,6 +33,7 @@ android/.gradle/
 android/app/release/
 android/local.properties
 android/key.properties
+android/upload.jks
 
 # iOS
 ios/Pods/
@@ -92,3 +93,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# CI-local Gradle home (GRADLE_USER_HOME in .gitlab-ci.yml)
+.gradle-home/
+
+# Local headless-browser QA artifacts (screenshots, smoke script scratch)
+.qa/

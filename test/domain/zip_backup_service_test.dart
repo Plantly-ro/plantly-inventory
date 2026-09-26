@@ -1,19 +1,26 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:archive/archive_io.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
+import 'package:plantly_inventory/data/photo_blob_store_io.dart';
 import 'package:plantly_inventory/data/repositories/photo_repository.dart';
 import 'package:plantly_inventory/data/repositories/plant_repository.dart';
 import 'package:plantly_inventory/domain/services/backup_service.dart';
 import 'package:plantly_inventory/domain/services/zip_backup_service.dart';
 import 'package:plantly_inventory/sync/hlc.dart';
 import 'package:plantly_inventory/sync/op_log.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Uint8List _bytes(String s) => Uint8List.fromList(s.codeUnits);
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   const secret = 'secret-passphrase';
 
   Future<
@@ -31,7 +38,8 @@ void main() {
     final clock = HlcClock(deviceId: 'test-device');
     final opLog = OpLogWriter(db: db, clock: clock, tenantId: 'tenant-local');
     final tmp = await Directory.systemTemp.createTemp('plantly-zip-');
-    final photos = PhotoRepository(db: db, opLog: opLog, rootOverride: tmp);
+    final store = IoPhotoBlobStore(root: tmp);
+    final photos = PhotoRepository(db: db, opLog: opLog, store: store);
     final json = BackupService(db: db);
     return (
       db: db,
@@ -39,7 +47,7 @@ void main() {
       plants: PlantRepository(db: db, opLog: opLog),
       photos: photos,
       joins: PlantPhotoRepository(db: db, opLog: opLog),
-      zip: ZipBackupService(db: db, backup: json),
+      zip: ZipBackupService(db: db, backup: json, photos: store),
       json: json,
       tmp: tmp,
     );
@@ -70,7 +78,6 @@ void main() {
       bytes: bytes,
       secret: secret,
       opLog: b.opLog,
-      photoStoreRoot: b.tmp,
     );
     expect(result.json.rowsImported['plants'], 1);
     expect(result.photosRestored, 1);
@@ -96,10 +103,56 @@ void main() {
         bytes: bytes,
         secret: 'wrong',
         opLog: a.opLog,
-        photoStoreRoot: a.tmp,
       ),
       throwsA(isA<BackupSignatureError>()),
     );
+  });
+
+  test('importZip rejects path-traversal entries outside the photo root', () async {
+    final a = await stack();
+    addTearDown(() async {
+      await a.db.close();
+      await a.tmp.delete(recursive: true);
+    });
+
+    // Produce a valid signed JSON document the importer will accept.
+    await a.plants.create(nickname: 'Monstera');
+    final legit = await a.zip.exportZip(secret: secret);
+    final legitArchive = ZipDecoder().decodeBytes(legit);
+    final jsonFile = legitArchive.files.firstWhere((f) => f.name == 'plantly.backup.json');
+
+    // Stitch a malicious archive: same JSON, plus a `photos/../../pwn` entry.
+    final malicious = Archive()
+      ..addFile(ArchiveFile.bytes(
+        'plantly.backup.json',
+        Uint8List.fromList(jsonFile.content as List<int>),
+      ))
+      ..addFile(ArchiveFile.bytes(
+        'photos/../../pwn.txt',
+        Uint8List.fromList('pwn'.codeUnits),
+      ));
+    final bytes = Uint8List.fromList(ZipEncoder().encode(malicious));
+
+    final b = await stack();
+    addTearDown(() async {
+      await b.db.close();
+      await b.tmp.delete(recursive: true);
+    });
+    final sibling = Directory('${b.tmp.path}/../pwn-target')..createSync();
+    addTearDown(() async {
+      if (sibling.existsSync()) await sibling.delete(recursive: true);
+    });
+
+    final r = await b.zip.importZip(
+      bytes: bytes,
+      secret: secret,
+      opLog: b.opLog,
+    );
+
+    expect(r.photosRestored, 0);
+    // The escape attempt must not have produced any file outside the root.
+    expect(File('${sibling.path}/pwn.txt').existsSync(), isFalse);
+    expect(File('${b.tmp.parent.path}/pwn.txt').existsSync(), isFalse);
   });
 
   test('export without photos still produces a valid zip', () async {
@@ -123,9 +176,40 @@ void main() {
       bytes: bytes,
       secret: secret,
       opLog: b.opLog,
-      photoStoreRoot: b.tmp,
     );
     expect(r.photosRestored, 0);
     expect(r.json.rowsImported['plants'], 1);
+  });
+
+  test('importZip drops photo entries whose bytes do not match the sha', () async {
+    final a = await stack();
+    addTearDown(() async {
+      await a.db.close();
+      await a.tmp.delete(recursive: true);
+    });
+    await a.plants.create(nickname: 'Monstera');
+    final legit = await a.zip.exportZip(secret: secret);
+    final jsonFile = ZipDecoder().decodeBytes(legit).files.firstWhere((f) => f.name == 'plantly.backup.json');
+
+    const fakeSha = 'ab' 'cd' 'ef0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab';
+    final forged = Archive()
+      ..addFile(ArchiveFile.bytes(
+        'plantly.backup.json',
+        Uint8List.fromList(jsonFile.content as List<int>),
+      ))
+      ..addFile(ArchiveFile.bytes('photos/ab/$fakeSha.jpg', Uint8List.fromList('junk'.codeUnits)));
+
+    final b = await stack();
+    addTearDown(() async {
+      await b.db.close();
+      await b.tmp.delete(recursive: true);
+    });
+    final r = await b.zip.importZip(
+      bytes: Uint8List.fromList(ZipEncoder().encode(forged)),
+      secret: secret,
+      opLog: b.opLog,
+    );
+    expect(r.photosRestored, 0);
+    expect(File('${b.tmp.path}/ab/$fakeSha.jpg').existsSync(), isFalse);
   });
 }

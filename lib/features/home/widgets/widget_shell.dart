@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/tokens.dart';
 
 /// Header + optional edit-mode controls for each home widget.
@@ -12,6 +12,7 @@ class WidgetShell extends StatelessWidget {
     this.accentLabel,
     this.accentColor,
     this.action,
+    this.onAction,
     this.editing = false,
     this.onMoveUp,
     this.onMoveDown,
@@ -25,6 +26,7 @@ class WidgetShell extends StatelessWidget {
   final String? accentLabel;
   final Color? accentColor;
   final String? action;
+  final VoidCallback? onAction;
   final bool editing;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
@@ -52,6 +54,7 @@ class WidgetShell extends StatelessWidget {
                   accentLabel: accentLabel,
                   accentColor: accentColor,
                   action: action,
+                  onAction: onAction,
                   editing: editing,
                   surface: surface,
                 ),
@@ -82,6 +85,7 @@ class _Header extends StatelessWidget {
     required this.accentLabel,
     required this.accentColor,
     required this.action,
+    required this.onAction,
     required this.editing,
     required this.surface,
   });
@@ -90,6 +94,7 @@ class _Header extends StatelessWidget {
   final String? accentLabel;
   final Color? accentColor;
   final String? action;
+  final VoidCallback? onAction;
   final bool editing;
   final PlantlySurface surface;
 
@@ -101,13 +106,19 @@ class _Header extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
-          Text(
-            title,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: surface.text,
-              letterSpacing: -0.01 * 16,
+          // Flexible + ellipsis: localized titles (e.g. "Activitate recentă")
+          // plus the uppercase action can outgrow narrow phones.
+          Flexible(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: surface.text,
+                letterSpacing: -0.01 * 16,
+              ),
             ),
           ),
           if (accentLabel != null) ...[
@@ -123,13 +134,20 @@ class _Header extends StatelessWidget {
           ],
           const Spacer(),
           if (action != null && !editing)
-            Text(
-              action!.toUpperCase(),
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: surface.green,
-                letterSpacing: 0.08 * 11,
+            InkWell(
+              onTap: onAction,
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                child: Text(
+                  action!.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: surface.green,
+                    letterSpacing: 0.08 * 11,
+                  ),
+                ),
               ),
             ),
         ],
@@ -172,7 +190,7 @@ class _EditControls extends StatelessWidget {
             constraints: const BoxConstraints(),
             onPressed: onMoveUp,
             icon: Icon(Icons.expand_less, color: surface.muted),
-            tooltip: 'Move up',
+            tooltip: AppLocalizations.of(context).homeMoveUp,
           ),
           IconButton(
             iconSize: 14,
@@ -180,7 +198,7 @@ class _EditControls extends StatelessWidget {
             constraints: const BoxConstraints(),
             onPressed: onMoveDown,
             icon: Icon(Icons.expand_more, color: surface.muted),
-            tooltip: 'Move down',
+            tooltip: AppLocalizations.of(context).homeMoveDown,
           ),
           Container(width: 1, height: 14, color: surface.border),
           TextButton(
@@ -192,7 +210,7 @@ class _EditControls extends StatelessWidget {
               textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
             ),
             onPressed: onRemove,
-            child: const Text('Remove'),
+            child: Text(AppLocalizations.of(context).commonRemove),
           ),
         ],
       ),

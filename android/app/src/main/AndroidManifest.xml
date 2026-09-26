@@ -1,12 +1,28 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- flutter_local_notifications 18.x needs these to deliver reminders:
+         - POST_NOTIFICATIONS: runtime permission on Android 13+ (the plugin
+           declares it too, spelled out here for clarity).
+         - RECEIVE_BOOT_COMPLETED: so the boot receiver below can re-arm
+           scheduled notifications after a reboot. -->
+    <!-- Declared explicitly (not just inherited from sentry-android's manifest
+         merge): needed for handoff/marketplace links and the opt-in reports.
+         Fonts are bundled, so no first-launch network request. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- Android Auto Backup / device-to-device transfer OFF: the store listing
+         promises "everything stays on your device", and a partial cloud copy of
+         the Drift DB without its photo blobs would restore a broken collection.
+         Users move phones via Me -> Backup (encrypted JSON / ZIP with photos). -->
     <application
-        android:label="plantly_inventory"
+        android:label="Plantly Inventory"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop"
+            android:launchMode="singleTask"
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
@@ -20,11 +36,61 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- Deep links are handled by app_links (lib/handoff/incoming_links_io.dart:
+                 getInitialLink + uriLinkStream). Without this flag the Flutter embedder
+                 ALSO forwards every VIEW intent to the Navigator as a named route, which
+                 has no matching route and throws "Null check operator used on a null
+                 value" in _WidgetsAppState._onUnknownRoute once per handoff link. -->
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="false" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- PlantlyExport handoff (apps-integration CONTRACT §4a).
+                 1) custom scheme — works without any server-side verification. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="plantlyinventory" android:host="import"/>
+            </intent-filter>
+            <!-- 2) App Link for the marketplace's universal import page — bare and
+                 locale-prefixed (/ro, /en) paths. autoVerify passes once
+                 plantly.ro/.well-known/assetlinks.json lists this package's signing
+                 SHA-256 (CONTRACT §6d, not in Increment 1). Until then: on Android 12+
+                 an unverified https filter is NOT offered for these URLs at all (the
+                 browser opens them; the page's "Open in Plantly Inventory" button uses
+                 the custom scheme above); on Android 11 and older it appears in the
+                 app-chooser. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="plantly.ro"/>
+                <data android:path="/app/inventory/import"/>
+                <data android:path="/ro/app/inventory/import"/>
+                <data android:path="/en/app/inventory/import"/>
+            </intent-filter>
         </activity>
+        <!-- flutter_local_notifications receivers. Without these the plugin
+             calls AlarmManager with a PendingIntent targeting a class that
+             isn't registered, and the broadcast is silently dropped when
+             the alarm fires. -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

@@ -1,4 +1,4 @@
-package ro.plantly.inventory.plantly_inventory
+package ro.plantly.inventory
 
 import io.flutter.embedding.android.FlutterActivity
 

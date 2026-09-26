@@ -110,4 +110,35 @@ class CareEventRepository {
       );
     });
   }
+
+  /// Edit a previously-logged care event. Useful when the user typed
+  /// the wrong dose or mis-remembered the date.
+  Future<void> edit(
+    String id, {
+    required String type,
+    required int doneAt,
+    required String? notes,
+    required String? dose,
+    required String? product,
+  }) async {
+    return db.transaction(() async {
+      await opLog.recordFieldUpdate(entity: 'care_events', entityId: id, field: 'type', value: type);
+      await opLog.recordFieldUpdate(entity: 'care_events', entityId: id, field: 'done_at', value: doneAt);
+      await opLog.recordFieldUpdate(entity: 'care_events', entityId: id, field: 'notes', value: notes);
+      await opLog.recordFieldUpdate(entity: 'care_events', entityId: id, field: 'dose', value: dose);
+      final hlc = await opLog.recordFieldUpdate(
+        entity: 'care_events', entityId: id, field: 'product', value: product);
+      await (db.update(db.careEvents)..where((e) => e.id.equals(id))).write(
+        CareEventsCompanion(
+          type: Value(type),
+          doneAt: Value(doneAt),
+          notes: Value(notes),
+          dose: Value(dose),
+          product: Value(product),
+          updatedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+  }
 }

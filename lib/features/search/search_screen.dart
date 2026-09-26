@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/mock_plants.dart';
 import '../../data/providers.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../shared/plant_thumb.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
@@ -61,6 +61,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Widget build(BuildContext context) {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final t = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: surface.bg,
@@ -75,9 +76,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           controller: _controller,
           autofocus: true,
           onChanged: _onChanged,
-          style: GoogleFonts.inter(fontSize: 16, color: surface.text),
+          style: TextStyle(fontFamily: PlantlyFonts.inter, fontSize: 16, color: surface.text),
           decoration: InputDecoration(
-            hintText: 'Search plants, notes…',
+            hintText: t.search,
             hintStyle: TextStyle(color: surface.muted),
             border: InputBorder.none,
           ),
@@ -105,6 +106,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     final row = _results[i];
                     final mock = MockPlants.byId(row.id);
                     return _ResultRow(
+                      plantId: row.id,
                       plant: mock,
                       label: row.nickname,
                       notes: row.notes,
@@ -128,13 +130,12 @@ class _Empty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Text(
-          query.trim().isEmpty
-              ? 'Type to search your plants by nickname or notes.'
-              : 'No plants match "$query".',
+          query.trim().isEmpty ? t.searchEmptyStart : t.searchNoMatch(query),
           textAlign: TextAlign.center,
           style: TextStyle(color: surface.muted, fontSize: 14),
         ),
@@ -145,6 +146,7 @@ class _Empty extends StatelessWidget {
 
 class _ResultRow extends StatelessWidget {
   const _ResultRow({
+    required this.plantId,
     required this.plant,
     required this.label,
     required this.notes,
@@ -152,6 +154,7 @@ class _ResultRow extends StatelessWidget {
     required this.onTap,
   });
 
+  final String plantId;
   final MockPlant plant;
   final String label;
   final String? notes;
@@ -174,9 +177,11 @@ class _ResultRow extends StatelessWidget {
           ),
           child: Row(
             children: [
-              ClipRRect(
+              PlantPhotoThumb(
+                plantId: plantId,
+                fallback: plant,
+                size: 44,
                 borderRadius: BorderRadius.circular(PlantlyTokens.radius),
-                child: PlantThumb(plant: plant, size: 44),
               ),
               const SizedBox(width: 12),
               Expanded(

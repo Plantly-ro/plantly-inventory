@@ -5,6 +5,8 @@ import 'package:plantly_inventory/data/repositories/inventory_transaction_reposi
 import 'package:plantly_inventory/data/repositories/plant_repository.dart';
 import 'package:plantly_inventory/sync/hlc.dart';
 import 'package:plantly_inventory/sync/op_log.dart';
+import 'package:plantly_inventory/data/repositories/care_schedule_repository.dart';
+import '../helpers/recording_reminder_sync.dart';
 
 void main() {
   late AppDatabase db;
@@ -71,6 +73,27 @@ void main() {
 
       final childView = await inventory.watchForPlant(r1.child.id).first;
       expect(childView.map((t) => t.id), [r1.tx.id]);
+    });
+  });
+
+  group('InventoryTransactionRepository — OS reminder re-sync (issue #13 follow-up)', () {
+    test('markDead cascade-deletes schedules and re-syncs so their alarms are cancelled', () async {
+      final sync = RecordingReminderSync(db: db);
+      final synced = InventoryTransactionRepository(
+        db: db,
+        opLog: opLog,
+        plants: PlantsTableForWrites(db: db, opLog: opLog),
+        reminderSync: sync,
+      );
+      final p = await plants.create(nickname: 'Doomed');
+      await CareScheduleRepository(db: db, opLog: opLog).upsert(plantId: p.id, type: 'water', baseIntervalDays: 7);
+      await sync.syncFromDatabase();
+      expect(sync.fake.calls, hasLength(1));
+      sync.calls = 0;
+
+      await synced.markDead(plantId: p.id);
+      expect(sync.calls, 1);
+      expect(sync.fake.calls, isEmpty);
     });
   });
 }

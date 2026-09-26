@@ -1,0 +1,38 @@
+Plantly Inventory is a calm, offline-first companion for houseplant owners. Track every plant, never miss a watering, and keep your whole collection organized — all on your device, with no account and no ads.
+
+🌿 EVERYTHING STAYS ON YOUR DEVICE
+Plantly Inventory works fully offline. Your plants, photos and notes live on your phone. No sign-up, no cloud required, and zero telemetry by default — crash and usage reporting are strictly opt-in.
+
+💧 SMART CARE REMINDERS
+• Per-plant reminders for watering, fertilizing, misting, repotting, pruning and more
+• Adaptive scheduling that learns your real care rhythm
+• Fixed, adaptive or one-off recurrence
+• Quiet hours (do-not-disturb) and per-plant / per-type muting
+• Reliable local notifications that survive a reboot
+
+🗓️ A CALENDAR THAT MAKES SENSE
+Week, month and year views show what's due and what you've already done. Log care in the past or future, snooze a task, or tick it off with a swipe.
+
+🪴 ORGANIZE YOUR COLLECTION
+• Group plants into Spaces — rooms, shelves, balconies, outdoor beds
+• Add a room photo and drop pins to map exactly where each plant lives
+• Tags, full-text search (including by tag) and flexible sorting
+• Filter by status, location or tag
+
+📸 PHOTOS & HISTORY
+• Attach several photos per plant, reorder and caption them
+• Automatic thumbnails and compression to save space
+• A complete care timeline for every plant, with per-plant statistics
+
+🌱 MORE THAN A TRACKER
+• Record propagation, gifting, selling or loss with a simple inventory ledger
+• Create custom care types with your own colors and intervals
+• Beautiful light and dark themes
+
+🔒 BACKUP & CONTROL
+• One-tap encrypted JSON or ZIP-with-photos backup
+• CSV and iCal (.ics) export
+• Import to restore or move to a new phone
+• Available in English and Romanian
+
+Plantly Inventory is free and privacy-respecting. Plant a little order in your life. 🌿

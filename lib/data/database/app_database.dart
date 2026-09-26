@@ -39,6 +39,15 @@ class Locations extends Table {
   BoolColumn get isOutdoor => boolean().named('is_outdoor').withDefault(const Constant(false))();
   RealColumn get lat => real().nullable()();
   RealColumn get lon => real().nullable()();
+  TextColumn get notes => text().nullable()();
+  /// SHA-256 of a user-supplied image used as a "room layout" map for
+  /// positioning plant pins. Lives in the same content-addressed
+  /// `photos` store as plant photos — share the infrastructure.
+  TextColumn get mapPhotoSha => text().named('map_photo_sha').nullable()();
+  /// If true, every schedule whose plant sits in this location stops
+  /// firing OS notifications. Does not affect the in-app reminder UI.
+  BoolColumn get notificationsMuted =>
+      boolean().named('notifications_muted').withDefault(const Constant(false))();
   TextColumn get updatedHlc => text().named('updated_hlc')();
   IntColumn get deletedAt => integer().named('deleted_at').nullable()();
   TextColumn get deviceId => text().named('device_id')();
@@ -54,6 +63,16 @@ class Plants extends Table {
   TextColumn get nickname => text()();
   TextColumn get speciesId => text().named('species_id').nullable()();
   TextColumn get locationId => text().named('location_id').nullable()();
+  /// Pin coordinates on the current location's `map_photo_sha`, stored
+  /// as fractions 0..1 relative to the map image so the pin stays put
+  /// if the user re-exports the map at a different resolution. Null
+  /// when the plant isn't placed.
+  RealColumn get pinX => real().named('pin_x').nullable()();
+  RealColumn get pinY => real().named('pin_y').nullable()();
+  /// Per-plant notification mute (applies to every schedule for this
+  /// plant). Users can also mute per-schedule — see `care_schedules`.
+  BoolColumn get notificationsMuted =>
+      boolean().named('notifications_muted').withDefault(const Constant(false))();
   TextColumn get status => text()();
   IntColumn get acquiredAt => integer().named('acquired_at').nullable()();
   TextColumn get source => text().nullable()();
@@ -96,6 +115,35 @@ class PlantPhotos extends Table {
   TextColumn get tenantId => text().named('tenant_id')();
   TextColumn get plantId => text().named('plant_id')();
   TextColumn get photoSha => text().named('photo_sha')();
+  /// Optional free-form annotation for this attachment — e.g. "yellow
+  /// leaf Apr 18". Stored per-attachment, not per-SHA, so the same
+  /// photo attached to two plants can carry different captions.
+  TextColumn get caption => text().nullable()();
+  /// User-visible "date this photo was taken/added" — display-only metadata
+  /// distinct from [addedHlc] (which is load-bearing for OR-set merge).
+  /// Nullable; when null, the UI falls back to the physicalMs component of
+  /// [addedHlc]. Editing this does not perturb CRDT ordering.
+  IntColumn get capturedAt => integer().named('captured_at').nullable()();
+  IntColumn get displayOrder => integer().named('display_order').withDefault(const Constant(0))();
+  TextColumn get addedHlc => text().named('added_hlc')();
+  TextColumn get removedHlc => text().named('removed_hlc').nullable()();
+  TextColumn get deviceId => text().named('device_id')();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Photo attachments for a location (room layout, ambient shots,
+/// before/after comparisons). Same OR-set semantics as `plant_photos`;
+/// separate table so the two features evolve independently.
+@DataClassName('LocationPhotoRow')
+class LocationPhotos extends Table {
+  TextColumn get id => text()();
+  TextColumn get tenantId => text().named('tenant_id')();
+  TextColumn get locationId => text().named('location_id')();
+  TextColumn get photoSha => text().named('photo_sha')();
+  TextColumn get caption => text().nullable()();
+  IntColumn get capturedAt => integer().named('captured_at').nullable()();
   IntColumn get displayOrder => integer().named('display_order').withDefault(const Constant(0))();
   TextColumn get addedHlc => text().named('added_hlc')();
   TextColumn get removedHlc => text().named('removed_hlc').nullable()();
@@ -165,6 +213,18 @@ class CareSchedules extends Table {
   IntColumn get snoozeCount => integer().named('snooze_count').withDefault(const Constant(0))();
   TextColumn get recentEventsJson => text().named('recent_events_json').withDefault(const Constant('[]'))();
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+  /// How the schedule advances after a care event:
+  ///   'after_completion' — `next_due_at = doneAt + currentIntervalDays`
+  ///   'fixed'            — `next_due_at = anchor + N × interval` for
+  ///                        smallest N making next_due_at > doneAt
+  ///   'once'             — disable the schedule after the first event
+  TextColumn get recurrenceMode =>
+      text().named('recurrence_mode').withDefault(const Constant('after_completion'))();
+  /// Suppresses OS notifications for just this schedule (e.g. mute the
+  /// weekly fertilize reminder but keep the daily mist reminder firing).
+  /// The schedule still shows up on Home / Calendar / Upcoming Care.
+  BoolColumn get notificationsMuted =>
+      boolean().named('notifications_muted').withDefault(const Constant(false))();
   TextColumn get updatedHlc => text().named('updated_hlc')();
   IntColumn get deletedAt => integer().named('deleted_at').nullable()();
   TextColumn get deviceId => text().named('device_id')();
@@ -222,6 +282,7 @@ class SyncOps extends Table {
   Plants,
   Photos,
   PlantPhotos,
+  LocationPhotos,
   Tags,
   PlantTags,
   CareEvents,
@@ -230,11 +291,22 @@ class SyncOps extends Table {
   SyncOps,
 ])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(driftDatabase(name: 'plantly_inventory'));
+  /// io: sqlite file in the app's data dir. Web: sqlite3.wasm + the drift
+  /// worker committed under `web/` (see tool/fetch_web_sqlite.sh), persisted
+  /// to OPFS when the page is cross-origin isolated, IndexedDB otherwise.
+  /// `driftDatabase` throws synchronously on web without these options.
+  AppDatabase()
+      : super(driftDatabase(
+          name: 'plantly_inventory',
+          web: DriftWebOptions(
+            sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+            driftWorker: Uri.parse('drift_worker.js'),
+          ),
+        ));
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -249,6 +321,29 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 3) {
             await m.createTable(inventoryTransactions);
+          }
+          if (from < 4) {
+            await m.addColumn(careSchedules, careSchedules.recurrenceMode);
+          }
+          if (from < 5) {
+            // Location expansion + pins + per-row mute flags.
+            await m.addColumn(locations, locations.notes);
+            await m.addColumn(locations, locations.mapPhotoSha);
+            await m.addColumn(locations, locations.notificationsMuted);
+            await m.addColumn(plants, plants.pinX);
+            await m.addColumn(plants, plants.pinY);
+            await m.addColumn(plants, plants.notificationsMuted);
+            await m.addColumn(careSchedules, careSchedules.notificationsMuted);
+          }
+          if (from < 6) {
+            // Photo annotations + location photo gallery.
+            await m.addColumn(plantPhotos, plantPhotos.caption);
+            await m.createTable(locationPhotos);
+          }
+          if (from < 7) {
+            // User-editable capture date per photo attachment.
+            await m.addColumn(plantPhotos, plantPhotos.capturedAt);
+            await m.addColumn(locationPhotos, locationPhotos.capturedAt);
           }
         },
       );

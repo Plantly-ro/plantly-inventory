@@ -4,6 +4,9 @@ import 'package:plantly_inventory/data/database/app_database.dart';
 import 'package:plantly_inventory/data/repositories/location_repository.dart';
 import 'package:plantly_inventory/sync/hlc.dart';
 import 'package:plantly_inventory/sync/op_log.dart';
+import 'package:plantly_inventory/data/repositories/care_schedule_repository.dart';
+import 'package:plantly_inventory/data/repositories/plant_repository.dart';
+import '../helpers/recording_reminder_sync.dart';
 
 void main() {
   late AppDatabase db;
@@ -72,6 +75,37 @@ void main() {
       // Home is still a root — the orphan branch (ghost shelf under deleted
       // parent) is pruned, but home remains visible.
       expect(tree.map((n) => n.row.id), contains(home.id));
+    });
+  });
+
+  group('LocationRepository — OS reminder re-sync (issue #13 follow-up)', () {
+    late RecordingReminderSync sync;
+    late LocationRepository synced;
+    late LocationRow loc;
+
+    setUp(() async {
+      final clock = HlcClock(deviceId: 'test-device');
+      final opLog = OpLogWriter(db: db, clock: clock, tenantId: 'tenant-local');
+      sync = RecordingReminderSync(db: db);
+      synced = LocationRepository(db: db, opLog: opLog, reminderSync: sync);
+      loc = await synced.create(name: 'Balcony', kind: 'room');
+      final plants = PlantRepository(db: db, opLog: opLog);
+      final p = await plants.create(nickname: 'Basil', locationId: loc.id);
+      await CareScheduleRepository(db: db, opLog: opLog).upsert(plantId: p.id, type: 'water', baseIntervalDays: 3);
+      await sync.syncFromDatabase();
+      expect(sync.fake.calls, hasLength(1));
+      sync.calls = 0;
+    });
+
+    test('setNotificationsMuted re-syncs so every plant in the space goes quiet', () async {
+      await synced.setNotificationsMuted(loc.id, true);
+      expect(sync.calls, 1);
+      expect(sync.fake.calls, isEmpty);
+    });
+
+    test('softDelete re-syncs', () async {
+      await synced.softDelete(loc.id);
+      expect(sync.calls, 1);
     });
   });
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:ulid/ulid.dart';
 
 import '../../domain/services/adaptive_schedule.dart';
@@ -60,52 +61,65 @@ class CareScheduleRepository {
 
   /// Create a schedule with a base interval. `next_due_at` is computed
   /// from [firstDueAt] (defaults to "now + base_interval_days").
+  /// [recurrenceMode] — `after_completion` (default — re-schedule from
+  /// the moment the user marks the event done), `fixed` (keeps the
+  /// original cadence regardless of when the user logs the event), or
+  /// `once` (disable the schedule after one event).
   Future<CareScheduleRow> upsert({
     required String plantId,
     required String type,
     required double baseIntervalDays,
     DateTime? firstDueAt,
+    String recurrenceMode = 'after_completion',
   }) async {
     final existing = await forPlantAndType(plantId, type);
-    if (existing != null) return existing;
-    return db.transaction(() async {
-      final id = Ulid().toString();
-      final firstDue = firstDueAt ??
-          DateTime.now().toUtc().add(Duration(
-                milliseconds: (baseIntervalDays * 86400 * 1000).round(),
-              ));
-      final value = {
-        'id': id,
-        'tenant_id': opLog.tenantId,
-        'plant_id': plantId,
-        'type': type,
-        'base_interval_days': baseIntervalDays,
-        'current_interval_days': baseIntervalDays,
-        'next_due_at': firstDue.millisecondsSinceEpoch,
-        'enabled': 1,
-        'recent_events_json': '[]',
-        'snooze_count': 0,
-      };
-      final hlc = await opLog.recordCreate(
-        entity: 'care_schedules',
-        entityId: id,
-        value: value,
-      );
-      await db.into(db.careSchedules).insert(
-            CareSchedulesCompanion.insert(
-              id: id,
-              tenantId: opLog.tenantId,
-              plantId: plantId,
-              type: type,
-              baseIntervalDays: baseIntervalDays,
-              currentIntervalDays: baseIntervalDays,
-              nextDueAt: Value(firstDue.millisecondsSinceEpoch),
-              updatedHlc: hlc.encode(),
-              deviceId: opLog.clock.deviceId,
-            ),
+    final row = existing ??
+        await db.transaction<CareScheduleRow>(() async {
+          final id = Ulid().toString();
+          final firstDue = firstDueAt ??
+              DateTime.now().toUtc().add(Duration(
+                    milliseconds: (baseIntervalDays * 86400 * 1000).round(),
+                  ));
+          final value = {
+            'id': id,
+            'tenant_id': opLog.tenantId,
+            'plant_id': plantId,
+            'type': type,
+            'base_interval_days': baseIntervalDays,
+            'current_interval_days': baseIntervalDays,
+            'next_due_at': firstDue.millisecondsSinceEpoch,
+            'enabled': 1,
+            'recent_events_json': '[]',
+            'snooze_count': 0,
+            'recurrence_mode': recurrenceMode,
+          };
+          final hlc = await opLog.recordCreate(
+            entity: 'care_schedules',
+            entityId: id,
+            value: value,
           );
-      return (await forPlantAndType(plantId, type))!;
-    });
+          await db.into(db.careSchedules).insert(
+                CareSchedulesCompanion.insert(
+                  id: id,
+                  tenantId: opLog.tenantId,
+                  plantId: plantId,
+                  type: type,
+                  baseIntervalDays: baseIntervalDays,
+                  currentIntervalDays: baseIntervalDays,
+                  nextDueAt: Value(firstDue.millisecondsSinceEpoch),
+                  recurrenceMode: Value(recurrenceMode),
+                  updatedHlc: hlc.encode(),
+                  deviceId: opLog.clock.deviceId,
+                ),
+              );
+          return (await forPlantAndType(plantId, type))!;
+        });
+    // Register the alarm now, not on the next pull-to-refresh: this is the
+    // Add-reminder → Save path and it used to be the only mutator that
+    // never re-synced (issue #13). Also runs on the idempotent branch so a
+    // caller can rely on "upsert ⇒ OS reminders are current".
+    await _resync();
+    return row;
   }
 
   /// Called by CareEventRepository after recording an event. Appends the
@@ -148,9 +162,42 @@ class CareScheduleRepository {
         consecutiveHighSnoozeCycles: s.snoozeCount,
       );
 
-      final nextDue = doneAt.add(Duration(
-        milliseconds: (decision.nextIntervalDays * 86400 * 1000).round(),
-      ));
+      // Branch on recurrence mode. `after_completion` is the existing
+      // behaviour (adaptive-interval-from-now). `fixed` preserves the
+      // original cadence anchored on the first-due timestamp. `once`
+      // disables the schedule after the event lands.
+      int? nextDueAtMs;
+      bool stillEnabled = s.enabled;
+      double intervalDaysForPersist = decision.nextIntervalDays;
+      switch (s.recurrenceMode) {
+        case 'once':
+          nextDueAtMs = null;
+          stillEnabled = false;
+          intervalDaysForPersist = s.currentIntervalDays;
+          break;
+        case 'fixed':
+          // The schedule's original next_due_at is the anchor; advance
+          // by whole-interval steps until we land strictly after doneAt.
+          final intervalMs = (s.currentIntervalDays * 86400 * 1000).round();
+          if (intervalMs <= 0) {
+            nextDueAtMs = null;
+            stillEnabled = false;
+          } else {
+            var next = s.nextDueAt ?? nowMs;
+            while (next <= nowMs) {
+              next += intervalMs;
+            }
+            nextDueAtMs = next;
+            intervalDaysForPersist = s.currentIntervalDays; // no adaptation
+          }
+          break;
+        case 'after_completion':
+        default:
+          nextDueAtMs = doneAt.add(Duration(
+            milliseconds: (decision.nextIntervalDays * 86400 * 1000).round(),
+          )).millisecondsSinceEpoch;
+          break;
+      }
 
       final hlc = await opLog.recordFieldUpdate(
         entity: 'care_schedules',
@@ -158,25 +205,117 @@ class CareScheduleRepository {
         field: '@applyCareEvent',
         value: {
           'last_done_at': nowMs,
-          'current_interval_days': decision.nextIntervalDays,
-          'next_due_at': nextDue.millisecondsSinceEpoch,
+          'current_interval_days': intervalDaysForPersist,
+          'next_due_at': nextDueAtMs,
           'snooze_count': decision.consecutiveHighSnoozeCycles,
           'recent_events_json': _encodeWindow(updatedWindow),
+          'enabled': stillEnabled ? 1 : 0,
         },
       );
 
       await (db.update(db.careSchedules)..where((row) => row.id.equals(s.id))).write(
         CareSchedulesCompanion(
           lastDoneAt: Value(nowMs),
-          currentIntervalDays: Value(decision.nextIntervalDays),
-          nextDueAt: Value(nextDue.millisecondsSinceEpoch),
+          currentIntervalDays: Value(intervalDaysForPersist),
+          nextDueAt: Value(nextDueAtMs),
           snoozeCount: Value(decision.consecutiveHighSnoozeCycles),
           recentEventsJson: Value(_encodeWindow(updatedWindow)),
+          enabled: Value(stillEnabled),
           updatedHlc: Value(hlc.encode()),
           deviceId: Value(opLog.clock.deviceId),
         ),
       );
     });
+  }
+
+  /// In-place edit of an existing schedule. Updates interval, recurrence
+  /// mode, and next_due_at atomically so the adaptive algorithm picks
+  /// up the new baseline on the next care event.
+  Future<void> edit(
+    String scheduleId, {
+    required double baseIntervalDays,
+    required String recurrenceMode,
+    required DateTime nextDueAt,
+  }) async {
+    await db.transaction(() async {
+      await opLog.recordFieldUpdate(
+        entity: 'care_schedules',
+        entityId: scheduleId,
+        field: 'base_interval_days',
+        value: baseIntervalDays,
+      );
+      await opLog.recordFieldUpdate(
+        entity: 'care_schedules',
+        entityId: scheduleId,
+        field: 'current_interval_days',
+        value: baseIntervalDays,
+      );
+      await opLog.recordFieldUpdate(
+        entity: 'care_schedules',
+        entityId: scheduleId,
+        field: 'recurrence_mode',
+        value: recurrenceMode,
+      );
+      final hlc = await opLog.recordFieldUpdate(
+        entity: 'care_schedules',
+        entityId: scheduleId,
+        field: 'next_due_at',
+        value: nextDueAt.millisecondsSinceEpoch,
+      );
+      await (db.update(db.careSchedules)..where((r) => r.id.equals(scheduleId))).write(
+        CareSchedulesCompanion(
+          baseIntervalDays: Value(baseIntervalDays),
+          // Reset the adaptive window — a manual edit is an authoritative
+          // signal from the user that overrides past snooze/early data.
+          currentIntervalDays: Value(baseIntervalDays),
+          recurrenceMode: Value(recurrenceMode),
+          nextDueAt: Value(nextDueAt.millisecondsSinceEpoch),
+          enabled: const Value(true),
+          snoozeCount: const Value(0),
+          recentEventsJson: const Value('[]'),
+          updatedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+    await _resync();
+  }
+
+  /// Remove a schedule entirely (tombstone). For one-off reminders the
+  /// "once" recurrence mode handles auto-disable; this is the explicit
+  /// user-pulled-the-plug path.
+  Future<void> softDelete(String scheduleId) async {
+    await db.transaction(() async {
+      final hlc = await opLog.recordTombstone(entity: 'care_schedules', entityId: scheduleId);
+      await (db.update(db.careSchedules)..where((r) => r.id.equals(scheduleId))).write(
+        CareSchedulesCompanion(
+          deletedAt: Value(DateTime.now().toUtc().millisecondsSinceEpoch),
+          updatedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+    await _resync();
+  }
+
+  /// Toggle per-schedule notification mute. ReminderSync reads this.
+  Future<void> setNotificationsMuted(String scheduleId, bool muted) async {
+    await db.transaction(() async {
+      final hlc = await opLog.recordFieldUpdate(
+        entity: 'care_schedules',
+        entityId: scheduleId,
+        field: 'notifications_muted',
+        value: muted,
+      );
+      await (db.update(db.careSchedules)..where((r) => r.id.equals(scheduleId))).write(
+        CareSchedulesCompanion(
+          notificationsMuted: Value(muted),
+          updatedHlc: Value(hlc.encode()),
+          deviceId: Value(opLog.clock.deviceId),
+        ),
+      );
+    });
+    await _resync();
   }
 
   Future<void> snooze(String scheduleId, {Duration by = const Duration(days: 1)}) async {
@@ -199,10 +338,16 @@ class CareScheduleRepository {
         ),
       );
     });
+    await _resync();
+  }
+
+  /// Rebuild the OS reminder set after a committed schedule mutation.
+  /// Best-effort: a notification-plugin failure must never fail the write.
+  Future<void> _resync() async {
     try {
       await reminderSync?.syncFromDatabase();
-    } catch (_) {
-      // Notification re-sync is best-effort.
+    } catch (e) {
+      if (kDebugMode) debugPrint('reminder re-sync failed: $e');
     }
   }
 

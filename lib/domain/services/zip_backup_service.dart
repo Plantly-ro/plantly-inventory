@@ -1,9 +1,10 @@
-import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:archive/archive_io.dart';
+import 'package:archive/archive.dart';
+import 'package:crypto/crypto.dart';
 
 import '../../data/database/app_database.dart';
+import '../../data/photo_blob_store.dart';
 import '../../sync/op_log.dart';
 import 'backup_service.dart';
 
@@ -16,42 +17,41 @@ import 'backup_service.dart';
 ///     already value-addressed, no filename conflicts are possible.
 ///
 /// Import verifies the signed JSON against [secret] and optionally rehydrates
-/// photo bytes from the archive into the on-disk photo store.
+/// photo bytes from the archive into the photo store.
 class ZipBackupService {
-  ZipBackupService({required this.db, required this.backup});
+  ZipBackupService({required this.db, required this.backup, required this.photos});
 
   final AppDatabase db;
   final BackupService backup;
+  final PhotoBlobStore photos;
+
+  /// Archive entry layout: `photos/<shard>/<sha>.<ext>`. Anything else
+  /// under `photos/` is ignored on import — the entry name is untrusted.
+  static final _photoEntry = RegExp(r'^photos/([0-9a-f]{2})/([0-9a-f]{64})\.([a-z0-9]+)$');
 
   /// Build the zip archive. [photoBytesFor] lets callers provide raw
-  /// bytes — by default we read from each photo's `local_path`.
+  /// bytes — by default we read from the photo store.
   Future<Uint8List> exportZip({
     required String secret,
     Future<Uint8List?> Function(PhotoRow photo)? photoBytesFor,
   }) async {
     final jsonBlob = await backup.export(secret: secret);
-    final photos = await (db.select(db.photos)
+    final photoRows = await (db.select(db.photos)
           ..where((p) => p.deletedAt.isNull()))
         .get();
 
     final archive = Archive()
       ..addFile(ArchiveFile.bytes(
         'plantly.backup.json',
-        Uint8List.fromList(jsonBlob.codeUnits),
+        BackupService.encodeBlob(jsonBlob),
       ));
 
-    for (final photo in photos) {
-      Uint8List? bytes;
-      if (photoBytesFor != null) {
-        bytes = await photoBytesFor(photo);
-      } else if (photo.localPath != null) {
-        final f = File(photo.localPath!);
-        if (await f.exists()) {
-          bytes = await f.readAsBytes();
-        }
-      }
+    for (final photo in photoRows) {
+      final bytes = photoBytesFor != null
+          ? await photoBytesFor(photo)
+          : await photos.read(sha: photo.sha256, mime: photo.mime, localPath: photo.localPath);
       if (bytes == null) continue;
-      final ext = _extFor(photo.mime);
+      final ext = PhotoBlobStore.extensionFor(photo.mime);
       final shard = photo.sha256.substring(0, 2);
       archive.addFile(ArchiveFile.bytes(
         'photos/$shard/${photo.sha256}.$ext',
@@ -64,30 +64,37 @@ class ZipBackupService {
   }
 
   /// Restore from a zip. Mirrors [BackupService.import] for the JSON
-  /// document, then writes any photo bytes found in `photos/**` to
-  /// `[photoStoreRoot]/<shard>/<sha>.ext` — the same layout the live
-  /// [PhotoRepository] uses.
+  /// document, then writes any photo bytes found in `photos/**` into the
+  /// photo store under their content hash.
   Future<ZipImportResult> importZip({
     required Uint8List bytes,
     required String secret,
     required OpLogWriter opLog,
-    required Directory photoStoreRoot,
   }) async {
     final decoded = ZipDecoder().decodeBytes(bytes);
     final jsonFile = decoded.files.firstWhere(
       (f) => f.name == 'plantly.backup.json',
       orElse: () => throw const ZipBackupFormatError('Missing plantly.backup.json'),
     );
-    final jsonBlob = String.fromCharCodes(jsonFile.content as List<int>);
+    final jsonBlob = BackupService.decodeBlob(jsonFile.content as List<int>);
     final jsonResult = await backup.import(blob: jsonBlob, secret: secret, opLog: opLog);
 
     var photoCount = 0;
     for (final f in decoded.files) {
-      if (!f.name.startsWith('photos/')) continue;
       if (f.isDirectory) continue;
-      final file = File('${photoStoreRoot.path}/${f.name.substring('photos/'.length)}');
-      await file.parent.create(recursive: true);
-      await file.writeAsBytes(f.content as List<int>, flush: true);
+      // The store only ever writes under the content hash, so a hostile
+      // entry name (`photos/../../x`) can't escape; names that don't parse
+      // — or whose bytes don't hash to the claimed sha — are dropped.
+      final m = _photoEntry.firstMatch(f.name);
+      if (m == null || m.group(2)!.substring(0, 2) != m.group(1)) continue;
+      final sha = m.group(2)!;
+      final content = Uint8List.fromList(f.content as List<int>);
+      if (sha256.convert(content).toString() != sha) continue;
+      await photos.write(
+        sha: sha,
+        mime: PhotoBlobStore.mimeForExtension(m.group(3)!),
+        bytes: content,
+      );
       photoCount++;
     }
 
@@ -97,18 +104,6 @@ class ZipBackupService {
     );
   }
 
-  String _extFor(String mime) {
-    switch (mime) {
-      case 'image/png':
-        return 'png';
-      case 'image/webp':
-        return 'webp';
-      case 'image/heic':
-        return 'heic';
-      default:
-        return 'jpg';
-    }
-  }
 }
 
 class ZipImportResult {
