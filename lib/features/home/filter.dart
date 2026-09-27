@@ -30,12 +30,25 @@ final activeLocationFilterProvider = StateProvider<String?>((_) => null);
 /// tag restriction. Uses the tag's id (not name).
 final activeTagFilterProvider = StateProvider<String?>((_) => null);
 
+/// Free-text filter from the desktop dashboard's inline search. Matched
+/// case-insensitively against nickname and species; whitespace-only = off.
+final plantQueryProvider = StateProvider<String>((_) => '');
+
+/// True when [plant] matches [query] (already lower-cased and trimmed).
+bool plantMatchesQuery(PlantRow plant, String query) {
+  if (query.isEmpty) return true;
+  if (plant.nickname.toLowerCase().contains(query)) return true;
+  final species = plant.speciesId;
+  return species != null && species.toLowerCase().contains(query);
+}
+
 /// Plants matching every active filter. Intentionally a derived
 /// provider so GridWidget can just watch the output.
 final filteredPlantsProvider = Provider<AsyncValue<List<PlantRow>>>((ref) {
   final filter = ref.watch(activeFilterProvider);
   final locationId = ref.watch(activeLocationFilterProvider);
   final tagId = ref.watch(activeTagFilterProvider);
+  final query = ref.watch(plantQueryProvider).trim().toLowerCase();
   final plants = ref.watch(plantsStreamProvider);
   final schedules = ref.watch(dueBeforeEodProvider);
   // Plant ids carrying the selected tag — null when no tag filter.
@@ -55,6 +68,9 @@ final filteredPlantsProvider = Provider<AsyncValue<List<PlantRow>>>((ref) {
       }
       if (tagPlantIds != null) {
         applied = applied.where((p) => tagPlantIds.contains(p.id));
+      }
+      if (query.isNotEmpty) {
+        applied = applied.where((p) => plantMatchesQuery(p, query));
       }
       if (filter != PlantFilter.all) {
         return schedules.when(

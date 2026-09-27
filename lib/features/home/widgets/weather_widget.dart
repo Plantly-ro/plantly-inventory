@@ -13,6 +13,7 @@ class WeatherWidget extends StatelessWidget {
     super.key,
     required this.surface,
     this.editing = false,
+    this.padInner = true,
     this.onMoveUp,
     this.onMoveDown,
     this.onRemove,
@@ -20,6 +21,7 @@ class WeatherWidget extends StatelessWidget {
 
   final PlantlySurface surface;
   final bool editing;
+  final bool padInner;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
   final VoidCallback? onRemove;
@@ -47,6 +49,7 @@ class WeatherWidget extends StatelessWidget {
     return WidgetShell(
       surface: surface,
       editing: editing,
+      padInner: padInner,
       onMoveUp: onMoveUp,
       onMoveDown: onMoveDown,
       onRemove: onRemove,

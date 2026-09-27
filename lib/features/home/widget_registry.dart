@@ -41,11 +41,13 @@ class WidgetRegistry {
   static final Map<String, WidgetEntry> entries = {
     'greeting': WidgetEntry(
       key: 'greeting',
+      desktopSpan: 12,
       label: (t) => t.homeWidgetGreeting,
       icon: Icons.person_outline,
       render: (p) => GreetingWidget(
         surface: p.surface,
         editing: p.editing,
+        padInner: p.padInner,
         onMoveUp: p.onMoveUp,
         onMoveDown: p.onMoveDown,
         onRemove: p.onRemove,
@@ -53,11 +55,13 @@ class WidgetRegistry {
     ),
     'stats': WidgetEntry(
       key: 'stats',
+      desktopSpan: 12,
       label: (t) => t.homeWidgetStats,
       icon: Icons.eco_outlined,
       render: (p) => StatsWidget(
         surface: p.surface,
         editing: p.editing,
+        padInner: p.padInner,
         onMoveUp: p.onMoveUp,
         onMoveDown: p.onMoveDown,
         onRemove: p.onRemove,
@@ -65,6 +69,7 @@ class WidgetRegistry {
     ),
     'weather': WidgetEntry(
       key: 'weather',
+      desktopSpan: 6,
       // The key stays `weather` for layout-serialisation compatibility;
       // the widget now shows a rotating care tip until a real weather
       // provider lands in Phase 2.
@@ -73,6 +78,7 @@ class WidgetRegistry {
       render: (p) => WeatherWidget(
         surface: p.surface,
         editing: p.editing,
+        padInner: p.padInner,
         onMoveUp: p.onMoveUp,
         onMoveDown: p.onMoveDown,
         onRemove: p.onRemove,
@@ -80,11 +86,13 @@ class WidgetRegistry {
     ),
     'overdue': WidgetEntry(
       key: 'overdue',
+      desktopSpan: 6,
       label: (t) => t.homeWidgetOverdue,
       icon: Icons.water_drop_outlined,
       render: (p) => OverdueWidget(
         surface: p.surface,
         editing: p.editing,
+        padInner: p.padInner,
         onMoveUp: p.onMoveUp,
         onMoveDown: p.onMoveDown,
         onRemove: p.onRemove,
@@ -94,11 +102,13 @@ class WidgetRegistry {
     ),
     'today': WidgetEntry(
       key: 'today',
+      desktopSpan: 6,
       label: (t) => t.homeWidgetToday,
       icon: Icons.check,
       render: (p) => TodayWidget(
         surface: p.surface,
         editing: p.editing,
+        padInner: p.padInner,
         onMoveUp: p.onMoveUp,
         onMoveDown: p.onMoveDown,
         onRemove: p.onRemove,
@@ -108,11 +118,13 @@ class WidgetRegistry {
     ),
     'grid': WidgetEntry(
       key: 'grid',
+      desktopSpan: 12,
       label: (t) => t.homeWidgetGrid,
       icon: Icons.home_outlined,
       render: (p) => GridWidget(
         surface: p.surface,
         editing: p.editing,
+        padInner: p.padInner,
         onMoveUp: p.onMoveUp,
         onMoveDown: p.onMoveDown,
         onRemove: p.onRemove,
@@ -121,11 +133,13 @@ class WidgetRegistry {
     ),
     'activity': WidgetEntry(
       key: 'activity',
+      desktopSpan: 12,
       label: (t) => t.homeWidgetActivity,
       icon: Icons.calendar_today_outlined,
       render: (p) => ActivityWidget(
         surface: p.surface,
         editing: p.editing,
+        padInner: p.padInner,
         onMoveUp: p.onMoveUp,
         onMoveDown: p.onMoveDown,
         onRemove: p.onRemove,
@@ -133,11 +147,13 @@ class WidgetRegistry {
     ),
     'quicklog': WidgetEntry(
       key: 'quicklog',
+      desktopSpan: 6,
       label: (t) => t.homeWidgetQuickLog,
       icon: Icons.add,
       render: (p) => QuickLogWidget(
         surface: p.surface,
         editing: p.editing,
+        padInner: p.padInner,
         onMoveUp: p.onMoveUp,
         onMoveDown: p.onMoveDown,
         onRemove: p.onRemove,
@@ -151,6 +167,7 @@ class WidgetRenderParams {
   const WidgetRenderParams({
     required this.surface,
     required this.editing,
+    this.padInner = true,
     this.onMoveUp,
     this.onMoveDown,
     this.onRemove,
@@ -159,6 +176,9 @@ class WidgetRenderParams {
   });
   final PlantlySurface surface;
   final bool editing;
+  /// Forwarded to `WidgetShell.padInner`: false when the host already
+  /// provides the horizontal gutter (desktop dashboard).
+  final bool padInner;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
   final VoidCallback? onRemove;
@@ -174,8 +194,11 @@ class WidgetEntry {
     required this.label,
     required this.icon,
     required this.render,
+    this.desktopSpan = 12,
   });
   final String key;
+  /// Columns (of 12) the widget takes in the desktop dashboard grid.
+  final int desktopSpan;
   /// Localized label — resolved at render time so it follows the app locale.
   final String Function(AppLocalizations t) label;
   final IconData icon;

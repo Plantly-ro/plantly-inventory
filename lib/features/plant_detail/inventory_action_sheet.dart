@@ -6,6 +6,8 @@ import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
+import '../../app/breakpoints.dart';
+import '../../shared/sheet_chrome.dart';
 
 /// Bottom sheet that closes out a plant — gift, sale, or death. Writes
 /// an `inventory_transactions` row and soft-deletes the plant in the
@@ -94,26 +96,17 @@ class _InventoryActionSheetState extends ConsumerState<InventoryActionSheet> {
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: surface.bg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(PlantlyTokens.radius2xl)),
-        ),
+      child: SheetChrome(
+        surface: surface,
+        title: title,
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 14),
+        handleGap: 14,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+            if (!context.isDesktop) ...[
             Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text)),
             const SizedBox(height: 4),
+            ],
             Text(
               t.sheetInventoryRemoveBody(widget.plantRow.nickname),
               style: TextStyle(fontSize: 12, color: surface.muted),
@@ -198,7 +191,6 @@ class _InventoryActionSheetState extends ConsumerState<InventoryActionSheet> {
               ],
             ),
           ],
-        ),
       ),
     );
   }

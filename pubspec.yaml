@@ -36,6 +36,9 @@ dependencies:
   # i18n — en + ro from day 1, per PLAN.md.
   flutter_localizations:
     sdk: flutter
+  # Web: path URLs (`/plants/<id>`) instead of `/#/...` — see lib/app/url_strategy.dart.
+  flutter_web_plugins:
+    sdk: flutter
   intl: ^0.20.2
 
   # Local reminders. DST-safe via timezone. Plugin registers POST_NOTIFICATIONS

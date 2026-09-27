@@ -9,7 +9,9 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
-import '../plant_detail/plant_detail_screen.dart';
+import '../../app/breakpoints.dart';
+import '../../app/navigation.dart';
+import '../../shared/sheet_chrome.dart';
 
 /// Bottom sheet that zooms into a single calendar day. Lists every
 /// schedule due on the date plus every care event already recorded on
@@ -62,25 +64,24 @@ class DayDetailSheet extends ConsumerWidget {
     final t = AppLocalizations.of(context);
     final locale = Localizations.localeOf(context).toString();
 
-    return DraggableScrollableSheet(
-      initialChildSize: 0.6,
-      minChildSize: 0.3,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (context, scrollCtrl) => Container(
-        decoration: BoxDecoration(
-          color: surface.bg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(PlantlyTokens.radius2xl)),
-        ),
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
-            Container(
-              height: 4,
-              width: 40,
-              decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
-            ),
-            const SizedBox(height: 10),
+    // Desktop: rendered inside a right-side panel (see `showAdaptiveSheet`)
+    // — full height, no drag handle, no draggable sizing.
+    final panel = context.isDesktop;
+    final weekday = DateFormat.EEEE(locale).format(day).toUpperCase();
+    // Phone: today's frame (10 px, handle, 10 px, title row with its own
+    // close). Desktop: SheetChrome's header carries the date + `×`, so the
+    // title row is dropped and the body gets the 20 px side padding the
+    // list used to bring itself.
+    Widget content(BuildContext context, ScrollController? scrollCtrl) => SheetChrome(
+        surface: surface,
+        title: DateFormat.yMMMMd(locale).format(day),
+        subtitle: isToday ? '$weekday · ${t.commonTodayLabel}' : weekday,
+        padding: panel ? const EdgeInsets.fromLTRB(20, 0, 20, 0) : const EdgeInsets.only(top: 10),
+        handleGap: 10,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        expand: true,
+        children: [
+            if (!panel)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
@@ -90,7 +91,7 @@ class DayDetailSheet extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        DateFormat.EEEE(locale).format(day).toUpperCase(),
+                        weekday,
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -114,11 +115,12 @@ class DayDetailSheet extends ConsumerWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 4),
+            if (!panel) const SizedBox(height: 4),
             Expanded(
               child: ListView(
                 controller: scrollCtrl,
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                primary: scrollCtrl == null ? false : null,
+                padding: EdgeInsets.fromLTRB(panel ? 0 : 20, 0, panel ? 0 : 20, 24),
                 children: [
                   if (dayScheduled.isEmpty && dayDone.isEmpty)
                     Padding(
@@ -185,8 +187,15 @@ class DayDetailSheet extends ConsumerWidget {
               ),
             ),
           ],
-        ),
-      ),
+      );
+
+    if (panel) return content(context, null);
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.3,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: content,
     );
   }
 }
@@ -217,9 +226,10 @@ class _ScheduledRow extends ConsumerWidget {
       ),
       child: InkWell(
         onTap: () {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: schedule.plantId)),
-          );
+          // Close the sheet, then open the plant (desktop: select in place).
+          final opener = preparePlantOpener(context);
+          Navigator.of(context).pop();
+          opener.open(schedule.plantId);
         },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -313,9 +323,9 @@ class _DoneRow extends StatelessWidget {
     final time = '${when.hour.toString().padLeft(2, '0')}:${when.minute.toString().padLeft(2, '0')}';
     return InkWell(
       onTap: () {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: event.plantId)),
-        );
+        final opener = preparePlantOpener(context);
+        Navigator.of(context).pop();
+        opener.open(event.plantId);
       },
       child: Container(
         decoration: BoxDecoration(

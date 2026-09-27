@@ -6,13 +6,17 @@ import '../../../data/database/app_database.dart';
 import '../../../data/mock_plants.dart';
 import '../../../data/providers.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../shared/hover_card.dart';
 import '../../../shared/plant_thumb.dart';
 import '../../../theme/tokens.dart';
 import '../../search/search_screen.dart';
 import '../filter.dart';
+import '../filter_chips.dart';
+import '../home_providers.dart';
 import '../selection.dart';
 import '../sort.dart';
 import 'widget_shell.dart';
+import '../../../app/breakpoints.dart';
 
 /// DB-backed plant grid. Streams `plants.watchAll()` from the repository
 /// and renders each row as a tappable card. Status colour (ok / terra) is
@@ -23,6 +27,7 @@ class GridWidget extends ConsumerWidget {
     required this.surface,
     this.onPlantTap,
     this.editing = false,
+    this.padInner = true,
     this.onMoveUp,
     this.onMoveDown,
     this.onRemove,
@@ -31,6 +36,7 @@ class GridWidget extends ConsumerWidget {
   final PlantlySurface surface;
   final void Function(String plantId)? onPlantTap;
   final bool editing;
+  final bool padInner;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
   final VoidCallback? onRemove;
@@ -50,20 +56,18 @@ class GridWidget extends ConsumerWidget {
           data: (rows) => rows,
           orElse: () => const <CareScheduleRow>[],
         );
-    final earliestDue = <String, int>{};
-    final nextTypeByPlant = <String, String>{};
-    for (final s in allSchedules) {
-      final due = s.nextDueAt;
-      if (due == null) continue;
-      final existing = earliestDue[s.plantId];
-      if (existing == null || due < existing) {
-        earliestDue[s.plantId] = due;
-        nextTypeByPlant[s.plantId] = s.type;
-      }
-    }
+    final earliestDue = earliestDueByPlant(allSchedules);
+    final nextTypeByPlant = <String, String>{
+      for (final s in allSchedules)
+        if (s.nextDueAt != null && s.nextDueAt == earliestDue[s.plantId]) s.plantId: s.type,
+    };
+    // Desktop: chips + sort live in the dashboard toolbar and search is the
+    // inline field, so the shell action focuses it instead of pushing a screen.
+    final desktop = context.isDesktop;
     return WidgetShell(
       surface: surface,
       editing: editing,
+      padInner: padInner,
       onMoveUp: onMoveUp,
       onMoveDown: onMoveDown,
       onRemove: onRemove,
@@ -75,6 +79,10 @@ class GridWidget extends ConsumerWidget {
       accentColor: surface.muted,
       action: editing ? null : t.homeSearchAction,
       onAction: () {
+        if (desktop) {
+          ref.read(homeSearchFocusProvider).requestFocus();
+          return;
+        }
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const SearchScreen()),
         );
@@ -82,12 +90,13 @@ class GridWidget extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(child: _FilterChipsRow(active: filter, surface: surface, ref: ref)),
-              _SortMenu(surface: surface, value: sort, onChanged: (s) => ref.read(plantSortProvider.notifier).set(s)),
-            ],
-          ),
+          if (!desktop)
+            Row(
+              children: [
+                Expanded(child: FilterChipsRow(surface: surface)),
+                _SortMenu(surface: surface, value: sort, onChanged: (s) => ref.read(plantSortProvider.notifier).set(s)),
+              ],
+            ),
           _LocationTagChipsRow(surface: surface),
           const SizedBox(height: 10),
           async.when(
@@ -101,13 +110,14 @@ class GridWidget extends ConsumerWidget {
                 earliestDueByPlantId: earliestDue,
                 locationNameById: locationsById,
               );
-              return GridView.count(
-                crossAxisCount: 2,
+              final spacing = desktop ? 12.0 : 10.0;
+              return LayoutBuilder(builder: (context, constraints) => GridView.count(
+                crossAxisCount: adaptiveColumns(context, constraints.maxWidth, phone: 2, minTileWidth: desktop ? 200 : 180),
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 childAspectRatio: 0.78,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
+                mainAxisSpacing: spacing,
+                crossAxisSpacing: spacing,
                 children: sorted.map((row) {
                   final swatch = MockPlants.byId(row.id);
                   final locName = row.locationId == null ? null : locationsById[row.locationId];
@@ -132,6 +142,7 @@ class GridWidget extends ConsumerWidget {
                     types: types,
                     selected: selected,
                     selectionMode: inSelectionMode,
+                    desktop: desktop,
                     surface: surface,
                     onTap: inSelectionMode
                         ? () => ref.read(plantSelectionProvider.notifier).toggle(row.id)
@@ -140,7 +151,7 @@ class GridWidget extends ConsumerWidget {
                         ref.read(plantSelectionProvider.notifier).toggle(row.id),
                   );
                 }).toList(growable: false),
-              );
+              ));
             },
           ),
         ],
@@ -161,6 +172,7 @@ class _Card extends StatelessWidget {
     required this.types,
     required this.selected,
     required this.selectionMode,
+    required this.desktop,
     required this.surface,
     required this.onTap,
     required this.onLongPress,
@@ -176,6 +188,7 @@ class _Card extends StatelessWidget {
   final List<CareType> types;
   final bool selected;
   final bool selectionMode;
+  final bool desktop;
   final PlantlySurface surface;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
@@ -184,10 +197,11 @@ class _Card extends StatelessWidget {
   Widget build(BuildContext context) {
     final accent = ok ? surface.green : surface.terra;
     final soft = ok ? surface.greenSoft : surface.terraSoft;
-    return InkWell(
+    return HoverCard(
+      surface: surface,
       onTap: onTap,
       onLongPress: onLongPress,
-      borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
+      enabled: !selectionMode,
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
@@ -293,7 +307,7 @@ class _Card extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 12.5,
+                      fontSize: desktop ? 13 : 12.5,
                       fontWeight: FontWeight.w600,
                       color: surface.text,
                       height: 1.2,
@@ -309,7 +323,7 @@ class _Card extends StatelessWidget {
                           locationName ?? AppLocalizations.of(context).spaceNoSpace,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 10, color: surface.muted),
+                          style: TextStyle(fontSize: desktop ? 11 : 10, color: surface.muted),
                         ),
                       ),
                     ],
@@ -348,74 +362,6 @@ class _EmptyPlaceholder extends StatelessWidget {
       child: Text(
         message,
         style: TextStyle(fontSize: 12, color: surface.muted),
-      ),
-    );
-  }
-}
-
-class _FilterChipsRow extends StatelessWidget {
-  const _FilterChipsRow({required this.active, required this.surface, required this.ref});
-  final PlantFilter active;
-  final PlantlySurface surface;
-  final WidgetRef ref;
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final f in PlantFilter.values)
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: _Chip(
-                label: f.label(context),
-                selected: f == active,
-                surface: surface,
-                onTap: () => ref.read(activeFilterProvider.notifier).state = f,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  const _Chip({
-    required this.label,
-    required this.selected,
-    required this.surface,
-    required this.onTap,
-  });
-  final String label;
-  final bool selected;
-  final PlantlySurface surface;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: selected ? surface.green : surface.surface,
-      borderRadius: BorderRadius.circular(999),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: selected ? surface.green : surface.border),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-              color: selected ? Colors.white : surface.text,
-            ),
-          ),
-        ),
       ),
     );
   }

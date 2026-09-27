@@ -12,13 +12,13 @@ import '../../cloud/entitlement.dart';
 import '../../cloud/sign_in_events.dart';
 import '../../cloud/cloud_sync.dart';
 import '../../cloud/sync_runner.dart';
+import '../../app/navigation.dart';
 import '../../config/plantly_hosts.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../marketplace/plantly_api.dart';
 import '../../marketplace/plantly_auth.dart';
 import '../../plugins/plantly_ro/login_sheet.dart';
 import '../../theme/tokens.dart';
-import 'cloud_screen.dart';
 import 'me_rows.dart';
 
 /// Whether this build may link to the plantly.ro checkout. Google Play
@@ -30,8 +30,8 @@ final cloudPurchaseLinkAllowedProvider = Provider<bool>((_) {
 });
 
 /// Me → Cloud (§2.4 status surface). Renders nothing when the feature flag
-/// is off; otherwise a section header (tap → [CloudScreen]) and the rows
-/// for the current [CloudPhase].
+/// is off; otherwise a section header (tap → `/me/cloud`, the `CloudScreen`)
+/// and the rows for the current [CloudPhase].
 class CloudSection extends ConsumerWidget {
   const CloudSection({super.key, required this.surface});
   final PlantlySurface surface;
@@ -49,7 +49,7 @@ class CloudSection extends ConsumerWidget {
         InkWell(
           key: const Key('cloud-section-title'),
           borderRadius: BorderRadius.circular(PlantlyTokens.radius),
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CloudScreen())),
+          onTap: () => openMeSection(context, 'cloud'),
           child: Row(
             children: [
               Expanded(child: MeSectionLabel(text: t.cloudSectionTitle, surface: surface)),
@@ -245,7 +245,7 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
       statusText = describeSyncStatus(t, status);
       if (status.lastError != null) statusColor = surface.terra;
       if (!widget.detailed) {
-        statusTap = () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CloudScreen()));
+        statusTap = () => openMeSection(context, 'cloud');
       }
     }
     return [

@@ -10,7 +10,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../shared/plant_thumb.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
-import '../plant_detail/plant_detail_screen.dart';
+import '../../app/navigation.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -111,11 +111,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       label: row.nickname,
                       notes: row.notes,
                       surface: surface,
-                      onTap: () {
-                        Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => PlantDetailScreen(plantId: row.id),
-                        ));
-                      },
+                      onTap: () => openPlant(context, row.id),
                     );
                   },
                 ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/navigation.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
@@ -21,10 +22,8 @@ class CloudScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: surface.bg,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.chevron_left, color: surface.text),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
+        automaticallyImplyLeading: false,
+        leading: adaptiveBackButton(context, surface, fallback: AppRoutes.me),
         title: Text(
           t.cloudScreenTitle,
           style: TextStyle(
