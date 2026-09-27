@@ -42,11 +42,13 @@ class FakeIncomingLinks implements IncomingLinks {
   Future<void> dispose() => _controller.close();
 }
 
-/// Pull the PlantlyExport `d` parameter out of any of the three accepted
-/// link forms (CONTRACT §4a), or null when [uri] is not an import link:
+/// Pull the PlantlyExport `d` parameter out of any of the accepted link
+/// forms (CONTRACT §4a + §5), or null when [uri] is not an import link:
 ///  1. `plantlyinventory://import#d=<d>`
 ///  2. `https://<host>/app/inventory/import#d=<d>`
-///  3. `<inventory web>/#/import?d=<d>`
+///  3. `<inventory web>/#/import?d=<d>` (legacy hash route — still honoured)
+///  4. `<inventory web>/import?d=<d>` (canonical path route since the
+///     web build moved to path URLs; the router redirects it to `/`)
 String? extractImportParam(Uri uri) {
   final fragment = uri.fragment;
   if (uri.scheme == 'plantlyinventory') {
@@ -54,12 +56,24 @@ String? extractImportParam(Uri uri) {
     return _paramFromQueryString(fragment) ?? uri.queryParameters['d'];
   }
   if (uri.scheme == 'https' || uri.scheme == 'http') {
-    if (uri.path.endsWith('/app/inventory/import')) {
+    if (uri.path.endsWith('/app/inventory/import') || isImportPath(uri.path)) {
       return _paramFromQueryString(fragment) ?? uri.queryParameters['d'];
     }
     return extractImportParamFromHash(fragment);
   }
   return null;
+}
+
+/// `/auth/callback` (optionally under a base href).
+bool isAuthCallbackPath(String path) {
+  final p = path.endsWith('/') && path.length > 1 ? path.substring(0, path.length - 1) : path;
+  return p == '/auth/callback' || p.endsWith('/auth/callback');
+}
+
+/// `/import` (optionally under a base href, e.g. `/inventory/import`).
+bool isImportPath(String path) {
+  final p = path.endsWith('/') && path.length > 1 ? path.substring(0, path.length - 1) : path;
+  return p == '/import' || p.endsWith('/import');
 }
 
 /// Form 3 — the fragment `/import?d=<d>` (with or without the leading `#`).
@@ -85,8 +99,11 @@ String? extractAuthToken(Uri uri) => extractAuthCallback(uri)?.token;
 /// `?error=` failure callbacks, which carry no token). Accepted forms:
 ///  - `plantlyinventory://auth/callback#token=<jwt>&nonce=<n>` (client=inventory)
 ///  - `<INVENTORY_WEB>/#/auth/callback?token=<jwt>&nonce=<n>` (client=inventory-web;
-///    everything after the hash route stays in the fragment)
-///  - the `%23`/`#token=` variant of the web form and `https://…/auth/callback#…`.
+///    everything after the hash route stays in the fragment — under the web
+///    build's path URL strategy this is location `/` plus that hash)
+///  - the `%23`/`#token=` variant of the web form, and the path form
+///    `https://…/auth/callback?token=…` / `#token=…` (the router redirects
+///    `/auth/callback` home after the listener consumed it).
 AuthCallback? extractAuthCallback(Uri uri) {
   if (uri.scheme == 'plantlyinventory') {
     final isCallback = uri.host == 'auth' && (uri.path == '/callback' || uri.path == 'callback');
@@ -94,7 +111,7 @@ AuthCallback? extractAuthCallback(Uri uri) {
     return (_callbackFromQueryString(uri.fragment) ?? _callbackFromQueryString(uri.query))?.viaCustomScheme();
   }
   if (uri.scheme == 'https' || uri.scheme == 'http') {
-    if (uri.path.endsWith('/auth/callback')) {
+    if (isAuthCallbackPath(uri.path)) {
       return _callbackFromQueryString(uri.fragment) ?? _callbackFromQueryString(uri.query);
     }
     return extractAuthCallbackFromHash(uri.fragment);

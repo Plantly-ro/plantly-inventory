@@ -17,13 +17,10 @@ import '../../plugins/plugin_registry.dart';
 import '../../services/file_export.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
+import '../../app/navigation.dart';
 import 'backup_actions.dart';
-import 'care_types_screen.dart';
 import 'cloud_section.dart';
 import 'me_rows.dart';
-import 'notifications_screen.dart';
-import 'privacy_screen.dart';
-import 'stats_screen.dart';
 
 /// "Me" tab — settings + Phase-1 user-facing actions (backup / iCal /
 /// notification permission). Split into ApplianceRows grouped under
@@ -51,10 +48,8 @@ class MeScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: surface.bg,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.chevron_left, color: surface.text),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
+        automaticallyImplyLeading: false,
+        leading: adaptiveBackButton(context, surface),
         title: Text(
           t.meTitle,
           style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
@@ -75,11 +70,7 @@ class MeScreen extends ConsumerWidget {
             value: t.meStatsValue,
             icon: Icons.insert_chart_outlined,
             surface: surface,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const StatsScreen()),
-              );
-            },
+            onTap: () => openMeSection(context, 'stats'),
           ),
           const SizedBox(height: 20),
           _SectionLabel(text: t.meSectionYou, surface: surface),
@@ -91,11 +82,7 @@ class MeScreen extends ConsumerWidget {
             value: t.mePrivacyValue,
             icon: Icons.shield_outlined,
             surface: surface,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const PrivacyScreen()),
-              );
-            },
+            onTap: () => openMeSection(context, 'privacy'),
           ),
           if (ref.watch(sellEnabledProvider)) ...[
             const SizedBox(height: 20),
@@ -115,11 +102,7 @@ class MeScreen extends ConsumerWidget {
             value: t.meCareTypesValue,
             icon: Icons.category_outlined,
             surface: surface,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CareTypesScreen()),
-              );
-            },
+            onTap: () => openMeSection(context, 'care-types'),
           ),
           const SizedBox(height: 20),
           _SectionLabel(text: t.meSectionNotifications, surface: surface),
@@ -131,11 +114,7 @@ class MeScreen extends ConsumerWidget {
             value: t.meMutedValue,
             icon: Icons.notifications_off_outlined,
             surface: surface,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-              );
-            },
+            onTap: () => openMeSection(context, 'notifications'),
           ),
           CloudSection(surface: surface),
           const SizedBox(height: 20),

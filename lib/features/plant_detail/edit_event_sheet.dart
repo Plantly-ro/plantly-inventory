@@ -9,6 +9,8 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
+import '../../app/breakpoints.dart';
+import '../../shared/sheet_chrome.dart';
 
 /// Edit an existing `care_events` row — type, when, product, dose, notes.
 class EditEventSheet extends ConsumerStatefulWidget {
@@ -98,27 +100,18 @@ class _EditEventSheetState extends ConsumerState<EditEventSheet> {
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: surface.bg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(PlantlyTokens.radius2xl)),
-        ),
+      child: SheetChrome(
+        surface: surface,
+        title: t.editEventTitle,
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  height: 4,
-                  width: 40,
-                  decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              const SizedBox(height: 14),
+        handleGap: 14,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        scrollable: true,
+        children: [
+              if (!context.isDesktop) ...[
               Text(t.editEventTitle, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text)),
               const SizedBox(height: 14),
+              ],
               Text(t.logEventWhat, style: _label(surface)),
               const SizedBox(height: 8),
               Wrap(
@@ -206,8 +199,6 @@ class _EditEventSheetState extends ConsumerState<EditEventSheet> {
                 ],
               ),
             ],
-          ),
-        ),
       ),
     );
   }

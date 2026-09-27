@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/breakpoints.dart';
 import '../../data/providers.dart';
 import '../../data/user_prefs.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -61,10 +62,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
 
-    return Scaffold(
-      backgroundColor: surface.bg,
-      body: SafeArea(
-        child: Column(
+    final column = Column(
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
@@ -124,7 +122,30 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               ),
             ),
           ],
-        ),
+        );
+
+    // Desktop (DESKTOP-POLISH §7): the three steps in a centred 560 px card
+    // instead of a phone column stretched across the window.
+    return Scaffold(
+      backgroundColor: surface.bg,
+      body: SafeArea(
+        child: context.isDesktop
+            ? Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560, maxHeight: 640),
+                  child: Container(
+                    clipBehavior: Clip.antiAlias,
+                    padding: const EdgeInsets.all(PlantlyTokens.space8),
+                    decoration: BoxDecoration(
+                      color: surface.surface,
+                      borderRadius: BorderRadius.circular(PlantlyTokens.radius2xl),
+                      border: Border.all(color: surface.border),
+                    ),
+                    child: column,
+                  ),
+                ),
+              )
+            : column,
       ),
     );
   }

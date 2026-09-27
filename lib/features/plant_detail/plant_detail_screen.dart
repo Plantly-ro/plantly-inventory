@@ -1,8 +1,14 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app/breakpoints.dart';
+import '../../app/desktop_theme.dart';
+import '../../app/navigation.dart';
 import '../../data/care_types.dart';
 import '../../data/database/app_database.dart' as db;
 import '../../data/image_processor.dart';
@@ -20,6 +26,7 @@ import '../../sync/hlc.dart';
 import '../../theme/tokens.dart';
 import '../export/export_dialog.dart';
 import '../home/home_providers.dart';
+import '../home/sort.dart';
 import '../../shared/care_feedback.dart';
 import '../../shared/location_picker.dart';
 import '../../shared/photo_source_sheet.dart';
@@ -32,6 +39,8 @@ import 'inventory_action_sheet.dart';
 import 'log_event_sheet.dart';
 import 'propagate_dialog.dart';
 import 'tag_chip_input.dart';
+import '../../app/side_sheet.dart';
+import '../../shared/sheet_chrome.dart';
 
 String _localeOf(BuildContext context) => Localizations.localeOf(context).toString();
 
@@ -76,10 +85,7 @@ class PlantDetailScreen extends ConsumerWidget {
             appBar: AppBar(
               backgroundColor: surface.bg,
               elevation: 0,
-              leading: IconButton(
-                icon: Icon(Icons.chevron_left, color: surface.text),
-                onPressed: () => Navigator.of(context).maybePop(),
-              ),
+              leading: detailLeading(context, surface, parent: AppRoutes.home),
             ),
             body: Center(
               child: Padding(
@@ -114,22 +120,45 @@ class _PlantDetailBody extends ConsumerWidget {
   final PlantlySurface surface;
   final MockPlant swatch;
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  String _locationName(BuildContext context, WidgetRef ref) {
     final t = AppLocalizations.of(context);
-    final plantId = plantRow.id;
     final locationAsync = plantRow.locationId == null
         ? null
         : ref.watch(locationByIdProvider(plantRow.locationId!));
-    final locationName = locationAsync?.maybeWhen(
+    return locationAsync?.maybeWhen(
           data: (loc) => loc?.name,
           orElse: () => null,
         ) ??
         (plantRow.locationId == null ? t.detailNoLocation : t.detailLoadingLocation);
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
+    final locationName = _locationName(context, ref);
 
     final types = ref.watch(careTypesProvider);
     final fabKey = ref.watch(quickFabTypeProvider);
     final fabType = resolveCareType(types, fabKey);
+    if (context.isDesktop) {
+      // DESKTOP-POLISH §2: full-width two-column page; the toolbar carries
+      // every AppBar/FAB action, so neither is rendered.
+      return Scaffold(
+        backgroundColor: surface.bg,
+        body: _DesktopDetailLayout(
+          plantRow: plantRow,
+          surface: surface,
+          swatch: swatch,
+          locationName: locationName,
+          types: types,
+          fabKey: fabKey,
+          fabType: fabType,
+          onEdit: () => _editPlant(context),
+          onAddPhotos: () => _addPhotos(context, ref),
+          moreMenu: _moreMenu(context, ref),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: surface.bg,
       floatingActionButton: GestureDetector(
@@ -139,7 +168,9 @@ class _PlantDetailBody extends ConsumerWidget {
           foregroundColor: Colors.white,
           icon: Icon(fabType.icon),
           label: Text(t.detailFabNow(careTypeVerb(t, fabType))),
-          tooltip: t.detailFabTooltip,
+          // "Long-press to change" is phone copy (§7); tablet keeps the
+          // gesture but not the hint.
+          tooltip: context.isWide ? null : t.detailFabTooltip,
           onPressed: () async {
             await ref.read(careEventRepositoryProvider).record(
                   plantId: plantRow.id,
@@ -158,41 +189,53 @@ class _PlantDetailBody extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: surface.bg,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.chevron_left, color: surface.text),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
+        leading: detailLeading(context, surface, parent: AppRoutes.home),
         actions: [
           IconButton(
             icon: Icon(Icons.edit_outlined, color: surface.text),
             tooltip: t.plantDetailEdit,
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (_) => EditPlantSheet(plantRow: plantRow),
-              );
-            },
+            onPressed: () => _editPlant(context),
           ),
           IconButton(
             icon: Icon(Icons.add_a_photo_outlined, color: surface.text),
             tooltip: t.plantDetailAddPhotos,
-            onPressed: () async {
-              final picker = ref.read(photoPickerProvider);
-              final picked = await pickMultiPhotoWithSource(context, picker, surface);
-              if (picked.isEmpty) return;
-              final processor = ref.read(imageProcessorProvider);
-              final photos = ref.read(photoRepositoryProvider);
-              final joins = ref.read(plantPhotoRepositoryProvider);
-              for (final p in picked) {
-                final shrunk = await processor.toDisplay(p.bytes);
-                final sha = await photos.saveBytes(shrunk, mime: 'image/jpeg');
-                await joins.attach(plantId, sha);
-              }
-            },
+            onPressed: () => _addPhotos(context, ref),
           ),
-          PopupMenuButton<String>(
+          _moreMenu(context, ref),
+        ],
+      ),
+      body: _phoneBody(context, ref),
+    );
+  }
+
+  void _editPlant(BuildContext context) {
+    showAdaptiveSheet(
+      context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => EditPlantSheet(plantRow: plantRow),
+    );
+  }
+
+  Future<void> _addPhotos(BuildContext context, WidgetRef ref) async {
+    final picker = ref.read(photoPickerProvider);
+    final picked = await pickMultiPhotoWithSource(context, picker, surface);
+    if (picked.isEmpty) return;
+    final processor = ref.read(imageProcessorProvider);
+    final photos = ref.read(photoRepositoryProvider);
+    final joins = ref.read(plantPhotoRepositoryProvider);
+    for (final p in picked) {
+      final shrunk = await processor.toDisplay(p.bytes);
+      final sha = await photos.saveBytes(shrunk, mime: 'image/jpeg');
+      await joins.attach(plantRow.id, sha);
+    }
+  }
+
+  /// The overflow menu, shared by the phone AppBar and the desktop toolbar.
+  Widget _moreMenu(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
+    final plantId = plantRow.id;
+    return PopupMenuButton<String>(
             icon: Icon(Icons.more_horiz, color: surface.text),
             onSelected: (value) async {
               switch (value) {
@@ -203,9 +246,7 @@ class _PlantDetailBody extends ConsumerWidget {
                     parentName: plantRow.nickname,
                   );
                   if (child != null && context.mounted) {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: child.id)),
-                    );
+                    replaceWithPlant(context, child.id);
                   }
                   break;
                 case 'move':
@@ -214,9 +255,7 @@ class _PlantDetailBody extends ConsumerWidget {
                 case 'duplicate':
                   final child = await ref.read(plantRepositoryProvider).duplicate(plantRow.id);
                   if (context.mounted) {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: child.id)),
-                    );
+                    replaceWithPlant(context, child.id);
                   }
                   break;
                 case 'mute':
@@ -227,19 +266,17 @@ class _PlantDetailBody extends ConsumerWidget {
                 case 'gift':
                 case 'sale':
                 case 'death':
-                  final navigator = Navigator.of(context);
-                  final closed = await showModalBottomSheet<bool>(
-                    context: context,
+                  final closed = await showAdaptiveSheet<bool>(
+                    context,
                     isScrollControlled: true,
                     backgroundColor: Colors.transparent,
                     builder: (_) => InventoryActionSheet(plantRow: plantRow, type: value),
                   );
                   if (closed == true && context.mounted) {
-                    navigator.maybePop();
+                    goBack(context);
                   }
                   break;
                 case 'delete':
-                  final nav = Navigator.of(context);
                   final messenger = ScaffoldMessenger.of(context);
                   final confirm = await showDialog<bool>(
                     context: context,
@@ -258,7 +295,7 @@ class _PlantDetailBody extends ConsumerWidget {
                   );
                   if (confirm == true) {
                     await ref.read(plantRepositoryProvider).softDelete(plantRow.id);
-                    if (context.mounted) nav.maybePop();
+                    if (context.mounted) goBack(context);
                     messenger
                       ..clearSnackBars()
                       ..showSnackBar(SnackBar(
@@ -289,22 +326,37 @@ class _PlantDetailBody extends ConsumerWidget {
               const PopupMenuDivider(),
               PopupMenuItem(value: 'delete', child: Text(t.plantDetailDelete)),
             ],
-          ),
-        ],
-      ),
-      body: ListView(
+          );
+  }
+
+  Widget _phoneBody(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
+    final plantId = plantRow.id;
+    final locationName = _locationName(context, ref);
+    return ListView(
         // Clear the extended FAB (56 + 16 margin, plus the gesture-nav
         // inset) so the last card — the listing-draft CTA — stays tappable
         // when scrolled to the bottom instead of sitting under the button.
         padding: EdgeInsets.only(bottom: 96 + MediaQuery.paddingOf(context).bottom),
         children: [
-          AspectRatio(
-            aspectRatio: 1.3,
-            child: Container(
-              color: surface.surfaceAlt,
-              child: _HeroCarousel(plantId: plantId, fallback: swatch, surface: surface),
+          // Phone: the prototype's 1.3 hero. Wide panes cap the height so
+          // a 700 px pane doesn't spend 540 px on the photo.
+          if (context.isWide)
+            SizedBox(
+              height: 360,
+              child: Container(
+                color: surface.surfaceAlt,
+                child: _HeroCarousel(plantId: plantId, fallback: swatch, surface: surface),
+              ),
+            )
+          else
+            AspectRatio(
+              aspectRatio: 1.3,
+              child: Container(
+                color: surface.surfaceAlt,
+                child: _HeroCarousel(plantId: plantId, fallback: swatch, surface: surface),
+              ),
             ),
-          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
             child: Column(
@@ -392,8 +444,8 @@ class _PlantDetailBody extends ConsumerWidget {
             child: _ExportCTA(
               surface: surface,
               onPressed: () {
-                showModalBottomSheet(
-                  context: context,
+                showAdaptiveSheet(
+                  context,
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
                   builder: (_) => ExportDialog(plantRow: plantRow),
@@ -402,7 +454,6 @@ class _PlantDetailBody extends ConsumerWidget {
             ),
           ),
         ],
-      ),
     );
   }
 
@@ -411,27 +462,18 @@ class _PlantDetailBody extends ConsumerWidget {
     final current = ref.read(quickFabTypeProvider);
     final mode = ref.read(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
-    final picked = await showModalBottomSheet<String>(
-      context: context,
+    final picked = await showAdaptiveSheet<String>(
+      context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: BoxDecoration(
-          color: surface.bg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(PlantlyTokens.radius2xl)),
-        ),
+      builder: (ctx) => SheetChrome(
+        surface: surface,
+        title: t.plantDetailQuickAction,
+        subtitle: t.plantDetailQuickActionHelp,
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                height: 4,
-                width: 40,
-                decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 14),
+        handleGap: 14,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+            if (!ctx.isDesktop) ...[
             Text(
               t.plantDetailQuickAction,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text),
@@ -441,6 +483,7 @@ class _PlantDetailBody extends ConsumerWidget {
               style: TextStyle(fontSize: 12, color: surface.muted),
             ),
             const SizedBox(height: 14),
+            ],
             for (final ct in types)
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 6),
@@ -458,7 +501,6 @@ class _PlantDetailBody extends ConsumerWidget {
                 onTap: () => Navigator.of(ctx).pop(ct.key),
               ),
           ],
-        ),
       ),
     );
     if (picked != null) {
@@ -693,7 +735,9 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
               Positioned(
                 top: 10,
                 left: 10,
-                child: GestureDetector(
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
                   onTap: () => _editCapturedAt(rows[_index]),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -713,6 +757,7 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
                       ],
                     ),
                   ),
+                ),
                 ),
               ),
             // Show caption overlay at the bottom if the current row has one.
@@ -774,14 +819,19 @@ class _PhotoView extends StatelessWidget {
 }
 
 class _SectionLabel extends StatelessWidget {
-  const _SectionLabel({required this.text, required this.surface});
+  const _SectionLabel({
+    required this.text,
+    required this.surface,
+    this.padding = const EdgeInsets.fromLTRB(20, 16, 20, 10),
+  });
   final String text;
   final PlantlySurface surface;
+  final EdgeInsets padding;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
+      padding: padding,
       child: Text(
         text,
         style: TextStyle(
@@ -870,7 +920,7 @@ class _UpcomingRowView extends ConsumerWidget {
     final t = AppLocalizations.of(context);
     final types = ref.watch(careTypesProvider);
     final ct = resolveCareType(types, schedule.type);
-    final (label, whenText, urgent) = _describe(t, schedule, careTypeLabel(t, ct));
+    final (label, whenText, urgent) = _describeSchedule(t, schedule, careTypeLabel(t, ct));
     final icon = ct.icon;
     final muted = schedule.notificationsMuted;
     // If the user gave this type a colour, use it as the chip fill; the
@@ -879,8 +929,8 @@ class _UpcomingRowView extends ConsumerWidget {
     final chipFg = urgent ? surface.terra : (ct.color == null ? surface.green : Colors.white);
     return InkWell(
       onLongPress: () {
-        showModalBottomSheet(
-          context: context,
+        showAdaptiveSheet(
+          context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
           builder: (_) => EditReminderSheet(schedule: schedule),
@@ -950,22 +1000,7 @@ class _UpcomingRowView extends ConsumerWidget {
               textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radiusMd)),
             ),
-            onPressed: () async {
-              await ref.read(careEventRepositoryProvider).record(
-                    plantId: plantId,
-                    type: schedule.type,
-                  );
-              if (!context.mounted) return;
-              await showCareFeedback(
-                context,
-                type: ct,
-                plantName: ref.read(plantByIdProvider(plantId)).maybeWhen(
-                      data: (p) => p?.nickname ?? label,
-                      orElse: () => label,
-                    ),
-                surface: surface,
-              );
-            },
+            onPressed: () => _recordSchedule(context, ref, schedule, ct, plantId, label, surface),
             child: Text(t.doneBtn),
           ),
           const SizedBox(width: 6),
@@ -980,12 +1015,7 @@ class _UpcomingRowView extends ConsumerWidget {
               textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radiusMd)),
             ),
-            onPressed: () async {
-              await ref
-                  .read(careScheduleRepositoryProvider)
-                  .snooze(schedule.id, by: const Duration(days: 3));
-              if (context.mounted) _toast(context, t.detailSnoozedToast);
-            },
+            onPressed: () => _snoozeSchedule(context, ref, schedule),
             child: Text(t.snoozeBtn),
           ),
         ],
@@ -993,31 +1023,67 @@ class _UpcomingRowView extends ConsumerWidget {
       ),
     );
   }
+}
 
-  void _toast(BuildContext context, String msg) {
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(msg)));
+/// Reminder row copy: "Water · in 3 days" and whether it reads as urgent.
+(String label, String when, bool urgent) _describeSchedule(
+  AppLocalizations t,
+  db.CareScheduleRow s,
+  String label,
+) {
+  final due = s.nextDueAt;
+  if (due == null) return (label, t.detailNoDueDate, false);
+  final now = DateTime.now().millisecondsSinceEpoch;
+  final diffMs = due - now;
+  final days = (diffMs / (86400 * 1000)).round();
+  if (diffMs < 0) {
+    final late = -days;
+    return (label, late == 0 ? t.detailOverdue : t.detailOverdueDays(late), true);
   }
+  if (days == 0) return (label, t.detailDueToday, true);
+  if (days == 1) return (label, t.detailDueTomorrow, false);
+  return (label, t.detailDueInDays(days), false);
+}
 
-  (String label, String when, bool urgent) _describe(
-    AppLocalizations t,
-    db.CareScheduleRow s,
-    String label,
-  ) {
-    final due = s.nextDueAt;
-    if (due == null) return (label, t.detailNoDueDate, false);
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final diffMs = due - now;
-    final days = (diffMs / (86400 * 1000)).round();
-    if (diffMs < 0) {
-      final late = -days;
-      return (label, late == 0 ? t.detailOverdue : t.detailOverdueDays(late), true);
-    }
-    if (days == 0) return (label, t.detailDueToday, true);
-    if (days == 1) return (label, t.detailDueTomorrow, false);
-    return (label, t.detailDueInDays(days), false);
-  }
+/// "Done" on a reminder: record the event, then the care feedback overlay.
+Future<void> _recordSchedule(
+  BuildContext context,
+  WidgetRef ref,
+  db.CareScheduleRow schedule,
+  CareType ct,
+  String plantId,
+  String fallbackName,
+  PlantlySurface surface,
+) async {
+  await ref.read(careEventRepositoryProvider).record(plantId: plantId, type: schedule.type);
+  if (!context.mounted) return;
+  await showCareFeedback(
+    context,
+    type: ct,
+    plantName: ref.read(plantByIdProvider(plantId)).maybeWhen(
+          data: (p) => p?.nickname ?? fallbackName,
+          orElse: () => fallbackName,
+        ),
+    surface: surface,
+  );
+}
+
+Future<void> _snoozeSchedule(BuildContext context, WidgetRef ref, db.CareScheduleRow schedule) async {
+  final t = AppLocalizations.of(context);
+  await ref.read(careScheduleRepositoryProvider).snooze(schedule.id, by: const Duration(days: 3));
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context)
+    ..clearSnackBars()
+    ..showSnackBar(SnackBar(content: Text(t.detailSnoozedToast)));
+}
+
+void _editReminder(BuildContext context, db.CareScheduleRow schedule) {
+  showAdaptiveSheet(
+    context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => EditReminderSheet(schedule: schedule),
+  );
 }
 
 class _AddReminderButton extends StatelessWidget {
@@ -1039,8 +1105,8 @@ class _AddReminderButton extends StatelessWidget {
       ),
       child: InkWell(
         onTap: () {
-          showModalBottomSheet(
-            context: context,
+          showAdaptiveSheet(
+            context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
             builder: (_) => AddReminderSheet(plantId: plantId),
@@ -1109,6 +1175,7 @@ class _Timeline extends ConsumerWidget {
               ],
             );
           }
+          if (context.isDesktop) return _desktopTable(context, ref, events, logButton);
           return Column(
             children: [
               Padding(
@@ -1128,54 +1195,144 @@ class _Timeline extends ConsumerWidget {
     );
   }
 
+  /// Desktop: care history as a proper table (date · care · details · ⌫)
+  /// instead of the stacked phone rows — the pane is wide enough and
+  /// scanning a column of dates is what a desk user expects.
+  Widget _desktopTable(BuildContext context, WidgetRef ref, List<db.CareEventRow> events, Widget logButton) {
+    final t = AppLocalizations.of(context);
+    final types = ref.watch(careTypesProvider);
+    final rowHeight = Theme.of(context).extension<PlantlyDensity>()?.tableRowHeight ?? 44;
+    final headStyle = TextStyle(
+      fontSize: 11,
+      fontWeight: FontWeight.w700,
+      color: surface.muted,
+      letterSpacing: 0.08 * 11,
+    );
+    final cellStyle = TextStyle(fontSize: 13, color: surface.text);
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: DataTable(
+            showCheckboxColumn: false,
+            headingRowHeight: 36,
+            dataRowMinHeight: rowHeight,
+            dataRowMaxHeight: rowHeight,
+            horizontalMargin: 14,
+            columnSpacing: 20,
+            dividerThickness: 1,
+            headingTextStyle: headStyle,
+            dataTextStyle: cellStyle,
+            columns: [
+              DataColumn(label: Text(t.historyColDate.toUpperCase())),
+              DataColumn(label: Text(t.historyColCare.toUpperCase())),
+              DataColumn(label: Text(t.historyColDetails.toUpperCase())),
+              const DataColumn(label: SizedBox.shrink()),
+            ],
+            rows: [
+              for (final event in events)
+                () {
+                  final ct = resolveCareType(types, event.type);
+                  final verb = careKeyPastLabel(t, types, event.type);
+                  final details = _detailsOf(event);
+                  final when = _fmtDateLong(
+                    context,
+                    DateTime.fromMillisecondsSinceEpoch(event.doneAt, isUtc: true).toLocal(),
+                  );
+                  return DataRow(
+                    onSelectChanged: (_) {
+                      showAdaptiveSheet(
+                        context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => EditEventSheet(event: event),
+                      );
+                    },
+                    cells: [
+                      DataCell(Text(when, style: TextStyle(fontSize: 12, color: surface.muted, fontWeight: FontWeight.w500))),
+                      DataCell(Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(color: ct.color ?? surface.greenSoft, shape: BoxShape.circle),
+                            child: Icon(ct.icon, size: 12, color: ct.color == null ? surface.green : Colors.white),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(verb, style: cellStyle),
+                        ],
+                      )),
+                      DataCell(Text(details ?? '—', overflow: TextOverflow.ellipsis)),
+                      DataCell(IconButton(
+                        icon: Icon(Icons.delete_outline, size: 16, color: surface.muted),
+                        tooltip: t.plantDetailDeleteEvent,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        onPressed: () => _deleteEvent(context, ref, event, _describe(t, event, verb)),
+                      )),
+                    ],
+                  );
+                }(),
+            ],
+          ),
+        ),
+        logButton,
+      ],
+    );
+  }
+
+  Future<void> _deleteEvent(BuildContext context, WidgetRef ref, db.CareEventRow event, String text) async {
+    final t = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dctx) => AlertDialog(
+        title: Text(t.detailDeleteEventTitle),
+        content: Text(t.detailDeleteEventBody(text)),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: Text(t.cancel)),
+          TextButton(onPressed: () => Navigator.of(dctx).pop(true), child: Text(t.commonDelete)),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await ref.read(careEventRepositoryProvider).undo(event.id);
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(
+          content: Text(t.plantDetailEventRemoved),
+          action: SnackBarAction(
+            label: t.detailUndo,
+            onPressed: () async {
+              // "Undo" an undo → re-record the same event verbatim.
+              await ref.read(careEventRepositoryProvider).record(
+                    plantId: event.plantId,
+                    type: event.type,
+                    doneAt: event.doneAt,
+                    notes: event.notes,
+                    dose: event.dose,
+                    product: event.product,
+                    photoSha: event.photoSha,
+                  );
+            },
+          ),
+        ));
+    }
+  }
+
   Widget _timelineRow(BuildContext context, WidgetRef ref, db.CareEventRow event, bool last) {
     final t = AppLocalizations.of(context);
     final types = ref.watch(careTypesProvider);
     final when = _fmtDate(context, DateTime.fromMillisecondsSinceEpoch(event.doneAt, isUtc: true).toLocal());
     final text = _describe(t, event, careKeyPastLabel(t, types, event.type));
-    Future<void> delete() async {
-      final messenger = ScaffoldMessenger.of(context);
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (dctx) => AlertDialog(
-          title: Text(t.detailDeleteEventTitle),
-          content: Text(t.detailDeleteEventBody(text)),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: Text(t.cancel)),
-            TextButton(onPressed: () => Navigator.of(dctx).pop(true), child: Text(t.commonDelete)),
-          ],
-        ),
-      );
-      if (confirm == true) {
-        await ref.read(careEventRepositoryProvider).undo(event.id);
-        messenger
-          ..clearSnackBars()
-          ..showSnackBar(SnackBar(
-            content: Text(t.plantDetailEventRemoved),
-            action: SnackBarAction(
-              label: t.detailUndo,
-              onPressed: () async {
-                // "Undo" an undo → re-record the same event verbatim.
-                await ref.read(careEventRepositoryProvider).record(
-                      plantId: event.plantId,
-                      type: event.type,
-                      doneAt: event.doneAt,
-                      notes: event.notes,
-                      dose: event.dose,
-                      product: event.product,
-                      photoSha: event.photoSha,
-                    );
-              },
-            ),
-          ));
-      }
-    }
+    Future<void> delete() => _deleteEvent(context, ref, event, text);
 
     return InkWell(
       onLongPress: delete,
       onTap: () {
-        showModalBottomSheet(
-          context: context,
+        showAdaptiveSheet(
+          context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
           builder: (_) => EditEventSheet(event: event),
@@ -1218,12 +1375,17 @@ class _Timeline extends ConsumerWidget {
   }
 
   String _describe(AppLocalizations t, db.CareEventRow e, String verb) {
+    final details = _detailsOf(e);
+    return details == null ? verb : '$verb — $details';
+  }
+
+  /// "product · dose · notes", or null when the event carries none.
+  String? _detailsOf(db.CareEventRow e) {
     final parts = <String>[];
     if (e.product != null && e.product!.isNotEmpty) parts.add(e.product!);
     if (e.dose != null && e.dose!.isNotEmpty) parts.add(e.dose!);
     if (e.notes != null && e.notes!.isNotEmpty) parts.add(e.notes!);
-    if (parts.isEmpty) return verb;
-    return '$verb — ${parts.join(' · ')}';
+    return parts.isEmpty ? null : parts.join(' · ');
   }
 
 }
@@ -1247,8 +1409,8 @@ class _LogEventButton extends StatelessWidget {
       ),
       child: InkWell(
         onTap: () {
-          showModalBottomSheet(
-            context: context,
+          showAdaptiveSheet(
+            context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
             builder: (_) => LogEventSheet(plantId: plantId),
@@ -1276,9 +1438,12 @@ class _LogEventButton extends StatelessWidget {
 /// Hidden when the plant has no history so new plants aren't greeted
 /// with a giant empty card.
 class _InventoryLedger extends ConsumerWidget {
-  const _InventoryLedger({required this.surface, required this.plantId});
+  const _InventoryLedger({required this.surface, required this.plantId, this.inset = true});
   final PlantlySurface surface;
   final String plantId;
+
+  /// Phone: 20 px page gutter around the card. Desktop column: none.
+  final bool inset;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1290,9 +1455,9 @@ class _InventoryLedger extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _SectionLabel(text: t.plantDetailSectionLedger, surface: surface),
+            _SectionLabel(text: t.plantDetailSectionLedger, surface: surface, padding: _labelPad(inset)),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: EdgeInsets.symmetric(horizontal: inset ? 20 : 0),
               child: Container(
                 decoration: BoxDecoration(
                   color: surface.surface,
@@ -1560,9 +1725,10 @@ class _ExportCTA extends ConsumerWidget {
 }
 
 class _StatsCard extends ConsumerWidget {
-  const _StatsCard({required this.plantId, required this.surface});
+  const _StatsCard({required this.plantId, required this.surface, this.inset = true});
   final String plantId;
   final PlantlySurface surface;
+  final bool inset;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1602,9 +1768,9 @@ class _StatsCard extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionLabel(text: t.plantDetailSectionStats, surface: surface),
+        _SectionLabel(text: t.plantDetailSectionStats, surface: surface, padding: _labelPad(inset)),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: EdgeInsets.symmetric(horizontal: inset ? 20 : 0),
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -1786,6 +1952,552 @@ class _ReorderPhotosScreenState extends ConsumerState<_ReorderPhotosScreen> {
           );
         },
       ),
+    );
+  }
+}
+
+EdgeInsets _labelPad(bool inset) =>
+    inset ? const EdgeInsets.fromLTRB(20, 16, 20, 10) : const EdgeInsets.fromLTRB(0, 16, 0, 10);
+
+/// `/plants/:id` on desktop (DESKTOP-POLISH §2): header row (‹ Home ·
+/// title · prev/next), action toolbar, then a two-column body — hero +
+/// facts + stats + ledger + export on the left (≤ 400 px), the reminders
+/// table and the care-history table on the right. `Esc` goes back to `/`.
+class _DesktopDetailLayout extends ConsumerWidget {
+  const _DesktopDetailLayout({
+    required this.plantRow,
+    required this.surface,
+    required this.swatch,
+    required this.locationName,
+    required this.types,
+    required this.fabKey,
+    required this.fabType,
+    required this.onEdit,
+    required this.onAddPhotos,
+    required this.moreMenu,
+  });
+
+  final db.PlantRow plantRow;
+  final PlantlySurface surface;
+  final MockPlant swatch;
+  final String locationName;
+  final List<CareType> types;
+  final String fabKey;
+  final CareType fabType;
+  final VoidCallback onEdit;
+  final VoidCallback onAddPhotos;
+  final Widget moreMenu;
+
+  static const double _leftMax = 400;
+  static const double _heroMax = 360;
+
+  Future<void> _record(BuildContext context, WidgetRef ref, CareType ct) async {
+    await ref.read(careEventRepositoryProvider).record(plantId: plantRow.id, type: ct.key);
+    if (!context.mounted) return;
+    await showCareFeedback(context, type: ct, plantName: plantRow.nickname, surface: surface);
+  }
+
+  void _openSheet(BuildContext context, Widget sheet) {
+    showAdaptiveSheet(
+      context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => sheet,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
+    final plantId = plantRow.id;
+    // Prev/next walk the grid's current sorted + filtered order.
+    final sorted = ref.watch(sortedPlantsProvider).maybeWhen(
+          data: (rows) => rows,
+          orElse: () => const <db.PlantRow>[],
+        );
+    final idx = sorted.indexWhere((p) => p.id == plantId);
+    final prev = idx > 0 ? sorted[idx - 1] : null;
+    final next = idx >= 0 && idx < sorted.length - 1 ? sorted[idx + 1] : null;
+
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): () => goBack(context, fallback: AppRoutes.home),
+      },
+      child: Focus(
+        autofocus: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: PlantlyTokens.space4),
+            _header(context, t, ref, prev: prev, next: next),
+            _toolbar(context, t, ref),
+            const SizedBox(height: PlantlyTokens.space4),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: PlantlyTokens.space8),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    const gap = PlantlyTokens.space8;
+                    final leftW = math.min(_leftMax, (constraints.maxWidth - gap) * 2 / 5);
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(width: leftW, child: _leftColumn(context, t, ref, leftW)),
+                        const SizedBox(width: gap),
+                        Expanded(child: _rightColumn(context, t)),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _header(BuildContext context, AppLocalizations t, WidgetRef ref,
+      {required db.PlantRow? prev, required db.PlantRow? next}) {
+    final species = plantRow.speciesId == null || plantRow.speciesId!.isEmpty
+        ? null
+        : ref.watch(speciesDisplayNameProvider(plantRow.speciesId!)).maybeWhen(
+              data: (name) => name ?? plantRow.speciesId!,
+              orElse: () => plantRow.speciesId!,
+            );
+    return SizedBox(
+      height: 56,
+      child: Row(
+        children: [
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              foregroundColor: surface.muted,
+              padding: const EdgeInsets.symmetric(horizontal: PlantlyTokens.space2),
+              textStyle: const TextStyle(fontFamily: PlantlyFonts.inter, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            onPressed: () => goBack(context, fallback: AppRoutes.home),
+            icon: const Icon(Icons.chevron_left, size: 20),
+            label: Text(t.navHome),
+          ),
+          const SizedBox(width: PlantlyTokens.space3),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Flexible(
+                  child: Text(
+                    plantRow.nickname,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: PlantlyFonts.plusJakartaSans,
+                      fontSize: PlantlyTokens.text3xl,
+                      fontWeight: FontWeight.w800,
+                      color: surface.text,
+                      letterSpacing: -0.02 * PlantlyTokens.text3xl,
+                    ),
+                  ),
+                ),
+                if (species != null) ...[
+                  const SizedBox(width: PlantlyTokens.space3),
+                  Flexible(
+                    child: Text(
+                      species,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 14, color: surface.muted, fontStyle: FontStyle.italic),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: PlantlyTokens.space3),
+          IconButton(
+            tooltip: t.detailPrevPlant,
+            icon: Icon(Icons.navigate_before, color: prev == null ? surface.border : surface.text),
+            onPressed: prev == null ? null : () => openPlant(context, prev.id),
+          ),
+          IconButton(
+            tooltip: t.detailNextPlant,
+            icon: Icon(Icons.navigate_next, color: next == null ? surface.border : surface.text),
+            onPressed: next == null ? null : () => openPlant(context, next.id),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _toolbar(BuildContext context, AppLocalizations t, WidgetRef ref) {
+    final primary = fabType.color ?? surface.green;
+    final outlined = OutlinedButton.styleFrom(
+      foregroundColor: surface.text,
+      side: BorderSide(color: surface.border),
+      minimumSize: const Size(0, 36),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius)),
+      textStyle: const TextStyle(fontFamily: PlantlyFonts.inter, fontSize: 13, fontWeight: FontWeight.w600),
+    );
+    return SizedBox(
+      height: 40,
+      child: Row(
+        children: [
+          // Split primary: the quick-care type on the left, every other
+          // care type behind the chevron (the phone's long-press).
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: primary,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(0, 36),
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.horizontal(left: Radius.circular(PlantlyTokens.radius)),
+              ),
+              textStyle: const TextStyle(fontFamily: PlantlyFonts.inter, fontSize: 13, fontWeight: FontWeight.w700),
+            ),
+            onPressed: () => _record(context, ref, fabType),
+            icon: Icon(fabType.icon, size: 16),
+            label: Text(t.detailFabNow(careTypeVerb(t, fabType))),
+          ),
+          Container(width: 1, height: 36, color: Colors.white.withValues(alpha: 0.35)),
+          PopupMenuButton<String>(
+            tooltip: t.detailMoreCareActions,
+            onSelected: (key) => _record(context, ref, resolveCareType(types, key)),
+            itemBuilder: (_) => [
+              for (final ct in types)
+                if (ct.key != fabKey)
+                  PopupMenuItem(
+                    value: ct.key,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(ct.icon, size: 16, color: ct.color ?? surface.green),
+                        const SizedBox(width: 10),
+                        Text(t.detailFabNow(careTypeVerb(t, ct))),
+                      ],
+                    ),
+                  ),
+            ],
+            child: Container(
+              width: 30,
+              height: 36,
+              decoration: BoxDecoration(
+                color: primary,
+                borderRadius: const BorderRadius.horizontal(right: Radius.circular(PlantlyTokens.radius)),
+              ),
+              child: const Icon(Icons.expand_more, size: 18, color: Colors.white),
+            ),
+          ),
+          const SizedBox(width: PlantlyTokens.space2),
+          OutlinedButton.icon(
+            style: outlined,
+            onPressed: () => _openSheet(context, LogEventSheet(plantId: plantRow.id)),
+            icon: Icon(Icons.note_add_outlined, size: 16, color: surface.muted),
+            label: Text(t.logEventTitle),
+          ),
+          const SizedBox(width: PlantlyTokens.space2),
+          OutlinedButton.icon(
+            style: outlined,
+            onPressed: () => _openSheet(context, AddReminderSheet(plantId: plantRow.id)),
+            icon: Icon(Icons.add_alert_outlined, size: 16, color: surface.muted),
+            label: Text(t.plantDetailAddReminder),
+          ),
+          const SizedBox(width: PlantlyTokens.space2),
+          OutlinedButton.icon(
+            style: outlined,
+            onPressed: onEdit,
+            icon: Icon(Icons.edit_outlined, size: 16, color: surface.muted),
+            label: Text(t.plantDetailEdit),
+          ),
+          const SizedBox(width: PlantlyTokens.space2),
+          IconButton(
+            tooltip: t.plantDetailAddPhotos,
+            icon: Icon(Icons.add_a_photo_outlined, color: surface.text),
+            onPressed: onAddPhotos,
+          ),
+          moreMenu,
+        ],
+      ),
+    );
+  }
+
+  Widget _leftColumn(BuildContext context, AppLocalizations t, WidgetRef ref, double width) {
+    final plantId = plantRow.id;
+    final hero = math.min(_heroMax, width);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: SizedBox(
+            width: hero,
+            height: hero,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
+              child: Container(
+                color: surface.surfaceAlt,
+                child: _HeroCarousel(plantId: plantId, fallback: swatch, surface: surface),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: PlantlyTokens.space4),
+        _FactsCard(plantRow: plantRow, surface: surface, locationName: locationName),
+        _StatsCard(plantId: plantId, surface: surface, inset: false),
+        _InventoryLedger(surface: surface, plantId: plantId, inset: false),
+        if (ref.watch(listingRecordsProvider)[plantId] case final ListingRecord record)
+          Padding(
+            padding: const EdgeInsets.only(top: PlantlyTokens.space5),
+            child: _ListedOnPlantlyRow(surface: surface, record: record),
+          ),
+        Padding(
+          padding: const EdgeInsets.only(top: PlantlyTokens.space5),
+          child: _ExportCTA(
+            surface: surface,
+            onPressed: () => _openSheet(context, ExportDialog(plantRow: plantRow)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _rightColumn(BuildContext context, AppLocalizations t) {
+    final plantId = plantRow.id;
+    const labelPad = EdgeInsets.fromLTRB(0, 0, 0, 10);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionLabel(text: t.plantDetailSectionUpcoming, surface: surface, padding: labelPad),
+        _UpcomingTable(surface: surface, plantId: plantId),
+        const SizedBox(height: PlantlyTokens.space6),
+        _SectionLabel(text: t.plantDetailSectionTimeline, surface: surface, padding: labelPad),
+        _Timeline(surface: surface, plantId: plantId),
+      ],
+    );
+  }
+}
+
+/// Desktop facts card: label/value rows (space · acquired · pot size ·
+/// tags · notes). Rows a plant has no data for are omitted.
+class _FactsCard extends StatelessWidget {
+  const _FactsCard({required this.plantRow, required this.surface, required this.locationName});
+  final db.PlantRow plantRow;
+  final PlantlySurface surface;
+  final String locationName;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final acquired = plantRow.acquiredAt == null
+        ? null
+        : _fmtDateLong(context, DateTime.fromMillisecondsSinceEpoch(plantRow.acquiredAt!, isUtc: true).toLocal());
+    final notes = plantRow.notes;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+      decoration: BoxDecoration(
+        color: surface.surface,
+        border: Border.all(color: surface.border),
+        borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _row(t.detailFactSpace, Text(locationName, style: _value, maxLines: 1, overflow: TextOverflow.ellipsis)),
+          if (acquired != null) _row(t.detailFactAcquired, Text(acquired, style: _value)),
+          if (plantRow.potSizeCm != null) _row(t.detailFactPotSize, Text('${plantRow.potSizeCm} cm', style: _value)),
+          _row(t.detailFactTags, TagChipInput(plantId: plantRow.id, surface: surface), fixedHeight: false),
+          if (notes != null && notes.isNotEmpty)
+            _row(t.detailFactNotes, Text(notes, style: _value.copyWith(height: 1.4)), fixedHeight: false),
+        ],
+      ),
+    );
+  }
+
+  TextStyle get _value => TextStyle(fontSize: 13, color: surface.text);
+
+  Widget _row(String label, Widget value, {bool fixedHeight = true}) {
+    final content = Row(
+      crossAxisAlignment: fixedHeight ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 88,
+          child: Padding(
+            padding: EdgeInsets.only(top: fixedHeight ? 0 : 6),
+            child: Text(
+              label.toUpperCase(),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: surface.muted,
+                letterSpacing: 0.08 * 11,
+              ),
+            ),
+          ),
+        ),
+        Expanded(child: value),
+      ],
+    );
+    if (fixedHeight) return SizedBox(height: 32, child: content);
+    return Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: content);
+  }
+}
+
+/// Desktop reminders table: Care · Every · Next due · mute/Done/Snooze/Edit.
+class _UpcomingTable extends ConsumerWidget {
+  const _UpcomingTable({required this.surface, required this.plantId});
+  final PlantlySurface surface;
+  final String plantId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
+    final schedulesAsync = ref.watch(schedulesForPlantProvider(plantId));
+    final types = ref.watch(careTypesProvider);
+    final rowHeight = Theme.of(context).extension<PlantlyDensity>()?.tableRowHeight ?? 44;
+    final headStyle = TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: surface.muted, letterSpacing: 0.08 * 11);
+    final cellStyle = TextStyle(fontSize: 13, color: surface.text);
+    return Container(
+      decoration: BoxDecoration(
+        color: surface.surface,
+        border: Border.all(color: surface.border),
+        borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: schedulesAsync.when(
+        loading: () => const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator())),
+        error: (e, _) => Padding(
+          padding: const EdgeInsets.all(14),
+          child: Text('$e', style: TextStyle(color: surface.terra, fontSize: 12)),
+        ),
+        data: (schedules) {
+          if (schedules.isEmpty) {
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Text(t.plantDetailNoReminders, style: TextStyle(fontSize: 12, color: surface.muted)),
+                ),
+                _AddReminderButton(surface: surface, plantId: plantId, leadingDivider: true),
+              ],
+            );
+          }
+          return Column(
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: DataTable(
+                  showCheckboxColumn: false,
+                  headingRowHeight: 36,
+                  dataRowMinHeight: rowHeight,
+                  dataRowMaxHeight: rowHeight,
+                  horizontalMargin: 14,
+                  columnSpacing: 20,
+                  dividerThickness: 1,
+                  headingTextStyle: headStyle,
+                  dataTextStyle: cellStyle,
+                  columns: [
+                    DataColumn(label: Text(t.detailColCare.toUpperCase())),
+                    DataColumn(label: Text(t.detailColEvery.toUpperCase())),
+                    DataColumn(label: Text(t.detailColNextDue.toUpperCase())),
+                    const DataColumn(label: SizedBox.shrink()),
+                  ],
+                  rows: [
+                    for (final s in schedules) _row(context, ref, t, s, resolveCareType(types, s.type), cellStyle),
+                  ],
+                ),
+              ),
+              _AddReminderButton(surface: surface, plantId: plantId, leadingDivider: true),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  String _every(AppLocalizations t, double days) {
+    if (days >= 1) return t.detailEveryNDays(days.round());
+    // Sub-day intervals only come from the minutes/hours test units.
+    return '${(days * 24).toStringAsFixed(1)} h';
+  }
+
+  DataRow _row(BuildContext context, WidgetRef ref, AppLocalizations t, db.CareScheduleRow s, CareType ct, TextStyle cellStyle) {
+    final (label, whenText, urgent) = _describeSchedule(t, s, careTypeLabel(t, ct));
+    final muted = s.notificationsMuted;
+    final chipBg = urgent ? surface.terraSoft : (ct.color ?? surface.greenSoft);
+    final chipFg = urgent ? surface.terra : (ct.color == null ? surface.green : Colors.white);
+    ButtonStyle small({required Color bg, required Color fg, BorderSide? side}) => TextButton.styleFrom(
+          backgroundColor: bg,
+          foregroundColor: fg,
+          side: side,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          minimumSize: const Size(0, 32),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          textStyle: const TextStyle(fontFamily: PlantlyFonts.inter, fontSize: 11, fontWeight: FontWeight.w700),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radiusMd)),
+        );
+    return DataRow(
+      onSelectChanged: (_) => _editReminder(context, s),
+      cells: [
+        DataCell(Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(color: chipBg, shape: BoxShape.circle),
+              child: Icon(ct.icon, size: 12, color: chipFg),
+            ),
+            const SizedBox(width: 8),
+            Text(label, style: cellStyle.copyWith(fontWeight: FontWeight.w600)),
+            if (muted) ...[
+              const SizedBox(width: 4),
+              Icon(Icons.notifications_off_outlined, size: 13, color: surface.muted),
+            ],
+          ],
+        )),
+        DataCell(Text(_every(t, s.currentIntervalDays))),
+        DataCell(Text(
+          whenText,
+          style: TextStyle(
+            fontSize: 13,
+            color: urgent ? surface.terra : surface.muted,
+            fontWeight: urgent ? FontWeight.w600 : FontWeight.w500,
+          ),
+        )),
+        DataCell(Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              tooltip: muted ? t.detailUnmuteReminderTooltip : t.detailMuteReminderTooltip,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              icon: Icon(muted ? Icons.notifications_off_outlined : Icons.notifications_outlined, size: 16, color: surface.muted),
+              onPressed: () => ref.read(careScheduleRepositoryProvider).setNotificationsMuted(s.id, !muted),
+            ),
+            const SizedBox(width: 4),
+            TextButton(
+              style: small(bg: surface.green, fg: Colors.white),
+              onPressed: () => _recordSchedule(context, ref, s, ct, plantId, label, surface),
+              child: Text(t.doneBtn),
+            ),
+            const SizedBox(width: 6),
+            TextButton(
+              style: small(bg: surface.surfaceAlt, fg: surface.muted, side: BorderSide(color: surface.border)),
+              onPressed: () => _snoozeSchedule(context, ref, s),
+              child: Text(t.snoozeBtn),
+            ),
+            const SizedBox(width: 4),
+            IconButton(
+              tooltip: t.editReminderTitle(careTypeLabel(t, ct).toLowerCase()),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              icon: Icon(Icons.edit_outlined, size: 16, color: surface.muted),
+              onPressed: () => _editReminder(context, s),
+            ),
+          ],
+        )),
+      ],
     );
   }
 }

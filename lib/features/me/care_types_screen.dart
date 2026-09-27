@@ -6,6 +6,8 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
+import '../../app/side_sheet.dart';
+import '../../app/navigation.dart';
 
 /// User-editable list of care-event / reminder types. Built-ins can be
 /// renamed but not deleted (their `key` is referenced by existing
@@ -26,10 +28,8 @@ class CareTypesScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: surface.bg,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.chevron_left, color: surface.text),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
+        automaticallyImplyLeading: false,
+        leading: adaptiveBackButton(context, surface, fallback: AppRoutes.me),
         title: Text(
           t.careTypesTitle,
           style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
@@ -103,8 +103,8 @@ class CareTypesScreen extends ConsumerWidget {
     var iconCode = existing?.iconCode ?? Icons.notifications_active_outlined.codePoint;
     int? colorValue = existing?.colorValue;
 
-    await showModalBottomSheet(
-      context: context,
+    await showAdaptiveSheet(
+      context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {

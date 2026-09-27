@@ -8,6 +8,8 @@ import '../../shared/location_picker.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../locations/space_kind_label.dart';
+import '../../app/breakpoints.dart';
+import '../../shared/sheet_chrome.dart';
 
 /// Edit the nickname / notes / location for an existing plant. Species
 /// input is free-text for now — we store it as the literal species name
@@ -111,26 +113,17 @@ class _EditPlantSheetState extends ConsumerState<EditPlantSheet> {
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: surface.bg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(PlantlyTokens.radius2xl)),
-        ),
+      child: SheetChrome(
+        surface: surface,
+        title: t.plantDetailEdit,
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 14),
+        handleGap: 14,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+            if (!context.isDesktop) ...[
             Text(t.plantDetailEdit, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text)),
             const SizedBox(height: 14),
+            ],
             _label(t.importNicknameLabel, surface),
             const SizedBox(height: 6),
             TextField(
@@ -229,7 +222,6 @@ class _EditPlantSheetState extends ConsumerState<EditPlantSheet> {
               ],
             ),
           ],
-        ),
       ),
     );
   }

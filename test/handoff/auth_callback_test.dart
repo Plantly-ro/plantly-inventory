@@ -92,4 +92,30 @@ void main() {
       expect(RegExp(r'<key>CFBundleURLSchemes</key>\s*<array>\s*<string>plantlyinventory</string>').hasMatch(plist), isTrue);
     });
   });
+
+  group('isAuthCallbackPath — path-URL web build', () {
+    const jwt = 'aaa.bbb.ccc';
+    test('matches /auth/callback with or without base href / trailing slash', () {
+      expect(isAuthCallbackPath('/auth/callback'), isTrue);
+      expect(isAuthCallbackPath('/auth/callback/'), isTrue);
+      expect(isAuthCallbackPath('/inventory/auth/callback'), isTrue);
+      expect(isAuthCallbackPath('/'), isFalse);
+      expect(isAuthCallbackPath('/auth/callbacks'), isFalse);
+      expect(isAuthCallbackPath('/me/cloud'), isFalse);
+    });
+
+    test('path form ?token=&nonce= and #token= both parse; hash-on-root still parses', () {
+      const nonce = 'abcdefghijklmnop0123456789';
+      final path = extractAuthCallback(Uri.parse('https://inv.example/auth/callback?token=$jwt&nonce=$nonce'));
+      expect(path?.token, jwt);
+      expect(path?.nonce, nonce);
+      expect(path?.customScheme, isFalse);
+      expect(extractAuthCallback(Uri.parse('https://inv.example/auth/callback/#token=$jwt'))?.token, jwt);
+      // What the server actually sends (`/#/auth/callback?…`) arrives under
+      // the path strategy as location `/` + hash — must keep working.
+      final hash = extractAuthCallback(Uri.parse('https://inv.example/#/auth/callback?token=$jwt&nonce=$nonce'));
+      expect(hash?.token, jwt);
+      expect(hash?.nonce, nonce);
+    });
+  });
 }

@@ -708,6 +708,9 @@ class AppLocalizationsRo extends AppLocalizations {
   String get spacePhotoRemove => 'Scoate din acest spațiu';
 
   @override
+  String get spacePhotoActionsTitle => 'Fotografie';
+
+  @override
   String get spaceCaptionTitle => 'Descriere';
 
   @override
@@ -2606,4 +2609,91 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get cloudErrGeneric => 'Sincronizarea a eșuat — reîncercăm';
+
+  @override
+  String get shellSelectPlant =>
+      'Alege o plantă ca să-i vezi istoricul de îngrijire';
+
+  @override
+  String get shellSelectSpace => 'Alege un spațiu ca să vezi ce crește acolo';
+
+  @override
+  String get shellSelectSection => 'Alege o secțiune din stânga';
+
+  @override
+  String get historyColDate => 'Data';
+
+  @override
+  String get historyColCare => 'Îngrijire';
+
+  @override
+  String get historyColDetails => 'Detalii';
+
+  @override
+  String get homeCustomise => 'Personalizează';
+
+  @override
+  String get homeSearchHint => 'Caută plante…';
+
+  @override
+  String get detailPrevPlant => 'Planta anterioară';
+
+  @override
+  String get detailNextPlant => 'Planta următoare';
+
+  @override
+  String get detailMoreCareActions => 'Alte acțiuni de îngrijire';
+
+  @override
+  String get detailColCare => 'Îngrijire';
+
+  @override
+  String get detailColEvery => 'La fiecare';
+
+  @override
+  String get detailColNextDue => 'Următoarea';
+
+  @override
+  String get detailFactSpace => 'Spațiu';
+
+  @override
+  String get detailFactAcquired => 'Achiziționată';
+
+  @override
+  String get detailFactPotSize => 'Ghiveci';
+
+  @override
+  String get detailFactTags => 'Etichete';
+
+  @override
+  String get detailFactNotes => 'Note';
+
+  @override
+  String detailEveryNDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n de zile',
+      few: '$n zile',
+      one: '1 zi',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spaceCardPlantCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n de plante',
+      few: '$n plante',
+      one: '1 plantă',
+      zero: 'Nicio plantă',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeNoPlantsBodyDesktop =>
+      'Adaugă una cu butonul din bara laterală. Poți seta mementouri după ce apare.';
 }

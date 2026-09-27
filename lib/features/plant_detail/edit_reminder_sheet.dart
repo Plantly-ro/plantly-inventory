@@ -8,6 +8,8 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
+import '../../app/breakpoints.dart';
+import '../../shared/sheet_chrome.dart';
 
 enum _Unit { minutes, hours, days, months }
 
@@ -150,25 +152,15 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: surface.bg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(PlantlyTokens.radius2xl)),
-        ),
+      child: SheetChrome(
+        surface: surface,
+        title: t.editReminderTitle(careTypeLabel(t, ct).toLowerCase()),
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  height: 4,
-                  width: 40,
-                  decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              const SizedBox(height: 14),
+        handleGap: 14,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        scrollable: true,
+        children: [
+              if (!context.isDesktop) ...[
               Row(
                 children: [
                   Icon(ct.icon, color: surface.green),
@@ -180,6 +172,7 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
                 ],
               ),
               const SizedBox(height: 14),
+              ],
               _label(t.addReminderEvery, surface),
               const SizedBox(height: 8),
               Row(
@@ -283,8 +276,6 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
                 ],
               ),
             ],
-          ),
-        ),
       ),
     );
   }

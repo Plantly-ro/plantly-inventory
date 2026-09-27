@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import '../../l10n/generated/app_localizations.dart';
 
 /// Human label for a `locations.kind` value. Kinds are stored as raw
@@ -25,4 +27,20 @@ String spaceLightLabel(AppLocalizations t, String light) {
     'low' => t.spaceLightLow,
     _ => light,
   };
+}
+
+/// Outline icon for a location kind (list tiles, grid covers).
+IconData spaceKindIcon(String kind) {
+  switch (kind) {
+    case 'home':
+      return Icons.home_outlined;
+    case 'room':
+      return Icons.meeting_room_outlined;
+    case 'shelf':
+      return Icons.shelves;
+    case 'outdoor_bed':
+      return Icons.outdoor_grill_outlined;
+    default:
+      return Icons.place_outlined;
+  }
 }

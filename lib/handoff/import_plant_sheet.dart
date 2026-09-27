@@ -5,11 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/providers.dart';
 import '../features/home/home_providers.dart';
-import '../features/plant_detail/plant_detail_screen.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../theme/tokens.dart';
 import 'import_plant_service.dart';
 import 'plantly_export.dart';
+import '../app/side_sheet.dart';
+import '../app/navigation.dart';
 
 final importPlantServiceProvider = Provider<ImportPlantService>((ref) {
   final ctx = ref.watch(appContextProvider).requireValue;
@@ -26,8 +27,8 @@ final importPlantServiceProvider = Provider<ImportPlantService>((ref) {
 /// Preview-then-confirm sheet for an incoming PlantlyExport (CONTRACT §4b).
 /// On confirm it writes the plant and pushes its detail screen.
 Future<void> showImportPlantSheet(BuildContext context, PlantlyExportPayload payload) {
-  return showModalBottomSheet<void>(
-    context: context,
+  return showAdaptiveSheet<void>(
+    context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) => ImportPlantSheet(payload: payload),
@@ -36,8 +37,8 @@ Future<void> showImportPlantSheet(BuildContext context, PlantlyExportPayload pay
 
 /// Friendly error for a malformed / oversized link.
 Future<void> showImportErrorSheet(BuildContext context, PlantlyExportFormatError error) {
-  return showModalBottomSheet<void>(
-    context: context,
+  return showAdaptiveSheet<void>(
+    context,
     backgroundColor: Colors.transparent,
     builder: (_) => _ImportErrorSheet(error: error),
   );
@@ -86,6 +87,7 @@ class _ImportPlantSheetState extends ConsumerState<ImportPlantSheet> {
       _error = null;
     });
     final navigator = Navigator.of(context);
+    final opener = preparePlantOpener(context);
     try {
       final plant = await ref.read(importPlantServiceProvider).import(
             widget.payload,
@@ -94,7 +96,7 @@ class _ImportPlantSheetState extends ConsumerState<ImportPlantSheet> {
           );
       if (!mounted) return;
       navigator.pop();
-      navigator.push(MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: plant.id)));
+      opener.open(plant.id);
     } catch (e) {
       if (!mounted) return;
       setState(() {

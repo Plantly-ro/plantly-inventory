@@ -16,6 +16,7 @@ class GreetingWidget extends ConsumerWidget {
     super.key,
     required this.surface,
     this.editing = false,
+    this.padInner = true,
     this.onMoveUp,
     this.onMoveDown,
     this.onRemove,
@@ -23,6 +24,7 @@ class GreetingWidget extends ConsumerWidget {
 
   final PlantlySurface surface;
   final bool editing;
+  final bool padInner;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
   final VoidCallback? onRemove;
@@ -38,6 +40,7 @@ class GreetingWidget extends ConsumerWidget {
     return WidgetShell(
       surface: surface,
       editing: editing,
+      padInner: padInner,
       onMoveUp: onMoveUp,
       onMoveDown: onMoveDown,
       onRemove: onRemove,

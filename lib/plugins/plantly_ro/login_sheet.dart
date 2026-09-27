@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app/breakpoints.dart';
+import '../../app/side_sheet.dart';
 import '../../cloud/oauth_handshake.dart';
 import '../../config/plantly_hosts.dart';
 import '../../features/home/home_providers.dart';
@@ -10,6 +12,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../marketplace/plantly_api.dart';
 import '../../marketplace/plantly_auth.dart';
 import '../../marketplace/plantly_session.dart';
+import '../../shared/sheet_chrome.dart';
 import '../../theme/tokens.dart';
 
 /// Sign-in to plantly.ro (CONTRACT §1/§5): Google / Facebook through the
@@ -17,13 +20,16 @@ import '../../theme/tokens.dart';
 /// [PlantlyAuth], which this sheet watches), or email + password inline.
 /// Registration and password reset are web-only — the links open the
 /// marketplace. Resolves with the session, or null when dismissed.
+///
+/// Bottom sheet on phone/tablet, right-side sheet on desktop (same as every
+/// other sheet — `showAdaptiveSheet` + [SheetChrome]).
 Future<PlantlySession?> showPlantlyLoginSheet(
   BuildContext context, {
   required PlantlyAuth auth,
   String? host,
 }) {
-  return showModalBottomSheet<PlantlySession>(
-    context: context,
+  return showAdaptiveSheet<PlantlySession>(
+    context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) => PlantlyLoginSheet(auth: auth, host: host ?? PlantlyHosts.host),
@@ -98,8 +104,9 @@ class _PlantlyLoginSheetState extends ConsumerState<PlantlyLoginSheet> {
 
   /// Hand off to the marketplace's OAuth flow. Mobile/desktop: external
   /// browser, the app comes back via `plantlyinventory://auth/callback`.
-  /// Web: same tab — the page reloads on `/#/auth/callback#token=` and the
-  /// handoff listener adopts the token.
+  /// Web: same tab — the page reloads on `/#/auth/callback?token=&nonce=`
+  /// (a hash on `/` under the path URL strategy) and the handoff listener
+  /// adopts the token.
   Future<void> _oauth(String provider) async {
     final handshake = ref.read(oauthHandshakeProvider); // before the await (#14)
     setState(() {
@@ -133,28 +140,27 @@ class _PlantlyLoginSheetState extends ConsumerState<PlantlyLoginSheet> {
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
     final t = AppLocalizations.of(context);
     final inset = MediaQuery.of(context).viewInsets.bottom;
+    final desktop = context.isDesktop;
+    // Phone: SheetChrome draws the exact frame this sheet used to hand-roll
+    // (bg container, 2xl top radius, 20/12/20/20 padding, handle + 14 gap);
+    // the SafeArea keeps the bottom inset inside the sheet as before.
+    // Desktop: the chrome header carries title/subtitle + `×`, so the
+    // in-body title is skipped there.
     return Padding(
       padding: EdgeInsets.only(bottom: inset),
-      child: Container(
-        decoration: BoxDecoration(
-          color: surface.bg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(PlantlyTokens.radius2xl)),
-        ),
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-        child: SafeArea(
+      child: SheetChrome(
+        surface: surface,
+        title: t.plantlyLoginTitle,
+        subtitle: t.plantlyLoginSubtitle,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+        SafeArea(
           top: false,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
-                child: Container(
-                  height: 4,
-                  width: 40,
-                  decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              const SizedBox(height: 14),
+              if (!desktop) ...[
               Text(
                 t.plantlyLoginTitle,
                 style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, fontSize: 19, fontWeight: FontWeight.w800, color: surface.text),
@@ -162,6 +168,7 @@ class _PlantlyLoginSheetState extends ConsumerState<PlantlyLoginSheet> {
               const SizedBox(height: 4),
               Text(t.plantlyLoginSubtitle, style: TextStyle(fontSize: 12.5, color: surface.muted)),
               const SizedBox(height: 16),
+              ],
               _SocialButton(
                 key: const Key('plantly-login-google'),
                 label: t.cloudLoginGoogle,
@@ -262,6 +269,7 @@ class _PlantlyLoginSheetState extends ConsumerState<PlantlyLoginSheet> {
             ],
           ),
         ),
+        ],
       ),
     );
   }

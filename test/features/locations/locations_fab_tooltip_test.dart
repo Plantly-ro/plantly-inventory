@@ -14,6 +14,11 @@ void main() {
 
   Future<void> pump(WidgetTester tester, Locale locale) async {
     addTearDown(() => tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50))));
+    // The FAB is phone chrome: on wide surfaces (the default 800×600 test
+    // window is tablet) the Add button lives in the app bar instead.
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(buildTestApp(
       child: MaterialApp(
         locale: locale,
