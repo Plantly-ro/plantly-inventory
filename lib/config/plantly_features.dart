@@ -10,8 +10,17 @@ abstract final class PlantlyFeatures {
   ///
   /// Build with it on: `--dart-define=PLANTLY_SELL_ENABLED=true`.
   static const bool sellEnabled = bool.fromEnvironment('PLANTLY_SELL_ENABLED', defaultValue: false);
+
+  /// Cloud backup & sync (CLOUD-SYNC-CONTRACT §0/§2.4). OFF by default: the
+  /// Me screen hides the Cloud section, nothing links a collection and the
+  /// sync runner stays the no-op. Dev/preview builds pass
+  /// `--dart-define=PLANTLY_CLOUD_ENABLED=true`.
+  static const bool cloudEnabled = bool.fromEnvironment('PLANTLY_CLOUD_ENABLED', defaultValue: false);
 }
 
 /// Riverpod view of [PlantlyFeatures.sellEnabled] so tests can exercise both
 /// states without rebuilding.
 final sellEnabledProvider = Provider<bool>((_) => PlantlyFeatures.sellEnabled);
+
+/// Riverpod view of [PlantlyFeatures.cloudEnabled] (overridable in tests).
+final cloudEnabledProvider = Provider<bool>((_) => PlantlyFeatures.cloudEnabled);

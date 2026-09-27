@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../cloud/oauth_handshake.dart';
+import '../cloud/sign_in_events.dart';
 import '../data/providers.dart';
+import '../marketplace/plantly_auth.dart';
 import 'import_plant_sheet.dart';
 import 'incoming_links.dart';
 import 'plantly_export.dart';
@@ -11,7 +14,9 @@ import 'plantly_export.dart';
 /// Sits under `MaterialApp` (via `builder`) and turns incoming import links
 /// into the [ImportPlantSheet] over whatever route is current. Waits for
 /// the DB bootstrap before showing anything so a cold start via a link
-/// doesn't race the seed.
+/// doesn't race the seed. OAuth callback links (`auth/callback#token=`)
+/// are adopted straight into [PlantlyAuth] and announced on
+/// [signInEventsProvider] — no UI of their own.
 class HandoffListener extends ConsumerStatefulWidget {
   const HandoffListener({super.key, required this.navigatorKey, required this.child});
   final GlobalKey<NavigatorState> navigatorKey;
@@ -43,7 +48,17 @@ class _HandoffListenerState extends ConsumerState<HandoffListener> {
     super.dispose();
   }
 
+  String? _lastToken;
+
   void _enqueue(Uri uri) {
+    final callback = extractAuthCallback(uri);
+    if (callback != null) {
+      if (callback.token == _lastToken) return;
+      _lastToken = callback.token;
+      ref.read(incomingLinksProvider).consume();
+      unawaited(_adoptToken(callback));
+      return;
+    }
     final d = extractImportParam(uri);
     // `_lastHandled` only dedupes the initial-link + stream double delivery
     // of the same URI; it is cleared once the sheet closes so the same link
@@ -53,6 +68,25 @@ class _HandoffListenerState extends ConsumerState<HandoffListener> {
     ref.read(incomingLinksProvider).consume();
     _pending.add(d);
     _drain();
+  }
+
+  /// Adopt only callbacks that answer a sign-in this device started (nonce +
+  /// 10-minute window, see [OAuthHandshake]) — anything else is a fixation
+  /// attempt or a stale link and is dropped without a trace of the token.
+  Future<void> _adoptToken(AuthCallback callback) async {
+    final handshake = ref.read(oauthHandshakeProvider);
+    final auth = ref.read(plantlyAuthProvider.notifier);
+    final events = ref.read(signInEventsProvider);
+    if (!await handshake.consume(callback.nonce, allowMissingNonce: callback.customScheme)) {
+      debugPrint('oauth callback ignored: no matching sign-in in progress');
+      return;
+    }
+    try {
+      final session = await auth.adoptToken(callback.token);
+      events.emit(session);
+    } on FormatException {
+      // Not a usable JWT — the link was malformed; nothing to show.
+    }
   }
 
   void _release(String d) {

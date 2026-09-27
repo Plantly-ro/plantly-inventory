@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,8 +12,8 @@ import 'package:plantly_inventory/sync/sync_transport.dart';
 /// Records every push and replies with a scripted response. By default it
 /// accepts everything.
 class FakeSyncTransport implements SyncTransport {
-  FakeSyncTransport({this.serverHlc = 'srv-1'});
-  final String serverHlc;
+  FakeSyncTransport({this.serverCursor = '1'});
+  final String serverCursor;
 
   final List<PushRequest> pushes = [];
 
@@ -27,13 +29,13 @@ class FakeSyncTransport implements SyncTransport {
       rejected: [
         for (final i in rejects) OpRejection(opIndex: i, reason: 'bad-op')
       ],
-      serverHlc: serverHlc,
+      cursor: serverCursor,
     );
   }
 
   @override
   Future<PullResponse> pull(PullRequest request) async =>
-      PullResponse(ops: const [], serverHlc: serverHlc, hasMore: false);
+      PullResponse(ops: const [], cursor: serverCursor, hasMore: false);
 }
 
 class InMemoryCursor implements SyncCursor {
@@ -105,19 +107,56 @@ void main() {
 
     final ops = t.pushes.single.ops;
     expect(ops[0].field, '*');
-    expect(ops[0].value, {'nickname': 'Bob'});
+    // `*` payloads are canonicalised through the entity codec: full row.
+    expect((ops[0].value as Map)['nickname'], 'Bob');
+    expect((ops[0].value as Map)['id'], 'p1');
+    expect((ops[0].value as Map).containsKey('tenant_id'), isFalse);
     expect(ops[1].field, 'water_days');
     expect(ops[1].value, 7);
     expect(ops[2].field, '__tombstone__');
     expect(ops[2].value, isNull);
   });
 
-  test('sends last_seen_server_hlc from the cursor', () async {
+  test('sends `since` from the cursor and advances it from the reply', () async {
     await opLog.recordCreate(entity: 'plants', entityId: 'p1', value: {'n': 1});
-    final cursor = InMemoryCursor()..value = 'srv-cursor-42';
-    final t = FakeSyncTransport();
+    final cursor = InMemoryCursor()..value = '42';
+    final t = FakeSyncTransport(serverCursor: '57');
     await engine(t, cursor: cursor).pushPending();
-    expect(t.pushes.single.lastSeenServerHlc, 'srv-cursor-42');
+    expect(t.pushes.single.since, '42');
+    expect(cursor.value, '57');
+  });
+
+  test('empty cursor is sent as "0" on the wire', () async {
+    await opLog.recordCreate(entity: 'plants', entityId: 'p1', value: {'n': 1});
+    final t = FakeSyncTransport();
+    await engine(t).pushPending();
+    expect(t.pushes.single.toJson()['since'], '0');
+  });
+
+  test('fresh_ops are handed to onFresh before the cursor advances', () async {
+    await opLog.recordCreate(entity: 'plants', entityId: 'p1', value: {'n': 1});
+    final cursor = InMemoryCursor();
+    final t = _FreshTransport();
+    String? cursorWhenFresh;
+    final res = await engine(t, cursor: cursor).pushPending(onFresh: (ops) async {
+      cursorWhenFresh = cursor.value;
+      expect(ops.single.entityId, 'remote-1');
+    });
+    expect(res.freshOps, 1);
+    expect(res.hasMore, isTrue);
+    expect(cursorWhenFresh, '');
+    expect(cursor.value, '9');
+  });
+
+  test('pullAll pages until has_more is false and persists the cursor', () async {
+    final cursor = InMemoryCursor();
+    final t = _PagingTransport(pages: 3);
+    final pages = <int>[];
+    final n = await engine(t, cursor: cursor).pullAll(onOps: (ops) async => pages.add(ops.length));
+    expect(n, 3);
+    expect(pages, [1, 1, 1]);
+    expect(t.sinces, ['', '1', '2']);
+    expect(cursor.value, '3');
   });
 
   test('batches large op sets and does not exceed batchSize per push',
@@ -167,6 +206,74 @@ void main() {
     expect(t.pushes, isEmpty);
   });
 
+  group('byte cap + 413', () {
+    Future<void> bigCreate(String id, int approxBytes) => opLog.recordCreate(
+        entity: 'plants', entityId: id, value: {'nickname': 'x' * approxBytes});
+
+    test('batches are cut by cumulative encoded bytes as well as count', () async {
+      for (var i = 0; i < 5; i++) {
+        await bigCreate('p$i', 400);
+      }
+      final rows = await allOps();
+      final one = SyncEngine.encodedOpSize(rows.first);
+      expect(one, greaterThan(400));
+      final t = FakeSyncTransport();
+      final e = SyncEngine(
+        db: db, transport: t, cursor: InMemoryCursor(), tenantId: 'tenant-local', deviceId: 'dev-a',
+        batchSize: 500, maxBatchBytes: one * 2 + 10, nowMillis: () => 1,
+      );
+      final r = await e.pushPending();
+      expect(r.sent, 5);
+      expect(t.pushes.map((p) => p.ops.length), [2, 2, 1]);
+      expect(await e.pendingCount(), 0);
+    });
+
+    test('413 on a multi-op batch halves the batch and retries the same rows until it fits', () async {
+      for (var i = 0; i < 8; i++) {
+        await opLog.recordCreate(entity: 'plants', entityId: 'p$i', value: {'n': i});
+      }
+      final t = _TooLargeTransport(maxOps: 2);
+      final e = engine(t);
+      final r = await e.pushPending();
+      expect(r.sent, 8);
+      expect(r.accepted, 8);
+      expect(r.tooLarge, isEmpty);
+      expect(t.attempts, [8, 4, 2, 2, 2, 2]);
+      expect(t.pushes.map((p) => p.ops.first.entityId), ['p0', 'p2', 'p4', 'p6']);
+      expect(await e.pendingCount(), 0);
+      // The limit only shrinks within a run and probes back up (×2) per run.
+      expect(e.currentBatchLimit, 2);
+      for (var i = 8; i < 13; i++) {
+        await opLog.recordCreate(entity: 'plants', entityId: 'p$i', value: {'n': i});
+      }
+      t.attempts.clear();
+      await e.pushPending();
+      expect(t.attempts, [4, 2, 2, 1]);
+      expect(e.currentBatchLimit, 2);
+    });
+
+    test('a single op the server still refuses is parked (pushed_at) and reported, not resent', () async {
+      await opLog.recordCreate(entity: 'plants', entityId: 'small-1', value: {'n': 1});
+      await bigCreate('giant', 5000);
+      await opLog.recordCreate(entity: 'plants', entityId: 'small-2', value: {'n': 2});
+      final t = _TooLargeTransport(maxOps: 500, maxBytes: 3000);
+      final e = engine(t);
+      final r = await e.pushPending();
+      expect(r.tooLarge, hasLength(1));
+      expect(r.tooLarge.single.entity, 'plants');
+      expect(r.tooLarge.single.entityId, 'giant');
+      expect(r.accepted, 2);
+      expect(r.allAccepted, isFalse);
+      expect(await e.pendingCount(), 0);
+      final giant = (await allOps()).firstWhere((o) => o.entityId == 'giant');
+      expect(giant.pushedAt, 1234);
+      // Second run: nothing pending, no resend.
+      final r2 = await e.pushPending();
+      expect(r2.sent, 0);
+      expect(r2.tooLarge, isEmpty);
+    });
+  });
+
   test('only pushes the given tenant\'s ops', () async {
     await opLog.recordCreate(entity: 'plants', entityId: 'p1', value: {'n': 1});
     final otherTenant = OpLogWriter(
@@ -180,4 +287,71 @@ void main() {
     expect(result.sent, 1);
     expect(t.pushes.single.ops.single.entityId, 'p1');
   });
+}
+
+class _FreshTransport extends FakeSyncTransport {
+  @override
+  Future<PushResponse> push(PushRequest request) async {
+    pushes.add(request);
+    return PushResponse(
+      accepted: request.ops.length,
+      rejected: const [],
+      cursor: '9',
+      hasMore: true,
+      freshOps: const [
+        SyncOpDto(
+          entity: 'plants',
+          entityId: 'remote-1',
+          field: 'notes',
+          value: 'x',
+          hlc: '00000000000001-00000-dev-b',
+          deviceId: 'dev-b',
+        ),
+      ],
+    );
+  }
+}
+
+class _PagingTransport extends FakeSyncTransport {
+  _PagingTransport({required this.pages});
+  final int pages;
+  final List<String> sinces = [];
+
+  @override
+  Future<PullResponse> pull(PullRequest request) async {
+    sinces.add(request.since);
+    final page = sinces.length;
+    return PullResponse(
+      ops: [
+        SyncOpDto(
+          entity: 'plants',
+          entityId: 'r$page',
+          field: 'notes',
+          value: 'v',
+          hlc: '0000000000000$page-00000-dev-b',
+        ),
+      ],
+      cursor: '$page',
+      hasMore: page < pages,
+    );
+  }
+}
+
+/// Rejects a push with 413 when it exceeds [maxOps] ops or [maxBytes] of
+/// encoded ops; records the size of every attempt.
+class _TooLargeTransport extends FakeSyncTransport {
+  _TooLargeTransport({required this.maxOps, this.maxBytes});
+  final int maxOps;
+  final int? maxBytes;
+  final List<int> attempts = [];
+
+  @override
+  Future<PushResponse> push(PushRequest request) async {
+    attempts.add(request.ops.length);
+    final bytes = utf8.encode(json.encode(request.toJson())).length;
+    if (request.ops.length > maxOps || (maxBytes != null && bytes > maxBytes!)) {
+      throw const SyncBatchTooLargeError();
+    }
+    return super.push(request);
+  }
 }

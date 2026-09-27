@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'cloud/cloud_sync.dart';
 import 'features/home/home_providers.dart';
 import 'features/home/home_screen.dart';
 import 'handoff/handoff_listener.dart';
@@ -33,6 +34,8 @@ class PlantlyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeModeProvider);
+    // Cloud sync glue lives for the whole session (inert when the flag is off).
+    ref.watch(cloudSyncCoordinatorProvider);
     final navKey = navigatorKey ?? rootNavigatorKey;
     return MaterialApp(
       title: 'PlantlyInventory',

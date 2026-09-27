@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/providers.dart';
+import 'remote_photo.dart';
 
 /// Renders a photo from the content-addressed store by sha, falling back
 /// to [placeholder] while loading or when the blob is missing. The only
 /// place the UI touches photo bytes — platform differences (file vs
-/// IndexedDB) stay inside [PhotoBlobStore].
-class StoredPhotoImage extends ConsumerWidget {
+/// IndexedDB) stay inside [PhotoBlobStore], and cloud-synced rows without
+/// local bytes are fetched on first display by [RemotePhoto].
+class StoredPhotoImage extends StatelessWidget {
   const StoredPhotoImage({
     super.key,
     required this.sha,
@@ -24,15 +24,11 @@ class StoredPhotoImage extends ConsumerWidget {
   final double? height;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final repo = ref.watch(photoRepositoryProvider);
-    return FutureBuilder<ImageProvider?>(
-      future: repo.imageFor(sha),
-      builder: (context, snap) {
-        final image = snap.data;
-        if (image == null) return placeholder;
-        return Image(image: image, fit: fit, width: width, height: height);
-      },
+  Widget build(BuildContext context) {
+    return RemotePhoto(
+      sha: sha,
+      placeholder: placeholder,
+      builder: (context, image) => Image(image: image, fit: fit, width: width, height: height),
     );
   }
 }

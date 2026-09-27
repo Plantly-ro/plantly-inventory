@@ -71,6 +71,91 @@ String? extractImportParamFromHash(String hash) {
   return _paramFromQueryString(h);
 }
 
+/// Pull the JWT out of an OAuth callback link (CLOUD-SYNC-CONTRACT §2.4),
+/// or null when [uri] is not one. Accepted forms — the token rides in the
+/// fragment so it never reaches a server log; `?token=` is tolerated:
+///  1. `plantlyinventory://auth/callback#token=<jwt>`
+///  2. `https://<host>/.../auth/callback#token=<jwt>`
+///  3. `<inventory web>/#/auth/callback#token=<jwt>` (or `?token=`)
+/// Anything that doesn't look like a three-segment JWT is rejected.
+String? extractAuthToken(Uri uri) => extractAuthCallback(uri)?.token;
+
+/// Token + the echoed `nonce` (null when the server sent none) of an OAuth
+/// callback link, or null when [uri] is not one (incl. `#error=` /
+/// `?error=` failure callbacks, which carry no token). Accepted forms:
+///  - `plantlyinventory://auth/callback#token=<jwt>&nonce=<n>` (client=inventory)
+///  - `<INVENTORY_WEB>/#/auth/callback?token=<jwt>&nonce=<n>` (client=inventory-web;
+///    everything after the hash route stays in the fragment)
+///  - the `%23`/`#token=` variant of the web form and `https://…/auth/callback#…`.
+AuthCallback? extractAuthCallback(Uri uri) {
+  if (uri.scheme == 'plantlyinventory') {
+    final isCallback = uri.host == 'auth' && (uri.path == '/callback' || uri.path == 'callback');
+    if (!isCallback) return null;
+    return (_callbackFromQueryString(uri.fragment) ?? _callbackFromQueryString(uri.query))?.viaCustomScheme();
+  }
+  if (uri.scheme == 'https' || uri.scheme == 'http') {
+    if (uri.path.endsWith('/auth/callback')) {
+      return _callbackFromQueryString(uri.fragment) ?? _callbackFromQueryString(uri.query);
+    }
+    return extractAuthCallbackFromHash(uri.fragment);
+  }
+  return null;
+}
+
+class AuthCallback {
+  const AuthCallback({required this.token, this.nonce, this.customScheme = false});
+  final String token;
+  final String? nonce;
+
+  /// Arrived through `plantlyinventory://` (vs. the web hash route). Only
+  /// this form may be accepted without a nonce (older servers).
+  final bool customScheme;
+
+  AuthCallback viaCustomScheme() => AuthCallback(token: token, nonce: nonce, customScheme: true);
+
+  /// Never print the token.
+  @override
+  String toString() => 'AuthCallback(nonce=${nonce == null ? 'absent' : 'present'})';
+}
+
+/// Form 3 — the fragment `/auth/callback#token=<jwt>` / `/auth/callback?token=`.
+String? extractAuthTokenFromHash(String hash) => extractAuthCallbackFromHash(hash)?.token;
+
+AuthCallback? extractAuthCallbackFromHash(String hash) {
+  var h = hash.startsWith('#') ? hash.substring(1) : hash;
+  if (!h.startsWith('/auth/callback')) return null;
+  h = h.substring('/auth/callback'.length);
+  // `Uri.parse` keeps a second `#` inside the fragment percent-encoded.
+  if (h.startsWith('%23')) {
+    h = h.substring(3);
+  } else if (h.startsWith('?') || h.startsWith('#')) {
+    h = h.substring(1);
+  } else if (h.isNotEmpty) {
+    return null;
+  }
+  return _callbackFromQueryString(h);
+}
+
+final _jwtShape = RegExp(r'^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$');
+final _nonceShape = RegExp(r'^[A-Za-z0-9_-]{16,64}$');
+
+AuthCallback? _callbackFromQueryString(String qs) {
+  if (qs.isEmpty) return null;
+  String? token;
+  String? nonce;
+  try {
+    final params = Uri.splitQueryString(qs);
+    token = params['token'];
+    nonce = params['nonce'];
+  } on FormatException {
+    token = RegExp(r'(?:^|&)token=([^&]+)').firstMatch(qs)?.group(1);
+    nonce = RegExp(r'(?:^|&)nonce=([^&]+)').firstMatch(qs)?.group(1);
+  }
+  if (token == null || !_jwtShape.hasMatch(token)) return null;
+  if (nonce != null && !_nonceShape.hasMatch(nonce)) nonce = null;
+  return AuthCallback(token: token, nonce: nonce);
+}
+
 String? _paramFromQueryString(String qs) {
   if (qs.isEmpty) return null;
   try {

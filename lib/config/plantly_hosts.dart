@@ -43,4 +43,29 @@ abstract final class PlantlyHosts {
 
   /// Bare listing URL; the server redirects to the slugged form.
   static String postUrl(String id, {String? origin}) => '${origin ?? host}/posts/$id';
+
+  /// OAuth entry point for the Inventory client (CLOUD-SYNC-CONTRACT §2.4):
+  /// the marketplace runs the provider dance and lands on
+  /// `plantlyinventory://auth/callback#token=<jwt>` (web: `/#/auth/callback`).
+  /// `client` picks the callback shape the monolith redirects to:
+  /// `inventory` → `plantlyinventory://auth/callback#token=<jwt>&nonce=<n>`,
+  /// `inventory-web` → `<INVENTORY_WEB>/#/auth/callback?token=<jwt>&nonce=<n>`
+  /// (failures: `#error=` / `?error=`). `nonce` (random, per attempt) is
+  /// echoed back verbatim — see `cloud/oauth_handshake.dart`.
+  static String oauthStartUrl(String provider, {String? origin, String? nonce, String? client}) {
+    final c = client ?? oauthClient;
+    final n = nonce == null ? '' : '&nonce=${Uri.encodeQueryComponent(nonce)}';
+    return '${apiBase(origin)}/auth/oauth/$provider/start?client=$c$n';
+  }
+
+  /// `inventory-web` in the browser build, `inventory` everywhere else.
+  static String get oauthClient => kIsWeb ? 'inventory-web' : 'inventory';
+
+  /// Subscription page on the marketplace, pre-selecting a product tab
+  /// (§4). Only linked from web/desktop builds — never from Android/iOS.
+  static String subscriptionUrl({String product = 'inventory_cloud', String? origin}) =>
+      '${origin ?? host}/account/subscription?product=$product';
+
+  /// `X-Plantly-Client` value logged by the inventory routes (§2.2).
+  static String get clientHeader => 'inventory/$appVersion';
 }

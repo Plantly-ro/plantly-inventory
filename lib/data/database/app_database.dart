@@ -306,7 +306,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -345,6 +345,12 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(plantPhotos, plantPhotos.capturedAt);
             await m.addColumn(locationPhotos, locationPhotos.capturedAt);
           }
+          if (from < 8) {
+            // Cloud sync: per-(entity, id, field) LWW lookup over sync_ops.
+            await customStatement(
+              'CREATE INDEX IF NOT EXISTS idx_sync_ops_key ON sync_ops(tenant_id, entity, entity_id, field)',
+            );
+          }
         },
       );
 
@@ -366,6 +372,9 @@ class AppDatabase extends _$AppDatabase {
     );
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_sync_ops_tenant_pending ON sync_ops(tenant_id, pushed_at) WHERE pushed_at IS NULL',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_sync_ops_key ON sync_ops(tenant_id, entity, entity_id, field)',
     );
     await customStatement(
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_tenant_name ON tags(tenant_id, name)',

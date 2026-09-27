@@ -10,6 +10,7 @@ import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../shared/photo_source_sheet.dart';
 import '../../shared/plant_thumb.dart';
+import '../../shared/remote_photo.dart';
 import '../../shared/stored_photo_image.dart';
 import '../../sync/hlc.dart';
 import '../../theme/tokens.dart';
@@ -352,21 +353,19 @@ class _LocationMapView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final photoRepo = ref.watch(photoRepositoryProvider);
-    return FutureBuilder<ImageProvider?>(
-      future: photoRepo.imageFor(mapPhotoSha),
-      builder: (context, snap) {
-        final image = snap.data;
-        if (image == null) {
-          return Container(
-            height: 200,
-            decoration: BoxDecoration(
-              color: surface.surfaceAlt,
-              borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
-            ),
-            child: Center(child: Text(AppLocalizations.of(context).spaceMapMissing)),
-          );
-        }
+    // The map photo may have arrived through cloud sync without bytes yet;
+    // RemotePhoto downloads it on first display and shows the stub meanwhile.
+    return RemotePhoto(
+      sha: mapPhotoSha,
+      placeholder: Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: surface.surfaceAlt,
+          borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
+        ),
+        child: Center(child: Text(AppLocalizations.of(context).spaceMapMissing)),
+      ),
+      builder: (context, image) {
         return AspectRatio(
           aspectRatio: 4 / 3,
           child: LayoutBuilder(

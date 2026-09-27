@@ -2311,4 +2311,256 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get spacePickerChooseTitle => 'Choose a space';
+
+  @override
+  String get cloudSectionTitle => 'Cloud';
+
+  @override
+  String get cloudScreenTitle => 'Cloud';
+
+  @override
+  String get cloudScreenIntro =>
+      'Your plants, photos and care history are backed up to your plantly.ro account and kept in sync on every device you sign in on. Nothing leaves this device until you link it.';
+
+  @override
+  String get cloudSignInLabel => 'Sign in to plantly.ro';
+
+  @override
+  String get cloudSignInPitch =>
+      'Back up your plants and sync them across devices';
+
+  @override
+  String get cloudNotIncludedLabel => 'Cloud backup & sync';
+
+  @override
+  String get cloudNotIncludedValue =>
+      'Included with Plantly Pro or Plantly Inventory Cloud';
+
+  @override
+  String get cloudChecking => 'Checking your subscription…';
+
+  @override
+  String get cloudSubscribeLabel => 'Subscribe on plantly.ro';
+
+  @override
+  String get cloudSubscribeValue =>
+      'Opens your plantly.ro account in the browser';
+
+  @override
+  String get cloudRefreshStatusLabel => 'Refresh status';
+
+  @override
+  String get cloudRefreshStatusValue => 'Check your subscription again';
+
+  @override
+  String get cloudStatusLabel => 'Cloud sync';
+
+  @override
+  String get cloudSettingUp => 'Setting up your cloud collection…';
+
+  @override
+  String get cloudSetupFailed => 'Couldn\'t set up cloud sync. Tap to retry.';
+
+  @override
+  String get cloudSyncing => 'Syncing…';
+
+  @override
+  String get cloudLastSyncNever => 'Not synced yet';
+
+  @override
+  String get cloudLastSyncJustNow => 'Synced just now';
+
+  @override
+  String cloudLastSyncMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Synced $count min ago',
+      one: 'Synced 1 min ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cloudLastSyncHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Synced $count hours ago',
+      one: 'Synced 1 hour ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cloudLastSyncDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Synced $count days ago',
+      one: 'Synced 1 day ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cloudPendingOps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count changes waiting',
+      one: '1 change waiting',
+      zero: 'all changes uploaded',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cloudStorageUsed(String used, String quota) {
+    return '$used of $quota used';
+  }
+
+  @override
+  String get cloudSyncNowLabel => 'Sync now';
+
+  @override
+  String get cloudSyncNowValue => 'Upload pending changes and fetch updates';
+
+  @override
+  String get cloudPlanLabel => 'Plan';
+
+  @override
+  String get cloudEntitlementSourcePro => 'Included with Plantly Pro';
+
+  @override
+  String get cloudEntitlementSourceCloud => 'Plantly Inventory Cloud';
+
+  @override
+  String cloudRenewsOn(String date) {
+    return 'renews $date';
+  }
+
+  @override
+  String get cloudCollectionLabel => 'Collection';
+
+  @override
+  String get cloudLastErrorLabel => 'Last error';
+
+  @override
+  String get cloudAccountLabel => 'Account';
+
+  @override
+  String cloudAccountValue(String username) {
+    return 'Signed in as $username · tap to sign out';
+  }
+
+  @override
+  String get cloudSignOutTitle => 'Sign out of plantly.ro?';
+
+  @override
+  String cloudSignOutBody(String username) {
+    return 'Cloud sync pauses until $username signs in again. Your plants stay on this device.';
+  }
+
+  @override
+  String get cloudSignOut => 'Sign out';
+
+  @override
+  String get cloudUnlinkLabel => 'Unlink this device';
+
+  @override
+  String get cloudUnlinkValue =>
+      'Stop syncing here; keeps local and server data';
+
+  @override
+  String get cloudUnlinkTitle => 'Unlink this device?';
+
+  @override
+  String get cloudUnlinkBody =>
+      'Sync stops on this device. Nothing is deleted: your plants stay here and your data stays in your plantly.ro account. Sign in again any time to relink.';
+
+  @override
+  String get cloudUnlink => 'Unlink';
+
+  @override
+  String get cloudUnlinked => 'Device unlinked';
+
+  @override
+  String get cloudLoginGoogle => 'Continue with Google';
+
+  @override
+  String get cloudLoginFacebook => 'Continue with Facebook';
+
+  @override
+  String get cloudLoginOr => 'or';
+
+  @override
+  String get cloudLoginOauthWaiting =>
+      'Finish signing in in your browser — we\'ll pick it up here.';
+
+  @override
+  String get cloudSyncOffHere =>
+      'Sync is off on this device — tap to turn it on';
+
+  @override
+  String cloudHeldByOther(String username) {
+    return 'This device holds plants synced by $username.';
+  }
+
+  @override
+  String cloudMoveToMeLabel(String username) {
+    return 'Move this device\'s plants to $username\'s cloud';
+  }
+
+  @override
+  String cloudMoveToMeValue(String username) {
+    return 'They leave $username\'s collection and sync to yours';
+  }
+
+  @override
+  String get cloudMoveConfirmTitle => 'Move plants to your cloud?';
+
+  @override
+  String cloudMoveConfirmBody(String from, String to) {
+    return 'Everything on this device leaves $from\'s collection and is uploaded to $to\'s. $from keeps what was already synced from other devices.';
+  }
+
+  @override
+  String get cloudMove => 'Move';
+
+  @override
+  String cloudStartEmptyLabel(String username) {
+    return 'Start empty for $username';
+  }
+
+  @override
+  String cloudStartEmptyValue(String username) {
+    return '$username\'s plants stay hidden on this device; sign $username in again to see them';
+  }
+
+  @override
+  String get cloudErrCollectionUnavailable =>
+      'This collection is no longer available — unlink this device and link it again';
+
+  @override
+  String get cloudErrQuotaExceeded =>
+      'Cloud storage is full — new photos stay on this device until space frees up';
+
+  @override
+  String get cloudErrOpTooLarge =>
+      'One change is too large to upload and was skipped';
+
+  @override
+  String cloudErrOpTooLargeDetail(String detail) {
+    return 'One change is too large to upload and was skipped ($detail)';
+  }
+
+  @override
+  String get cloudErrRetrying => 'Server busy — retrying shortly';
+
+  @override
+  String get cloudErrOffline => 'Offline — will sync when you are back online';
+
+  @override
+  String get cloudErrGeneric => 'Sync failed — will retry';
 }
