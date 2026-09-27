@@ -7,6 +7,7 @@ import 'package:plantly_inventory/data/database/app_database.dart';
 import 'package:plantly_inventory/sync/hlc.dart';
 import 'package:plantly_inventory/sync/op_log.dart';
 import 'package:plantly_inventory/sync/sync_applier.dart';
+import 'package:plantly_inventory/sync/sync_rejections.dart';
 import 'package:plantly_inventory/sync/sync_transport.dart';
 
 String hlcAt(int ms, {int logical = 0, String dev = 'dev-b'}) => Hlc(ms, logical, dev).encode();
@@ -384,6 +385,98 @@ void main() {
     final wire = json.decode(json.encode(plantJson('p1', notes: 'n'))) as Map<String, dynamic>;
     await applier.applyBatch([op('plants', 'p1', '*', wire, hlcAt(5000))]);
     expect((await plant('p1'))!.notes, 'n');
+  });
+
+  group('id collision across tenants (QA2 BUG-2)', () {
+    Future<PlantRow> otherTenantPlant(String id) async {
+      await db.into(db.plants).insert(PlantsCompanion.insert(
+          id: id, tenantId: 'other', nickname: 'Mine', status: 'active', updatedHlc: hlcAt(100, dev: 'dev-a'), deviceId: 'dev-a'));
+      return (await plant(id))!;
+    }
+
+    test("whole-row op whose id exists under another tenant → skipped, other tenant's row untouched, ledger row id_collision parked", () async {
+      await otherTenantPlant('p1');
+      final remote = op('plants', 'p1', '*', plantJson('p1', nickname: 'Theirs', hlc: hlcAt(5000)), hlcAt(5000));
+
+      final r = await applier.applyBatch([remote]);
+      expect(r.applied, 0);
+      expect(r.skipped, 1);
+      expect(r.idCollisions, hasLength(1));
+      expect(r.idCollisions.single.entity, 'plants');
+      expect(r.idCollisions.single.entityId, 'p1');
+      expect(r.idCollisions.single.heldByTenant, 'other');
+
+      // The other tenant's row is exactly as it was; nothing was inserted.
+      final rows = await db.select(db.plants).get();
+      expect(rows, hasLength(1));
+      expect(rows.single.tenantId, 'other');
+      expect(rows.single.nickname, 'Mine');
+      expect(rows.single.updatedHlc, hlcAt(100, dev: 'dev-a'));
+
+      // The remote op is persisted as already-pushed under the applier tenant …
+      final stored = (await db.select(db.syncOps).get()).single;
+      expect(stored.tenantId, tenant);
+      expect(stored.pushedAt, 99);
+      expect(stored.deviceId, 'dev-b');
+      expect(r.idCollisions.single.opSeq, stored.seq);
+
+      // … and parked in the ledger against that seq.
+      final ledger = (await db.select(db.syncRejections).get()).single;
+      expect(ledger.opSeq, stored.seq);
+      expect(ledger.tenantId, tenant);
+      expect(ledger.reason, kIdCollisionReason);
+      expect(ledger.reason, 'id_collision');
+      expect(ledger.parked, isTrue);
+      expect(ledger.entity, 'plants');
+      expect(ledger.entityId, 'p1');
+      expect(ledger.field, '*');
+      expect(ledger.hlc, hlcAt(5000));
+      expect(ledger.at, 99);
+
+      // "Retry all" must not re-queue a remote op: nothing un-parked, ledger cleared.
+      final store = SyncRejectionStore(db: db, tenantId: tenant);
+      expect(await store.retryAll(), 0);
+      expect((await db.select(db.syncOps).get()).single.pushedAt, 99);
+      expect(await db.select(db.syncRejections).get(), isEmpty);
+
+      // Re-delivery of the same op is the usual idempotent skip — no second ledger row.
+      final again = await applier.applyBatch([remote]);
+      expect(again.applied, 0);
+      expect(again.skipped, 1);
+      expect(again.idCollisions, isEmpty);
+      expect(await db.select(db.syncRejections).get(), isEmpty);
+      expect(await db.select(db.syncOps).get(), hasLength(1));
+    });
+
+    test('retryAll re-queues server-rejected local ops but only forgets id_collision rows', () async {
+      await otherTenantPlant('p1');
+      await applier.applyBatch([op('plants', 'p1', '*', plantJson('p1', hlc: hlcAt(5000)), hlcAt(5000))]);
+      final remoteSeq = (await db.select(db.syncOps).get()).single.seq;
+
+      // A local op the server refused (parked by the store the usual way).
+      await localPlant('p2');
+      final local = await (db.select(db.syncOps)..where((o) => o.entityId.equals('p2'))).getSingle();
+      await (db.update(db.syncOps)..where((o) => o.seq.equals(local.seq))).write(const SyncOpsCompanion(pushedAt: Value(7)));
+      await db.into(db.syncRejections).insert(SyncRejectionsCompanion.insert(
+          opSeq: Value(local.seq), tenantId: tenant, entity: 'plants', entityId: 'p2', field: '*',
+          reason: 'bad_value', hlc: local.hlc, at: 7, parked: const Value(true)));
+
+      final store = SyncRejectionStore(db: db, tenantId: tenant);
+      expect((await store.summary()).total, 2);
+      expect(await store.retryAll(), 1);
+      expect((await (db.select(db.syncOps)..where((o) => o.seq.equals(local.seq))).getSingle()).pushedAt, isNull, reason: 're-queued');
+      expect((await (db.select(db.syncOps)..where((o) => o.seq.equals(remoteSeq))).getSingle()).pushedAt, 99, reason: 'remote op stays parked');
+      expect(await db.select(db.syncRejections).get(), isEmpty);
+    });
+
+    test('same id under the SAME tenant is not a collision (normal LWW merge path)', () async {
+      await localPlant('p1', nickname: 'Local');
+      final r = await applier.applyBatch([op('plants', 'p1', '*', plantJson('p1', nickname: 'Remote', hlc: hlcAt(5000)), hlcAt(5000))]);
+      expect(r.applied, 1);
+      expect(r.idCollisions, isEmpty);
+      expect(await db.select(db.syncRejections).get(), isEmpty);
+      expect((await plant('p1'))!.nickname, 'Remote');
+    });
   });
 
   group('shared collections (§3): who did what', () {

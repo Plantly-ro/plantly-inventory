@@ -1,10 +1,32 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 
 import '../data/database/app_database.dart';
 import 'entity_codecs.dart';
 import 'hlc.dart';
 import 'op_log.dart';
+import 'sync_rejections.dart' show kIdCollisionReason;
 import 'sync_transport.dart';
+
+/// A pulled `*` op the applier refused because [entityId] already exists on
+/// this device under [heldByTenant] (primary keys are `{id}`, not
+/// tenant-scoped). Parked in `sync_rejections` as [kIdCollisionReason]
+/// against the remote op's [opSeq].
+class SyncIdCollision {
+  const SyncIdCollision({
+    required this.entity,
+    required this.entityId,
+    required this.heldByTenant,
+    required this.opSeq,
+  });
+  final String entity;
+  final String entityId;
+  final String heldByTenant;
+  final int opSeq;
+
+  @override
+  String toString() => 'SyncIdCollision($entity/$entityId held by $heldByTenant, op_seq $opSeq)';
+}
 
 /// Outcome of one [SyncApplier.applyBatch].
 class SyncApplyResult {
@@ -19,8 +41,13 @@ class SyncApplyResult {
   /// through `PhotoFetcher`.
   final List<String> remotePhotoShas = [];
 
+  /// Whole-row ops skipped because the id belongs to another tenant here
+  /// (counted in [skipped] too).
+  final List<SyncIdCollision> idCollisions = [];
+
   @override
-  String toString() => 'SyncApplyResult(applied: $applied, skipped: $skipped)';
+  String toString() =>
+      'SyncApplyResult(applied: $applied, skipped: $skipped, idCollisions: ${idCollisions.length})';
 }
 
 /// Applies remote ops per CLOUD-SYNC-CONTRACT §2.3.
@@ -51,6 +78,10 @@ class SyncApplier {
   final OpLogWriter opLog;
   final HlcClock clock;
   final int Function() _nowMillis;
+
+  /// Set by [_insertFromWholeRow] when the op's id is held by another
+  /// tenant; consumed by [_applyOne] once the remote op has a `seq`.
+  String? _collisionTenant;
 
   String get tenantId => opLog.tenantId;
   EntityCodecs get codecs => opLog.codecs;
@@ -107,7 +138,41 @@ class SyncApplier {
     } else {
       result.skipped++;
     }
-    await opLog.recordRemote(op, deviceId: deviceId, nowMillis: _nowMillis());
+    final seq = await opLog.recordRemote(op, deviceId: deviceId, nowMillis: _nowMillis());
+    final held = _collisionTenant;
+    if (held != null) {
+      _collisionTenant = null;
+      await _parkIdCollision(op, seq: seq, heldByTenant: held, result: result);
+    }
+  }
+
+  /// Ledger entry for a `*` op we could not materialise because its id is
+  /// taken by another tenant on this device. The op is already stored as
+  /// remote (`pushed_at` set); the ledger row is parked so it shows up in
+  /// Me → Cloud without ever being pushed.
+  Future<void> _parkIdCollision(
+    SyncOpDto op, {
+    required int seq,
+    required String heldByTenant,
+    required SyncApplyResult result,
+  }) async {
+    await db.into(db.syncRejections).insert(
+          SyncRejectionsCompanion.insert(
+            opSeq: Value(seq),
+            tenantId: tenantId,
+            entity: op.entity,
+            entityId: op.entityId,
+            field: op.field,
+            reason: kIdCollisionReason,
+            hlc: op.hlc,
+            at: _nowMillis(),
+            parked: const Value(true),
+          ),
+          mode: InsertMode.insertOrReplace,
+        );
+    result.idCollisions.add(
+      SyncIdCollision(entity: op.entity, entityId: op.entityId, heldByTenant: heldByTenant, opSeq: seq),
+    );
   }
 
   // --- op kinds ------------------------------------------------------------
@@ -180,6 +245,17 @@ class SyncApplier {
     List<SyncOpRow> ops,
     SyncApplyResult result,
   ) async {
+    // `_readRow` is tenant-scoped; the primary key is not. A row with this id
+    // under another tenant (e.g. a legacy literal seed id, or the same user's
+    // local rows next to a joined collection) must never be overwritten or
+    // silently swallowed by the PK failure below: skip and park.
+    final holder = await _tenantHolding(codec, op.entityId);
+    if (holder != null && holder != tenantId) {
+      debugPrint('sync: id_collision ${op.entity}/${op.entityId} held by tenant $holder');
+      _collisionTenant = holder;
+      return false;
+    }
+
     final sql = codec.decodeRow(wire, fillDefaults: true);
     sql[codec.idColumn] = op.entityId;
     sql['tenant_id'] = tenantId;
@@ -399,6 +475,18 @@ class SyncApplier {
   }
 
   // --- row helpers -----------------------------------------------------------
+
+  /// Tenant of the row with primary key [id], any tenant; null when absent.
+  Future<String?> _tenantHolding(EntityCodec codec, String id) async {
+    final row = await db
+        .customSelect(
+          'SELECT tenant_id FROM ${codec.table.actualTableName} WHERE ${codec.idColumn} = ?',
+          variables: [Variable<String>(id)],
+          readsFrom: {codec.table},
+        )
+        .getSingleOrNull();
+    return row?.read<String>('tenant_id');
+  }
 
   Future<Map<String, Object?>?> _readRow(EntityCodec codec, String id) async {
     final row = await db
