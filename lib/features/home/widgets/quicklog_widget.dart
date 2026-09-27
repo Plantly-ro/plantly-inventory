@@ -19,6 +19,7 @@ class QuickLogWidget extends ConsumerWidget {
     required this.surface,
     this.onLog,
     this.editing = false,
+    this.padInner = true,
     this.onMoveUp,
     this.onMoveDown,
     this.onRemove,
@@ -27,6 +28,7 @@ class QuickLogWidget extends ConsumerWidget {
   final PlantlySurface surface;
   final void Function(String message)? onLog;
   final bool editing;
+  final bool padInner;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
   final VoidCallback? onRemove;
@@ -43,6 +45,7 @@ class QuickLogWidget extends ConsumerWidget {
     return WidgetShell(
       surface: surface,
       editing: editing,
+      padInner: padInner,
       onMoveUp: onMoveUp,
       onMoveDown: onMoveDown,
       onRemove: onRemove,

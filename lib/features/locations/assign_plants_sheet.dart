@@ -8,6 +8,8 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../shared/plant_thumb.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
+import '../../app/breakpoints.dart';
+import '../../shared/sheet_chrome.dart';
 
 /// Bottom sheet that reassigns plants into (or out of) a single location.
 /// Lists every active plant with a toggle marking membership; toggling
@@ -28,29 +30,20 @@ class AssignPlantsSheet extends ConsumerWidget {
       maxChildSize: 0.95,
       expand: false,
       builder: (context, scrollCtrl) {
-        return Container(
-          decoration: BoxDecoration(
-            color: surface.bg,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(PlantlyTokens.radius2xl)),
-          ),
-          child: Column(
-            children: [
+        return SheetChrome(
+          surface: surface,
+          title: AppLocalizations.of(context).spaceAssignTitle(location.name),
+          subtitle: AppLocalizations.of(context).spaceAssignSub,
+          padding: const EdgeInsets.only(top: 12),
+          handleGap: 12,
+          expand: true,
+          children: [
+              if (!context.isDesktop)
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Center(
-                      child: Container(
-                        height: 4,
-                        width: 40,
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          color: surface.border,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
                     Text(
                       AppLocalizations.of(context).spaceAssignTitle(location.name),
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text),
@@ -102,7 +95,6 @@ class AssignPlantsSheet extends ConsumerWidget {
                 ),
               ),
             ],
-          ),
         );
       },
     );

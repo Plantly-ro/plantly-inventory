@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../features/home/add_plant_sheet.dart';
+import '../features/home/home_providers.dart';
 import '../features/search/search_screen.dart';
+import 'breakpoints.dart';
+import 'navigation.dart';
 import 'side_sheet.dart';
 
 class FocusSearchIntent extends Intent {
@@ -12,11 +17,12 @@ class NewPlantIntent extends Intent {
   const NewPlantIntent();
 }
 
-/// Desktop/tablet keyboard shortcuts: `/` opens search (its field
-/// autofocuses), `n` opens Add plant. `Esc` closes side sheets through the
+/// Desktop/tablet keyboard shortcuts: `/` focuses the dashboard's inline
+/// search on desktop `/`, elsewhere opens the search screen (its field
+/// autofocuses); `n` opens Add plant. `Esc` closes side sheets through the
 /// modal route's own `DismissIntent` handling, nothing to add here. Both
 /// are ignored while a text field has focus so typing "n" still types "n".
-class AppShortcuts extends StatelessWidget {
+class AppShortcuts extends ConsumerWidget {
   const AppShortcuts({super.key, required this.shellNavigatorKey, required this.child});
 
   /// Search is pushed on the shell navigator so the side nav stays visible.
@@ -24,7 +30,7 @@ class AppShortcuts extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Shortcuts(
       shortcuts: const {
         CharacterActivator('/'): FocusSearchIntent(),
@@ -33,6 +39,10 @@ class AppShortcuts extends StatelessWidget {
       child: Actions(
         actions: {
           FocusSearchIntent: _GuardedAction<FocusSearchIntent>(() {
+            if (context.isDesktop && _currentPath(context) == AppRoutes.home) {
+              ref.read(homeSearchFocusProvider).requestFocus();
+              return;
+            }
             shellNavigatorKey.currentState?.push(
               MaterialPageRoute<void>(builder: (_) => const SearchScreen()),
             );
@@ -53,6 +63,9 @@ class AppShortcuts extends StatelessWidget {
     );
   }
 }
+
+String? _currentPath(BuildContext context) =>
+    GoRouter.maybeOf(context)?.routerDelegate.currentConfiguration.uri.path;
 
 class _GuardedAction<T extends Intent> extends Action<T> {
   _GuardedAction(this.callback);

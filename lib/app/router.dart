@@ -20,11 +20,11 @@ final GlobalKey<NavigatorState> shellNavigatorKey = GlobalKey<NavigatorState>(de
 ///
 /// | URL               | phone / tablet                    | desktop (≥ 1100)                        |
 /// |-------------------|-----------------------------------|-----------------------------------------|
-/// | `/`               | HomeScreen                        | HomeMasterDetail (list + empty pane)    |
-/// | `/plants/:id`     | PlantDetailScreen (pushed)        | HomeMasterDetail(selected) — same page  |
+/// | `/`               | HomeScreen                        | HomeDesktopPage → HomeDashboard         |
+/// | `/plants/:id`     | PlantDetailScreen (pushed)        | HomeDesktopPage(selected) — same page   |
 /// | `/calendar`       | CalendarScreen                    | CalendarScreen (full content width)     |
-/// | `/spaces`         | LocationsScreen                   | SpacesMasterDetail                      |
-/// | `/spaces/:id`     | LocationDetailScreen (pushed)     | SpacesMasterDetail(selected)            |
+/// | `/spaces`         | LocationsScreen                   | SpacesDesktopPage → LocationsScreen     |
+/// | `/spaces/:id`     | LocationDetailScreen (pushed)     | SpacesDesktopPage(selected)             |
 /// | `/me`             | MeScreen                          | MeMasterDetail                          |
 /// | `/me/:section`    | section screen (pushed)           | MeMasterDetail(section)                 |
 /// | `/import?d=`      | redirect `/` (HandoffListener opens the import sheet from the URL)  |
@@ -55,7 +55,7 @@ GoRouter buildAppRouter({
               state,
               desktopKey: 'home',
               phone: () => const HomeScreen(),
-              desktop: () => const HomeMasterDetail(),
+              desktop: () => const HomeDesktopPage(),
             ),
           ),
           GoRoute(
@@ -67,7 +67,7 @@ GoRouter buildAppRouter({
                 state,
                 desktopKey: 'home',
                 phone: () => PlantDetailScreen(plantId: id),
-                desktop: () => HomeMasterDetail(selectedPlantId: id),
+                desktop: () => HomeDesktopPage(selectedPlantId: id),
               );
             },
           ),
@@ -88,7 +88,7 @@ GoRouter buildAppRouter({
               state,
               desktopKey: 'spaces',
               phone: () => const LocationsScreen(),
-              desktop: () => const SpacesMasterDetail(),
+              desktop: () => const SpacesDesktopPage(),
             ),
           ),
           GoRoute(
@@ -100,7 +100,7 @@ GoRouter buildAppRouter({
                 state,
                 desktopKey: 'spaces',
                 phone: () => LocationDetailScreen(locationId: id),
-                desktop: () => SpacesMasterDetail(selectedLocationId: id),
+                desktop: () => SpacesDesktopPage(selectedLocationId: id),
               );
             },
           ),

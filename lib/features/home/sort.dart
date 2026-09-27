@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
+import 'filter.dart';
 
 /// Plant grid sort modes. Serialised by index into SharedPreferences so
 /// the user's choice persists across restarts.
@@ -106,3 +107,41 @@ List<PlantRow> sortPlants({
   }
   return copy;
 }
+
+/// Nearest `next_due_at` per plant across [schedules] — the input
+/// [sortPlants] wants for `nextDue`, shared by the grid and the sorted
+/// provider so the two never disagree.
+Map<String, int> earliestDueByPlant(Iterable<CareScheduleRow> schedules) {
+  final out = <String, int>{};
+  for (final s in schedules) {
+    final due = s.nextDueAt;
+    if (due == null) continue;
+    final existing = out[s.plantId];
+    if (existing == null || due < existing) out[s.plantId] = due;
+  }
+  return out;
+}
+
+/// [filteredPlantsProvider] in the user's current sort order — the list the
+/// grid shows, and what `Enter` in the dashboard search / prev-next in the
+/// plant detail walk.
+final sortedPlantsProvider = Provider<AsyncValue<List<PlantRow>>>((ref) {
+  final filtered = ref.watch(filteredPlantsProvider);
+  final sort = ref.watch(plantSortProvider);
+  final schedules = ref.watch(allSchedulesProvider).maybeWhen(
+        data: (rows) => rows,
+        orElse: () => const <CareScheduleRow>[],
+      );
+  final locationsById = ref.watch(locationsStreamProvider).maybeWhen(
+        data: (rows) => {for (final l in rows) l.id: l.name},
+        orElse: () => const <String, String>{},
+      );
+  return filtered.whenData(
+    (rows) => sortPlants(
+      plants: rows,
+      sort: sort,
+      earliestDueByPlantId: earliestDueByPlant(schedules),
+      locationNameById: locationsById,
+    ),
+  );
+});

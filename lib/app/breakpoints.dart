@@ -45,10 +45,20 @@ abstract final class Breakpoints {
 /// (any orientation — the prototype layout is the contract there); tablet
 /// and desktop panes grow with the available [width] so a 2-up phone grid
 /// doesn't turn into two giant tiles on an 800 px surface.
-int adaptiveColumns(BuildContext context, double width, {required int phone, required double minTileWidth}) {
+///
+/// [maxColumns] caps the wide-surface count (a 4-tile stat row should not
+/// spread into 7 slots on a 1232 px column); phone ignores it.
+int adaptiveColumns(
+  BuildContext context,
+  double width, {
+  required int phone,
+  required double minTileWidth,
+  int? maxColumns,
+}) {
   if (!context.isWide) return phone;
   final fit = (width / minTileWidth).floor();
-  return fit < phone ? phone : fit;
+  final clamped = maxColumns == null ? fit : (fit > maxColumns ? maxColumns : fit);
+  return clamped < phone ? phone : clamped;
 }
 
 extension BreakpointContext on BuildContext {

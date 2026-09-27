@@ -5,7 +5,9 @@ import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../locations/space_kind_label.dart';
+import '../../app/breakpoints.dart';
 import '../../shared/location_picker.dart';
+import '../../shared/sheet_chrome.dart';
 import '../../theme/tokens.dart';
 import 'home_providers.dart';
 
@@ -74,27 +76,28 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-        child: Container(
-          decoration: BoxDecoration(
-            color: surface.bg,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
+        child: SheetChrome(
+          surface: surface,
+          title: t.addPlant,
+          topRadius: 24,
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  height: 4,
-                  width: 40,
-                  margin: const EdgeInsets.only(bottom: 14),
-                  decoration: BoxDecoration(
-                    color: surface.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
+          handleGap: 14,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          footer: FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: surface.green,
+              padding: context.isDesktop
+                  ? const EdgeInsets.symmetric(horizontal: 20, vertical: 10)
+                  : const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(PlantlyTokens.radius + 2),
               ),
+            ),
+            onPressed: _saving ? null : submit,
+            child: Text(_saving ? t.saving : t.addPlantSubmit),
+          ),
+          children: [
+            if (!context.isDesktop) ...[
               Text(
                 t.addPlant,
                 style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
@@ -105,113 +108,104 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
                 ),
               ),
               const SizedBox(height: 14),
-              Text(
-                t.addPlantNicknameLabel,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: surface.muted,
-                  letterSpacing: 0.08 * 11,
-                ),
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _nickname,
-                autofocus: true,
-                maxLength: 64,
-                decoration: InputDecoration(
-                  hintText: t.nicknameHint,
-                  counterText: '',
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                t.addPlantSpaceLabel,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: surface.muted,
-                  letterSpacing: 0.08 * 11,
-                ),
-              ),
-              const SizedBox(height: 6),
-              InkWell(
-                onTap: locations.isEmpty
-                    ? null
-                    : () async {
-                        final picked = await pickLocation(
-                          context,
-                          ref: ref,
-                          currentLocationId: _locationId,
-                          title: AppLocalizations.of(context).spacePickerChooseTitle,
-                        );
-                        if (picked != _locationId) setState(() => _locationId = picked);
-                      },
-                borderRadius: BorderRadius.circular(4),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: surface.border),
-                    borderRadius: BorderRadius.circular(4),
-                    color: surface.surface,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.place_outlined, size: 16, color: surface.muted),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          _locationLabel(t, _locationId, locations),
-                          style: TextStyle(fontSize: 14, color: surface.text),
-                        ),
-                      ),
-                      Icon(Icons.chevron_right, color: surface.muted),
-                    ],
-                  ),
-                ),
-              ),
-              if (locations.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(
-                    t.addPlantAddSpaceFirst,
-                    style: TextStyle(fontSize: 11, color: surface.muted),
-                  ),
-                ),
-              const SizedBox(height: 12),
-              Text(
-                t.addPlantNotesLabel,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: surface.muted,
-                  letterSpacing: 0.08 * 11,
-                ),
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _notes,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: t.notesHint,
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 18),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: surface.green,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(PlantlyTokens.radius + 2),
-                  ),
-                ),
-                onPressed: _saving ? null : submit,
-                child: Text(_saving ? t.saving : t.addPlantSubmit),
-              ),
             ],
-          ),
+            Text(
+              t.addPlantNicknameLabel,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: surface.muted,
+                letterSpacing: 0.08 * 11,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _nickname,
+              autofocus: true,
+              maxLength: 64,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _saving ? null : submit(),
+              decoration: InputDecoration(
+                hintText: t.nicknameHint,
+                counterText: '',
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              t.addPlantSpaceLabel,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: surface.muted,
+                letterSpacing: 0.08 * 11,
+              ),
+            ),
+            const SizedBox(height: 6),
+            InkWell(
+              onTap: locations.isEmpty
+                  ? null
+                  : () async {
+                      final picked = await pickLocation(
+                        context,
+                        ref: ref,
+                        currentLocationId: _locationId,
+                        title: AppLocalizations.of(context).spacePickerChooseTitle,
+                      );
+                      if (picked != _locationId) setState(() => _locationId = picked);
+                    },
+              borderRadius: BorderRadius.circular(4),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: surface.border),
+                  borderRadius: BorderRadius.circular(4),
+                  color: surface.surface,
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.place_outlined, size: 16, color: surface.muted),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _locationLabel(t, _locationId, locations),
+                        style: TextStyle(fontSize: 14, color: surface.text),
+                      ),
+                    ),
+                    Icon(Icons.chevron_right, color: surface.muted),
+                  ],
+                ),
+              ),
+            ),
+            if (locations.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  t.addPlantAddSpaceFirst,
+                  style: TextStyle(fontSize: 11, color: surface.muted),
+                ),
+              ),
+            const SizedBox(height: 12),
+            Text(
+              t.addPlantNotesLabel,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: surface.muted,
+                letterSpacing: 0.08 * 11,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _notes,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: t.notesHint,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 18),
+          ],
         ),
       ),
     );

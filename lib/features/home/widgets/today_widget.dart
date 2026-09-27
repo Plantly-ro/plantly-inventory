@@ -20,6 +20,7 @@ class TodayWidget extends ConsumerWidget {
     this.onPlantTap,
     this.onLogCare,
     this.editing = false,
+    this.padInner = true,
     this.onMoveUp,
     this.onMoveDown,
     this.onRemove,
@@ -30,6 +31,7 @@ class TodayWidget extends ConsumerWidget {
   /// Called after a care event is recorded, with a localized toast message.
   final void Function(String message)? onLogCare;
   final bool editing;
+  final bool padInner;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
   final VoidCallback? onRemove;
@@ -58,6 +60,7 @@ class TodayWidget extends ConsumerWidget {
     return WidgetShell(
       surface: surface,
       editing: editing,
+      padInner: padInner,
       onMoveUp: onMoveUp,
       onMoveDown: onMoveDown,
       onRemove: onRemove,

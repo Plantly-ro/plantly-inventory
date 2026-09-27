@@ -19,6 +19,7 @@ import 'location_edit_sheet.dart';
 import 'space_kind_label.dart';
 import '../../app/side_sheet.dart';
 import '../../app/navigation.dart';
+import '../../shared/sheet_chrome.dart';
 
 /// Full detail screen for a single location. Shows the metadata (kind,
 /// parent, light/humidity/temp ranges, notes, outdoor flag), every
@@ -40,6 +41,15 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
     final t = AppLocalizations.of(context);
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    // Desktop renders this screen straight from the URL (`/spaces/:id` on a
+    // reload), before the DB has opened; the repositories below require the
+    // bootstrapped context, so wait for it like Home does.
+    if (!ref.watch(appContextProvider).hasValue) {
+      return Scaffold(
+        backgroundColor: surface.bg,
+        body: Center(child: CircularProgressIndicator(color: surface.green)),
+      );
+    }
     final repo = ref.watch(locationRepositoryProvider);
     final locAsync = ref.watch(locationByIdStreamProvider(widget.locationId));
     final plants = ref.watch(plantsByLocationProvider(widget.locationId)).maybeWhen(
@@ -476,7 +486,9 @@ class _PositionedPin extends StatelessWidget {
       top: y,
       width: size,
       height: size,
-      child: GestureDetector(
+      child: MouseRegion(
+        cursor: editing ? SystemMouseCursors.move : SystemMouseCursors.click,
+        child: GestureDetector(
         onLongPress: onRemove,
         onPanUpdate: onMove == null
             ? null
@@ -505,6 +517,7 @@ class _PositionedPin extends StatelessWidget {
             size: size,
             fit: BoxFit.cover,
           ),
+        ),
         ),
       ),
     );
@@ -649,23 +662,13 @@ class _LocationGallery extends ConsumerWidget {
     final choice = await showAdaptiveSheet<String>(
       context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: BoxDecoration(
-          color: surface.bg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(PlantlyTokens.radius2xl)),
-        ),
+      builder: (ctx) => SheetChrome(
+        surface: surface,
+        title: t.spacePhotoActionsTitle,
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Center(
-              child: Container(
-                height: 4,
-                width: 40,
-                decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 14),
+        handleGap: 14,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
             ListTile(
               leading: Icon(Icons.edit_calendar_outlined, color: surface.green),
               title: Text(t.spacePhotoEditDate),
@@ -682,7 +685,6 @@ class _LocationGallery extends ConsumerWidget {
               onTap: () => Navigator.of(ctx).pop('remove'),
             ),
           ],
-        ),
       ),
     );
     if (choice == 'caption' && context.mounted) {

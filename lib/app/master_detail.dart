@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../features/home/home_dashboard.dart';
 import '../features/home/home_providers.dart';
-import '../features/home/home_screen.dart';
 import '../features/locations/location_detail_screen.dart';
 import '../features/locations/locations_screen.dart';
 import '../features/me/me_screen.dart';
@@ -13,10 +13,11 @@ import 'breakpoints.dart';
 import 'navigation.dart';
 
 /// Desktop two-pane layout: a fixed-width master list on the left, the
-/// selected item (or an empty-state hint) on the right. The router keeps
-/// one page per section (`/` and `/plants/:id` share a page key), so
-/// selecting only rebuilds the detail pane — the list keeps its scroll
-/// position and edit state.
+/// selected item (or an empty-state hint) on the right. Used by Me only
+/// (settings shape); Home and Spaces are full-width pages (§0). The router
+/// keeps one page per section (`/me` and `/me/:section` share a page key),
+/// so selecting only rebuilds the detail pane — the list keeps its scroll
+/// position.
 class MasterDetailScaffold extends ConsumerWidget {
   const MasterDetailScaffold({
     super.key,
@@ -61,37 +62,32 @@ class MasterDetailScaffold extends ConsumerWidget {
   }
 }
 
-/// `/` and `/plants/:id` on desktop.
-class HomeMasterDetail extends StatelessWidget {
-  const HomeMasterDetail({super.key, this.selectedPlantId});
+/// `/` and `/plants/:id` on desktop (DESKTOP-POLISH §0): the dashboard
+/// uses the whole content column, and a selected plant swaps it for the
+/// full-width two-column detail. The router keeps both URLs on one page
+/// key, so this is an in-place swap without a transition.
+class HomeDesktopPage extends StatelessWidget {
+  const HomeDesktopPage({super.key, this.selectedPlantId});
   final String? selectedPlantId;
 
   @override
   Widget build(BuildContext context) {
     final id = selectedPlantId;
-    return MasterDetailScaffold(
-      master: const HomeScreen(),
-      detail: id == null ? null : PlantDetailScreen(key: ValueKey('plant-$id'), plantId: id),
-      emptyIcon: Icons.eco_outlined,
-      emptyText: AppLocalizations.of(context).shellSelectPlant,
-    );
+    if (id == null) return const HomeDashboard();
+    return PlantDetailScreen(key: ValueKey('plant-$id'), plantId: id);
   }
 }
 
-/// `/spaces` and `/spaces/:id` on desktop.
-class SpacesMasterDetail extends StatelessWidget {
-  const SpacesMasterDetail({super.key, this.selectedLocationId});
+/// `/spaces` and `/spaces/:id` on desktop — same shape as [HomeDesktopPage].
+class SpacesDesktopPage extends StatelessWidget {
+  const SpacesDesktopPage({super.key, this.selectedLocationId});
   final String? selectedLocationId;
 
   @override
   Widget build(BuildContext context) {
     final id = selectedLocationId;
-    return MasterDetailScaffold(
-      master: const LocationsScreen(),
-      detail: id == null ? null : LocationDetailScreen(key: ValueKey('space-$id'), locationId: id),
-      emptyIcon: Icons.place_outlined,
-      emptyText: AppLocalizations.of(context).shellSelectSpace,
-    );
+    if (id == null) return const LocationsScreen();
+    return LocationDetailScreen(key: ValueKey('space-$id'), locationId: id);
   }
 }
 

@@ -33,12 +33,15 @@ class WidgetShell extends StatelessWidget {
   final VoidCallback? onRemove;
   final PlantlySurface surface;
   final Widget child;
+
+  /// True (phone/tablet): the shell adds the `space5` side gutter and the
+  /// `space4` gap below. False (desktop dashboard): the host owns both.
   final bool padInner;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: PlantlyTokens.space4),
+      padding: EdgeInsets.only(bottom: padInner ? PlantlyTokens.space4 : 0),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -64,7 +67,7 @@ class WidgetShell extends StatelessWidget {
           ),
           if (editing)
             Positioned(
-              right: PlantlyTokens.space5,
+              right: padInner ? PlantlyTokens.space5 : 0,
               top: -6,
               child: _EditControls(
                 onMoveUp: onMoveUp,

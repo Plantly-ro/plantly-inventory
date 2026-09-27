@@ -1250,6 +1250,12 @@ abstract class AppLocalizations {
   /// **'Remove from this space'**
   String get spacePhotoRemove;
 
+  /// No description provided for @spacePhotoActionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get spacePhotoActionsTitle;
+
   /// No description provided for @spaceCaptionTitle.
   ///
   /// In en, this message translates to:
@@ -4087,6 +4093,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Details'**
   String get historyColDetails;
+
+  /// No description provided for @homeCustomise.
+  ///
+  /// In en, this message translates to:
+  /// **'Customise'**
+  String get homeCustomise;
+
+  /// No description provided for @homeSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search plants…'**
+  String get homeSearchHint;
+
+  /// No description provided for @detailPrevPlant.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous plant'**
+  String get detailPrevPlant;
+
+  /// No description provided for @detailNextPlant.
+  ///
+  /// In en, this message translates to:
+  /// **'Next plant'**
+  String get detailNextPlant;
+
+  /// No description provided for @detailMoreCareActions.
+  ///
+  /// In en, this message translates to:
+  /// **'More care actions'**
+  String get detailMoreCareActions;
+
+  /// No description provided for @detailColCare.
+  ///
+  /// In en, this message translates to:
+  /// **'Care'**
+  String get detailColCare;
+
+  /// No description provided for @detailColEvery.
+  ///
+  /// In en, this message translates to:
+  /// **'Every'**
+  String get detailColEvery;
+
+  /// No description provided for @detailColNextDue.
+  ///
+  /// In en, this message translates to:
+  /// **'Next due'**
+  String get detailColNextDue;
+
+  /// No description provided for @detailFactSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'Space'**
+  String get detailFactSpace;
+
+  /// No description provided for @detailFactAcquired.
+  ///
+  /// In en, this message translates to:
+  /// **'Acquired'**
+  String get detailFactAcquired;
+
+  /// No description provided for @detailFactPotSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Pot size'**
+  String get detailFactPotSize;
+
+  /// No description provided for @detailFactTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get detailFactTags;
+
+  /// No description provided for @detailFactNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get detailFactNotes;
+
+  /// No description provided for @detailEveryNDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 day} other{{n} days}}'**
+  String detailEveryNDays(int n);
+
+  /// No description provided for @spaceCardPlantCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =0{No plants} =1{1 plant} other{{n} plants}}'**
+  String spaceCardPlantCount(int n);
+
+  /// No description provided for @homeNoPlantsBodyDesktop.
+  ///
+  /// In en, this message translates to:
+  /// **'Add one with the button in the side bar. You can set up reminders once it lands.'**
+  String get homeNoPlantsBodyDesktop;
 }
 
 class _AppLocalizationsDelegate

@@ -24,9 +24,8 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> with FirstRunOnboardingGate {
   bool _editing = false;
-  bool _pushedOnboarding = false;
 
   @override
   Widget build(BuildContext context) {
@@ -37,21 +36,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // The DB needs one round-trip to open, load the device id, and seed the
     // fixture plants on first launch — show a lightweight loader until then.
     final bootstrap = ref.watch(appContextProvider);
-
-    // First-run gate: once prefs have loaded and the user hasn't seen the
-    // onboarding, push it on the next frame. Guarded by `_pushedOnboarding`
-    // so rebuilds don't re-push, and by `loaded` so we don't flash
-    // onboarding against the default-false initial state.
-    final prefs = ref.watch(userPrefsProvider);
-    if (!_pushedOnboarding && prefs.loaded && !prefs.onboardingSeen) {
-      _pushedOnboarding = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const OnboardingScreen(), fullscreenDialog: true),
-        );
-      });
-    }
+    maybePushOnboarding(ref.watch(userPrefsProvider));
 
     // Tablet/desktop: the shell's rail / side nav owns section navigation
     // and the primary "Add plant" action, so the phone chrome steps aside.
@@ -93,32 +78,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           : null,
       body: SafeArea(
         child: bootstrap.when(
-          loading: () => Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(color: surface.green),
-                const SizedBox(height: 12),
-                Text(AppLocalizations.of(context).openingGarden, style: TextStyle(color: surface.muted)),
-              ],
-            ),
-          ),
-          error: (e, _) => Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              AppLocalizations.of(context).homeDbOpenFailed('$e'),
-              style: TextStyle(color: surface.terra),
-            ),
-          ),
+          loading: () => BootstrapLoading(surface: surface),
+          error: (e, _) => BootstrapError(surface: surface, error: e),
           data: (_) {
-            final hasPlants = ref.watch(plantsStreamProvider).maybeWhen(
-                  data: (rows) => rows.isNotEmpty,
-                  orElse: () => true, // assume has plants while loading
-                );
-            // No banner on web: there's no permission to grant, and the Me
-            // screen already says reminders are unavailable there.
-            final permDenied = ref.watch(notificationPermissionProvider) == false &&
-                ref.watch(notificationServiceProvider).isSupported;
+            final hasPlants = ref.watch(hasPlantsProvider);
+            final permDenied = ref.watch(notificationBannerVisibleProvider);
             return Column(
               children: [
                 _EditToggleBar(
@@ -126,7 +90,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   surface: surface,
                   onDone: () => setState(() => _editing = false),
                 ),
-                if (permDenied) _NotificationPermissionBanner(surface: surface),
+                if (permDenied) NotificationPermissionBanner(surface: surface),
                 Expanded(
                   child: GestureDetector(
                     // Long-pressing the home body toggles edit mode —
@@ -146,11 +110,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.only(top: 6, bottom: 96),
                       children: [
-                        if (!hasPlants) _FirstRunCallout(surface: surface),
-                        if (!_editing) _EditHint(surface: surface),
+                        if (!hasPlants) FirstRunCallout(surface: surface),
+                        // Tablet has the Customise button (§6); the gesture
+                        // hint is phone copy.
+                        if (!_editing && !context.isWide) _EditHint(surface: surface),
                         for (var i = 0; i < layout.length; i++)
                           _renderWidget(layout[i], i, layout.length, surface),
-                        if (_editing) _EditPanel(surface: surface, current: layout),
+                        if (_editing) HomeEditPanel(surface: surface),
                       ],
                     ),
                   ),
@@ -174,18 +140,87 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onMoveUp: () => ref.read(homeLayoutProvider.notifier).move(index, -1),
         onMoveDown: () => ref.read(homeLayoutProvider.notifier).move(index, 1),
         onRemove: () => ref.read(homeLayoutProvider.notifier).remove(index),
-        onPlantTap: _openPlantDetail,
-        onToast: _toast,
+        onPlantTap: (id) => openPlant(context, id),
+        onToast: (msg) => showHomeToast(context, msg),
       ),
     );
   }
+}
 
-  void _openPlantDetail(String plantId) => openPlant(context, plantId);
+/// First-run gate shared by the phone home and the desktop dashboard: once
+/// prefs have loaded and the user hasn't seen the onboarding, push it on
+/// the next frame. Guarded by `_pushed` so rebuilds don't re-push, and by
+/// `loaded` so we don't flash onboarding against the default-false state.
+mixin FirstRunOnboardingGate<T extends ConsumerStatefulWidget> on ConsumerState<T> {
+  bool _pushed = false;
 
-  void _toast(String msg) {
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(msg), duration: const Duration(milliseconds: 1800)));
+  void maybePushOnboarding(UserPrefs prefs) {
+    if (_pushed || !prefs.loaded || prefs.onboardingSeen) return;
+    _pushed = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const OnboardingScreen(), fullscreenDialog: true),
+      );
+    });
+  }
+}
+
+/// False only once the plant stream has loaded empty — while loading the
+/// first-run callout stays hidden rather than flashing.
+final hasPlantsProvider = Provider<bool>((ref) {
+  return ref.watch(plantsStreamProvider).maybeWhen(
+        data: (rows) => rows.isNotEmpty,
+        orElse: () => true,
+      );
+});
+
+/// No banner on web: there's no permission to grant, and the Me screen
+/// already says reminders are unavailable there.
+final notificationBannerVisibleProvider = Provider<bool>((ref) {
+  return ref.watch(notificationPermissionProvider) == false &&
+      ref.watch(notificationServiceProvider).isSupported;
+});
+
+void showHomeToast(BuildContext context, String msg) {
+  ScaffoldMessenger.of(context)
+    ..clearSnackBars()
+    ..showSnackBar(SnackBar(content: Text(msg), duration: const Duration(milliseconds: 1800)));
+}
+
+class BootstrapLoading extends StatelessWidget {
+  const BootstrapLoading({super.key, required this.surface});
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(color: surface.green),
+          const SizedBox(height: 12),
+          Text(AppLocalizations.of(context).openingGarden, style: TextStyle(color: surface.muted)),
+        ],
+      ),
+    );
+  }
+}
+
+class BootstrapError extends StatelessWidget {
+  const BootstrapError({super.key, required this.surface, required this.error});
+  final PlantlySurface surface;
+  final Object error;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Text(
+        AppLocalizations.of(context).homeDbOpenFailed('$error'),
+        style: TextStyle(color: surface.terra),
+      ),
+    );
   }
 }
 
@@ -265,24 +300,51 @@ class _EditHint extends StatelessWidget {
   }
 }
 
-class _EditPanel extends ConsumerWidget {
-  const _EditPanel({required this.surface, required this.current});
+/// "Add widget / presets / reset" panel. Inline under the widgets on
+/// phone/tablet; in the Customise side sheet on desktop, where
+/// [showCurrent] also lists the widgets already on the home with
+/// move/remove controls (the dashboard sits behind the sheet's barrier).
+class HomeEditPanel extends ConsumerWidget {
+  const HomeEditPanel({
+    super.key,
+    required this.surface,
+    this.padding = const EdgeInsets.fromLTRB(PlantlyTokens.space5, 0, PlantlyTokens.space5, 20),
+    this.showCurrent = false,
+  });
   final PlantlySurface surface;
-  final List<String> current;
+  final EdgeInsets padding;
+  final bool showCurrent;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = AppLocalizations.of(context);
+    final current = ref.watch(homeLayoutProvider);
     // Every widget that isn't currently on the home screen.
     final available = WidgetRegistry.entries.entries
         .where((e) => !current.contains(e.key))
         .toList(growable: false);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(PlantlyTokens.space5, 0, PlantlyTokens.space5, 20),
+      padding: padding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // The sheet title already says "Customise"; the list needs no
+          // heading of its own (no l10n key for one yet).
+          if (showCurrent) ...[
+            for (var i = 0; i < current.length; i++)
+              if (WidgetRegistry.entries[current[i]] case final entry?) ...[
+                _CurrentRow(
+                  entry: entry,
+                  surface: surface,
+                  onMoveUp: i == 0 ? null : () => ref.read(homeLayoutProvider.notifier).move(i, -1),
+                  onMoveDown: i == current.length - 1 ? null : () => ref.read(homeLayoutProvider.notifier).move(i, 1),
+                  onRemove: () => ref.read(homeLayoutProvider.notifier).remove(i),
+                ),
+                const SizedBox(height: 6),
+              ],
+            const SizedBox(height: 10),
+          ],
           _sectionLabel(t.homeAddWidget, surface.green, surface),
           const SizedBox(height: 8),
           if (available.isEmpty)
@@ -352,6 +414,77 @@ class _EditPanel extends ConsumerWidget {
         fontWeight: FontWeight.w700,
         color: color,
         letterSpacing: 0.1 * 11,
+      ),
+    );
+  }
+}
+
+class _CurrentRow extends StatelessWidget {
+  const _CurrentRow({
+    required this.entry,
+    required this.surface,
+    required this.onMoveUp,
+    required this.onMoveDown,
+    required this.onRemove,
+  });
+  final WidgetEntry entry;
+  final PlantlySurface surface;
+  final VoidCallback? onMoveUp;
+  final VoidCallback? onMoveDown;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: surface.surface,
+        borderRadius: BorderRadius.circular(PlantlyTokens.radius),
+        border: Border.all(color: surface.border),
+      ),
+      padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: surface.greenSoft,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(entry.icon, size: 14, color: surface.green),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              entry.label(t),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: surface.text),
+            ),
+          ),
+          IconButton(
+            iconSize: 18,
+            visualDensity: VisualDensity.compact,
+            onPressed: onMoveUp,
+            icon: Icon(Icons.expand_less, color: surface.muted),
+            tooltip: t.homeMoveUp,
+          ),
+          IconButton(
+            iconSize: 18,
+            visualDensity: VisualDensity.compact,
+            onPressed: onMoveDown,
+            icon: Icon(Icons.expand_more, color: surface.muted),
+            tooltip: t.homeMoveDown,
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: surface.terra,
+              visualDensity: VisualDensity.compact,
+              textStyle: const TextStyle(fontFamily: PlantlyFonts.inter, fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+            onPressed: onRemove,
+            child: Text(t.commonRemove),
+          ),
+        ],
       ),
     );
   }
@@ -541,14 +674,23 @@ class _TabIcon extends StatelessWidget {
   }
 }
 
-class _FirstRunCallout extends StatelessWidget {
-  const _FirstRunCallout({required this.surface});
+class FirstRunCallout extends StatelessWidget {
+  const FirstRunCallout({
+    super.key,
+    required this.surface,
+    this.body,
+    this.padding = const EdgeInsets.fromLTRB(20, 8, 20, 16),
+  });
   final PlantlySurface surface;
+
+  /// Overrides `homeNoPlantsBody` (desktop has no + button to point at).
+  final String? body;
+  final EdgeInsets padding;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      padding: padding,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -570,7 +712,7 @@ class _FirstRunCallout extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    AppLocalizations.of(context).homeNoPlantsBody,
+                    body ?? AppLocalizations.of(context).homeNoPlantsBody,
                     style: TextStyle(fontSize: 12, color: surface.muted),
                   ),
                 ],
@@ -583,8 +725,8 @@ class _FirstRunCallout extends StatelessWidget {
   }
 }
 
-class _NotificationPermissionBanner extends ConsumerWidget {
-  const _NotificationPermissionBanner({required this.surface});
+class NotificationPermissionBanner extends ConsumerWidget {
+  const NotificationPermissionBanner({super.key, required this.surface});
   final PlantlySurface surface;
 
   @override

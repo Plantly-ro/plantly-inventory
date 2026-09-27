@@ -842,7 +842,9 @@ class _PhotoGrid extends ConsumerWidget {
       crossAxisSpacing: 6,
       children: [
         for (final sha in shas)
-          GestureDetector(
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
             onTap: () => onToggle(sha),
             child: Stack(
               children: [
@@ -872,6 +874,7 @@ class _PhotoGrid extends ConsumerWidget {
                     ),
                   ),
               ],
+            ),
             ),
           ),
       ],

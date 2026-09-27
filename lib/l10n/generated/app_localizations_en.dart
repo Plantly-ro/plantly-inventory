@@ -692,6 +692,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get spacePhotoRemove => 'Remove from this space';
 
   @override
+  String get spacePhotoActionsTitle => 'Photo';
+
+  @override
   String get spaceCaptionTitle => 'Caption';
 
   @override
@@ -2329,4 +2332,70 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get historyColDetails => 'Details';
+
+  @override
+  String get homeCustomise => 'Customise';
+
+  @override
+  String get homeSearchHint => 'Search plants…';
+
+  @override
+  String get detailPrevPlant => 'Previous plant';
+
+  @override
+  String get detailNextPlant => 'Next plant';
+
+  @override
+  String get detailMoreCareActions => 'More care actions';
+
+  @override
+  String get detailColCare => 'Care';
+
+  @override
+  String get detailColEvery => 'Every';
+
+  @override
+  String get detailColNextDue => 'Next due';
+
+  @override
+  String get detailFactSpace => 'Space';
+
+  @override
+  String get detailFactAcquired => 'Acquired';
+
+  @override
+  String get detailFactPotSize => 'Pot size';
+
+  @override
+  String get detailFactTags => 'Tags';
+
+  @override
+  String get detailFactNotes => 'Notes';
+
+  @override
+  String detailEveryNDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n days',
+      one: '1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spaceCardPlantCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n plants',
+      one: '1 plant',
+      zero: 'No plants',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeNoPlantsBodyDesktop =>
+      'Add one with the button in the side bar. You can set up reminders once it lands.';
 }
