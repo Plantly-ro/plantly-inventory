@@ -42,18 +42,58 @@ class CollectionLink {
 /// Persisted link state. [unlinkedByUser] makes "Unlink this device" stick:
 /// the UI shows "sync is off here" and nothing auto-relinks until the user
 /// asks (or a new sign-in happens).
+///
+/// [dataOwnerUserId] is the account whose data lives in the local tenant.
+/// It is written by every successful [CollectionLinkService.link] (so also
+/// by "Move" and "Start empty") and — unlike the link — survives
+/// [CollectionLinkService.unlink]: after A unlinks, B signing in must still
+/// get the Move / Start empty decision instead of an automatic migration of
+/// A's rows into B's collection. Cleared when the local tenant holds no
+/// rows at all (fresh device, data wiped) so it never blocks needlessly.
 class CollectionLinkState {
-  const CollectionLinkState({this.link, this.unlinkedByUser = false, this.loaded = false});
+  const CollectionLinkState({
+    this.link,
+    this.unlinkedByUser = false,
+    this.loaded = false,
+    this.dataOwnerUserId,
+    this.dataOwnerUsername = '',
+  });
   final CollectionLink? link;
   final bool unlinkedByUser;
 
   /// True once prefs have been read.
   final bool loaded;
 
-  CollectionLinkState copyWith({Object? link = _unset, bool? unlinkedByUser, bool? loaded}) => CollectionLinkState(
+  /// Account the local rows belong to; null = nobody has claimed them yet.
+  final String? dataOwnerUserId;
+  final String dataOwnerUsername;
+
+  /// What to call the data owner in copy.
+  String? get dataOwnerLabel {
+    final id = dataOwnerUserId;
+    if (id == null || id.isEmpty) return null;
+    return dataOwnerUsername.isNotEmpty ? dataOwnerUsername : id;
+  }
+
+  /// True when the local rows belong to someone other than [userId].
+  bool dataHeldByOther(String userId) {
+    final id = dataOwnerUserId;
+    return id != null && id.isNotEmpty && id != userId;
+  }
+
+  CollectionLinkState copyWith({
+    Object? link = _unset,
+    bool? unlinkedByUser,
+    bool? loaded,
+    Object? dataOwnerUserId = _unset,
+    String? dataOwnerUsername,
+  }) =>
+      CollectionLinkState(
         link: identical(link, _unset) ? this.link : link as CollectionLink?,
         unlinkedByUser: unlinkedByUser ?? this.unlinkedByUser,
         loaded: loaded ?? this.loaded,
+        dataOwnerUserId: identical(dataOwnerUserId, _unset) ? this.dataOwnerUserId : dataOwnerUserId as String?,
+        dataOwnerUsername: dataOwnerUsername ?? this.dataOwnerUsername,
       );
 
   static const _unset = Object();
@@ -63,13 +103,16 @@ class CollectionLinkState {
       other is CollectionLinkState &&
       other.link == link &&
       other.unlinkedByUser == unlinkedByUser &&
-      other.loaded == loaded;
+      other.loaded == loaded &&
+      other.dataOwnerUserId == dataOwnerUserId &&
+      other.dataOwnerUsername == dataOwnerUsername;
 
   @override
-  int get hashCode => Object.hash(link, unlinkedByUser, loaded);
+  int get hashCode => Object.hash(link, unlinkedByUser, loaded, dataOwnerUserId, dataOwnerUsername);
 
   @override
-  String toString() => 'CollectionLinkState($link, unlinkedByUser=$unlinkedByUser, loaded=$loaded)';
+  String toString() =>
+      'CollectionLinkState($link, unlinkedByUser=$unlinkedByUser, loaded=$loaded, owner=$dataOwnerUserId)';
 }
 
 const String kCollectionIdPrefKey = 'plantly_collection_id';
@@ -77,6 +120,24 @@ const String kCollectionNamePrefKey = 'plantly_collection_name';
 const String kCollectionUserIdPrefKey = 'plantly_collection_user_id';
 const String kCollectionUsernamePrefKey = 'plantly_collection_username';
 const String kCloudUnlinkedPrefKey = 'plantly_cloud_unlinked';
+
+/// Who owns the rows in the local tenant (see [CollectionLinkState]).
+const String kDataOwnerUserIdPrefKey = 'plantly_data_owner_user_id';
+const String kDataOwnerUsernamePrefKey = 'plantly_data_owner_username';
+
+/// True when no table holds a single row for [tenant] (`sync_ops`
+/// included) — nothing on this device that anyone could own.
+Future<bool> tenantIsEmpty(AppDatabase db, String tenant) async {
+  for (final table in db.allTables) {
+    if (!table.columnsByName.containsKey('tenant_id')) continue;
+    final row = await db.customSelect(
+      'SELECT EXISTS(SELECT 1 FROM ${table.actualTableName} WHERE tenant_id = ?) AS present',
+      variables: [Variable<String>(tenant)],
+    ).getSingle();
+    if (row.read<bool>('present')) return false;
+  }
+  return true;
+}
 
 /// Move every row (and every pending op) from tenant [from] to tenant [to]
 /// in ONE transaction. Generic over the schema: any table with a
@@ -120,6 +181,17 @@ class CollectionLinkService extends StateNotifier<CollectionLinkState> {
   Future<void> _load() async {
     final p = await _prefs;
     final id = p.getString(kCollectionIdPrefKey);
+    var owner = p.getString(kDataOwnerUserIdPrefKey);
+    if (owner != null && owner.isNotEmpty) {
+      // A marker with nothing behind it (data wiped, or a tenant that never
+      // received a row) must not block the next account.
+      final tenant = p.getString(kTenantIdPrefKey) ?? kDefaultTenantId;
+      if (await tenantIsEmpty(_ref.read(databaseProvider), tenant)) {
+        await p.remove(kDataOwnerUserIdPrefKey);
+        await p.remove(kDataOwnerUsernamePrefKey);
+        owner = null;
+      }
+    }
     if (!mounted) return;
     state = CollectionLinkState(
       link: id == null || id.isEmpty
@@ -132,6 +204,8 @@ class CollectionLinkService extends StateNotifier<CollectionLinkState> {
             ),
       unlinkedByUser: p.getBool(kCloudUnlinkedPrefKey) ?? false,
       loaded: true,
+      dataOwnerUserId: owner == null || owner.isEmpty ? null : owner,
+      dataOwnerUsername: owner == null ? '' : (p.getString(kDataOwnerUsernamePrefKey) ?? ''),
     );
   }
 
@@ -166,24 +240,38 @@ class CollectionLinkService extends StateNotifier<CollectionLinkState> {
     await p.setString(kCollectionUserIdPrefKey, session.userId);
     await p.setString(kCollectionUsernamePrefKey, session.username);
     await p.remove(kCloudUnlinkedPrefKey);
+    // The rows in the local tenant now belong to this account — whether
+    // they were migrated in ("Move") or the tenant is fresh ("Start empty").
+    await p.setString(kDataOwnerUserIdPrefKey, session.userId);
+    await p.setString(kDataOwnerUsernamePrefKey, session.username);
 
     _ref.read(currentTenantIdProvider.notifier).state = col.id;
     final link = CollectionLink(id: col.id, name: col.name, userId: session.userId, username: session.username);
-    if (mounted) state = state.copyWith(link: link, unlinkedByUser: false, loaded: true);
+    if (mounted) {
+      state = state.copyWith(
+        link: link,
+        unlinkedByUser: false,
+        loaded: true,
+        dataOwnerUserId: session.userId,
+        dataOwnerUsername: session.username,
+      );
+    }
     return link;
   }
 
   /// Link unless this device is already linked *for the signed-in user*.
-  /// Returns null — and links NOTHING — when the persisted link belongs to
-  /// another account: that is a decision for the user ("Move this device's
+  /// Returns null — and links NOTHING — when the local data belongs to
+  /// another account (data-owner marker, or a persisted link made by
+  /// someone else): that is a decision for the user ("Move this device's
   /// plants" = [link], "Start empty" = [startEmpty]), never an automatic
   /// migration of someone else's data.
   Future<CollectionLink?> ensureLinked() async {
     await _loaded;
-    final current = state.link;
-    if (current == null) return link();
     final session = await _ref.read(plantlyAuthProvider.notifier).current();
     if (session == null) throw StateError('not signed in');
+    if (state.dataHeldByOther(session.userId)) return null;
+    final current = state.link;
+    if (current == null) return link();
     return session.userId == current.userId ? current : null;
   }
 
@@ -209,8 +297,9 @@ class CollectionLinkService extends StateNotifier<CollectionLinkState> {
     return link();
   }
 
-  /// Forget the link and remember that the user asked for it. Local data
-  /// and the tenant id are untouched; nothing is deleted on the server.
+  /// Forget the link and remember that the user asked for it. Local data,
+  /// the tenant id and the data-owner marker are untouched; nothing is
+  /// deleted on the server.
   Future<void> unlink() async {
     await _loaded;
     final p = await _prefs;

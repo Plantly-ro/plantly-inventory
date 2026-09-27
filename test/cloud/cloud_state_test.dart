@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:plantly_inventory/data/providers.dart';
+import 'package:plantly_inventory/data/database/app_database.dart';
+import 'package:drift/native.dart';
 import 'package:plantly_inventory/cloud/cloud_state.dart';
 import 'package:plantly_inventory/cloud/collection_link.dart';
 import 'package:plantly_inventory/cloud/entitlement.dart';
@@ -11,6 +14,7 @@ import 'package:plantly_inventory/marketplace/session_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../marketplace/plantly_session_test.dart' show fakeJwt;
+import 'collection_link_test.dart' show insertDummy;
 
 /// Fixed-verdict entitlement notifier for tests (no network, no timers).
 class FixedEntitlement extends CloudEntitlementNotifier {
@@ -45,6 +49,8 @@ void main() {
     bool linked = false,
     String linkUser = 'u-1',
     bool unlinked = false,
+    String? dataOwner,
+    AppDatabase? db,
   }) {
     SharedPreferences.setMockInitialValues({
       if (linked) kCollectionIdPrefKey: 'col-1',
@@ -52,8 +58,12 @@ void main() {
       if (linked) kCollectionUserIdPrefKey: linkUser,
       if (linked) kCollectionUsernamePrefKey: linkUser == 'u-1' ? 'alice' : 'bob',
       if (unlinked) kCloudUnlinkedPrefKey: true,
+      if (dataOwner != null) kTenantIdPrefKey: 'col-1',
+      kDataOwnerUserIdPrefKey: ?dataOwner,
+      if (dataOwner != null) kDataOwnerUsernamePrefKey: dataOwner == 'u-1' ? 'alice' : 'bob',
     });
     final c = ProviderContainer(overrides: [
+      if (db != null) databaseProvider.overrideWithValue(db),
       cloudEnabledProvider.overrideWithValue(enabled),
       sessionStoreProvider.overrideWith((_) => InMemorySessionStore(signedIn ? token : null)),
       cloudEntitlementProvider.overrideWith(() => FixedEntitlement(entitlement, hang: hang)),
@@ -135,6 +145,33 @@ void main() {
       expect(s.heldByOther, 'bob');
       final own = await settle(make(entitlement: const CloudEntitlement(active: true, source: 'pro'), linked: true));
       expect(own.heldByOther, isNull);
+    });
+
+    test('data-owner marker alone (A unlinked, B signed in) → heldByOther, nothing syncs', () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      await insertDummy(db, db.plants, 'col-1'); // A's parked rows
+      final s = await settle(make(entitlement: const CloudEntitlement(active: true, source: 'pro'), dataOwner: 'u-other', db: db));
+      expect(s.phase, CloudPhase.ready);
+      expect(s.linked, isFalse);
+      expect(s.canSync, isFalse);
+      expect(s.heldByOther, 'bob');
+      expect(s.unlinkedByUser, isFalse);
+      // Own marker → no decision.
+      final own = await settle(make(entitlement: const CloudEntitlement(active: true, source: 'pro'), dataOwner: 'u-1', db: db));
+      expect(own.heldByOther, isNull);
+      expect(own.phase, CloudPhase.ready);
+    });
+
+    test('marker on an empty tenant is ignored; a fresh device never shows the decision', () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      final wiped = await settle(make(entitlement: const CloudEntitlement(active: true, source: 'pro'), dataOwner: 'u-other', db: db));
+      expect(wiped.heldByOther, isNull);
+      expect(wiped.phase, CloudPhase.ready);
+      final fresh = await settle(make(entitlement: const CloudEntitlement(active: true, source: 'pro'), db: db));
+      expect(fresh.heldByOther, isNull);
+      expect(fresh.linked, isFalse);
     });
 
     test('unlinked by the user → ready, not linked, flag surfaced for the UI', () async {

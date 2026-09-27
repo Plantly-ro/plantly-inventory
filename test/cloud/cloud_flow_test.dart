@@ -284,6 +284,34 @@ void main() {
     expect(fakes['col-2']!.pushes.length, pushes2);
     expect(await container.read(appContextProvider).requireValue.opLog.pendingCount(), greaterThan(0),
         reason: 'the op waits locally for a future link');
+
+    // --- (f) after bob's unlink, alice signs in: the data-owner marker (not
+    // the link) still says "bob" → decision rows, no auto-link. "Start empty"
+    // gives alice a fresh tenant that link() renames to col-1 — the id her
+    // parked rows still carry — so they reappear without any copy.
+    expect(container.read(collectionLinkProvider).dataOwnerUserId, 'u-2', reason: 'marker survives unlink');
+    await container.read(plantlyAuthProvider.notifier).signOut();
+    final alice2 = await container.read(plantlyAuthProvider.notifier).adoptToken(aliceToken);
+    container.read(signInEventsProvider).emit(alice2);
+    await coordinator.idle;
+    await waitFor(() => container.read(cloudStateProvider).phase == CloudPhase.ready);
+    state = container.read(cloudStateProvider);
+    expect(state.heldByOther, 'bob');
+    expect(state.linked, isFalse);
+    expect(collectionCreates, 2, reason: "bob's rows are never migrated automatically");
+    expect(container.read(syncRunnerProvider), isA<NoopSyncRunner>());
+    expect(await tenantCount('col-2'), 2, reason: "bob's rows untouched");
+
+    final back = await container.read(collectionLinkProvider.notifier).startEmpty();
+    expect(back.id, 'col-1');
+    expect(collectionCreates, 3);
+    expect(container.read(currentTenantIdProvider), 'col-1');
+    expect(await tenantCount('col-1'), 3, reason: "alice's rows are visible again");
+    expect(await tenantCount('col-2'), 2, reason: "bob's rows still parked");
+    expect(container.read(collectionLinkProvider).dataOwnerUserId, 'u-1');
+    await waitFor(() => container.read(syncRunnerProvider) is HttpSyncRunner, reason: 'runner back on col-1');
+    expect((container.read(syncRunnerProvider) as HttpSyncRunner).collectionId, 'col-1');
+    expect(container.read(cloudStateProvider).heldByOther, isNull);
   });
 
   test('flag off → phase off, Noop runner, coordinator inert', () async {

@@ -253,6 +253,109 @@ void main() {
       expect(await countTenant(db, db.plants, 'col-other'), plantsA);
     });
 
+    test('data-owner marker: A links → unlinks → B signs in: no auto-link; "Start empty" keeps A\'s rows, marker = B', () async {
+      final bobToken = fakeJwt(
+        iat: DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000,
+        exp: DateTime.now().toUtc().add(const Duration(hours: 24)).millisecondsSinceEpoch ~/ 1000,
+        username: 'bob',
+        userId: 'u-2',
+      );
+      // Same shape as make(), but the default collection depends on who asks.
+      final c = ProviderContainer(overrides: [
+        databaseProvider.overrideWithValue(db),
+        notificationServiceProvider.overrideWith((_) => FakeNotificationService()),
+        sessionStoreProvider.overrideWith((_) => InMemorySessionStore(token)),
+        httpClientProvider.overrideWith((_) => MockClient((req) async {
+              if (req.method == 'POST' && req.url.path.endsWith('/inventory/collections/default')) {
+                creates++;
+                final bob = req.headers['Authorization'] == 'Bearer $bobToken';
+                return http.Response(
+                  json.encode({
+                    'collection': {'id': bob ? 'col-2' : 'col-1', 'name': bob ? 'Bob' : 'My plants', 'role': 'owner'},
+                  }),
+                  200,
+                );
+              }
+              return http.Response('{"error":"nope"}', 404);
+            })),
+      ]);
+      addTearDown(c.dispose);
+      await c.read(appContextProvider.future); // seeds A's demo data under 'local'
+      final links = c.read(collectionLinkProvider.notifier);
+      final prefs = await SharedPreferences.getInstance();
+
+      // A links, then unlinks: the link is gone, the marker is not.
+      await links.link();
+      expect(c.read(collectionLinkProvider).dataOwnerUserId, 'u-1');
+      expect(prefs.getString(kDataOwnerUserIdPrefKey), 'u-1');
+      expect(prefs.getString(kDataOwnerUsernamePrefKey), 'alice');
+      await links.unlink();
+      expect(c.read(collectionLinkProvider).link, isNull);
+      expect(c.read(collectionLinkProvider).dataOwnerUserId, 'u-1', reason: 'unlink never clears the marker');
+      expect(prefs.getString(kDataOwnerUserIdPrefKey), 'u-1');
+      final plantsA = await countTenant(db, db.plants, 'col-1');
+      expect(plantsA, greaterThan(0));
+
+      // B signs in: nothing links, nothing moves — B must decide.
+      await c.read(plantlyAuthProvider.notifier).adoptToken(bobToken);
+      expect(c.read(collectionLinkProvider).dataHeldByOther('u-2'), isTrue);
+      expect(c.read(collectionLinkProvider).dataOwnerLabel, 'alice');
+      expect(await links.ensureLinked(), isNull);
+      expect(creates, 1);
+      expect(c.read(currentTenantIdProvider), 'col-1');
+      expect(await countTenant(db, db.plants, 'col-1'), plantsA);
+
+      // B: "Start empty" → fresh tenant linked to B's collection; A's rows parked; marker = B.
+      final link = await links.startEmpty();
+      expect(link.id, 'col-2');
+      expect(link.userId, 'u-2');
+      expect(creates, 2);
+      expect(c.read(currentTenantIdProvider), 'col-2');
+      expect(await countTenant(db, db.plants, 'col-1'), plantsA, reason: "A's rows untouched");
+      expect(await countTenant(db, db.plants, 'col-2'), 0);
+      expect(c.read(collectionLinkProvider).dataOwnerUserId, 'u-2');
+      expect(c.read(collectionLinkProvider).dataOwnerUsername, 'bob');
+      expect(prefs.getString(kDataOwnerUserIdPrefKey), 'u-2');
+      expect(prefs.getString(kDataOwnerUsernamePrefKey), 'bob');
+      expect(c.read(collectionLinkProvider).dataHeldByOther('u-2'), isFalse);
+      expect(c.read(collectionLinkProvider).dataHeldByOther('u-1'), isTrue, reason: 'now A is the one who must decide');
+      // B is linked for B → ensureLinked is a no-op.
+      expect(await links.ensureLinked(), link);
+      expect(creates, 2);
+    });
+
+    test('data-owner marker on an empty tenant is dropped at load (fresh device / wiped data)', () async {
+      SharedPreferences.setMockInitialValues({
+        kTenantIdPrefKey: 'col-9',
+        kSkipSeedPrefKey: true,
+        kDataOwnerUserIdPrefKey: 'u-other',
+        kDataOwnerUsernamePrefKey: 'bob',
+      });
+      final c = make(storedToken: token);
+      await c.read(collectionLinkProvider.notifier).ready;
+      final st = c.read(collectionLinkProvider);
+      expect(st.dataOwnerUserId, isNull);
+      expect(st.dataOwnerLabel, isNull);
+      expect(st.dataHeldByOther('u-1'), isFalse);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString(kDataOwnerUserIdPrefKey), isNull);
+      expect(prefs.getString(kDataOwnerUsernamePrefKey), isNull);
+      // ...and with a single row under the tenant the marker stands.
+      SharedPreferences.setMockInitialValues({
+        kTenantIdPrefKey: 'col-9',
+        kSkipSeedPrefKey: true,
+        kDataOwnerUserIdPrefKey: 'u-other',
+        kDataOwnerUsernamePrefKey: 'bob',
+      });
+      await insertDummy(db, db.plants, 'col-9');
+      final c2 = make(storedToken: token);
+      await c2.read(collectionLinkProvider.notifier).ready;
+      expect(c2.read(collectionLinkProvider).dataOwnerUserId, 'u-other');
+      expect(c2.read(collectionLinkProvider).dataOwnerLabel, 'bob');
+      expect(await c2.read(collectionLinkProvider.notifier).ensureLinked(), isNull);
+      expect(creates, 0);
+    });
+
     test('a fresh container boots straight into the persisted tenant + link', () async {
       SharedPreferences.setMockInitialValues({
         kTenantIdPrefKey: 'col-1',

@@ -50,9 +50,10 @@ class CloudState {
   /// again — no automatic re-link.
   final bool unlinkedByUser;
 
-  /// Display name of another account whose collection this device is still
-  /// linked to. Non-null = the user must decide (move / start empty) before
-  /// anything links or syncs; nothing happens automatically.
+  /// Display name of another account whose data this device still holds —
+  /// the data-owner marker (survives an unlink) or a persisted link made by
+  /// that account. Non-null = the user must decide (move / start empty)
+  /// before anything links or syncs; nothing happens automatically.
   final String? heldByOther;
 
   static const CloudState off = CloudState(phase: CloudPhase.off);
@@ -92,10 +93,13 @@ final cloudStateProvider = Provider<CloudState>((ref) {
   }
   final entitlement = ref.watch(cloudEntitlementProvider);
   final linkState = ref.watch(collectionLinkProvider);
-  // A link made by another account on this device does not count — and
-  // blocks auto-linking until the user decides what to do with that data.
+  // Data owned by another account on this device (marker, kept across an
+  // unlink) or a link made by one does not count — and blocks auto-linking
+  // until the user decides what to do with that data.
   final stored = linkState.link;
-  final foreign = stored != null && stored.userId != session.userId;
+  final foreignData = linkState.dataHeldByOther(session.userId);
+  final foreignLink = stored != null && stored.userId != session.userId;
+  final foreign = foreignData || foreignLink;
   final link = foreign ? null : stored;
   final e = entitlement.valueOrNull;
   return CloudState(
@@ -106,6 +110,6 @@ final cloudStateProvider = Provider<CloudState>((ref) {
     collectionName: link?.name,
     checking: entitlement.isLoading,
     unlinkedByUser: linkState.unlinkedByUser,
-    heldByOther: foreign ? stored.accountLabel : null,
+    heldByOther: !foreign ? null : (foreignData ? linkState.dataOwnerLabel : stored!.accountLabel),
   );
 });
