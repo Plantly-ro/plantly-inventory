@@ -40,6 +40,7 @@ import 'log_event_sheet.dart';
 import 'propagate_dialog.dart';
 import 'tag_chip_input.dart';
 import '../../app/side_sheet.dart';
+import '../../shared/actor_label.dart';
 import '../../shared/sheet_chrome.dart';
 
 String _localeOf(BuildContext context) => Localizations.localeOf(context).toString();
@@ -1234,7 +1235,7 @@ class _Timeline extends ConsumerWidget {
                 () {
                   final ct = resolveCareType(types, event.type);
                   final verb = careKeyPastLabel(t, types, event.type);
-                  final details = _detailsOf(event);
+                  final details = withActor(_detailsOf(event) ?? '', careEventActorLabel(ref, t, event));
                   final when = _fmtDateLong(
                     context,
                     DateTime.fromMillisecondsSinceEpoch(event.doneAt, isUtc: true).toLocal(),
@@ -1263,7 +1264,7 @@ class _Timeline extends ConsumerWidget {
                           Text(verb, style: cellStyle),
                         ],
                       )),
-                      DataCell(Text(details ?? '—', overflow: TextOverflow.ellipsis)),
+                      DataCell(Text(details.isEmpty ? '—' : details, overflow: TextOverflow.ellipsis)),
                       DataCell(IconButton(
                         icon: Icon(Icons.delete_outline, size: 16, color: surface.muted),
                         tooltip: t.plantDetailDeleteEvent,
@@ -1325,7 +1326,7 @@ class _Timeline extends ConsumerWidget {
     final t = AppLocalizations.of(context);
     final types = ref.watch(careTypesProvider);
     final when = _fmtDate(context, DateTime.fromMillisecondsSinceEpoch(event.doneAt, isUtc: true).toLocal());
-    final text = _describe(t, event, careKeyPastLabel(t, types, event.type));
+    final text = withActor(_describe(t, event, careKeyPastLabel(t, types, event.type)), careEventActorLabel(ref, t, event));
     Future<void> delete() => _deleteEvent(context, ref, event, text);
 
     return InkWell(

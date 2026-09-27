@@ -125,6 +125,10 @@ const String kCloudUnlinkedPrefKey = 'plantly_cloud_unlinked';
 const String kDataOwnerUserIdPrefKey = 'plantly_data_owner_user_id';
 const String kDataOwnerUsernamePrefKey = 'plantly_data_owner_username';
 
+/// A tenant id that names a server collection, as opposed to the pre-cloud
+/// [kDefaultTenantId] or a `local-<ulid>` "start empty" tenant.
+bool isCollectionTenant(String tenant) => tenant != kDefaultTenantId && !tenant.startsWith('local-');
+
 /// True when no table holds a single row for [tenant] (`sync_ops`
 /// included) — nothing on this device that anyone could own.
 Future<bool> tenantIsEmpty(AppDatabase db, String tenant) async {
@@ -226,7 +230,13 @@ class CollectionLinkService extends StateNotifier<CollectionLinkState> {
     final col = await _ref.read(plantlyApiProvider).ensureDefaultCollection(session.token);
 
     final db = _ref.read(databaseProvider);
-    final from = _ref.read(currentTenantIdProvider);
+    var from = _ref.read(currentTenantIdProvider);
+    // Shared collections (§3): while switched to a collection somebody else
+    // owns, the tenant is that collection's id. "This device's plants" are
+    // the ones under the previously linked default — never migrate the
+    // shared collection's rows into another account's default.
+    final stored = state.link;
+    if (stored != null && from != stored.id && isCollectionTenant(from)) from = stored.id;
     await migrateTenant(db, from: from, to: col.id);
 
     // Persist only after the transaction committed: a crash in between
@@ -299,10 +309,17 @@ class CollectionLinkService extends StateNotifier<CollectionLinkState> {
 
   /// Forget the link and remember that the user asked for it. Local data,
   /// the tenant id and the data-owner marker are untouched; nothing is
-  /// deleted on the server.
+  /// deleted on the server. A device switched to a shared collection (§3)
+  /// goes back to its own default tenant first — the shared rows stay on
+  /// disk under their collection id, invisible until the next switch.
   Future<void> unlink() async {
     await _loaded;
     final p = await _prefs;
+    final link = state.link;
+    if (link != null && _ref.read(currentTenantIdProvider) != link.id) {
+      await p.setString(kTenantIdPrefKey, link.id);
+      _ref.read(currentTenantIdProvider.notifier).state = link.id;
+    }
     await p.remove(kCollectionIdPrefKey);
     await p.remove(kCollectionNamePrefKey);
     await p.remove(kCollectionUserIdPrefKey);

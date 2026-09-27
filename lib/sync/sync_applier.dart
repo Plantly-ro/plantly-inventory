@@ -162,6 +162,11 @@ class SyncApplier {
       updates[codec.hlcColumn] = op.hlc;
       updates['device_id'] = deviceId;
     }
+    // A `*` op re-sent for a row we already hold (e.g. synthesized on
+    // another device): attribute it when we did not know the actor yet.
+    if (codec.entity == 'care_events' && op.userId != null && row['actor_user_id'] == null) {
+      updates['actor_user_id'] = op.userId;
+    }
     await _update(codec, op.entityId, updates);
     return true;
   }
@@ -219,6 +224,11 @@ class SyncApplier {
     if (codec.entity == 'photos') {
       sql['remote_state'] = 'remote';
       sql['local_path'] = null;
+    }
+    // Shared collections (§3): who logged it. Device-local column fed from
+    // the pulled op's `user_id`; older servers omit it → null.
+    if (codec.entity == 'care_events' && op.userId != null) {
+      sql['actor_user_id'] = op.userId;
     }
 
     if (!await _resolveUniqueConflict(codec, op.entityId, opHlc, sql)) return false;

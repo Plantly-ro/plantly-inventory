@@ -97,8 +97,8 @@ class SyncProtocolError extends SyncError {
 
 /// One mutation in the wire format:
 /// `{ entity, entity_id, field, value, hlc }` outbound; pulled ops also carry
-/// `device_id` and `seq`. `value` is the decoded JSON value (null for
-/// tombstones), not the stored JSON string.
+/// `device_id`, `seq` and (shared collections, §3) `user_id`. `value` is the
+/// decoded JSON value (null for tombstones), not the stored JSON string.
 class SyncOpDto {
   const SyncOpDto({
     required this.entity,
@@ -108,6 +108,7 @@ class SyncOpDto {
     required this.hlc,
     this.deviceId,
     this.seq,
+    this.userId,
   });
 
   final String entity;
@@ -122,6 +123,11 @@ class SyncOpDto {
 
   /// Server sequence number (pull only).
   final String? seq;
+
+  /// plantly.ro user id of the account that pushed the op (pulled / fresh
+  /// ops only; additive — older servers omit it). Never sent outbound: the
+  /// server stamps it from the bearer token.
+  final String? userId;
 
   /// Build from a stored `sync_ops` row, decoding `value_json`.
   factory SyncOpDto.fromRow(SyncOpRow row) {
@@ -156,6 +162,10 @@ class SyncOpDto {
           null => null,
           final num n => n.toInt().toString(),
           final Object o => o.toString(),
+        },
+        userId: switch (m['user_id']) {
+          final String s when s.isNotEmpty => s,
+          _ => null,
         },
       );
 }

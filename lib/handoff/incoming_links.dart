@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../marketplace/plantly_api.dart' show InviteCode;
 import 'incoming_links_io.dart' if (dart.library.js_interop) 'incoming_links_web.dart' as platform;
 
 /// Source of URIs the OS / browser hands to the app: the launch link plus
@@ -14,7 +15,7 @@ abstract class IncomingLinks {
   /// Links arriving while the app is running.
   Stream<Uri> get stream;
 
-  /// Called once an import link has been taken: the web half strips the
+  /// Called once an import / join / auth link has been taken: the web half strips the
   /// payload from the address bar so reloads / bookmarks / history don't
   /// re-import (and the fragment never lingers in the URL). io: no-op.
   void consume() {}
@@ -62,6 +63,53 @@ String? extractImportParam(Uri uri) {
     return extractImportParamFromHash(fragment);
   }
   return null;
+}
+
+/// Pull the invite code out of a shared-collection join link
+/// (CLOUD-SYNC-CONTRACT §3), canonicalised (`InviteCode.normalize`), or null
+/// when [uri] is not a join link / carries no valid code. Accepted forms:
+///  1. `plantlyinventory://join#c=<code>` (`?c=` tolerated)
+///  2. `https://plantly.ro/app/inventory/join#c=<code>` (the invite `url`)
+///  3. `<inventory web>/join?c=<code>` (path route; `#c=` tolerated) and
+///     the legacy hash route `<inventory web>/#/join?c=<code>`
+String? extractJoinCode(Uri uri) {
+  String? code;
+  if (uri.scheme == 'plantlyinventory') {
+    if (uri.host != 'join' && !uri.path.startsWith('/join') && uri.path != 'join') return null;
+    code = _codeFromQueryString(uri.fragment) ?? uri.queryParameters['c'];
+  } else if (uri.scheme == 'https' || uri.scheme == 'http') {
+    if (uri.path.endsWith('/app/inventory/join') || isJoinPath(uri.path)) {
+      code = _codeFromQueryString(uri.fragment) ?? uri.queryParameters['c'];
+    } else {
+      code = _joinCodeFromHash(uri.fragment);
+    }
+  }
+  return code == null ? null : InviteCode.normalize(code);
+}
+
+/// `/join` (optionally under a base href, e.g. `/inventory/join`).
+bool isJoinPath(String path) {
+  final p = path.endsWith('/') && path.length > 1 ? path.substring(0, path.length - 1) : path;
+  return p == '/join' || p.endsWith('/join');
+}
+
+/// Legacy hash route `/join?c=<code>` (with or without the leading `#`).
+String? _joinCodeFromHash(String hash) {
+  var h = hash.startsWith('#') ? hash.substring(1) : hash;
+  if (!h.startsWith('/join')) return null;
+  h = h.substring('/join'.length);
+  if (h.startsWith('?')) h = h.substring(1);
+  return _codeFromQueryString(h);
+}
+
+String? _codeFromQueryString(String qs) {
+  if (qs.isEmpty) return null;
+  try {
+    final c = Uri.splitQueryString(qs)['c'];
+    return c == null || c.isEmpty ? null : c;
+  } on FormatException {
+    return RegExp(r'(?:^|&)c=([^&]+)').firstMatch(qs)?.group(1);
+  }
 }
 
 /// `/auth/callback` (optionally under a base href).

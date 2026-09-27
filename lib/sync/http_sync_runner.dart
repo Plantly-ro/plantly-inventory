@@ -59,6 +59,7 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
     this.usageInterval = const Duration(minutes: 10),
     this.observeLifecycle = true,
     this.batchSize = 500,
+    this.entitlementIsOwners = false,
     DateTime Function()? now,
   })  : _localChanges = localChanges ?? opLog.changes,
         _now = now ?? (() => DateTime.now().toUtc()),
@@ -94,6 +95,11 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
   final Duration usageInterval;
   final bool observeLifecycle;
   final int batchSize;
+
+  /// The collection is shared with this account (role `editor`, §3): a 402
+  /// means the OWNER's plan lapsed, reported as `cloud_required` with
+  /// detail [kOwnerPlanLapsedDetail] rather than a paywall for the caller.
+  final bool entitlementIsOwners;
 
   final Stream<void> _localChanges;
   final DateTime Function() _now;
@@ -217,10 +223,10 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
     _retryTimer = Timer(delay, () => _trigger());
   }
 
-  void _halt(String code) {
+  void _halt(String code, {String? detail}) {
     _halted = true;
     _dirty = false;
-    _emit(_status.copyWith(inFlight: false, lastError: code));
+    _emit(_status.copyWith(inFlight: false, lastError: code, lastErrorDetail: detail));
   }
 
   // --- the cycle ------------------------------------------------------------
@@ -277,7 +283,7 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
         _halt('unauthorized');
         return;
       } on SyncEntitlementError {
-        _halt('cloud_required');
+        _halt('cloud_required', detail: entitlementIsOwners ? kOwnerPlanLapsedDetail : null);
         return;
       } on SyncCollectionError {
         _halt('collection_unavailable');

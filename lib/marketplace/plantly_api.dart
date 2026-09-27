@@ -15,6 +15,7 @@ class PlantlyApiException implements Exception {
     required this.message,
     this.code,
     this.retryAfter,
+    this.details = const {},
   });
 
   final int status;
@@ -23,6 +24,10 @@ class PlantlyApiException implements Exception {
 
   /// Seconds from the `Retry-After` header on 429s, when present.
   final int? retryAfter;
+
+  /// Extra fields of the JSON error envelope beyond `error`/`code`
+  /// (e.g. `max_active` on `429 too_many_invites`, §3).
+  final Map<String, dynamic> details;
 
   bool get isUnauthorized => status == 401;
   bool get isRateLimited => status == 429;
@@ -91,20 +96,130 @@ class CreatePostResult {
   final List<String> uploadWarnings;
 }
 
-/// One server-side inventory collection (CLOUD-SYNC-CONTRACT §2.2).
+/// One server-side inventory collection (CLOUD-SYNC-CONTRACT §2.2 / §3).
+/// `role` is the caller's role in it: `owner` or `editor`.
 class CloudCollection {
-  const CloudCollection({required this.id, required this.name, required this.role, this.createdAt});
+  const CloudCollection({
+    required this.id,
+    required this.name,
+    required this.role,
+    this.createdAt,
+    this.ownerUserId,
+    this.memberCount = 1,
+  });
   final String id;
   final String name;
   final String role;
   final DateTime? createdAt;
+
+  /// Account that owns the collection (§3 `GET /inventory/collections`).
+  final String? ownerUserId;
+
+  /// Members including the owner (§3); 1 for a plain default collection.
+  final int memberCount;
+
+  bool get isOwner => role == 'owner';
+
+  /// Sensible display name: the server name, else the id.
+  String get displayName => name.isEmpty ? id : name;
 
   factory CloudCollection.fromJson(Map<String, dynamic> m) => CloudCollection(
         id: m['id'] as String? ?? '',
         name: m['name'] as String? ?? '',
         role: m['role'] as String? ?? 'owner',
         createdAt: DateTime.tryParse(m['created_at'] as String? ?? ''),
+        ownerUserId: m['owner_user_id'] as String?,
+        memberCount: (m['member_count'] as num?)?.toInt() ?? 1,
       );
+
+  /// Round-trips through the prefs cache (`collectionsProvider`).
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'role': role,
+        if (createdAt != null) 'created_at': createdAt!.toUtc().toIso8601String(),
+        if (ownerUserId != null) 'owner_user_id': ownerUserId,
+        'member_count': memberCount,
+      };
+
+  @override
+  bool operator ==(Object other) =>
+      other is CloudCollection &&
+      other.id == id &&
+      other.name == name &&
+      other.role == role &&
+      other.ownerUserId == ownerUserId &&
+      other.memberCount == memberCount;
+
+  @override
+  int get hashCode => Object.hash(id, name, role, ownerUserId, memberCount);
+
+  @override
+  String toString() => 'CloudCollection($id, $name, role=$role, members=$memberCount)';
+}
+
+/// `POST /inventory/collections/{id}/invites` reply (§3).
+class CollectionInvite {
+  const CollectionInvite({required this.code, required this.url, this.expiresAt});
+  final String code;
+
+  /// `https://plantly.ro/app/inventory/join#c=<code>` — deep link / landing page.
+  final String url;
+  final DateTime? expiresAt;
+
+  factory CollectionInvite.fromJson(Map<String, dynamic> m) => CollectionInvite(
+        code: m['code'] as String? ?? '',
+        url: m['url'] as String? ?? '',
+        expiresAt: DateTime.tryParse(m['expires_at'] as String? ?? ''),
+      );
+}
+
+/// One row of `GET /inventory/collections/{id}/members` (§3).
+class CollectionMember {
+  const CollectionMember({required this.userId, required this.username, required this.role, this.joinedAt});
+  final String userId;
+  final String username;
+  final String role;
+  final DateTime? joinedAt;
+
+  bool get isOwner => role == 'owner';
+
+  factory CollectionMember.fromJson(Map<String, dynamic> m) => CollectionMember(
+        userId: m['user_id'] as String? ?? '',
+        username: m['username'] as String? ?? '',
+        role: m['role'] as String? ?? 'editor',
+        joinedAt: DateTime.tryParse(m['joined_at'] as String? ?? ''),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'user_id': userId,
+        'username': username,
+        'role': role,
+        if (joinedAt != null) 'joined_at': joinedAt!.toUtc().toIso8601String(),
+      };
+
+  @override
+  bool operator ==(Object other) =>
+      other is CollectionMember && other.userId == userId && other.username == username && other.role == role;
+
+  @override
+  int get hashCode => Object.hash(userId, username, role);
+}
+
+/// Invite codes (§3): 8 chars from `A-HJ-NP-Z2-9` (no I/O/0/1). Lower case
+/// and surrounding whitespace / dashes are tolerated on input.
+abstract final class InviteCode {
+  static const int length = 8;
+  static final RegExp _shape = RegExp(r'^[A-HJ-NP-Z2-9]{8}$');
+
+  /// Canonical form (`ABCD-EFGH`, ` abcdefgh ` → `ABCDEFGH`), or null when
+  /// the input is not a valid code.
+  static String? normalize(String raw) {
+    final c = raw.trim().replaceAll(RegExp(r'[\s-]'), '').toUpperCase();
+    return _shape.hasMatch(c) ? c : null;
+  }
+
+  static bool isValid(String raw) => normalize(raw) != null;
 }
 
 /// Thin client over the marketplace REST API (CONTRACT §0/§1/§5). One
@@ -266,6 +381,80 @@ class PlantlyApi {
     return CloudCollection.fromJson(col);
   }
 
+  /// `GET /inventory/collections` (§3) — every collection the caller can
+  /// see: their own default plus the ones shared with them.
+  Future<List<CloudCollection>> listCollections(String token) async {
+    final res = await _send(() => _client.get(
+          _uri('/inventory/collections'),
+          headers: _headers(token: token, inventoryClient: true),
+        ));
+    final decoded = _decode(res);
+    final list = decoded is Map<String, dynamic> ? decoded['collections'] : decoded;
+    if (list is! List) return const [];
+    return [
+      for (final e in list)
+        if (e is Map<String, dynamic> && (e['id'] as String? ?? '').isNotEmpty) CloudCollection.fromJson(e),
+    ];
+  }
+
+  /// `POST /inventory/collections/{id}/invites` (§3, owner) → single-use
+  /// code + landing URL, valid 7 days. `403 owner_only`; `429
+  /// too_many_invites {"max_active":5}` (in [PlantlyApiException.details]).
+  Future<CollectionInvite> createInvite(String token, String collectionId) async {
+    final res = await _send(() => _client.post(
+          _uri('/inventory/collections/${Uri.encodeComponent(collectionId)}/invites'),
+          headers: _headers(token: token, inventoryClient: true),
+        ));
+    final body = _decodeObject(res);
+    final invite = CollectionInvite.fromJson(body['invite'] is Map<String, dynamic> ? body['invite'] : body);
+    if (invite.code.isEmpty) {
+      throw PlantlyApiException(status: res.statusCode, message: 'invite reply has no code');
+    }
+    return invite;
+  }
+
+  /// `POST /inventory/collections/join { code }` (§3) → the joined
+  /// collection (role `editor`, with `owner_user_id`/`member_count`).
+  /// `404 invite_invalid` (unknown / expired / used / malformed) and
+  /// `409 already_member` pass through as [PlantlyApiException].
+  Future<CloudCollection> joinCollection(String token, String code) async {
+    final res = await _send(() => _client.post(
+          _uri('/inventory/collections/join'),
+          headers: _headers(token: token, json: true, inventoryClient: true),
+          body: json.encode({'code': code}),
+        ));
+    final body = _decodeObject(res);
+    final col = body['collection'];
+    if (col is! Map<String, dynamic> || (col['id'] as String? ?? '').isEmpty) {
+      throw PlantlyApiException(status: res.statusCode, message: 'join reply has no collection');
+    }
+    return CloudCollection.fromJson(col);
+  }
+
+  /// `GET /inventory/collections/{id}/members` (§3).
+  Future<List<CollectionMember>> listMembers(String token, String collectionId) async {
+    final res = await _send(() => _client.get(
+          _uri('/inventory/collections/${Uri.encodeComponent(collectionId)}/members'),
+          headers: _headers(token: token, inventoryClient: true),
+        ));
+    final list = _decodeObject(res)['members'];
+    if (list is! List) return const [];
+    return [
+      for (final e in list)
+        if (e is Map<String, dynamic>) CollectionMember.fromJson(e),
+    ];
+  }
+
+  /// `DELETE /inventory/collections/{id}/members/{user_id}` (§3) — the
+  /// owner removes a member, or a member removes themself ("Leave").
+  /// `409 owner_cannot_leave`, `404 member_not_found`.
+  Future<void> removeMember(String token, String collectionId, String userId) async {
+    await _send(() => _client.delete(
+          _uri('/inventory/collections/${Uri.encodeComponent(collectionId)}/members/${Uri.encodeComponent(userId)}'),
+          headers: _headers(token: token, inventoryClient: true),
+        ));
+  }
+
   /// `POST /posts/{id}/sold` — owner-only, idempotent.
   Future<void> markSold(String token, String postId) async {
     final res = await _send(() => _client.post(_uri('/posts/$postId/sold'), headers: _headers(token: token)));
@@ -291,11 +480,16 @@ class PlantlyApi {
     if (res.statusCode >= 200 && res.statusCode < 300) return;
     String message = 'HTTP ${res.statusCode}';
     String? code;
+    var details = const <String, dynamic>{};
     try {
       final body = json.decode(utf8.decode(res.bodyBytes));
       if (body is Map<String, dynamic>) {
         message = body['error'] as String? ?? body['message'] as String? ?? message;
         code = body['code'] as String?;
+        details = {
+          for (final e in body.entries)
+            if (e.key != 'error' && e.key != 'message' && e.key != 'code') e.key: e.value,
+        };
       }
     } catch (_) {
       final text = res.body.trim();
@@ -306,6 +500,7 @@ class PlantlyApi {
       message: message,
       code: code,
       retryAfter: int.tryParse(res.headers['retry-after'] ?? ''),
+      details: details,
     );
   }
 

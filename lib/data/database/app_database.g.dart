@@ -5603,6 +5603,17 @@ class $CareEventsTable extends CareEvents
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _actorUserIdMeta = const VerificationMeta(
+    'actorUserId',
+  );
+  @override
+  late final GeneratedColumn<String> actorUserId = GeneratedColumn<String>(
+    'actor_user_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5617,6 +5628,7 @@ class $CareEventsTable extends CareEvents
     updatedHlc,
     deletedAt,
     deviceId,
+    actorUserId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5713,6 +5725,15 @@ class $CareEventsTable extends CareEvents
     } else if (isInserting) {
       context.missing(_deviceIdMeta);
     }
+    if (data.containsKey('actor_user_id')) {
+      context.handle(
+        _actorUserIdMeta,
+        actorUserId.isAcceptableOrUnknown(
+          data['actor_user_id']!,
+          _actorUserIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -5770,6 +5791,10 @@ class $CareEventsTable extends CareEvents
         DriftSqlType.string,
         data['${effectivePrefix}device_id'],
       )!,
+      actorUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}actor_user_id'],
+      ),
     );
   }
 
@@ -5792,6 +5817,13 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
   final String updatedHlc;
   final int? deletedAt;
   final String deviceId;
+
+  /// plantly.ro user id of whoever logged the event (shared collections,
+  /// CLOUD-SYNC-CONTRACT §3 "who watered"). Device-local: set from the
+  /// pulled op's `user_id` for remote rows and from the signed-in session
+  /// for local ones; NOT on the wire (`entity_codecs.dart` excludes it —
+  /// the server stamps `user_id` from the bearer token).
+  final String? actorUserId;
   const CareEventRow({
     required this.id,
     required this.tenantId,
@@ -5805,6 +5837,7 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
     required this.updatedHlc,
     this.deletedAt,
     required this.deviceId,
+    this.actorUserId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5831,6 +5864,9 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
       map['deleted_at'] = Variable<int>(deletedAt);
     }
     map['device_id'] = Variable<String>(deviceId);
+    if (!nullToAbsent || actorUserId != null) {
+      map['actor_user_id'] = Variable<String>(actorUserId);
+    }
     return map;
   }
 
@@ -5856,6 +5892,9 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
           ? const Value.absent()
           : Value(deletedAt),
       deviceId: Value(deviceId),
+      actorUserId: actorUserId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(actorUserId),
     );
   }
 
@@ -5877,6 +5916,7 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
       updatedHlc: serializer.fromJson<String>(json['updatedHlc']),
       deletedAt: serializer.fromJson<int?>(json['deletedAt']),
       deviceId: serializer.fromJson<String>(json['deviceId']),
+      actorUserId: serializer.fromJson<String?>(json['actorUserId']),
     );
   }
   @override
@@ -5895,6 +5935,7 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
       'updatedHlc': serializer.toJson<String>(updatedHlc),
       'deletedAt': serializer.toJson<int?>(deletedAt),
       'deviceId': serializer.toJson<String>(deviceId),
+      'actorUserId': serializer.toJson<String?>(actorUserId),
     };
   }
 
@@ -5911,6 +5952,7 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
     String? updatedHlc,
     Value<int?> deletedAt = const Value.absent(),
     String? deviceId,
+    Value<String?> actorUserId = const Value.absent(),
   }) => CareEventRow(
     id: id ?? this.id,
     tenantId: tenantId ?? this.tenantId,
@@ -5924,6 +5966,7 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
     updatedHlc: updatedHlc ?? this.updatedHlc,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
     deviceId: deviceId ?? this.deviceId,
+    actorUserId: actorUserId.present ? actorUserId.value : this.actorUserId,
   );
   CareEventRow copyWithCompanion(CareEventsCompanion data) {
     return CareEventRow(
@@ -5941,6 +5984,9 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
           : this.updatedHlc,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
+      actorUserId: data.actorUserId.present
+          ? data.actorUserId.value
+          : this.actorUserId,
     );
   }
 
@@ -5958,7 +6004,8 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
           ..write('photoSha: $photoSha, ')
           ..write('updatedHlc: $updatedHlc, ')
           ..write('deletedAt: $deletedAt, ')
-          ..write('deviceId: $deviceId')
+          ..write('deviceId: $deviceId, ')
+          ..write('actorUserId: $actorUserId')
           ..write(')'))
         .toString();
   }
@@ -5977,6 +6024,7 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
     updatedHlc,
     deletedAt,
     deviceId,
+    actorUserId,
   );
   @override
   bool operator ==(Object other) =>
@@ -5993,7 +6041,8 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
           other.photoSha == this.photoSha &&
           other.updatedHlc == this.updatedHlc &&
           other.deletedAt == this.deletedAt &&
-          other.deviceId == this.deviceId);
+          other.deviceId == this.deviceId &&
+          other.actorUserId == this.actorUserId);
 }
 
 class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
@@ -6009,6 +6058,7 @@ class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
   final Value<String> updatedHlc;
   final Value<int?> deletedAt;
   final Value<String> deviceId;
+  final Value<String?> actorUserId;
   final Value<int> rowid;
   const CareEventsCompanion({
     this.id = const Value.absent(),
@@ -6023,6 +6073,7 @@ class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
     this.updatedHlc = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.deviceId = const Value.absent(),
+    this.actorUserId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CareEventsCompanion.insert({
@@ -6038,6 +6089,7 @@ class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
     required String updatedHlc,
     this.deletedAt = const Value.absent(),
     required String deviceId,
+    this.actorUserId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        tenantId = Value(tenantId),
@@ -6059,6 +6111,7 @@ class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
     Expression<String>? updatedHlc,
     Expression<int>? deletedAt,
     Expression<String>? deviceId,
+    Expression<String>? actorUserId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -6074,6 +6127,7 @@ class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
       if (updatedHlc != null) 'updated_hlc': updatedHlc,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (deviceId != null) 'device_id': deviceId,
+      if (actorUserId != null) 'actor_user_id': actorUserId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -6091,6 +6145,7 @@ class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
     Value<String>? updatedHlc,
     Value<int?>? deletedAt,
     Value<String>? deviceId,
+    Value<String?>? actorUserId,
     Value<int>? rowid,
   }) {
     return CareEventsCompanion(
@@ -6106,6 +6161,7 @@ class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
       updatedHlc: updatedHlc ?? this.updatedHlc,
       deletedAt: deletedAt ?? this.deletedAt,
       deviceId: deviceId ?? this.deviceId,
+      actorUserId: actorUserId ?? this.actorUserId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -6149,6 +6205,9 @@ class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
     if (deviceId.present) {
       map['device_id'] = Variable<String>(deviceId.value);
     }
+    if (actorUserId.present) {
+      map['actor_user_id'] = Variable<String>(actorUserId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -6170,6 +6229,7 @@ class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
           ..write('updatedHlc: $updatedHlc, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('deviceId: $deviceId, ')
+          ..write('actorUserId: $actorUserId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -11148,6 +11208,7 @@ typedef $$CareEventsTableCreateCompanionBuilder =
       required String updatedHlc,
       Value<int?> deletedAt,
       required String deviceId,
+      Value<String?> actorUserId,
       Value<int> rowid,
     });
 typedef $$CareEventsTableUpdateCompanionBuilder =
@@ -11164,6 +11225,7 @@ typedef $$CareEventsTableUpdateCompanionBuilder =
       Value<String> updatedHlc,
       Value<int?> deletedAt,
       Value<String> deviceId,
+      Value<String?> actorUserId,
       Value<int> rowid,
     });
 
@@ -11233,6 +11295,11 @@ class $$CareEventsTableFilterComposer
 
   ColumnFilters<String> get deviceId => $composableBuilder(
     column: $table.deviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -11305,6 +11372,11 @@ class $$CareEventsTableOrderingComposer
     column: $table.deviceId,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CareEventsTableAnnotationComposer
@@ -11353,6 +11425,11 @@ class $$CareEventsTableAnnotationComposer
 
   GeneratedColumn<String> get deviceId =>
       $composableBuilder(column: $table.deviceId, builder: (column) => column);
+
+  GeneratedColumn<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => column,
+  );
 }
 
 class $$CareEventsTableTableManager
@@ -11398,6 +11475,7 @@ class $$CareEventsTableTableManager
                 Value<String> updatedHlc = const Value.absent(),
                 Value<int?> deletedAt = const Value.absent(),
                 Value<String> deviceId = const Value.absent(),
+                Value<String?> actorUserId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CareEventsCompanion(
                 id: id,
@@ -11412,6 +11490,7 @@ class $$CareEventsTableTableManager
                 updatedHlc: updatedHlc,
                 deletedAt: deletedAt,
                 deviceId: deviceId,
+                actorUserId: actorUserId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -11428,6 +11507,7 @@ class $$CareEventsTableTableManager
                 required String updatedHlc,
                 Value<int?> deletedAt = const Value.absent(),
                 required String deviceId,
+                Value<String?> actorUserId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CareEventsCompanion.insert(
                 id: id,
@@ -11442,6 +11522,7 @@ class $$CareEventsTableTableManager
                 updatedHlc: updatedHlc,
                 deletedAt: deletedAt,
                 deviceId: deviceId,
+                actorUserId: actorUserId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

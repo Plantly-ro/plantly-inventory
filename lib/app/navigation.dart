@@ -33,6 +33,11 @@ abstract final class AppRoutes {
   /// too and redirected home once the listener has consumed it.
   static const String authCallback = '/auth/callback';
 
+  /// Shared-collection invite landing (CLOUD-SYNC-CONTRACT §3) —
+  /// `/join?c=<code>`; `HandoffListener` reads the code off the URL and
+  /// opens the join sheet, the router redirects home (like [import]).
+  static const String join = '/join';
+
   static String plant(String id) => '/plants/${Uri.encodeComponent(id)}';
   static String space(String id) => '/spaces/${Uri.encodeComponent(id)}';
   static String meSection(String section) => '/me/$section';

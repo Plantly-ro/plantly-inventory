@@ -15,6 +15,7 @@ import 'home_providers.dart';
 import 'selection.dart';
 import 'widget_registry.dart';
 import '../../app/side_sheet.dart';
+import '../collections/collection_switcher.dart';
 
 /// Port of `CustomHome` in `web/prototype/components/screens.jsx`.
 class HomeScreen extends ConsumerStatefulWidget {
@@ -246,6 +247,8 @@ class _EditToggleBar extends StatelessWidget {
               );
             },
           ),
+          // Shared collections (§3): nothing with 0/1 collection.
+          CollectionSwitcherChip(surface: surface),
           const Spacer(),
           if (editing)
             InkWell(
