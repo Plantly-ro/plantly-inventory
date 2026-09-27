@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../cloud/cloud_state.dart';
 import '../cloud/entitlement.dart';
 import '../cloud/sync_runner.dart';
+import '../data/database/app_database.dart';
 import '../data/photo_blob_store.dart';
 import '../data/providers.dart';
 import '../marketplace/plantly_auth.dart';
@@ -13,6 +14,7 @@ import 'http_sync_transport.dart';
 import 'op_log.dart';
 import 'photo_sync.dart';
 import 'sync_engine.dart';
+import 'sync_rejections.dart';
 import 'sync_transport.dart';
 
 /// Server collection id to sync against; null = cloud off. Derived from the
@@ -88,6 +90,23 @@ final photoFetcherProvider = Provider<PhotoFetcher?>((ref) {
   );
 });
 
+/// Rejection ledger for the current collection (null when cloud is off).
+/// Shared between the runner (writes) and Me → Cloud → Details (reads,
+/// retry/dismiss).
+final syncRejectionStoreProvider = Provider<SyncRejectionStore?>((ref) {
+  final collectionId = ref.watch(syncCollectionIdProvider);
+  final ctx = ref.watch(appContextProvider).asData?.value;
+  if (collectionId == null || ctx == null) return null;
+  return SyncRejectionStore(db: ctx.db, tenantId: collectionId);
+});
+
+/// Live rows of the rejection ledger; empty when cloud is off.
+final syncRejectionsProvider = StreamProvider<List<SyncRejectionRow>>((ref) {
+  final store = ref.watch(syncRejectionStoreProvider);
+  if (store == null) return Stream.value(const <SyncRejectionRow>[]);
+  return store.watchAll();
+});
+
 /// The real runner for the current collection (started on creation,
 /// disposed when the collection / app context changes or on container
 /// dispose). Returns [NoopSyncRunner] until the app context, prefs and a
@@ -115,12 +134,12 @@ final httpSyncRunnerProvider = Provider<SyncRunner>((ref) {
   final runner = HttpSyncRunner(
     db: ctx.db,
     opLog: opLog,
-    clock: ctx.clock,
     transport: transport,
     cursor: PrefsSyncCursor(prefs: prefs, tenantId: collectionId),
     deviceId: ctx.deviceId,
     collectionId: collectionId,
     localChanges: ctx.opLog.changes,
+    rejections: ref.watch(syncRejectionStoreProvider),
     photos: photoTransport == null
         ? null
         : PhotoUploader(

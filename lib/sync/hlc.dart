@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'dart:math';
 
 /// Hybrid Logical Clock — the single ordering primitive for every synced
@@ -71,14 +72,34 @@ class Hlc implements Comparable<Hlc> {
 /// invoked on every inbound sync op so the physical component can't drift
 /// backwards more than one tick relative to what we've seen.
 class HlcClock {
-  HlcClock({required this.deviceId, DateTime Function()? nowProvider})
-      : _nowProvider = nowProvider ?? (() => DateTime.now().toUtc());
+  HlcClock({
+    required this.deviceId,
+    DateTime Function()? nowProvider,
+    this.maxRemoteDrift = const Duration(hours: 24),
+    void Function(String message)? log,
+  })  : _nowProvider = nowProvider ?? (() => DateTime.now().toUtc()),
+        _log = log ?? _developerLog;
 
   final String deviceId;
   final DateTime Function() _nowProvider;
 
+  /// How far ahead of the local wall clock a remote HLC may be and still
+  /// move this clock forward. A remote stamp further out than this is not a
+  /// peer slightly ahead of us — it is a malformed or forged timestamp
+  /// (one op stamped `20260927102954-…`, i.e. year ~2612, pinned a device's
+  /// clock there and every later local edit inherited it). Such stamps are
+  /// ignored by [merge]; the op itself still applies under LWW.
+  final Duration maxRemoteDrift;
+  final void Function(String message) _log;
+
   int _lastPhysical = 0;
   int _logical = 0;
+
+  /// Remote HLCs [merge] refused because they were further than
+  /// [maxRemoteDrift] ahead of the local wall clock (diagnostics/tests).
+  int ignoredRemoteCount = 0;
+
+  static void _developerLog(String message) => developer.log(message, name: 'plantly.hlc');
 
   /// Emit a fresh HLC that is strictly greater than every previous call on
   /// this clock, and greater than every remote HLC that has been [merge]d.
@@ -100,9 +121,18 @@ class HlcClock {
   }
 
   /// Absorb a remote HLC. After this call, subsequent [now] results are
-  /// guaranteed to be strictly greater than [remote].
-  void merge(Hlc remote) {
+  /// guaranteed to be strictly greater than [remote] — unless [remote] is
+  /// more than [maxRemoteDrift] ahead of the local wall clock, in which case
+  /// it is logged and ignored (returns false) so a single bad stamp cannot
+  /// drag every future local edit into the far future.
+  bool merge(Hlc remote) {
     final wall = _nowProvider().millisecondsSinceEpoch;
+    if (remote.physicalMs - wall > maxRemoteDrift.inMilliseconds) {
+      ignoredRemoteCount++;
+      _log('ignoring remote HLC ${remote.encode()}: '
+          '${Duration(milliseconds: remote.physicalMs - wall)} ahead of local time');
+      return false;
+    }
     final physCap = max(max(_lastPhysical, remote.physicalMs), wall);
     if (physCap == _lastPhysical && physCap == remote.physicalMs) {
       _logical = max(_logical, remote.logical) + 1;
@@ -114,5 +144,6 @@ class HlcClock {
       _logical = 0;
     }
     _lastPhysical = physCap;
+    return true;
   }
 }

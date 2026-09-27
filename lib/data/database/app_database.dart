@@ -276,6 +276,28 @@ class SyncOps extends Table {
   IntColumn get pushedAt => integer().named('pushed_at').nullable()();
 }
 
+/// Ops the server refused (`rejected[]` in a push reply), kept so Me → Cloud
+/// can list them. `parked` = the op was marked `pushed_at` and will not be
+/// retried automatically (permanent reasons; transient ones stay pending and
+/// are retried until the grace window in `SyncRejectionPolicy` runs out).
+/// `at` = first seen, unix ms. Rows go away when the op is accepted, retried
+/// or dismissed.
+@DataClassName('SyncRejectionRow')
+class SyncRejections extends Table {
+  IntColumn get opSeq => integer().named('op_seq')();
+  TextColumn get tenantId => text().named('tenant_id')();
+  TextColumn get entity => text()();
+  TextColumn get entityId => text().named('entity_id')();
+  TextColumn get field => text()();
+  TextColumn get reason => text()();
+  TextColumn get hlc => text()();
+  IntColumn get at => integer()();
+  BoolColumn get parked => boolean().withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {opSeq};
+}
+
 @DriftDatabase(tables: [
   Species,
   Locations,
@@ -289,6 +311,7 @@ class SyncOps extends Table {
   CareSchedules,
   InventoryTransactions,
   SyncOps,
+  SyncRejections,
 ])
 class AppDatabase extends _$AppDatabase {
   /// io: sqlite file in the app's data dir. Web: sqlite3.wasm + the drift
@@ -306,7 +329,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -351,6 +374,16 @@ class AppDatabase extends _$AppDatabase {
               'CREATE INDEX IF NOT EXISTS idx_sync_ops_key ON sync_ops(tenant_id, entity, entity_id, field)',
             );
           }
+          // 9 is reserved for the shared-collections branch
+          // (`care_events.actor_user_id`); its `if (from < 9)` step slots in
+          // above this one when the two land together.
+          if (from < 10) {
+            // Cloud sync: server-refused ops surfaced in Me → Cloud.
+            await m.createTable(syncRejections);
+            await customStatement(
+              'CREATE INDEX IF NOT EXISTS idx_sync_rejections_tenant ON sync_rejections(tenant_id)',
+            );
+          }
         },
       );
 
@@ -378,6 +411,9 @@ class AppDatabase extends _$AppDatabase {
     );
     await customStatement(
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_tenant_name ON tags(tenant_id, name)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_sync_rejections_tenant ON sync_rejections(tenant_id)',
     );
     await customStatement(
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_plant_photos_unique_add ON plant_photos(tenant_id, plant_id, photo_sha, added_hlc)',

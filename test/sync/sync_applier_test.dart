@@ -367,9 +367,17 @@ void main() {
     expect(await plant('p2'), isNotNull);
   });
 
-  test('the local clock absorbs remote HLCs', () async {
+  test('the local clock absorbs remote HLCs (within the drift window)', () async {
+    final ahead = 1000 + const Duration(hours: 1).inMilliseconds;
+    await applier.applyBatch([op('plants', 'p1', '*', plantJson('p1'), hlcAt(ahead))]);
+    expect(clock.now() > Hlc.parse(hlcAt(ahead)), isTrue);
+  });
+
+  test('a remote HLC far in the future is applied but does not move the local clock', () async {
     await applier.applyBatch([op('plants', 'p1', '*', plantJson('p1'), hlcAt(999999999))]);
-    expect(clock.now() > Hlc.parse(hlcAt(999999999)), isTrue);
+    expect(await plant('p1'), isNotNull);
+    expect(clock.ignoredRemoteCount, 1);
+    expect(clock.now().physicalMs, lessThan(10000));
   });
 
   test('applied `*` payload survives a JSON round trip (as it would over the wire)', () async {

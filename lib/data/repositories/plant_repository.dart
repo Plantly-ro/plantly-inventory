@@ -102,7 +102,9 @@ class PlantRepository {
 
   /// Update nickname + notes + location + species in one transaction. Any
   /// field left as `null` is deliberately erased; callers who want to leave
-  /// a field untouched should re-pass its current value.
+  /// a field untouched should re-pass its current value. Only fields whose
+  /// value differs from the stored row produce an op (and bump the HLC), so
+  /// a nickname-only edit is exactly one `nickname` op.
   Future<void> edit(
     String id, {
     required String nickname,
@@ -111,22 +113,22 @@ class PlantRepository {
     required String? speciesId,
   }) async {
     return db.transaction(() async {
-      await opLog.recordFieldUpdate(entity: 'plants', entityId: id, field: 'nickname', value: nickname);
-      await opLog.recordFieldUpdate(entity: 'plants', entityId: id, field: 'notes', value: notes);
-      await opLog.recordFieldUpdate(entity: 'plants', entityId: id, field: 'location_id', value: locationId);
-      final finalHlc = await opLog.recordFieldUpdate(
-        entity: 'plants',
-        entityId: id,
-        field: 'species_id',
-        value: speciesId,
-      );
+      final current = await byId(id);
+      if (current == null) return;
+      final hlc = await opLog.recordFieldUpdates(entity: 'plants', entityId: id, fields: {
+        if (current.nickname != nickname) 'nickname': nickname,
+        if (current.notes != notes) 'notes': notes,
+        if (current.locationId != locationId) 'location_id': locationId,
+        if (current.speciesId != speciesId) 'species_id': speciesId,
+      });
+      if (hlc == null) return;
       await (db.update(db.plants)..where((p) => p.id.equals(id))).write(
         PlantsCompanion(
           nickname: Value(nickname),
           notes: Value(notes),
           locationId: Value(locationId),
           speciesId: Value(speciesId),
-          updatedHlc: Value(finalHlc.encode()),
+          updatedHlc: Value(hlc.encode()),
           deviceId: Value(opLog.clock.deviceId),
         ),
       );
@@ -158,11 +160,16 @@ class PlantRepository {
   }
 
   /// Update the plant's pin coordinates on its current location map.
-  /// Pass (null, null) to unplace the pin.
+  /// Pass (null, null) to unplace the pin. No-op (no ops) when unchanged.
   Future<void> setPin(String id, double? x, double? y) async {
     return db.transaction(() async {
-      await opLog.recordFieldUpdate(entity: 'plants', entityId: id, field: 'pin_x', value: x);
-      final hlc = await opLog.recordFieldUpdate(entity: 'plants', entityId: id, field: 'pin_y', value: y);
+      final current = await byId(id);
+      if (current == null) return;
+      final hlc = await opLog.recordFieldUpdates(entity: 'plants', entityId: id, fields: {
+        if (current.pinX != x) 'pin_x': x,
+        if (current.pinY != y) 'pin_y': y,
+      });
+      if (hlc == null) return;
       await (db.update(db.plants)..where((p) => p.id.equals(id))).write(
         PlantsCompanion(
           pinX: Value(x),

@@ -112,7 +112,8 @@ class CareEventRepository {
   }
 
   /// Edit a previously-logged care event. Useful when the user typed
-  /// the wrong dose or mis-remembered the date.
+  /// the wrong dose or mis-remembered the date. Emits one op per field
+  /// that actually changed.
   Future<void> edit(
     String id, {
     required String type,
@@ -122,12 +123,16 @@ class CareEventRepository {
     required String? product,
   }) async {
     return db.transaction(() async {
-      await opLog.recordFieldUpdate(entity: 'care_events', entityId: id, field: 'type', value: type);
-      await opLog.recordFieldUpdate(entity: 'care_events', entityId: id, field: 'done_at', value: doneAt);
-      await opLog.recordFieldUpdate(entity: 'care_events', entityId: id, field: 'notes', value: notes);
-      await opLog.recordFieldUpdate(entity: 'care_events', entityId: id, field: 'dose', value: dose);
-      final hlc = await opLog.recordFieldUpdate(
-        entity: 'care_events', entityId: id, field: 'product', value: product);
+      final current = await (db.select(db.careEvents)..where((e) => e.id.equals(id))).getSingleOrNull();
+      if (current == null) return;
+      final hlc = await opLog.recordFieldUpdates(entity: 'care_events', entityId: id, fields: {
+        if (current.type != type) 'type': type,
+        if (current.doneAt != doneAt) 'done_at': doneAt,
+        if (current.notes != notes) 'notes': notes,
+        if (current.dose != dose) 'dose': dose,
+        if (current.product != product) 'product': product,
+      });
+      if (hlc == null) return;
       await (db.update(db.careEvents)..where((e) => e.id.equals(id))).write(
         CareEventsCompanion(
           type: Value(type),

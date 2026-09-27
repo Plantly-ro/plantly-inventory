@@ -18,9 +18,12 @@ import 'package:plantly_inventory/data/providers.dart';
 import 'package:plantly_inventory/features/me/cloud_screen.dart';
 import 'package:plantly_inventory/features/me/cloud_section.dart';
 import 'package:plantly_inventory/features/me/me_screen.dart';
+import 'package:plantly_inventory/features/me/sync_rejections_screen.dart';
 import 'package:plantly_inventory/l10n/generated/app_localizations.dart';
 import 'package:plantly_inventory/marketplace/plantly_auth.dart';
 import 'package:plantly_inventory/marketplace/session_store.dart';
+import 'package:plantly_inventory/sync/sync_providers.dart';
+import 'package:plantly_inventory/sync/sync_rejections.dart';
 import 'package:plantly_inventory/theme/tokens.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -69,6 +72,7 @@ void main() {
     Widget? child,
     AppDatabase? db,
     bool? purchaseLink,
+    List<Override> extra = const [],
   }) async {
     SharedPreferences.setMockInitialValues({
       'plantly_onboarded': true,
@@ -106,6 +110,7 @@ void main() {
               }
               return http.Response('{"error":"nope"}', 404);
             })),
+        ...extra,
       ],
       child: MaterialApp(
         locale: locale,
@@ -144,6 +149,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('plantly-login-google')), findsOneWidget);
       expect(find.byKey(const Key('plantly-login-facebook')), findsOneWidget);
+      // Opened from Cloud → the cloud subtitle, not the listing one.
+      expect(find.text('Use your plantly.ro account for cloud backup & sync.'), findsOneWidget);
+      expect(find.text('Use your plantly.ro account to post listings.'), findsNothing);
     });
 
     testWidgets('signedOut (ro)', (tester) async {
@@ -355,6 +363,90 @@ void main() {
       expect(find.byKey(const Key('cloud-collection')), findsOneWidget);
       expect(find.text('My plants'), findsOneWidget);
       expect(find.byKey(const Key('cloud-last-error')), findsOneWidget);
+    });
+  });
+
+  group('rejected changes', () {
+    SyncRejectionRow rejection(int seq, {String reason = 'bad_hlc', bool parked = true}) => SyncRejectionRow(
+          opSeq: seq,
+          tenantId: 'col-1',
+          entity: 'plants',
+          entityId: 'plant-$seq',
+          field: seq.isEven ? '*' : 'nickname',
+          reason: reason,
+          hlc: '00001790504286459-00000-dev',
+          at: DateTime.utc(2026, 9, 27, 10).millisecondsSinceEpoch,
+          parked: parked,
+        );
+
+    testWidgets('en: last-error copy from the ledger; Details opens the list; Dismiss clears + syncs', (tester) async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      final store = SyncRejectionStore(db: db, tenantId: 'col-1');
+      final rows = [rejection(2), rejection(1, reason: 'hlc_future', parked: false)];
+      final runner = await pump(
+        tester,
+        entitlement: const CloudEntitlement(active: true, source: 'pro'),
+        status: const SyncStatus(
+          lastError: 'rejected',
+          lastErrorDetail: '2 changes could not be synced (bad_hlc)',
+          rejectedOps: 2,
+          rejectedReason: 'bad_hlc',
+        ),
+        extra: [
+          syncRejectionStoreProvider.overrideWithValue(store),
+          syncRejectionsProvider.overrideWith((_) => Stream.value(rows)),
+        ],
+        child: const Scaffold(body: CloudScreen()),
+      );
+      expect(find.byKey(const Key('cloud-last-error')), findsOneWidget);
+      expect(find.text('2 changes could not be synced (bad_hlc)'), findsOneWidget);
+      expect(find.byKey(const Key('cloud-rejections')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('cloud-rejections')));
+      await tester.pumpAndSettle();
+      expect(find.byType(SyncRejectionsScreen), findsOneWidget);
+      expect(find.text('Changes not synced'), findsOneWidget);
+      expect(find.byKey(const Key('cloud-rejection-2')), findsOneWidget);
+      expect(find.byKey(const Key('cloud-rejection-1')), findsOneWidget);
+      expect(find.text('plants · *'), findsOneWidget);
+      expect(find.text('plants · nickname'), findsOneWidget);
+      expect(find.textContaining('bad_hlc · gave up'), findsOneWidget);
+      expect(find.textContaining('hlc_future · retrying'), findsOneWidget);
+      expect(find.byKey(const Key('cloud-rejections-empty')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('cloud-rejections-dismiss')));
+      await tester.pumpAndSettle();
+      expect(runner.syncNowCalls, 1);
+    });
+
+    testWidgets('ro: plural copy + empty state', (tester) async {
+      await pump(
+        tester,
+        locale: const Locale('ro'),
+        entitlement: const CloudEntitlement(active: true, source: 'pro'),
+        status: const SyncStatus(lastError: 'rejected', rejectedOps: 1, rejectedReason: 'bad_value'),
+        extra: [
+          syncRejectionsProvider.overrideWith((_) => Stream.value(const <SyncRejectionRow>[])),
+        ],
+        child: const Scaffold(body: CloudScreen()),
+      );
+      expect(find.text('1 modificare nu a putut fi sincronizată (bad_value)'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('cloud-rejections')));
+      await tester.pumpAndSettle();
+      expect(find.text('Modificări nesincronizate'), findsOneWidget);
+      expect(find.byKey(const Key('cloud-rejections-empty')), findsOneWidget);
+      expect(find.byKey(const Key('cloud-rejections-retry')), findsNothing);
+    });
+
+    test('describeSyncError: rejected uses the typed count/reason, falls back to the detail string', () {
+      final t = lookupAppLocalizations(const Locale('en'));
+      expect(
+        describeSyncError(t, 'rejected', status: const SyncStatus(lastError: 'rejected', rejectedOps: 3, rejectedReason: 'bad_hlc')),
+        '3 changes could not be synced (bad_hlc)',
+      );
+      expect(describeSyncError(t, 'rejected', detail: 'raw detail'), 'raw detail');
+      expect(describeSyncError(t, 'op_too_large', detail: 'plants/x'), 'One change is too large to upload and was skipped (plants/x)');
     });
   });
 

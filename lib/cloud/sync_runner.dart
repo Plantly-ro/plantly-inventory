@@ -11,6 +11,8 @@ class SyncStatus {
     this.inFlight = false,
     this.lastError,
     this.lastErrorDetail,
+    this.rejectedOps = 0,
+    this.rejectedReason,
   });
 
   /// UTC time of the last push/pull round that completed without error.
@@ -30,15 +32,23 @@ class SyncStatus {
   /// values the UI maps to copy (`describeSyncError`): `cloud_required`
   /// (402), `unauthorized` (401 after refresh failed),
   /// `collection_unavailable` (403/404), `quota_exceeded` (photo 413),
-  /// `op_too_large` (a single op the server refuses), `retrying`
+  /// `op_too_large` (a single op the server refuses), `rejected` (ops in
+  /// the rejection ledger — sticky until retried/dismissed), `retrying`
   /// (429/5xx, backing off), `offline` (network), `error` (anything else).
   /// Unknown values are shown raw.
   final String? lastError;
 
   /// Optional detail for [lastError] — for `op_too_large` the first
-  /// offending `<entity>/<entity_id>` plus a count. Cleared together with
+  /// offending `<entity>/<entity_id>` plus a count; for `rejected`
+  /// `'<n> changes could not be synced (<reason>)'`. Cleared together with
   /// [lastError].
   final String? lastErrorDetail;
+
+  /// Ops listed in the rejection ledger (`sync_rejections`) for the linked
+  /// collection — parked or still retrying — and the most common server
+  /// reason among them. Non-zero exactly when [lastError] is `rejected`.
+  final int rejectedOps;
+  final String? rejectedReason;
 
   static const SyncStatus empty = SyncStatus();
 
@@ -53,6 +63,8 @@ class SyncStatus {
     Object? lastError = _unset,
     Object? lastErrorDetail = _unset,
     bool clearError = false,
+    int? rejectedOps,
+    Object? rejectedReason = _unset,
   }) {
     final errorChanged = !identical(lastError, _unset);
     final String? nextError = clearError ? null : (errorChanged ? lastError as String? : this.lastError);
@@ -71,6 +83,8 @@ class SyncStatus {
       inFlight: inFlight ?? this.inFlight,
       lastError: nextError,
       lastErrorDetail: nextDetail,
+      rejectedOps: rejectedOps ?? this.rejectedOps,
+      rejectedReason: identical(rejectedReason, _unset) ? this.rejectedReason : rejectedReason as String?,
     );
   }
 
@@ -79,7 +93,8 @@ class SyncStatus {
   @override
   String toString() =>
       'SyncStatus(lastSyncAt=$lastSyncAt, pending=$pendingOps, bytes=$bytesStored/$bytesQuota, inFlight=$inFlight, err=$lastError'
-      '${lastErrorDetail == null ? '' : ' ($lastErrorDetail)'})';
+      '${lastErrorDetail == null ? '' : ' ($lastErrorDetail)'}'
+      '${rejectedOps == 0 ? '' : ', rejected=$rejectedOps/$rejectedReason'})';
 }
 
 /// The seam between the cloud UI/state (this module) and the sync engine

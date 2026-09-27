@@ -188,6 +188,12 @@ void main() {
     expect(result.accepted, 3);
     expect(result.rejected, hasLength(1));
     expect(result.rejected.single.reason, 'bad-op');
+    expect(result.rejected.single.entity, 'plants');
+    expect(result.rejected.single.entityId, 'p1');
+    expect(result.rejected.single.field, '*');
+    expect(result.rejected.single.hlc, isNotEmpty);
+    expect(result.acceptedSeqs, hasLength(3));
+    expect(result.acceptedSeqs, isNot(contains(result.rejected.single.seq)));
 
     // One row remains pending; the loop terminated (single push, no resend).
     expect(t.pushes, hasLength(1));

@@ -2696,4 +2696,67 @@ class AppLocalizationsRo extends AppLocalizations {
   @override
   String get homeNoPlantsBodyDesktop =>
       'Adaugă una cu butonul din bara laterală. Poți seta mementouri după ce apare.';
+
+  @override
+  String cloudErrRejected(int n, String reason) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n de modificări nu au putut fi sincronizate ($reason)',
+      few: '$n modificări nu au putut fi sincronizate ($reason)',
+      one: '1 modificare nu a putut fi sincronizată ($reason)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cloudRejDetailsLabel => 'Detalii';
+
+  @override
+  String get cloudRejDetailsValue => 'Vezi ce modificări a refuzat serverul';
+
+  @override
+  String get cloudRejScreenTitle => 'Modificări nesincronizate';
+
+  @override
+  String get cloudRejScreenIntro =>
+      'Serverul a refuzat aceste modificări. „Reîncearcă” le trimite din nou pe toate; „Ignoră” le păstrează doar pe acest dispozitiv.';
+
+  @override
+  String get cloudRejEmpty =>
+      'Nimic aici — toate modificările s-au sincronizat.';
+
+  @override
+  String get cloudRejRetry => 'Reîncearcă tot';
+
+  @override
+  String get cloudRejDismiss => 'Ignoră tot';
+
+  @override
+  String get cloudRejKindRetrying => 'se reîncearcă';
+
+  @override
+  String get cloudRejKindParked => 'abandonat';
+
+  @override
+  String cloudRejRequeued(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n de modificări puse din nou la coadă',
+      few: '$n modificări puse din nou la coadă',
+      one: '1 modificare pusă din nou la coadă',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get plantlyLoginSubtitleCloud =>
+      'Folosește contul tău plantly.ro pentru backup și sincronizare în cloud.';
+
+  @override
+  String get cloudRejRetryValue => 'Trimite din nou toate modificările listate';
+
+  @override
+  String get cloudRejDismissValue => 'Păstrează-le doar pe acest dispozitiv';
 }
