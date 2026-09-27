@@ -136,24 +136,30 @@ class PlantPhotoRepository {
   /// removed_hlc that wins. Idempotent — a second detach is a no-op.
   Future<void> detach(String plantId, String photoSha) async {
     return db.transaction(() async {
-      final hlc = await opLog.recordFieldUpdate(
-        entity: 'plant_photos',
-        entityId: '$plantId/$photoSha',
-        field: 'removed_hlc',
-        value: null,
-      );
-      await (db.update(db.plantPhotos)
+      // One `removed_hlc` field op per live add-row, keyed by the row id
+      // (CLOUD-SYNC-CONTRACT §2.3: OR-Set removes are regular field ops);
+      // a null value means "removed at the op's own HLC".
+      final live = await (db.select(db.plantPhotos)
             ..where((r) =>
                 r.tenantId.equals(opLog.tenantId) &
                 r.plantId.equals(plantId) &
                 r.photoSha.equals(photoSha) &
                 r.removedHlc.isNull()))
-          .write(
-        PlantPhotosCompanion(
-          removedHlc: Value(hlc.encode()),
-          deviceId: Value(opLog.clock.deviceId),
-        ),
-      );
+          .get();
+      for (final row in live) {
+        final hlc = await opLog.recordFieldUpdate(
+          entity: 'plant_photos',
+          entityId: row.id,
+          field: 'removed_hlc',
+          value: null,
+        );
+        await (db.update(db.plantPhotos)..where((r) => r.id.equals(row.id))).write(
+          PlantPhotosCompanion(
+            removedHlc: Value(hlc.encode()),
+            deviceId: Value(opLog.clock.deviceId),
+          ),
+        );
+      }
     });
   }
 
@@ -343,24 +349,30 @@ class LocationPhotoRepository {
 
   Future<void> detach(String locationId, String photoSha) async {
     return db.transaction(() async {
-      final hlc = await opLog.recordFieldUpdate(
-        entity: 'location_photos',
-        entityId: '$locationId/$photoSha',
-        field: 'removed_hlc',
-        value: null,
-      );
-      await (db.update(db.locationPhotos)
+      // One `removed_hlc` field op per live add-row, keyed by the row id
+      // (CLOUD-SYNC-CONTRACT §2.3: OR-Set removes are regular field ops);
+      // a null value means "removed at the op's own HLC".
+      final live = await (db.select(db.locationPhotos)
             ..where((r) =>
                 r.tenantId.equals(opLog.tenantId) &
                 r.locationId.equals(locationId) &
                 r.photoSha.equals(photoSha) &
                 r.removedHlc.isNull()))
-          .write(
-        LocationPhotosCompanion(
-          removedHlc: Value(hlc.encode()),
-          deviceId: Value(opLog.clock.deviceId),
-        ),
-      );
+          .get();
+      for (final row in live) {
+        final hlc = await opLog.recordFieldUpdate(
+          entity: 'location_photos',
+          entityId: row.id,
+          field: 'removed_hlc',
+          value: null,
+        );
+        await (db.update(db.locationPhotos)..where((r) => r.id.equals(row.id))).write(
+          LocationPhotosCompanion(
+            removedHlc: Value(hlc.encode()),
+            deviceId: Value(opLog.clock.deviceId),
+          ),
+        );
+      }
     });
   }
 

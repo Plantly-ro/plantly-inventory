@@ -12,6 +12,7 @@ class SyncStatus {
     this.bytesQuota,
     this.inFlight = false,
     this.lastError,
+    this.lastErrorDetail,
   });
 
   /// UTC time of the last push/pull round that completed without error.
@@ -27,13 +28,24 @@ class SyncStatus {
   /// A push/pull round (or a manual "Sync now") is running.
   final bool inFlight;
 
-  /// Human-readable summary of the last failure, cleared on success.
-  /// Well-known values the UI maps to copy: `cloud_required` (402),
-  /// `unauthorized` (401 after refresh failed), anything else is shown raw.
+  /// Stable code for the last failure, cleared on success. Well-known
+  /// values the UI maps to copy (`describeSyncError`): `cloud_required`
+  /// (402), `unauthorized` (401 after refresh failed),
+  /// `collection_unavailable` (403/404), `quota_exceeded` (photo 413),
+  /// `op_too_large` (a single op the server refuses), `retrying`
+  /// (429/5xx, backing off), `offline` (network), `error` (anything else).
+  /// Unknown values are shown raw.
   final String? lastError;
+
+  /// Optional detail for [lastError] — for `op_too_large` the first
+  /// offending `<entity>/<entity_id>` plus a count. Cleared together with
+  /// [lastError].
+  final String? lastErrorDetail;
 
   static const SyncStatus empty = SyncStatus();
 
+  /// [clearError] nulls both [lastError] and [lastErrorDetail]; setting a
+  /// new [lastError] without a [lastErrorDetail] drops the stale detail.
   SyncStatus copyWith({
     Object? lastSyncAt = _unset,
     int? pendingOps,
@@ -41,14 +53,26 @@ class SyncStatus {
     Object? bytesQuota = _unset,
     bool? inFlight,
     Object? lastError = _unset,
+    Object? lastErrorDetail = _unset,
+    bool clearError = false,
   }) {
+    final errorChanged = !identical(lastError, _unset);
+    final String? nextError = clearError ? null : (errorChanged ? lastError as String? : this.lastError);
+    final String? nextDetail = clearError
+        ? null
+        : !identical(lastErrorDetail, _unset)
+            ? lastErrorDetail as String?
+            : errorChanged
+                ? null
+                : this.lastErrorDetail;
     return SyncStatus(
       lastSyncAt: identical(lastSyncAt, _unset) ? this.lastSyncAt : lastSyncAt as DateTime?,
       pendingOps: pendingOps ?? this.pendingOps,
       bytesStored: identical(bytesStored, _unset) ? this.bytesStored : bytesStored as int?,
       bytesQuota: identical(bytesQuota, _unset) ? this.bytesQuota : bytesQuota as int?,
       inFlight: inFlight ?? this.inFlight,
-      lastError: identical(lastError, _unset) ? this.lastError : lastError as String?,
+      lastError: nextError,
+      lastErrorDetail: nextDetail,
     );
   }
 
@@ -56,15 +80,16 @@ class SyncStatus {
 
   @override
   String toString() =>
-      'SyncStatus(lastSyncAt=$lastSyncAt, pending=$pendingOps, bytes=$bytesStored/$bytesQuota, inFlight=$inFlight, err=$lastError)';
+      'SyncStatus(lastSyncAt=$lastSyncAt, pending=$pendingOps, bytes=$bytesStored/$bytesQuota, inFlight=$inFlight, err=$lastError'
+      '${lastErrorDetail == null ? '' : ' ($lastErrorDetail)'})';
 }
 
 /// The seam between the cloud UI/state (this module) and the sync engine
-/// (`lib/sync/**`). The engine implements it and overrides
-/// [syncRunnerProvider]; the UI only ever calls [syncNow] and renders
-/// [status]. The engine decides on its own when to run (it watches
-/// `cloudStateProvider` — sync only when `phase == ready` and
-/// `collectionId != null`); "Sync now" is a hint, not the schedule.
+/// (`lib/sync/**`). The engine implements it; the UI only ever calls
+/// [syncNow] and renders [status]. Which runner is live is decided by
+/// `syncRunnerProvider` (`cloud/cloud_sync.dart`): the HTTP runner while
+/// `cloudStateProvider.canSync`, [NoopSyncRunner] otherwise. "Sync now" is
+/// a hint, not the schedule.
 abstract class SyncRunner {
   /// Run one full push → apply → pull round now. Resolves when the round is
   /// over (successfully or not — failures land in [SyncStatus.lastError],
@@ -77,7 +102,7 @@ abstract class SyncRunner {
   Stream<SyncStatus> get status;
 }
 
-/// Default until the engine is wired in: never syncs, reports nothing.
+/// Runner used while cloud sync is off: never syncs, reports nothing.
 class NoopSyncRunner implements SyncRunner {
   const NoopSyncRunner();
 
@@ -87,13 +112,3 @@ class NoopSyncRunner implements SyncRunner {
   @override
   Stream<SyncStatus> get status => Stream.value(SyncStatus.empty);
 }
-
-/// Overridden by the sync engine (`ProviderScope(overrides: [
-/// syncRunnerProvider.overrideWith(...)])` or a provider-level override).
-final syncRunnerProvider = Provider<SyncRunner>((ref) => const NoopSyncRunner());
-
-/// Latest [SyncStatus] for widgets; `SyncStatus.empty` before the first
-/// emission so callers never need to special-case loading.
-final syncStatusProvider = StreamProvider<SyncStatus>((ref) {
-  return ref.watch(syncRunnerProvider).status;
-});
