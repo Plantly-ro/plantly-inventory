@@ -734,5 +734,12 @@
   "cloudMoveConfirmBody": "Tot ce e pe acest dispozitiv părăsește colecția lui {from} și se încarcă în cea a lui {to}. {from} păstrează ce era deja sincronizat de pe alte dispozitive.",
   "cloudMove": "Mută",
   "cloudStartEmptyLabel": "Începe de la zero pentru {username}",
-  "cloudStartEmptyValue": "Plantele lui {username} rămân ascunse pe acest dispozitiv; conectează-l din nou pe {username} ca să le vezi"
+  "cloudStartEmptyValue": "Plantele lui {username} rămân ascunse pe acest dispozitiv; conectează-l din nou pe {username} ca să le vezi",
+  "cloudErrCollectionUnavailable": "Această colecție nu mai este disponibilă — deconectează dispozitivul și conectează-l din nou",
+  "cloudErrQuotaExceeded": "Spațiul cloud este plin — pozele noi rămân pe acest dispozitiv până se eliberează spațiu",
+  "cloudErrOpTooLarge": "O modificare este prea mare pentru încărcare și a fost omisă",
+  "cloudErrOpTooLargeDetail": "O modificare este prea mare pentru încărcare și a fost omisă ({detail})",
+  "cloudErrRetrying": "Serverul este ocupat — reîncercăm în curând",
+  "cloudErrOffline": "Offline — sincronizăm când revine conexiunea",
+  "cloudErrGeneric": "Sincronizarea a eșuat — reîncercăm"
 }

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:plantly_inventory/config/plantly_hosts.dart';
 import 'package:plantly_inventory/sync/http_sync_transport.dart';
 import 'package:plantly_inventory/sync/photo_sync.dart';
 import 'package:plantly_inventory/sync/sync_transport.dart';
@@ -25,7 +26,6 @@ void main() {
       collectionId: 'col-1',
       token: () async => token,
       host: host,
-      clientVersion: '1.2.3',
       sendUserAgent: true,
     );
   }
@@ -58,7 +58,7 @@ void main() {
       expect(req.method, 'POST');
       expect(req.url.toString(), '$base/sync/push');
       expect(req.headers['Authorization'], 'Bearer tok');
-      expect(req.headers['X-Plantly-Client'], 'inventory/1.2.3');
+      expect(req.headers['X-Plantly-Client'], PlantlyHosts.clientHeader);
       expect(req.headers['Accept'], 'application/json');
       expect(req.headers['Content-Type'], startsWith('application/json'));
       expect(req.headers['User-Agent'], startsWith('PlantlyInventory/'));

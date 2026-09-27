@@ -291,7 +291,7 @@ void main() {
     expect(r.current.pendingOps, 0);
   });
 
-  test('401 → refresh once and retry; failing refresh → auth_required', () async {
+  test('401 → refresh once and retry; failing refresh → unauthorized', () async {
     await localPlant('a');
     transport.failures.add(const SyncAuthError());
     var refreshes = 0;
@@ -308,7 +308,7 @@ void main() {
     await localPlant('b');
     await r.syncNow();
     expect(refreshes, 2);
-    expect(r.current.lastError, 'auth_required');
+    expect(r.current.lastError, 'unauthorized');
   });
 
   test('403/404 halt with collection_unavailable', () async {

@@ -2580,4 +2580,30 @@ class AppLocalizationsRo extends AppLocalizations {
   String cloudStartEmptyValue(String username) {
     return 'Plantele lui $username rămân ascunse pe acest dispozitiv; conectează-l din nou pe $username ca să le vezi';
   }
+
+  @override
+  String get cloudErrCollectionUnavailable =>
+      'Această colecție nu mai este disponibilă — deconectează dispozitivul și conectează-l din nou';
+
+  @override
+  String get cloudErrQuotaExceeded =>
+      'Spațiul cloud este plin — pozele noi rămân pe acest dispozitiv până se eliberează spațiu';
+
+  @override
+  String get cloudErrOpTooLarge =>
+      'O modificare este prea mare pentru încărcare și a fost omisă';
+
+  @override
+  String cloudErrOpTooLargeDetail(String detail) {
+    return 'O modificare este prea mare pentru încărcare și a fost omisă ($detail)';
+  }
+
+  @override
+  String get cloudErrRetrying => 'Serverul este ocupat — reîncercăm în curând';
+
+  @override
+  String get cloudErrOffline => 'Offline — sincronizăm când revine conexiunea';
+
+  @override
+  String get cloudErrGeneric => 'Sincronizarea a eșuat — reîncercăm';
 }

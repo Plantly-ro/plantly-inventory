@@ -37,7 +37,7 @@ typedef SyncAuthRefresher = Future<bool> Function();
 /// Failure policy: retryable errors (429/5xx/network) back off exponentially
 /// from [minBackoff] to [maxBackoff] (`Retry-After` honoured); 402 halts with
 /// `cloud_required`; 401 refreshes once via [refreshAuth] then halts with
-/// `auth_required`; 403/404 halt with `collection_unavailable`. A halted
+/// `unauthorized`; 403/404 halt with `collection_unavailable`. A halted
 /// runner ignores debounce/periodic triggers until [syncNow] or app resume.
 class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
   HttpSyncRunner({
@@ -274,7 +274,7 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
           authRetried = true;
           continue;
         }
-        _halt('auth_required');
+        _halt('unauthorized');
         return;
       } on SyncEntitlementError {
         _halt('cloud_required');

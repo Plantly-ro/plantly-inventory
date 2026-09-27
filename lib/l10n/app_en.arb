@@ -846,5 +846,13 @@
   "cloudStartEmptyLabel": "Start empty for {username}",
   "@cloudStartEmptyLabel": {"placeholders": {"username": {"type": "String"}}},
   "cloudStartEmptyValue": "{username}'s plants stay hidden on this device; sign {username} in again to see them",
-  "@cloudStartEmptyValue": {"placeholders": {"username": {"type": "String"}}}
+  "@cloudStartEmptyValue": {"placeholders": {"username": {"type": "String"}}},
+  "cloudErrCollectionUnavailable": "This collection is no longer available — unlink this device and link it again",
+  "cloudErrQuotaExceeded": "Cloud storage is full — new photos stay on this device until space frees up",
+  "cloudErrOpTooLarge": "One change is too large to upload and was skipped",
+  "cloudErrOpTooLargeDetail": "One change is too large to upload and was skipped ({detail})",
+  "@cloudErrOpTooLargeDetail": {"placeholders": {"detail": {"type": "String"}}},
+  "cloudErrRetrying": "Server busy — retrying shortly",
+  "cloudErrOffline": "Offline — will sync when you are back online",
+  "cloudErrGeneric": "Sync failed — will retry"
 }

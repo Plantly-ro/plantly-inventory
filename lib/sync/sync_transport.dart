@@ -47,7 +47,7 @@ sealed class SyncError implements Exception {
   String toString() => '$runtimeType($message)';
 }
 
-/// 401 — token rejected. Runner refreshes once, then surfaces `auth_required`.
+/// 401 — token rejected. Runner refreshes once, then surfaces `unauthorized`.
 class SyncAuthError extends SyncError {
   const SyncAuthError([super.message = 'unauthorized']);
 }

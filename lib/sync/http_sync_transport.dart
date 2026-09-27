@@ -27,23 +27,18 @@ class HttpSyncTransport implements SyncTransport, CollectionUsageSource, PhotoTr
     required this.collectionId,
     required SyncTokenProvider token,
     String? host,
-    String? clientVersion,
     this.timeout = const Duration(seconds: 30),
     this.blobTimeout = const Duration(seconds: 120),
     bool? sendUserAgent,
   })  : _client = client,
         _token = token,
         host = host ?? PlantlyHosts.host,
-        clientVersion = clientVersion ?? PlantlyHosts.appVersion,
         _sendUserAgent = sendUserAgent ?? PlantlyHosts.canSendUserAgent;
 
   final http.Client _client;
   final SyncTokenProvider _token;
   final String collectionId;
   final String host;
-
-  /// Reported as `X-Plantly-Client: inventory/<clientVersion>`.
-  final String clientVersion;
   final Duration timeout;
   final Duration blobTimeout;
   final bool _sendUserAgent;
@@ -60,7 +55,8 @@ class HttpSyncTransport implements SyncTransport, CollectionUsageSource, PhotoTr
       'Accept': 'application/json',
       if (json) 'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',
-      'X-Plantly-Client': 'inventory/$clientVersion',
+      // Same value as PlantlyApi's cloud routes (§2.2).
+      'X-Plantly-Client': PlantlyHosts.clientHeader,
     };
   }
 

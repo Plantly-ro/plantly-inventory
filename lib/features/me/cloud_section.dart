@@ -10,6 +10,7 @@ import '../../cloud/cloud_state.dart';
 import '../../cloud/collection_link.dart';
 import '../../cloud/entitlement.dart';
 import '../../cloud/sign_in_events.dart';
+import '../../cloud/cloud_sync.dart';
 import '../../cloud/sync_runner.dart';
 import '../../config/plantly_hosts.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -277,7 +278,7 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
           MeActionRow(
             key: const Key('cloud-last-error'),
             label: t.cloudLastErrorLabel,
-            value: describeSyncError(t, status.lastError!),
+            value: describeSyncError(t, status.lastError!, detail: status.lastErrorDetail),
             icon: Icons.error_outline,
             surface: surface,
             valueColor: surface.terra,
@@ -459,10 +460,18 @@ String describeEntitlement(AppLocalizations t, CloudEntitlement? e) {
   return '$source · ${t.cloudRenewsOn(DateFormat.yMMMd(t.localeName).format(end.toLocal()))}';
 }
 
-/// Well-known engine error codes → copy; anything else is shown as-is.
-String describeSyncError(AppLocalizations t, String code) => switch (code) {
+/// Engine error codes (`SyncStatus.lastError`) → copy; anything else is
+/// shown as-is. [detail] is `SyncStatus.lastErrorDetail` (the offending
+/// `<entity>/<id>` for `op_too_large`).
+String describeSyncError(AppLocalizations t, String code, {String? detail}) => switch (code) {
       'cloud_required' => t.cloudNotIncludedValue,
       'unauthorized' => t.cloudSignInLabel,
+      'collection_unavailable' => t.cloudErrCollectionUnavailable,
+      'quota_exceeded' => t.cloudErrQuotaExceeded,
+      'op_too_large' => detail == null || detail.isEmpty ? t.cloudErrOpTooLarge : t.cloudErrOpTooLargeDetail(detail),
+      'retrying' => t.cloudErrRetrying,
+      'offline' => t.cloudErrOffline,
+      'error' => t.cloudErrGeneric,
       _ => code,
     };
 

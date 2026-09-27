@@ -4381,6 +4381,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{username}\'s plants stay hidden on this device; sign {username} in again to see them'**
   String cloudStartEmptyValue(String username);
+
+  /// No description provided for @cloudErrCollectionUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This collection is no longer available — unlink this device and link it again'**
+  String get cloudErrCollectionUnavailable;
+
+  /// No description provided for @cloudErrQuotaExceeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud storage is full — new photos stay on this device until space frees up'**
+  String get cloudErrQuotaExceeded;
+
+  /// No description provided for @cloudErrOpTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'One change is too large to upload and was skipped'**
+  String get cloudErrOpTooLarge;
+
+  /// No description provided for @cloudErrOpTooLargeDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'One change is too large to upload and was skipped ({detail})'**
+  String cloudErrOpTooLargeDetail(String detail);
+
+  /// No description provided for @cloudErrRetrying.
+  ///
+  /// In en, this message translates to:
+  /// **'Server busy — retrying shortly'**
+  String get cloudErrRetrying;
+
+  /// No description provided for @cloudErrOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline — will sync when you are back online'**
+  String get cloudErrOffline;
+
+  /// No description provided for @cloudErrGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync failed — will retry'**
+  String get cloudErrGeneric;
 }
 
 class _AppLocalizationsDelegate

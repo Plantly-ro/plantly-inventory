@@ -1,5 +1,3 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 /// Snapshot of the cloud sync loop for the status surface (Me → Cloud,
 /// CLOUD-SYNC-CONTRACT §2.4). Emitted by [SyncRunner.status]; every field
 /// is optional so the no-op runner and a half-initialised engine can both

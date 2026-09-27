@@ -2537,4 +2537,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String cloudStartEmptyValue(String username) {
     return '$username\'s plants stay hidden on this device; sign $username in again to see them';
   }
+
+  @override
+  String get cloudErrCollectionUnavailable =>
+      'This collection is no longer available — unlink this device and link it again';
+
+  @override
+  String get cloudErrQuotaExceeded =>
+      'Cloud storage is full — new photos stay on this device until space frees up';
+
+  @override
+  String get cloudErrOpTooLarge =>
+      'One change is too large to upload and was skipped';
+
+  @override
+  String cloudErrOpTooLargeDetail(String detail) {
+    return 'One change is too large to upload and was skipped ($detail)';
+  }
+
+  @override
+  String get cloudErrRetrying => 'Server busy — retrying shortly';
+
+  @override
+  String get cloudErrOffline => 'Offline — will sync when you are back online';
+
+  @override
+  String get cloudErrGeneric => 'Sync failed — will retry';
 }
