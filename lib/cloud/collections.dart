@@ -401,8 +401,12 @@ final collectionsProvider = StateNotifierProvider<CollectionsNotifier, Collectio
 /// The collection the runner syncs against: the current tenant when it is
 /// a collection the device may sync ([collectionSyncAllowed] — own
 /// collections need the caller's plan, editor collections run on the
-/// owner's), else the linked default when entitled. Null = no runner
-/// (signed out, unlinked, flag off, or own collection without a plan).
+/// owner's). Null = no runner (signed out, unlinked, flag off, own
+/// collection without a plan, or a tenant the list does not know yet).
+///
+/// Never the linked default as a stand-in: the runner pushes the *current
+/// tenant's* op log, so guessing another collection while the list is
+/// still loading would sync rows into the wrong collection.
 final activeCollectionIdProvider = Provider<String?>((ref) {
   final cloud = ref.watch(cloudStateProvider);
   if (!cloudAccountReady(cloud)) return null;
@@ -410,7 +414,18 @@ final activeCollectionIdProvider = Provider<String?>((ref) {
   final tenant = ref.watch(currentTenantIdProvider);
   if (tenant == cloud.collectionId) return entitled ? tenant : null;
   final col = ref.watch(collectionsProvider.select((s) => s.byId(tenant)));
-  if (col == null) return entitled ? cloud.collectionId : null;
+  if (col == null) {
+    // A shared collection before this boot's first fetch (cache still
+    // loading / cleared), or one the account was removed from. Stay quiet
+    // and make sure a fetch is under way (concurrent calls coalesce); a
+    // vanished id goes back home through `_reconcileActive`. Deferred: a
+    // provider must not mutate another one during its own build.
+    final notifier = ref.read(collectionsProvider.notifier);
+    scheduleMicrotask(() {
+      if (notifier.mounted) unawaited(notifier.refresh());
+    });
+    return null;
+  }
   return collectionSyncAllowed(cloud, col) ? tenant : null;
 });
 

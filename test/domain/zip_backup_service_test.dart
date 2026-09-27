@@ -40,7 +40,7 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('plantly-zip-');
     final store = IoPhotoBlobStore(root: tmp);
     final photos = PhotoRepository(db: db, opLog: opLog, store: store);
-    final json = BackupService(db: db);
+    final json = BackupService(db: db, tenantId: 'tenant-local');
     return (
       db: db,
       opLog: opLog,
@@ -86,6 +86,29 @@ void main() {
     final restoredPath = '${b.tmp.path}/${sha.substring(0, 2)}/$sha.jpg';
     expect(File(restoredPath).existsSync(), isTrue);
     expect(await File(restoredPath).readAsBytes(), _bytes('image-bytes'));
+  });
+
+  test('exportZip bundles only the active tenant\'s photo bytes', () async {
+    final a = await stack();
+    addTearDown(() async {
+      await a.db.close();
+      await a.tmp.delete(recursive: true);
+    });
+    final mine = await a.plants.create(nickname: 'Mine');
+    final shaMine = await a.photos.saveBytes(_bytes('mine'));
+    await a.joins.attach(mine.id, shaMine);
+
+    // Another tenant on the same device + store (a parked account).
+    final parked = OpLogWriter(db: a.db, clock: HlcClock(deviceId: 'test-device'), tenantId: 'col-parked');
+    final theirs = await PlantRepository(db: a.db, opLog: parked).create(nickname: 'Theirs');
+    final shaTheirs = await PhotoRepository(db: a.db, opLog: parked, store: IoPhotoBlobStore(root: a.tmp))
+        .saveBytes(_bytes('theirs'));
+    await PlantPhotoRepository(db: a.db, opLog: parked).attach(theirs.id, shaTheirs);
+
+    final names = ZipDecoder().decodeBytes(await a.zip.exportZip(secret: secret)).files.map((f) => f.name).toList();
+    expect(names, contains('photos/${shaMine.substring(0, 2)}/$shaMine.jpg'));
+    expect(names.where((n) => n.contains(shaTheirs)), isEmpty);
+    expect(names.where((n) => n.startsWith('photos/')), hasLength(1));
   });
 
   test('wrong secret rejects the zip import via the JSON layer', () async {

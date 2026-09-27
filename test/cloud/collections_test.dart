@@ -2,6 +2,7 @@
 // the real chain (feature flag → auth → entitlement → link → collections →
 // active collection → runner), an in-memory DB, a fake op-log transport per
 // collection and a fake HTTP layer for the account + §3 routes.
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
@@ -59,6 +60,7 @@ void main() {
   late List<http.Request> requests;
   late Map<String, ScriptedTransport> fakes;
   late ProviderContainer container;
+  Completer<void>? holdCollections; // when set, GET /inventory/collections waits on it
 
   Map<String, dynamic> col(String id, String name, {String role = 'owner', String owner = 'u-1', int members = 1}) =>
       {'id': id, 'name': name, 'role': role, 'owner_user_id': owner, 'member_count': members};
@@ -72,6 +74,7 @@ void main() {
     entitled = true;
     requests = [];
     fakes = {};
+    holdCollections = null;
     serverCollections = [
       col('col-1', 'My plants'),
       col('col-2', 'Family greenhouse', role: 'editor', owner: 'u-2', members: 3),
@@ -111,6 +114,7 @@ void main() {
               });
             }
             if (req.method == 'GET' && path.endsWith('/inventory/collections')) {
+              if (holdCollections != null) await holdCollections!.future;
               return jsonRes({'collections': serverCollections});
             }
             if (req.method == 'POST' && path.endsWith('/inventory/collections/join')) {
@@ -349,6 +353,47 @@ void main() {
     expect(container.read(currentTenantIdProvider), 'col-1');
     expect(container.read(activeCollectionIdProvider), 'col-1');
     expect(container.read(collectionSwitcherVisibleProvider), isFalse);
+  });
+
+  test('tenant unknown to the list (shared id before the first fetch) → no runner, never the default; listed → that id', () async {
+    // A device that switched to a shared collection, booting linked with
+    // the collections cache not there yet: until the list says what col-3
+    // is, nothing may sync — least of all the home collection driven by
+    // col-3's op log.
+    SharedPreferences.setMockInitialValues({
+      kTenantIdPrefKey: 'col-3',
+      kSkipSeedPrefKey: true,
+      kCollectionIdPrefKey: 'col-1',
+      kCollectionNamePrefKey: 'My plants',
+      kCollectionUserIdPrefKey: 'u-1',
+      kCollectionUsernamePrefKey: 'alice',
+    });
+    serverCollections = [...serverCollections, col('col-3', 'Office jungle', role: 'editor', owner: 'u-3', members: 2)];
+    holdCollections = Completer<void>();
+
+    container.read(cloudSyncCoordinatorProvider);
+    await container.read(appContextProvider.future);
+    await container.read(collectionLinkProvider.notifier).ready;
+    final alice = await container.read(plantlyAuthProvider.notifier).adoptToken(aliceToken);
+    container.read(signInEventsProvider).emit(alice);
+    await waitFor(() => container.read(cloudStateProvider).canSync, reason: 'linked + entitled');
+    await container.read(collectionsProvider.notifier).ready;
+    await waitFor(() => container.read(collectionsProvider).loading, reason: 'a fetch is under way');
+
+    expect(container.read(currentTenantIdProvider), 'col-3');
+    expect(container.read(collectionsProvider).byId('col-3'), isNull);
+    expect(container.read(activeCollectionIdProvider), isNull, reason: 'unknown tenant: no guess');
+    expect(container.read(syncCollectionIdProvider), isNull);
+    expect(container.read(syncRunnerProvider), isA<NoopSyncRunner>());
+    expect(container.read(activeCollectionProvider)?.id, 'col-1', reason: 'display still has a home to show');
+
+    holdCollections!.complete();
+    await waitFor(() => container.read(collectionsProvider).byId('col-3') != null, reason: 'list fetched');
+    expect(container.read(activeCollectionIdProvider), 'col-3');
+    expect(container.read(currentTenantIdProvider), 'col-3', reason: 'not reconciled away');
+    await waitFor(() => container.read(syncRunnerProvider) is HttpSyncRunner &&
+        (container.read(syncRunnerProvider) as HttpSyncRunner).collectionId == 'col-3');
+    expect(fakes.containsKey('col-1'), isFalse, reason: 'the default was never synced against');
   });
 
   test('removed on the server while active → refresh reconciles back to the default', () async {

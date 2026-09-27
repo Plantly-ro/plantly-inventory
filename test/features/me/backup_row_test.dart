@@ -36,7 +36,7 @@ void main() {
 
     await tester.pumpWidget(buildTestApp(
       overrides: [
-        backupServiceProvider.overrideWithValue(BackupService(db: db)),
+        backupServiceProvider.overrideWithValue(BackupService(db: db, tenantId: kDefaultTenantId)),
         fileExporterProvider.overrideWithValue(exporter),
       ],
       child: const MaterialApp(

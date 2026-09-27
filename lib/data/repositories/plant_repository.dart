@@ -430,10 +430,13 @@ Future<void> cascadeDeleteSchedules(
             r.plantId.equals(plantId) &
             r.removedHlc.isNull()))
       .get();
+  // Keyed like `PlantPhotoRepository.detach`: entity `plant_photos`, id =
+  // the add-row (CLOUD-SYNC-CONTRACT §2.3) — anything else never matches
+  // a row on a peer and the photo stays attached there.
   for (final j in joins) {
     final hlc = await opLog.recordFieldUpdate(
-      entity: 'plant_tags',
-      entityId: '$plantId/${j.photoSha}',
+      entity: 'plant_photos',
+      entityId: j.id,
       field: 'removed_hlc',
       value: null,
     );
@@ -454,7 +457,7 @@ Future<void> cascadeDeleteSchedules(
   for (final j in tagJoins) {
     final hlc = await opLog.recordFieldUpdate(
       entity: 'plant_tags',
-      entityId: '$plantId/${j.tagId}',
+      entityId: j.id,
       field: 'removed_hlc',
       value: null,
     );

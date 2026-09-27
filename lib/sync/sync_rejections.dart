@@ -40,8 +40,6 @@ class SyncRejectionPolicy {
     'bad_device_id',
   };
 
-  static const Set<String> transientReasons = {'hlc_future'};
-
   /// How long a transient rejection keeps being retried, measured from the
   /// first cycle that saw it ([firstSeenMillis]).
   final Duration transientGrace;

@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
 import 'package:plantly_inventory/data/repositories/care_event_repository.dart';
+import 'package:plantly_inventory/data/repositories/photo_repository.dart';
 import 'package:plantly_inventory/data/repositories/plant_repository.dart';
 import 'package:plantly_inventory/data/repositories/species_repository.dart';
 import 'package:plantly_inventory/sync/hlc.dart';
@@ -50,6 +51,23 @@ void main() {
 
   tearDown(() async {
     await db.close();
+  });
+
+  group('PlantRepository.softDelete cascade', () {
+    test('detaches the plant\'s photos with ops keyed like PlantPhotoRepository.detach', () async {
+      final plant = await plants.create(nickname: 'With photo');
+      final sha = 'ab' * 32;
+      await PlantPhotoRepository(db: db, opLog: opLog).attach(plant.id, sha);
+      final join = (await db.select(db.plantPhotos).get()).single;
+
+      await plants.softDelete(plant.id);
+
+      final removes = (await db.select(db.syncOps).get()).where((o) => o.field == 'removed_hlc').toList();
+      expect(removes, hasLength(1));
+      expect(removes.single.entity, 'plant_photos');
+      expect(removes.single.entityId, join.id, reason: 'CLOUD-SYNC-CONTRACT §2.3: OR-Set removes address the add-row');
+      expect((await db.select(db.plantPhotos).get()).single.removedHlc, isNotNull);
+    });
   });
 
   group('PlantRepository.create', () {

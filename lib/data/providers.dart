@@ -149,14 +149,14 @@ final notificationPermissionProvider = StateProvider<bool?>((ref) => null);
 
 final backupServiceProvider = Provider<BackupService>((ref) {
   final ctx = ref.watch(appContextProvider).requireValue;
-  return BackupService(db: ctx.db);
+  return BackupService(db: ctx.db, tenantId: ctx.tenantId);
 });
 
 final zipBackupServiceProvider = Provider<ZipBackupService>((ref) {
   final ctx = ref.watch(appContextProvider).requireValue;
   return ZipBackupService(
     db: ctx.db,
-    backup: BackupService(db: ctx.db),
+    backup: ref.watch(backupServiceProvider),
     photos: ref.watch(photoBlobStoreProvider),
   );
 });

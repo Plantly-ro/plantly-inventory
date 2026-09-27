@@ -1,9 +1,10 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
+import 'package:plantly_inventory/data/repositories/photo_repository.dart';
 import 'package:plantly_inventory/data/repositories/plant_repository.dart';
 import 'package:plantly_inventory/domain/services/backup_service.dart';
 import 'package:plantly_inventory/sync/hlc.dart';
@@ -20,8 +21,19 @@ Future<(AppDatabase, PlantRepository, OpLogWriter, BackupService)> _stack() asyn
     db,
     PlantRepository(db: db, opLog: opLog),
     opLog,
-    BackupService(db: db),
+    BackupService(db: db, tenantId: 'tenant-local'),
   );
+}
+
+/// Shorthands for the multi-tenant cases: a raw `photos` row and the tenant
+/// stamps actually on disk.
+Future<void> _insertPhoto(AppDatabase db, {required String sha, required String tenant}) => db.into(db.photos).insert(
+      PhotosCompanion.insert(sha256: sha, tenantId: tenant, mime: 'image/jpeg', bytes: 3, updatedHlc: 'h', deviceId: 'd'),
+    );
+
+Future<Set<String>> _tenantsIn(AppDatabase db, String table) async {
+  final rows = await db.customSelect('SELECT DISTINCT tenant_id AS t FROM $table').get();
+  return {for (final r in rows) r.read<String>('t')};
 }
 
 void main() {
@@ -106,7 +118,7 @@ void main() {
     decoded['payload']['version'] = 999;
     // We leave the (now-wrong) signature in place; `version` is checked
     // after the mac verification, so this hits BackupSignatureError.
-    final BackupService signer = BackupService(db: db);
+    final BackupService signer = BackupService(db: db, tenantId: 'tenant-local');
     final reSigned = await signer.export(secret: _secret);
     // Instead of poking private methods, just leave the old (now-wrong)
     // signature in place; version mismatch is caught *after* signature
@@ -136,6 +148,96 @@ void main() {
     await service.import(blob: blob, secret: _secret, opLog: opLog);
     final countAfter = (await plants.watchAll().first).length;
     expect(countAfter, countBefore);
+  });
+
+  group('tenant scope', () {
+    final shaMine = 'a' * 64, shaTheirs = 'b' * 64, shaShared = 'c' * 64, shaDetached = 'd' * 64;
+
+    test('export contains only the active tenant\'s rows; photos = own stamp or live reference', () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      final clock = HlcClock(deviceId: 'test-device');
+      final mine = OpLogWriter(db: db, clock: clock, tenantId: 'col-mine');
+      final theirs = OpLogWriter(db: db, clock: clock, tenantId: 'col-parked');
+      final myPlant = await PlantRepository(db: db, opLog: mine).create(nickname: 'Mine');
+      await PlantRepository(db: db, opLog: theirs).create(nickname: 'Theirs');
+      // `photos` is content-addressed and device-wide: a row keeps the stamp
+      // of the tenant that stored it first, other tenants may attach it.
+      await _insertPhoto(db, sha: shaMine, tenant: 'col-mine');
+      await _insertPhoto(db, sha: shaTheirs, tenant: 'col-parked');
+      await _insertPhoto(db, sha: shaShared, tenant: 'col-parked');
+      await _insertPhoto(db, sha: shaDetached, tenant: 'col-parked');
+      final joins = PlantPhotoRepository(db: db, opLog: mine);
+      await joins.attach(myPlant.id, shaShared);
+      await joins.attach(myPlant.id, shaDetached);
+      await joins.detach(myPlant.id, shaDetached);
+
+      final blob = await BackupService(db: db, tenantId: 'col-mine').export(secret: _secret);
+      final payload = (json.decode(blob) as Map<String, dynamic>)['payload'] as Map<String, dynamic>;
+      List<Map<String, dynamic>> rows(String key) => (payload[key] as List).cast<Map<String, dynamic>>();
+
+      expect(rows('plants').map((p) => p['nickname']), ['Mine']);
+      expect(rows('plants').single['tenant_id'], 'col-mine');
+      expect(rows('photos').map((p) => p['sha256']), [shaMine, shaShared],
+          reason: 'own photo + the one this tenant still shows; not the parked one, not a detached reference');
+      expect(rows('plant_photos').map((j) => j['plant_id']).toSet(), {myPlant.id});
+      expect(json.encode(payload), isNot(contains('Theirs')));
+    });
+
+    test('import lands every row under the importing tenant, whatever the file says', () async {
+      final (dbA, plantsA, _, serviceA) = await _stack();
+      addTearDown(dbA.close);
+      await plantsA.create(nickname: 'From A');
+      final blob = await serviceA.export(secret: _secret);
+      expect(blob, contains('tenant-local'), reason: 'the file carries the source tenant (informational)');
+
+      // The receiving device: active tenant col-b, another tenant parked.
+      final dbB = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(dbB.close);
+      final clock = HlcClock(deviceId: 'device-b');
+      final opLogB = OpLogWriter(db: dbB, clock: clock, tenantId: 'col-b');
+      final parked = OpLogWriter(db: dbB, clock: clock, tenantId: 'col-parked');
+      await PlantRepository(db: dbB, opLog: parked).create(nickname: 'Parked');
+
+      final result = await BackupService(db: dbB, tenantId: 'col-b').import(blob: blob, secret: _secret, opLog: opLogB);
+      expect(result.rowsImported['plants'], 1);
+
+      final visible = await PlantRepository(db: dbB, opLog: opLogB).watchAll().first;
+      expect(visible.map((p) => p.nickname), ['From A']);
+      expect(visible.single.tenantId, 'col-b');
+      expect(await _tenantsIn(dbB, 'plants'), {'col-b', 'col-parked'}, reason: 'no row landed under tenant-local');
+      expect((await PlantRepository(db: dbB, opLog: parked).watchAll().first).map((p) => p.nickname), ['Parked']);
+      // The op peers receive says col-b too.
+      final ops = await (dbB.select(dbB.syncOps)..where((o) => o.entity.equals('plants') & o.field.equals(kWholeRowField))).get();
+      final imported = ops.where((o) => (json.decode(o.valueJson!) as Map)['nickname'] == 'From A').single;
+      expect(imported.tenantId, 'col-b');
+      expect((json.decode(imported.valueJson!) as Map)['tenant_id'], 'col-b');
+    });
+
+    test('import refuses an op log for another tenant', () async {
+      final (db, _, _, service) = await _stack();
+      addTearDown(db.close);
+      final blob = await service.export(secret: _secret);
+      final other = OpLogWriter(db: db, clock: HlcClock(deviceId: 'x'), tenantId: 'col-other');
+      await expectLater(service.import(blob: blob, secret: _secret, opLog: other), throwsArgumentError);
+    });
+
+    test('round-trip of the active tenant is unchanged: same rows, same tenant', () async {
+      final (db, plants, opLog, service) = await _stack();
+      addTearDown(db.close);
+      final a = await plants.create(nickname: 'Alpha', notes: 'n');
+      final b = await plants.create(nickname: 'Beta');
+      final before = {for (final p in await plants.watchAll().first) p.id: p};
+      final blob = await service.export(secret: _secret);
+
+      await service.import(blob: blob, secret: _secret, opLog: opLog);
+      final after = {for (final p in await plants.watchAll().first) p.id: p};
+      expect(after.keys.toSet(), {a.id, b.id});
+      for (final id in after.keys) {
+        expect(after[id], before[id]);
+      }
+      expect(await _tenantsIn(db, 'plants'), {'tenant-local'});
+    });
   });
 
   group('blob bytes encoding', () {
