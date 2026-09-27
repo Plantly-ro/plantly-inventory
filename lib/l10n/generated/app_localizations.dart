@@ -4909,6 +4909,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The owner’s plan lapsed — this shared collection is paused until they renew.'**
   String get shareErrOwnerLapsed;
+
+  /// No description provided for @cloudErrRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 change could not be synced ({reason})} other{{n} changes could not be synced ({reason})}}'**
+  String cloudErrRejected(int n, String reason);
+
+  /// No description provided for @cloudRejDetailsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get cloudRejDetailsLabel;
+
+  /// No description provided for @cloudRejDetailsValue.
+  ///
+  /// In en, this message translates to:
+  /// **'See which changes the server refused'**
+  String get cloudRejDetailsValue;
+
+  /// No description provided for @cloudRejScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes not synced'**
+  String get cloudRejScreenTitle;
+
+  /// No description provided for @cloudRejScreenIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'The server refused these changes. Retry sends them all again; Dismiss keeps them on this device only.'**
+  String get cloudRejScreenIntro;
+
+  /// No description provided for @cloudRejEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing here — every change has synced.'**
+  String get cloudRejEmpty;
+
+  /// No description provided for @cloudRejRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry all'**
+  String get cloudRejRetry;
+
+  /// No description provided for @cloudRejDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss all'**
+  String get cloudRejDismiss;
+
+  /// No description provided for @cloudRejKindRetrying.
+  ///
+  /// In en, this message translates to:
+  /// **'retrying'**
+  String get cloudRejKindRetrying;
+
+  /// No description provided for @cloudRejKindParked.
+  ///
+  /// In en, this message translates to:
+  /// **'gave up'**
+  String get cloudRejKindParked;
+
+  /// No description provided for @cloudRejRequeued.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 change queued again} other{{n} changes queued again}}'**
+  String cloudRejRequeued(int n);
+
+  /// No description provided for @plantlyLoginSubtitleCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Use your plantly.ro account for cloud backup & sync.'**
+  String get plantlyLoginSubtitleCloud;
+
+  /// No description provided for @cloudRejRetryValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Send every listed change again'**
+  String get cloudRejRetryValue;
+
+  /// No description provided for @cloudRejDismissValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep them on this device only'**
+  String get cloudRejDismissValue;
 }
 
 class _AppLocalizationsDelegate

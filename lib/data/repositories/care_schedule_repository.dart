@@ -230,7 +230,10 @@ class CareScheduleRepository {
 
   /// In-place edit of an existing schedule. Updates interval, recurrence
   /// mode, and next_due_at atomically so the adaptive algorithm picks
-  /// up the new baseline on the next care event.
+  /// up the new baseline on the next care event. The adaptive window is
+  /// reset too (a manual edit is an authoritative signal that overrides
+  /// past snooze/early data). Every column that actually changes gets its
+  /// own op — nothing more, nothing less.
   Future<void> edit(
     String scheduleId, {
     required double baseIntervalDays,
@@ -238,38 +241,26 @@ class CareScheduleRepository {
     required DateTime nextDueAt,
   }) async {
     await db.transaction(() async {
-      await opLog.recordFieldUpdate(
-        entity: 'care_schedules',
-        entityId: scheduleId,
-        field: 'base_interval_days',
-        value: baseIntervalDays,
-      );
-      await opLog.recordFieldUpdate(
-        entity: 'care_schedules',
-        entityId: scheduleId,
-        field: 'current_interval_days',
-        value: baseIntervalDays,
-      );
-      await opLog.recordFieldUpdate(
-        entity: 'care_schedules',
-        entityId: scheduleId,
-        field: 'recurrence_mode',
-        value: recurrenceMode,
-      );
-      final hlc = await opLog.recordFieldUpdate(
-        entity: 'care_schedules',
-        entityId: scheduleId,
-        field: 'next_due_at',
-        value: nextDueAt.millisecondsSinceEpoch,
-      );
+      final current =
+          await (db.select(db.careSchedules)..where((r) => r.id.equals(scheduleId))).getSingleOrNull();
+      if (current == null) return;
+      final nextDueMs = nextDueAt.millisecondsSinceEpoch;
+      final hlc = await opLog.recordFieldUpdates(entity: 'care_schedules', entityId: scheduleId, fields: {
+        if (current.baseIntervalDays != baseIntervalDays) 'base_interval_days': baseIntervalDays,
+        if (current.currentIntervalDays != baseIntervalDays) 'current_interval_days': baseIntervalDays,
+        if (current.recurrenceMode != recurrenceMode) 'recurrence_mode': recurrenceMode,
+        if (current.nextDueAt != nextDueMs) 'next_due_at': nextDueMs,
+        if (!current.enabled) 'enabled': true,
+        if (current.snoozeCount != 0) 'snooze_count': 0,
+        if (current.recentEventsJson != '[]') 'recent_events_json': '[]',
+      });
+      if (hlc == null) return;
       await (db.update(db.careSchedules)..where((r) => r.id.equals(scheduleId))).write(
         CareSchedulesCompanion(
           baseIntervalDays: Value(baseIntervalDays),
-          // Reset the adaptive window — a manual edit is an authoritative
-          // signal from the user that overrides past snooze/early data.
           currentIntervalDays: Value(baseIntervalDays),
           recurrenceMode: Value(recurrenceMode),
-          nextDueAt: Value(nextDueAt.millisecondsSinceEpoch),
+          nextDueAt: Value(nextDueMs),
           enabled: const Value(true),
           snoozeCount: const Value(0),
           recentEventsJson: const Value('[]'),

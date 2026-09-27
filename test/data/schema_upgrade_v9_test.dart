@@ -29,10 +29,12 @@ void main() {
     return [for (final r in rows) r.read<String>('name')];
   }
 
-  test('schemaVersion is 9 and a fresh database has actor_user_id', () async {
+  test('schemaVersion is >= 9 and a fresh database has actor_user_id', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
-    expect(db.schemaVersion, 9);
+    // 9 introduced the column; later steps (10: sync_rejections) chain after
+    // it — see schema_upgrade_chain_test.dart for the full 8 → latest run.
+    expect(db.schemaVersion, greaterThanOrEqualTo(9));
     expect(await columns(db), contains('actor_user_id'));
     expect(db.careEvents.actorUserId.$nullable, isTrue);
   });
@@ -50,7 +52,7 @@ void main() {
     expect(row.actorUserId, isNull);
     expect(row.type, 'water');
     final version = await db.customSelect('PRAGMA user_version').getSingle();
-    expect(version.read<int>('user_version'), 9);
+    expect(version.read<int>('user_version'), db.schemaVersion);
   });
 
   test('v8 → v9 is idempotent: a column already present (interrupted upgrade) is left alone', () async {

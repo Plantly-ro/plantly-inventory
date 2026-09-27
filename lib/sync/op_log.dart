@@ -124,6 +124,22 @@ class OpLogWriter {
     return hlc;
   }
 
+  /// Record one field op per entry of [fields] (in iteration order) and
+  /// return the HLC of the last one, or null when [fields] is empty. Edit
+  /// paths pass only the fields whose value actually changed, so an
+  /// untouched form field never produces an op.
+  Future<Hlc?> recordFieldUpdates({
+    required String entity,
+    required String entityId,
+    required Map<String, Object?> fields,
+  }) async {
+    Hlc? last;
+    for (final e in fields.entries) {
+      last = await recordFieldUpdate(entity: entity, entityId: entityId, field: e.key, value: e.value);
+    }
+    return last;
+  }
+
   /// Record a synthesized `*` op for a row that already exists locally
   /// (initial upload). [hlc] is the row's own `updated_hlc`/`added_hlc`, not
   /// a fresh tick, so it cannot outrank edits made elsewhere in the meantime.

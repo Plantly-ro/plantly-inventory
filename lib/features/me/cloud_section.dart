@@ -22,6 +22,7 @@ import '../../plugins/plantly_ro/login_sheet.dart';
 import '../../theme/tokens.dart';
 import '../collections/sharing_rows.dart';
 import 'me_rows.dart';
+import 'sync_rejections_screen.dart';
 
 /// Whether this build may link to the plantly.ro checkout. Google Play
 /// policy (CLOUD-SYNC-CONTRACT §0): the Android app never links to a web
@@ -186,7 +187,7 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
         MeActionRow(
           key: const Key('cloud-last-error'),
           label: t.cloudLastErrorLabel,
-          value: describeSyncError(t, status.lastError!, detail: status.lastErrorDetail),
+          value: describeSyncError(t, status.lastError!, detail: status.lastErrorDetail, status: status),
           icon: Icons.error_outline,
           surface: surface,
           valueColor: surface.terra,
@@ -308,10 +309,21 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
           MeActionRow(
             key: const Key('cloud-last-error'),
             label: t.cloudLastErrorLabel,
-            value: describeSyncError(t, status.lastError!, detail: status.lastErrorDetail),
+            value: describeSyncError(t, status.lastError!, detail: status.lastErrorDetail, status: status),
             icon: Icons.error_outline,
             surface: surface,
             valueColor: surface.terra,
+          ),
+        if (status.lastError == 'rejected')
+          MeActionRow(
+            key: const Key('cloud-rejections'),
+            label: t.cloudRejDetailsLabel,
+            value: t.cloudRejDetailsValue,
+            icon: Icons.list_alt_outlined,
+            surface: surface,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SyncRejectionsScreen()),
+            ),
           ),
       ],
       MeActionRow(
@@ -385,7 +397,7 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
   Future<void> _signIn() async {
     final auth = ref.read(plantlyAuthProvider.notifier); // before the await (#14)
     final events = ref.read(signInEventsProvider);
-    final session = await showPlantlyLoginSheet(context, auth: auth);
+    final session = await showPlantlyLoginSheet(context, auth: auth, purpose: LoginPurpose.cloud);
     if (session != null) events.emit(session);
   }
 
@@ -493,13 +505,17 @@ String describeEntitlement(AppLocalizations t, CloudEntitlement? e) {
 /// Engine error codes (`SyncStatus.lastError`) → copy; anything else is
 /// shown as-is. [detail] is `SyncStatus.lastErrorDetail` (the offending
 /// `<entity>/<id>` for `op_too_large`, [kOwnerPlanLapsedDetail] for a 402
-/// on a shared collection).
-String describeSyncError(AppLocalizations t, String code, {String? detail}) => switch (code) {
+/// on a shared collection); `rejected` reads the count and server reason
+/// from [status] and falls back to [detail] without it.
+String describeSyncError(AppLocalizations t, String code, {String? detail, SyncStatus? status}) => switch (code) {
       'cloud_required' => detail == kOwnerPlanLapsedDetail ? t.shareErrOwnerLapsed : t.cloudNotIncludedValue,
       'unauthorized' => t.cloudSignInLabel,
       'collection_unavailable' => t.cloudErrCollectionUnavailable,
       'quota_exceeded' => t.cloudErrQuotaExceeded,
       'op_too_large' => detail == null || detail.isEmpty ? t.cloudErrOpTooLarge : t.cloudErrOpTooLargeDetail(detail),
+      'rejected' => status != null && status.rejectedOps > 0
+          ? t.cloudErrRejected(status.rejectedOps, status.rejectedReason ?? '?')
+          : (detail ?? code),
       'retrying' => t.cloudErrRetrying,
       'offline' => t.cloudErrOffline,
       'error' => t.cloudErrGeneric,

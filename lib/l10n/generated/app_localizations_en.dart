@@ -2888,4 +2888,64 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get shareErrOwnerLapsed =>
       'The owner’s plan lapsed — this shared collection is paused until they renew.';
+
+  @override
+  String cloudErrRejected(int n, String reason) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n changes could not be synced ($reason)',
+      one: '1 change could not be synced ($reason)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cloudRejDetailsLabel => 'Details';
+
+  @override
+  String get cloudRejDetailsValue => 'See which changes the server refused';
+
+  @override
+  String get cloudRejScreenTitle => 'Changes not synced';
+
+  @override
+  String get cloudRejScreenIntro =>
+      'The server refused these changes. Retry sends them all again; Dismiss keeps them on this device only.';
+
+  @override
+  String get cloudRejEmpty => 'Nothing here — every change has synced.';
+
+  @override
+  String get cloudRejRetry => 'Retry all';
+
+  @override
+  String get cloudRejDismiss => 'Dismiss all';
+
+  @override
+  String get cloudRejKindRetrying => 'retrying';
+
+  @override
+  String get cloudRejKindParked => 'gave up';
+
+  @override
+  String cloudRejRequeued(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n changes queued again',
+      one: '1 change queued again',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get plantlyLoginSubtitleCloud =>
+      'Use your plantly.ro account for cloud backup & sync.';
+
+  @override
+  String get cloudRejRetryValue => 'Send every listed change again';
+
+  @override
+  String get cloudRejDismissValue => 'Keep them on this device only';
 }

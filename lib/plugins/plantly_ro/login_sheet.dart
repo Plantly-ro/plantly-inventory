@@ -23,23 +23,36 @@ import '../../theme/tokens.dart';
 ///
 /// Bottom sheet on phone/tablet, right-side sheet on desktop (same as every
 /// other sheet — `showAdaptiveSheet` + [SheetChrome]).
+///
+/// [purpose] only changes the subtitle: the export flow explains listings,
+/// the Cloud section explains backup & sync. Same account either way.
 Future<PlantlySession?> showPlantlyLoginSheet(
   BuildContext context, {
   required PlantlyAuth auth,
   String? host,
+  LoginPurpose purpose = LoginPurpose.sell,
 }) {
   return showAdaptiveSheet<PlantlySession>(
     context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => PlantlyLoginSheet(auth: auth, host: host ?? PlantlyHosts.host),
+    builder: (_) => PlantlyLoginSheet(auth: auth, host: host ?? PlantlyHosts.host, purpose: purpose),
   );
 }
 
+/// Why the user is being asked to sign in — picks the sheet's subtitle.
+enum LoginPurpose { sell, cloud }
+
 class PlantlyLoginSheet extends ConsumerStatefulWidget {
-  const PlantlyLoginSheet({super.key, required this.auth, required this.host});
+  const PlantlyLoginSheet({
+    super.key,
+    required this.auth,
+    required this.host,
+    this.purpose = LoginPurpose.sell,
+  });
   final PlantlyAuth auth;
   final String host;
+  final LoginPurpose purpose;
 
   @override
   ConsumerState<PlantlyLoginSheet> createState() => _PlantlyLoginSheetState();
@@ -139,6 +152,10 @@ class _PlantlyLoginSheetState extends ConsumerState<PlantlyLoginSheet> {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
     final t = AppLocalizations.of(context);
+    final subtitle = switch (widget.purpose) {
+      LoginPurpose.sell => t.plantlyLoginSubtitle,
+      LoginPurpose.cloud => t.plantlyLoginSubtitleCloud,
+    };
     final inset = MediaQuery.of(context).viewInsets.bottom;
     final desktop = context.isDesktop;
     // Phone: SheetChrome draws the exact frame this sheet used to hand-roll
@@ -151,7 +168,7 @@ class _PlantlyLoginSheetState extends ConsumerState<PlantlyLoginSheet> {
       child: SheetChrome(
         surface: surface,
         title: t.plantlyLoginTitle,
-        subtitle: t.plantlyLoginSubtitle,
+        subtitle: subtitle,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
         SafeArea(
@@ -166,7 +183,7 @@ class _PlantlyLoginSheetState extends ConsumerState<PlantlyLoginSheet> {
                 style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, fontSize: 19, fontWeight: FontWeight.w800, color: surface.text),
               ),
               const SizedBox(height: 4),
-              Text(t.plantlyLoginSubtitle, style: TextStyle(fontSize: 12.5, color: surface.muted)),
+              Text(subtitle, key: const Key('plantly-login-subtitle'), style: TextStyle(fontSize: 12.5, color: surface.muted)),
               const SizedBox(height: 16),
               ],
               _SocialButton(

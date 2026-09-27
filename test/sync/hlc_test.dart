@@ -65,4 +65,39 @@ void main() {
       expect(second.physicalMs, greaterThanOrEqualTo(first.physicalMs));
     });
   });
+
+  group('HlcClock.merge drift guard', () {
+    test('a remote further than maxRemoteDrift ahead is ignored, logged, and leaves now() on local time', () {
+      final logs = <String>[];
+      final clock = HlcClock(deviceId: 'dev', nowProvider: () => DateTime.fromMillisecondsSinceEpoch(1000), log: logs.add);
+      // "2026-09-27 10:29:54" written as a 14-digit number and read as unix ms = year ~2612.
+      final farFuture = Hlc(20260927102954, 1, 'qadev');
+      expect(clock.merge(farFuture), isFalse);
+      expect(clock.ignoredRemoteCount, 1);
+      expect(logs.single, contains('ignoring remote HLC 20260927102954-00001-qadev'));
+      final local = clock.now();
+      expect(local.physicalMs, 1000);
+      expect(local.logical, 0);
+    });
+
+    test('a remote inside the window still merges and now() is strictly greater', () {
+      final clock = HlcClock(deviceId: 'dev', nowProvider: () => DateTime.fromMillisecondsSinceEpoch(1000));
+      final ahead = Hlc(1000 + const Duration(hours: 23).inMilliseconds, 5, 'peer');
+      expect(clock.merge(ahead), isTrue);
+      expect(clock.ignoredRemoteCount, 0);
+      expect(clock.now() > ahead, isTrue);
+    });
+
+    test('boundary: exactly maxRemoteDrift ahead merges, one ms more does not', () {
+      const drift = Duration(minutes: 5);
+      final clock = HlcClock(
+        deviceId: 'dev',
+        nowProvider: () => DateTime.fromMillisecondsSinceEpoch(1000),
+        maxRemoteDrift: drift,
+        log: (_) {},
+      );
+      expect(clock.merge(Hlc(1000 + drift.inMilliseconds, 0, 'peer')), isTrue);
+      expect(clock.merge(Hlc(1000 + drift.inMilliseconds + 1, 0, 'peer')), isFalse);
+    });
+  });
 }

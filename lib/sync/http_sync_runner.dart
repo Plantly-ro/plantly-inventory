@@ -12,6 +12,7 @@ import 'op_log.dart';
 import 'photo_sync.dart';
 import 'sync_applier.dart';
 import 'sync_engine.dart';
+import 'sync_rejections.dart';
 import 'sync_transport.dart';
 
 /// Refreshes the session after a 401; returns true when a usable token
@@ -34,6 +35,15 @@ typedef SyncAuthRefresher = Future<bool> Function();
 /// (`pushed_at` set) and surfaced as `lastError='op_too_large'` with
 /// `lastErrorDetail='<entity>/<id>'`. Row sync continues.
 ///
+/// Per-op rejections in a push reply go through [SyncRejectionStore]
+/// (`SyncRejectionPolicy` decides permanent vs transient): permanent ones
+/// are parked so the pending count drops, transient ones stay pending and
+/// are retried on later cycles until the grace window runs out. Any listed
+/// rejection surfaces as `lastError='rejected'` with
+/// `lastErrorDetail='<n> changes could not be synced (<reason>)'` plus
+/// `SyncStatus.rejectedOps` / `rejectedReason` until the user retries or
+/// dismisses them (Me → Cloud → Details).
+///
 /// Failure policy: retryable errors (429/5xx/network) back off exponentially
 /// from [minBackoff] to [maxBackoff] (`Retry-After` honoured); 402 halts with
 /// `cloud_required`; 401 refreshes once via [refreshAuth] then halts with
@@ -43,7 +53,7 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
   HttpSyncRunner({
     required this.db,
     required this.opLog,
-    required this.clock,
+    HlcClock? clock,
     required this.transport,
     required this.cursor,
     required this.deviceId,
@@ -52,6 +62,7 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
     this.photos,
     this.usage,
     this.refreshAuth,
+    SyncRejectionStore? rejections,
     this.debounce = const Duration(seconds: 3),
     this.periodic = const Duration(minutes: 15),
     this.minBackoff = const Duration(seconds: 1),
@@ -61,8 +72,12 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
     this.batchSize = 500,
     this.entitlementIsOwners = false,
     DateTime Function()? now,
-  })  : _localChanges = localChanges ?? opLog.changes,
+  })  : assert(clock == null || identical(clock, opLog.clock),
+            'one HlcClock per device: pass the OpLogWriter\'s clock (or omit it)'),
+        clock = clock ?? opLog.clock,
+        _localChanges = localChanges ?? opLog.changes,
         _now = now ?? (() => DateTime.now().toUtc()),
+        _rejections = rejections ?? SyncRejectionStore(db: db, tenantId: collectionId),
         _engine = SyncEngine(
           db: db,
           transport: transport,
@@ -71,7 +86,7 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
           deviceId: deviceId,
           batchSize: batchSize,
         ),
-        _applier = SyncApplier(db: db, opLog: opLog, clock: clock) {
+        _applier = SyncApplier(db: db, opLog: opLog, clock: opLog.clock) {
     _backoff = minBackoff;
   }
 
@@ -80,6 +95,10 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
   /// Tenant-scoped writer for the collection (used for LWW lookups and to
   /// record remote/synthesized ops).
   final OpLogWriter opLog;
+
+  /// The device's single HLC clock — always [OpLogWriter.clock], so ops
+  /// stamped by repositories, ops synthesized here and remote merges all
+  /// move the same counter.
   final HlcClock clock;
   final SyncTransport transport;
   final SyncCursor cursor;
@@ -105,6 +124,10 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
   final DateTime Function() _now;
   final SyncEngine _engine;
   final SyncApplier _applier;
+  final SyncRejectionStore _rejections;
+
+  /// The rejection ledger (Me → Cloud → Details reads and acts on it).
+  SyncRejectionStore get rejections => _rejections;
 
   SyncStatus _status = SyncStatus();
   final StreamController<SyncStatus> _statusCtrl = StreamController<SyncStatus>.broadcast();
@@ -263,6 +286,13 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
             detail = null;
           }
         }
+        // Sticky until retried/dismissed: a rejection that vanished on the
+        // next clean cycle would leave nowhere to find "Details".
+        final rejected = await _rejections.absorb(pushed);
+        if (!rejected.isEmpty) {
+          error = 'rejected';
+          detail = rejected.detail;
+        }
         await _refreshUsageIfStale();
         _backoff = minBackoff;
         _emit(_status.copyWith(
@@ -272,6 +302,8 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
           lastError: error,
           lastErrorDetail: detail,
           clearError: error == null,
+          rejectedOps: rejected.total,
+          rejectedReason: rejected.topReason,
         ));
         return;
       } on SyncAuthError {
@@ -399,7 +431,6 @@ Future<void> synthesizeInitialOps({
   final runner = HttpSyncRunner(
     db: db,
     opLog: opLog,
-    clock: HlcClock(deviceId: deviceId),
     transport: _NullTransport(),
     cursor: _NullCursor(),
     deviceId: deviceId,

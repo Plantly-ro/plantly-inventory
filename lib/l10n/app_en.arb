@@ -953,5 +953,21 @@
   "shareErrOwnerOnly": "Only the owner can invite people.",
   "shareErrOwnerCannotLeave": "The owner can’t leave their own collection.",
   "shareErrMemberNotFound": "That person is no longer a member.",
-  "shareErrOwnerLapsed": "The owner’s plan lapsed — this shared collection is paused until they renew."
+  "shareErrOwnerLapsed": "The owner’s plan lapsed — this shared collection is paused until they renew.",
+  "cloudErrRejected": "{n, plural, =1{1 change could not be synced ({reason})} other{{n} changes could not be synced ({reason})}}",
+  "@cloudErrRejected": {"placeholders": {"n": {"type": "int"}, "reason": {"type": "String"}}},
+  "cloudRejDetailsLabel": "Details",
+  "cloudRejDetailsValue": "See which changes the server refused",
+  "cloudRejScreenTitle": "Changes not synced",
+  "cloudRejScreenIntro": "The server refused these changes. Retry sends them all again; Dismiss keeps them on this device only.",
+  "cloudRejEmpty": "Nothing here — every change has synced.",
+  "cloudRejRetry": "Retry all",
+  "cloudRejDismiss": "Dismiss all",
+  "cloudRejKindRetrying": "retrying",
+  "cloudRejKindParked": "gave up",
+  "cloudRejRequeued": "{n, plural, =1{1 change queued again} other{{n} changes queued again}}",
+  "@cloudRejRequeued": {"placeholders": {"n": {"type": "int"}}},
+  "plantlyLoginSubtitleCloud": "Use your plantly.ro account for cloud backup & sync.",
+  "cloudRejRetryValue": "Send every listed change again",
+  "cloudRejDismissValue": "Keep them on this device only"
 }

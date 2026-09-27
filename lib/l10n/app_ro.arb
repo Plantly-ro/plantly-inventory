@@ -840,5 +840,21 @@
   "shareErrOwnerOnly": "Doar proprietarul poate invita persoane.",
   "shareErrOwnerCannotLeave": "Proprietarul nu își poate părăsi propria colecție.",
   "shareErrMemberNotFound": "Persoana respectivă nu mai este membru.",
-  "shareErrOwnerLapsed": "Planul proprietarului a expirat — această colecție partajată este în pauză până îl reînnoiește."
+  "shareErrOwnerLapsed": "Planul proprietarului a expirat — această colecție partajată este în pauză până îl reînnoiește.",
+  "cloudErrRejected": "{n, plural, =1{1 modificare nu a putut fi sincronizată ({reason})} few{{n} modificări nu au putut fi sincronizate ({reason})} other{{n} de modificări nu au putut fi sincronizate ({reason})}}",
+  "@cloudErrRejected": {"placeholders": {"n": {"type": "int"}, "reason": {"type": "String"}}},
+  "cloudRejDetailsLabel": "Detalii",
+  "cloudRejDetailsValue": "Vezi ce modificări a refuzat serverul",
+  "cloudRejScreenTitle": "Modificări nesincronizate",
+  "cloudRejScreenIntro": "Serverul a refuzat aceste modificări. „Reîncearcă” le trimite din nou pe toate; „Ignoră” le păstrează doar pe acest dispozitiv.",
+  "cloudRejEmpty": "Nimic aici — toate modificările s-au sincronizat.",
+  "cloudRejRetry": "Reîncearcă tot",
+  "cloudRejDismiss": "Ignoră tot",
+  "cloudRejKindRetrying": "se reîncearcă",
+  "cloudRejKindParked": "abandonat",
+  "cloudRejRequeued": "{n, plural, =1{1 modificare pusă din nou la coadă} few{{n} modificări puse din nou la coadă} other{{n} de modificări puse din nou la coadă}}",
+  "@cloudRejRequeued": {"placeholders": {"n": {"type": "int"}}},
+  "plantlyLoginSubtitleCloud": "Folosește contul tău plantly.ro pentru backup și sincronizare în cloud.",
+  "cloudRejRetryValue": "Trimite din nou toate modificările listate",
+  "cloudRejDismissValue": "Păstrează-le doar pe acest dispozitiv"
 }

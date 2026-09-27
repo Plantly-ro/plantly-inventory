@@ -8558,6 +8558,542 @@ class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
   }
 }
 
+class $SyncRejectionsTable extends SyncRejections
+    with TableInfo<$SyncRejectionsTable, SyncRejectionRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncRejectionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _opSeqMeta = const VerificationMeta('opSeq');
+  @override
+  late final GeneratedColumn<int> opSeq = GeneratedColumn<int>(
+    'op_seq',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _tenantIdMeta = const VerificationMeta(
+    'tenantId',
+  );
+  @override
+  late final GeneratedColumn<String> tenantId = GeneratedColumn<String>(
+    'tenant_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _entityMeta = const VerificationMeta('entity');
+  @override
+  late final GeneratedColumn<String> entity = GeneratedColumn<String>(
+    'entity',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _entityIdMeta = const VerificationMeta(
+    'entityId',
+  );
+  @override
+  late final GeneratedColumn<String> entityId = GeneratedColumn<String>(
+    'entity_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fieldMeta = const VerificationMeta('field');
+  @override
+  late final GeneratedColumn<String> field = GeneratedColumn<String>(
+    'field',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _hlcMeta = const VerificationMeta('hlc');
+  @override
+  late final GeneratedColumn<String> hlc = GeneratedColumn<String>(
+    'hlc',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _atMeta = const VerificationMeta('at');
+  @override
+  late final GeneratedColumn<int> at = GeneratedColumn<int>(
+    'at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _parkedMeta = const VerificationMeta('parked');
+  @override
+  late final GeneratedColumn<bool> parked = GeneratedColumn<bool>(
+    'parked',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("parked" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    opSeq,
+    tenantId,
+    entity,
+    entityId,
+    field,
+    reason,
+    hlc,
+    at,
+    parked,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_rejections';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncRejectionRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('op_seq')) {
+      context.handle(
+        _opSeqMeta,
+        opSeq.isAcceptableOrUnknown(data['op_seq']!, _opSeqMeta),
+      );
+    }
+    if (data.containsKey('tenant_id')) {
+      context.handle(
+        _tenantIdMeta,
+        tenantId.isAcceptableOrUnknown(data['tenant_id']!, _tenantIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tenantIdMeta);
+    }
+    if (data.containsKey('entity')) {
+      context.handle(
+        _entityMeta,
+        entity.isAcceptableOrUnknown(data['entity']!, _entityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityMeta);
+    }
+    if (data.containsKey('entity_id')) {
+      context.handle(
+        _entityIdMeta,
+        entityId.isAcceptableOrUnknown(data['entity_id']!, _entityIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityIdMeta);
+    }
+    if (data.containsKey('field')) {
+      context.handle(
+        _fieldMeta,
+        field.isAcceptableOrUnknown(data['field']!, _fieldMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fieldMeta);
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reasonMeta);
+    }
+    if (data.containsKey('hlc')) {
+      context.handle(
+        _hlcMeta,
+        hlc.isAcceptableOrUnknown(data['hlc']!, _hlcMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_hlcMeta);
+    }
+    if (data.containsKey('at')) {
+      context.handle(_atMeta, at.isAcceptableOrUnknown(data['at']!, _atMeta));
+    } else if (isInserting) {
+      context.missing(_atMeta);
+    }
+    if (data.containsKey('parked')) {
+      context.handle(
+        _parkedMeta,
+        parked.isAcceptableOrUnknown(data['parked']!, _parkedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {opSeq};
+  @override
+  SyncRejectionRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncRejectionRow(
+      opSeq: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}op_seq'],
+      )!,
+      tenantId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tenant_id'],
+      )!,
+      entity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity'],
+      )!,
+      entityId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_id'],
+      )!,
+      field: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}field'],
+      )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      )!,
+      hlc: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}hlc'],
+      )!,
+      at: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}at'],
+      )!,
+      parked: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}parked'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncRejectionsTable createAlias(String alias) {
+    return $SyncRejectionsTable(attachedDatabase, alias);
+  }
+}
+
+class SyncRejectionRow extends DataClass
+    implements Insertable<SyncRejectionRow> {
+  final int opSeq;
+  final String tenantId;
+  final String entity;
+  final String entityId;
+  final String field;
+  final String reason;
+  final String hlc;
+  final int at;
+  final bool parked;
+  const SyncRejectionRow({
+    required this.opSeq,
+    required this.tenantId,
+    required this.entity,
+    required this.entityId,
+    required this.field,
+    required this.reason,
+    required this.hlc,
+    required this.at,
+    required this.parked,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['op_seq'] = Variable<int>(opSeq);
+    map['tenant_id'] = Variable<String>(tenantId);
+    map['entity'] = Variable<String>(entity);
+    map['entity_id'] = Variable<String>(entityId);
+    map['field'] = Variable<String>(field);
+    map['reason'] = Variable<String>(reason);
+    map['hlc'] = Variable<String>(hlc);
+    map['at'] = Variable<int>(at);
+    map['parked'] = Variable<bool>(parked);
+    return map;
+  }
+
+  SyncRejectionsCompanion toCompanion(bool nullToAbsent) {
+    return SyncRejectionsCompanion(
+      opSeq: Value(opSeq),
+      tenantId: Value(tenantId),
+      entity: Value(entity),
+      entityId: Value(entityId),
+      field: Value(field),
+      reason: Value(reason),
+      hlc: Value(hlc),
+      at: Value(at),
+      parked: Value(parked),
+    );
+  }
+
+  factory SyncRejectionRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncRejectionRow(
+      opSeq: serializer.fromJson<int>(json['opSeq']),
+      tenantId: serializer.fromJson<String>(json['tenantId']),
+      entity: serializer.fromJson<String>(json['entity']),
+      entityId: serializer.fromJson<String>(json['entityId']),
+      field: serializer.fromJson<String>(json['field']),
+      reason: serializer.fromJson<String>(json['reason']),
+      hlc: serializer.fromJson<String>(json['hlc']),
+      at: serializer.fromJson<int>(json['at']),
+      parked: serializer.fromJson<bool>(json['parked']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'opSeq': serializer.toJson<int>(opSeq),
+      'tenantId': serializer.toJson<String>(tenantId),
+      'entity': serializer.toJson<String>(entity),
+      'entityId': serializer.toJson<String>(entityId),
+      'field': serializer.toJson<String>(field),
+      'reason': serializer.toJson<String>(reason),
+      'hlc': serializer.toJson<String>(hlc),
+      'at': serializer.toJson<int>(at),
+      'parked': serializer.toJson<bool>(parked),
+    };
+  }
+
+  SyncRejectionRow copyWith({
+    int? opSeq,
+    String? tenantId,
+    String? entity,
+    String? entityId,
+    String? field,
+    String? reason,
+    String? hlc,
+    int? at,
+    bool? parked,
+  }) => SyncRejectionRow(
+    opSeq: opSeq ?? this.opSeq,
+    tenantId: tenantId ?? this.tenantId,
+    entity: entity ?? this.entity,
+    entityId: entityId ?? this.entityId,
+    field: field ?? this.field,
+    reason: reason ?? this.reason,
+    hlc: hlc ?? this.hlc,
+    at: at ?? this.at,
+    parked: parked ?? this.parked,
+  );
+  SyncRejectionRow copyWithCompanion(SyncRejectionsCompanion data) {
+    return SyncRejectionRow(
+      opSeq: data.opSeq.present ? data.opSeq.value : this.opSeq,
+      tenantId: data.tenantId.present ? data.tenantId.value : this.tenantId,
+      entity: data.entity.present ? data.entity.value : this.entity,
+      entityId: data.entityId.present ? data.entityId.value : this.entityId,
+      field: data.field.present ? data.field.value : this.field,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      hlc: data.hlc.present ? data.hlc.value : this.hlc,
+      at: data.at.present ? data.at.value : this.at,
+      parked: data.parked.present ? data.parked.value : this.parked,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncRejectionRow(')
+          ..write('opSeq: $opSeq, ')
+          ..write('tenantId: $tenantId, ')
+          ..write('entity: $entity, ')
+          ..write('entityId: $entityId, ')
+          ..write('field: $field, ')
+          ..write('reason: $reason, ')
+          ..write('hlc: $hlc, ')
+          ..write('at: $at, ')
+          ..write('parked: $parked')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    opSeq,
+    tenantId,
+    entity,
+    entityId,
+    field,
+    reason,
+    hlc,
+    at,
+    parked,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncRejectionRow &&
+          other.opSeq == this.opSeq &&
+          other.tenantId == this.tenantId &&
+          other.entity == this.entity &&
+          other.entityId == this.entityId &&
+          other.field == this.field &&
+          other.reason == this.reason &&
+          other.hlc == this.hlc &&
+          other.at == this.at &&
+          other.parked == this.parked);
+}
+
+class SyncRejectionsCompanion extends UpdateCompanion<SyncRejectionRow> {
+  final Value<int> opSeq;
+  final Value<String> tenantId;
+  final Value<String> entity;
+  final Value<String> entityId;
+  final Value<String> field;
+  final Value<String> reason;
+  final Value<String> hlc;
+  final Value<int> at;
+  final Value<bool> parked;
+  const SyncRejectionsCompanion({
+    this.opSeq = const Value.absent(),
+    this.tenantId = const Value.absent(),
+    this.entity = const Value.absent(),
+    this.entityId = const Value.absent(),
+    this.field = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.hlc = const Value.absent(),
+    this.at = const Value.absent(),
+    this.parked = const Value.absent(),
+  });
+  SyncRejectionsCompanion.insert({
+    this.opSeq = const Value.absent(),
+    required String tenantId,
+    required String entity,
+    required String entityId,
+    required String field,
+    required String reason,
+    required String hlc,
+    required int at,
+    this.parked = const Value.absent(),
+  }) : tenantId = Value(tenantId),
+       entity = Value(entity),
+       entityId = Value(entityId),
+       field = Value(field),
+       reason = Value(reason),
+       hlc = Value(hlc),
+       at = Value(at);
+  static Insertable<SyncRejectionRow> custom({
+    Expression<int>? opSeq,
+    Expression<String>? tenantId,
+    Expression<String>? entity,
+    Expression<String>? entityId,
+    Expression<String>? field,
+    Expression<String>? reason,
+    Expression<String>? hlc,
+    Expression<int>? at,
+    Expression<bool>? parked,
+  }) {
+    return RawValuesInsertable({
+      if (opSeq != null) 'op_seq': opSeq,
+      if (tenantId != null) 'tenant_id': tenantId,
+      if (entity != null) 'entity': entity,
+      if (entityId != null) 'entity_id': entityId,
+      if (field != null) 'field': field,
+      if (reason != null) 'reason': reason,
+      if (hlc != null) 'hlc': hlc,
+      if (at != null) 'at': at,
+      if (parked != null) 'parked': parked,
+    });
+  }
+
+  SyncRejectionsCompanion copyWith({
+    Value<int>? opSeq,
+    Value<String>? tenantId,
+    Value<String>? entity,
+    Value<String>? entityId,
+    Value<String>? field,
+    Value<String>? reason,
+    Value<String>? hlc,
+    Value<int>? at,
+    Value<bool>? parked,
+  }) {
+    return SyncRejectionsCompanion(
+      opSeq: opSeq ?? this.opSeq,
+      tenantId: tenantId ?? this.tenantId,
+      entity: entity ?? this.entity,
+      entityId: entityId ?? this.entityId,
+      field: field ?? this.field,
+      reason: reason ?? this.reason,
+      hlc: hlc ?? this.hlc,
+      at: at ?? this.at,
+      parked: parked ?? this.parked,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (opSeq.present) {
+      map['op_seq'] = Variable<int>(opSeq.value);
+    }
+    if (tenantId.present) {
+      map['tenant_id'] = Variable<String>(tenantId.value);
+    }
+    if (entity.present) {
+      map['entity'] = Variable<String>(entity.value);
+    }
+    if (entityId.present) {
+      map['entity_id'] = Variable<String>(entityId.value);
+    }
+    if (field.present) {
+      map['field'] = Variable<String>(field.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (hlc.present) {
+      map['hlc'] = Variable<String>(hlc.value);
+    }
+    if (at.present) {
+      map['at'] = Variable<int>(at.value);
+    }
+    if (parked.present) {
+      map['parked'] = Variable<bool>(parked.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncRejectionsCompanion(')
+          ..write('opSeq: $opSeq, ')
+          ..write('tenantId: $tenantId, ')
+          ..write('entity: $entity, ')
+          ..write('entityId: $entityId, ')
+          ..write('field: $field, ')
+          ..write('reason: $reason, ')
+          ..write('hlc: $hlc, ')
+          ..write('at: $at, ')
+          ..write('parked: $parked')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -8574,6 +9110,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $InventoryTransactionsTable inventoryTransactions =
       $InventoryTransactionsTable(this);
   late final $SyncOpsTable syncOps = $SyncOpsTable(this);
+  late final $SyncRejectionsTable syncRejections = $SyncRejectionsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8591,6 +9128,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     careSchedules,
     inventoryTransactions,
     syncOps,
+    syncRejections,
   ];
 }
 
@@ -12639,6 +13177,282 @@ typedef $$SyncOpsTableProcessedTableManager =
       SyncOpRow,
       PrefetchHooks Function()
     >;
+typedef $$SyncRejectionsTableCreateCompanionBuilder =
+    SyncRejectionsCompanion Function({
+      Value<int> opSeq,
+      required String tenantId,
+      required String entity,
+      required String entityId,
+      required String field,
+      required String reason,
+      required String hlc,
+      required int at,
+      Value<bool> parked,
+    });
+typedef $$SyncRejectionsTableUpdateCompanionBuilder =
+    SyncRejectionsCompanion Function({
+      Value<int> opSeq,
+      Value<String> tenantId,
+      Value<String> entity,
+      Value<String> entityId,
+      Value<String> field,
+      Value<String> reason,
+      Value<String> hlc,
+      Value<int> at,
+      Value<bool> parked,
+    });
+
+class $$SyncRejectionsTableFilterComposer
+    extends Composer<_$AppDatabase, $SyncRejectionsTable> {
+  $$SyncRejectionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get opSeq => $composableBuilder(
+    column: $table.opSeq,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tenantId => $composableBuilder(
+    column: $table.tenantId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entity => $composableBuilder(
+    column: $table.entity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get field => $composableBuilder(
+    column: $table.field,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get hlc => $composableBuilder(
+    column: $table.hlc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get at => $composableBuilder(
+    column: $table.at,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get parked => $composableBuilder(
+    column: $table.parked,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncRejectionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SyncRejectionsTable> {
+  $$SyncRejectionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get opSeq => $composableBuilder(
+    column: $table.opSeq,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tenantId => $composableBuilder(
+    column: $table.tenantId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entity => $composableBuilder(
+    column: $table.entity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get field => $composableBuilder(
+    column: $table.field,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get hlc => $composableBuilder(
+    column: $table.hlc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get at => $composableBuilder(
+    column: $table.at,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get parked => $composableBuilder(
+    column: $table.parked,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncRejectionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SyncRejectionsTable> {
+  $$SyncRejectionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get opSeq =>
+      $composableBuilder(column: $table.opSeq, builder: (column) => column);
+
+  GeneratedColumn<String> get tenantId =>
+      $composableBuilder(column: $table.tenantId, builder: (column) => column);
+
+  GeneratedColumn<String> get entity =>
+      $composableBuilder(column: $table.entity, builder: (column) => column);
+
+  GeneratedColumn<String> get entityId =>
+      $composableBuilder(column: $table.entityId, builder: (column) => column);
+
+  GeneratedColumn<String> get field =>
+      $composableBuilder(column: $table.field, builder: (column) => column);
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<String> get hlc =>
+      $composableBuilder(column: $table.hlc, builder: (column) => column);
+
+  GeneratedColumn<int> get at =>
+      $composableBuilder(column: $table.at, builder: (column) => column);
+
+  GeneratedColumn<bool> get parked =>
+      $composableBuilder(column: $table.parked, builder: (column) => column);
+}
+
+class $$SyncRejectionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SyncRejectionsTable,
+          SyncRejectionRow,
+          $$SyncRejectionsTableFilterComposer,
+          $$SyncRejectionsTableOrderingComposer,
+          $$SyncRejectionsTableAnnotationComposer,
+          $$SyncRejectionsTableCreateCompanionBuilder,
+          $$SyncRejectionsTableUpdateCompanionBuilder,
+          (
+            SyncRejectionRow,
+            BaseReferences<
+              _$AppDatabase,
+              $SyncRejectionsTable,
+              SyncRejectionRow
+            >,
+          ),
+          SyncRejectionRow,
+          PrefetchHooks Function()
+        > {
+  $$SyncRejectionsTableTableManager(
+    _$AppDatabase db,
+    $SyncRejectionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncRejectionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncRejectionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncRejectionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> opSeq = const Value.absent(),
+                Value<String> tenantId = const Value.absent(),
+                Value<String> entity = const Value.absent(),
+                Value<String> entityId = const Value.absent(),
+                Value<String> field = const Value.absent(),
+                Value<String> reason = const Value.absent(),
+                Value<String> hlc = const Value.absent(),
+                Value<int> at = const Value.absent(),
+                Value<bool> parked = const Value.absent(),
+              }) => SyncRejectionsCompanion(
+                opSeq: opSeq,
+                tenantId: tenantId,
+                entity: entity,
+                entityId: entityId,
+                field: field,
+                reason: reason,
+                hlc: hlc,
+                at: at,
+                parked: parked,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> opSeq = const Value.absent(),
+                required String tenantId,
+                required String entity,
+                required String entityId,
+                required String field,
+                required String reason,
+                required String hlc,
+                required int at,
+                Value<bool> parked = const Value.absent(),
+              }) => SyncRejectionsCompanion.insert(
+                opSeq: opSeq,
+                tenantId: tenantId,
+                entity: entity,
+                entityId: entityId,
+                field: field,
+                reason: reason,
+                hlc: hlc,
+                at: at,
+                parked: parked,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncRejectionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SyncRejectionsTable,
+      SyncRejectionRow,
+      $$SyncRejectionsTableFilterComposer,
+      $$SyncRejectionsTableOrderingComposer,
+      $$SyncRejectionsTableAnnotationComposer,
+      $$SyncRejectionsTableCreateCompanionBuilder,
+      $$SyncRejectionsTableUpdateCompanionBuilder,
+      (
+        SyncRejectionRow,
+        BaseReferences<_$AppDatabase, $SyncRejectionsTable, SyncRejectionRow>,
+      ),
+      SyncRejectionRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -12666,4 +13480,6 @@ class $AppDatabaseManager {
       $$InventoryTransactionsTableTableManager(_db, _db.inventoryTransactions);
   $$SyncOpsTableTableManager get syncOps =>
       $$SyncOpsTableTableManager(_db, _db.syncOps);
+  $$SyncRejectionsTableTableManager get syncRejections =>
+      $$SyncRejectionsTableTableManager(_db, _db.syncRejections);
 }
