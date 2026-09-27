@@ -8,6 +8,10 @@ import '../config/plantly_hosts.dart';
 import 'photo_sync.dart';
 import 'sync_transport.dart';
 
+/// Compile-time platform check (no Flutter import needed here): in a browser
+/// `followRedirects=false` is not supported by `BrowserClient`.
+const bool _isWeb = bool.fromEnvironment('dart.library.js_interop');
+
 /// Supplies the current plantly.ro JWT (typically
 /// `() => auth.current().then((s) => s?.token)`); null = signed out.
 typedef SyncTokenProvider = Future<String?> Function();
@@ -145,29 +149,59 @@ class HttpSyncTransport implements SyncTransport, CollectionUsageSource, PhotoTr
 
   @override
   Future<Uint8List> download(String sha256) async {
-    // Ask for the redirect without following it so the bearer token never
-    // reaches the storage host. Browsers follow transparently (and strip the
-    // Authorization header cross-origin), in which case we get the bytes
-    // directly.
+    // One code path for io and web: ask the API for the object location as
+    // JSON (`Accept: application/json` → `200 {"url","expires_at"}`) and
+    // fetch the bytes from that URL with NO bearer token (S3 rejects mixed
+    // auth). The old redirect trick — `followRedirects=false` + manual GET —
+    // is gone: `BrowserClient` maps it to fetch `redirect:'error'`, which
+    // made every photo fail on web. Fallbacks for an older server that
+    // still answers 302: on io we can block the redirect and use its
+    // Location; in a browser the redirect is followed transparently (the
+    // browser strips Authorization cross-origin) and the bytes arrive here.
     final res = await _send(() async {
       final req = http.Request('GET', _uri('/photos/$sha256'))
         ..headers.addAll(await _headers())
-        ..followRedirects = false;
+        ..followRedirects = !_isWeb;
       return http.Response.fromStream(await _client.send(req));
     }, allowRedirect: true);
     if (res.statusCode >= 300 && res.statusCode < 400) {
-      final location = res.headers['location'];
-      if (location == null || location.isEmpty) {
-        throw const SyncProtocolError('photo redirect without location');
-      }
-      final target = Uri.parse(location);
-      final blob = await _send(
-        () => _client.get(target.hasScheme ? target : _uri('/photos/$sha256').resolveUri(target)),
-        timeout: blobTimeout,
-      );
-      return blob.bodyBytes;
+      return _fetchBlob(_locationOf(res, sha256, res.headers['location'], what: 'photo redirect'));
     }
+    final url = _jsonUrl(res);
+    if (url != null) return _fetchBlob(_locationOf(res, sha256, url, what: 'photo location'));
+    // Not JSON: the redirect was followed for us — these are the bytes.
     return res.bodyBytes;
+  }
+
+  /// `url` from a JSON `{"url": …}` reply, null when the body is not that.
+  String? _jsonUrl(http.Response res) {
+    final type = res.headers['content-type'] ?? '';
+    final looksJson = type.contains('json') ||
+        (res.bodyBytes.isNotEmpty && res.bodyBytes.first == 0x7B /* '{' */);
+    if (!looksJson) return null;
+    try {
+      final decoded = json.decode(utf8.decode(res.bodyBytes));
+      if (decoded is Map<String, dynamic>) {
+        final url = decoded['url'];
+        if (url is String && url.isNotEmpty) return url;
+        throw const SyncProtocolError('photo location without url');
+      }
+    } on FormatException {
+      // binary that happened to start with '{' — treat as bytes
+    }
+    return null;
+  }
+
+  Uri _locationOf(http.Response res, String sha256, String? raw, {required String what}) {
+    if (raw == null || raw.isEmpty) throw SyncProtocolError('$what without location');
+    final target = Uri.parse(raw);
+    return target.hasScheme ? target : _uri('/photos/$sha256').resolveUri(target);
+  }
+
+  /// Bare GET (no bearer, no client headers) of a presigned object URL.
+  Future<Uint8List> _fetchBlob(Uri target) async {
+    final blob = await _send(() => _client.get(target), timeout: blobTimeout);
+    return blob.bodyBytes;
   }
 
   // --- plumbing -------------------------------------------------------------

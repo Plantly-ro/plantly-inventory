@@ -12,6 +12,16 @@ import 'session_store.dart';
 ///
 /// `state` is `AsyncLoading` until the first read of the store completes,
 /// then `AsyncData(session | null)`.
+///
+/// Clock policy (QA2 BUG-3): the DEVICE clock never ends a session. A token
+/// that looks expired locally is refreshed (`/auth/refresh` is the
+/// authority); the session is cleared only on an explicit 401 from that
+/// call, or when the token is older than [PlantlySession.maxRefreshAge] by
+/// SERVER time. Server time is learned from the `iat` of every token the
+/// server hands us (login, OAuth callback, refresh) as a clock skew, so a
+/// device running days ahead refreshes once and then judges the new token
+/// correctly instead of hammering `/auth/refresh` on every read. Offline,
+/// rate-limited or erroring refreshes keep the stored token.
 class PlantlyAuth extends StateNotifier<AsyncValue<PlantlySession?>> {
   PlantlyAuth({
     required PlantlyApi api,
@@ -30,6 +40,26 @@ class PlantlyAuth extends StateNotifier<AsyncValue<PlantlySession?>> {
   final DateTime Function() _now;
   Future<PlantlySession?>? _inflight;
 
+  /// Local clock minus server clock, learned from server-issued tokens;
+  /// null until the server has issued us a token in this process.
+  Duration? _skew;
+
+  /// Local time of the last refresh attempt the server did not answer with
+  /// a verdict (offline / 429 / 5xx): no retry before [refreshRetryAfter].
+  DateTime? _refreshDeferredAt;
+
+  /// Quiet period after an inconclusive refresh attempt.
+  static const Duration refreshRetryAfter = Duration(minutes: 1);
+
+  /// Best estimate of the server's current time.
+  DateTime get serverNow {
+    final skew = _skew;
+    return skew == null ? _now() : _now().subtract(skew);
+  }
+
+  /// Learned clock skew (tests / diagnostics); null = unknown.
+  Duration? get clockSkew => _skew;
+
   PlantlySession? get sessionOrNull => state.asData?.value;
 
   /// Every transition lands after an await (store / network); the notifier
@@ -38,11 +68,18 @@ class PlantlyAuth extends StateNotifier<AsyncValue<PlantlySession?>> {
     if (mounted) state = next;
   }
 
+  /// A token the server just issued: its `iat` is "server now".
+  void _learnSkew(PlantlySession fresh) {
+    if (fresh.issuedAt.millisecondsSinceEpoch <= 0) return;
+    _skew = _now().difference(fresh.issuedAt);
+  }
+
   /// The usable session, refreshing first when it is inside the 12 h
-  /// window. Returns null (and clears the store) when there is no session,
-  /// it is malformed, or a needed refresh is refused by the server. A
-  /// network failure during refresh keeps the old token if it is still
-  /// valid — offline users shouldn't be logged out.
+  /// window (judged by server time when known). Returns null (and clears
+  /// the store) when there is no session, it is malformed, the server
+  /// answers the refresh with 401, or the token is past the 30-day refresh
+  /// age by server time. Anything else keeps the stored token: a clock that
+  /// is off, a flaky network or a rate limit must never log the user out.
   Future<PlantlySession?> current() {
     return _inflight ??= _load().whenComplete(() => _inflight = null);
   }
@@ -61,29 +98,35 @@ class PlantlyAuth extends StateNotifier<AsyncValue<PlantlySession?>> {
       _set(const AsyncValue.data(null));
       return null;
     }
-    final now = _now();
-    if (session.needsRefresh(now)) {
-      if (!session.isRefreshable(now)) {
+    if (session.needsRefresh(serverNow)) {
+      if (_skew != null && !session.isRefreshable(serverNow)) {
+        // Older than 30 days by SERVER time: the server would refuse anyway.
         await signOut();
         return null;
       }
-      try {
-        final fresh = PlantlySession.fromToken(await _api.refresh(session.token));
-        await _store.writeToken(fresh.token);
-        session = fresh;
-      } on PlantlyApiException {
-        // Server refused (revoked / too old): the session is dead.
-        await signOut();
-        return null;
-      } on PlantlyNetworkException {
-        if (session.isExpired(now)) {
-          await signOut();
-          return null;
+      final deferred = _refreshDeferredAt;
+      if (deferred == null || _now().difference(deferred).abs() >= refreshRetryAfter) {
+        try {
+          final fresh = PlantlySession.fromToken(await _api.refresh(session.token));
+          await _store.writeToken(fresh.token);
+          _learnSkew(fresh);
+          _refreshDeferredAt = null;
+          session = fresh;
+        } on PlantlyApiException catch (e) {
+          if (e.isUnauthorized) {
+            // The server's verdict: revoked / too old. The session is dead.
+            await signOut();
+            return null;
+          }
+          // 429 / 5xx / anything else: no verdict — keep the token, retry later.
+          _refreshDeferredAt = _now();
+        } on PlantlyNetworkException {
+          // Offline: expiry is the server's call, not the device clock's.
+          _refreshDeferredAt = _now();
+        } on FormatException {
+          // Malformed refresh reply: keep the token we have.
+          _refreshDeferredAt = _now();
         }
-        // Offline but still valid: keep going with the old token.
-      } on FormatException {
-        await signOut();
-        return null;
       }
     }
     _set(AsyncValue.data(session));
@@ -96,6 +139,8 @@ class PlantlyAuth extends StateNotifier<AsyncValue<PlantlySession?>> {
     final result = await _api.login(email.trim(), password);
     final session = PlantlySession.fromToken(result.token);
     await _store.writeToken(session.token);
+    _learnSkew(session);
+    _refreshDeferredAt = null;
     _set(AsyncValue.data(session));
     return session;
   }
@@ -104,6 +149,9 @@ class PlantlyAuth extends StateNotifier<AsyncValue<PlantlySession?>> {
   Future<PlantlySession> adoptToken(String token) async {
     final session = PlantlySession.fromToken(token);
     await _store.writeToken(token);
+    // An OAuth callback token was minted moments ago — server time too.
+    _learnSkew(session);
+    _refreshDeferredAt = null;
     _set(AsyncValue.data(session));
     return session;
   }

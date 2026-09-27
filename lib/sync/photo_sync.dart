@@ -34,7 +34,8 @@ abstract class PhotoTransport {
 
   Future<void> completeUpload(String sha256);
 
-  /// `GET .../photos/{sha}` following the 302 to the presigned object.
+  /// `GET .../photos/{sha}` (`Accept: application/json` → `{url}`, or a 302
+  /// from an older server), then the presigned object without a bearer.
   Future<Uint8List> download(String sha256);
 }
 
