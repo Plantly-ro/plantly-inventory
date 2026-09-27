@@ -10,6 +10,7 @@ import 'package:plantly_inventory/sync/hlc.dart';
 import 'package:plantly_inventory/sync/http_sync_runner.dart';
 import 'package:plantly_inventory/sync/op_log.dart';
 import 'package:plantly_inventory/sync/sync_engine.dart';
+import 'package:plantly_inventory/sync/sync_rejections.dart';
 import 'package:plantly_inventory/sync/sync_transport.dart';
 
 String hlcAt(int ms, {String dev = 'dev-b'}) => Hlc(ms, 0, dev).encode();
@@ -39,6 +40,9 @@ class ScriptedTransport implements SyncTransport, CollectionUsageSource {
   /// When set, pushes whose encoded body exceeds this many bytes get a 413.
   int? rejectPushesOver;
 
+  /// entity_id → reason: ops for these rows come back in `rejected[]`.
+  final Map<String, String> rejectByEntityId = {};
+
   @override
   Future<PushResponse> push(PushRequest request) async {
     pushes.add(request);
@@ -47,12 +51,17 @@ class ScriptedTransport implements SyncTransport, CollectionUsageSource {
     if (cap != null && utf8.encode(json.encode(request.toJson())).length > cap) {
       throw const SyncBatchTooLargeError();
     }
+    final rejected = <OpRejection>[];
+    for (var i = 0; i < request.ops.length; i++) {
+      final reason = rejectByEntityId[request.ops[i].entityId];
+      if (reason != null) rejected.add(OpRejection(opIndex: i, reason: reason));
+    }
     final since = int.tryParse(request.since) ?? 0;
     final fresh = serverOps.skip(since).take(pageSize).toList();
     final cursor = since + fresh.length;
     return PushResponse(
-      accepted: request.ops.length,
-      rejected: const [],
+      accepted: request.ops.length - rejected.length,
+      rejected: rejected,
       cursor: '$cursor',
       freshOps: fresh,
       hasMore: cursor < serverOps.length,
@@ -114,6 +123,7 @@ void main() {
     Future<bool> Function()? refreshAuth,
     int batchSize = 500,
     DateTime Function()? now,
+    SyncRejectionStore? rejections,
   }) {
     return runner = HttpSyncRunner(
       db: db,
@@ -125,6 +135,7 @@ void main() {
       collectionId: tenant,
       usage: transport,
       refreshAuth: refreshAuth,
+      rejections: rejections,
       debounce: debounce,
       periodic: Duration.zero,
       minBackoff: minBackoff,
@@ -390,5 +401,145 @@ void main() {
     final s = await n.status.first;
     expect(s.pendingOps, 0);
     expect(s.lastError, isNull);
+  });
+
+  group('server rejections', () {
+    Future<SyncOpRow> opFor(String id) async =>
+        (await (db.select(db.syncOps)..where((o) => o.entityId.equals(id))).getSingle());
+
+    test('permanent (bad_hlc): parked, listed, surfaced as `rejected`; sticky until dismissed', () async {
+      await localPlant('ok');
+      await localPlant('bad');
+      transport.rejectByEntityId['bad'] = 'bad_hlc';
+      final r = make();
+      await r.syncNow();
+
+      expect(await opLog.pendingCount(), 0, reason: 'a permanent reject must not stay "waiting"');
+      expect((await opFor('bad')).pushedAt, isNotNull);
+      expect(r.current.lastError, 'rejected');
+      expect(r.current.lastErrorDetail, '1 change could not be synced (bad_hlc)');
+      expect(r.current.rejectedOps, 1);
+      expect(r.current.rejectedReason, 'bad_hlc');
+      expect(r.current.pendingOps, 0);
+      expect(r.current.lastSyncAt, isNotNull);
+      final row = (await r.rejections.all()).single;
+      expect((row.entity, row.entityId, row.field, row.parked), ('plants', 'bad', '*', true));
+
+      // Next cycle: the parked op is not re-sent, the verdict stays visible.
+      await localPlant('later');
+      await r.syncNow();
+      expect(transport.pushes.last.ops.map((o) => o.entityId), ['later']);
+      expect(r.current.lastError, 'rejected');
+      expect(r.current.rejectedOps, 1);
+
+      // Dismiss → next cycle is clean.
+      await r.rejections.clear();
+      await r.syncNow();
+      expect(r.current.lastError, isNull);
+      expect(r.current.lastErrorDetail, isNull);
+      expect(r.current.rejectedOps, 0);
+      expect(r.current.rejectedReason, isNull);
+    });
+
+    test('transient (hlc_future): stays pending, listed as retrying, re-sent next cycle; acceptance clears it', () async {
+      await localPlant('f');
+      transport.rejectByEntityId['f'] = 'hlc_future';
+      final r = make();
+      await r.syncNow();
+      expect(await opLog.pendingCount(), 1);
+      expect(r.current.lastError, 'rejected');
+      expect(r.current.pendingOps, 1);
+      expect((await r.rejections.all()).single.parked, isFalse);
+
+      transport.rejectByEntityId.clear();
+      await r.syncNow();
+      expect(transport.pushes, hasLength(2));
+      expect(transport.pushes.last.ops.single.entityId, 'f');
+      expect(await opLog.pendingCount(), 0);
+      expect(await r.rejections.all(), isEmpty);
+      expect(r.current.lastError, isNull);
+      expect(r.current.rejectedOps, 0);
+    });
+
+    test('transient past the 24 h grace window is parked', () async {
+      var t = DateTime.utc(2026, 9, 27, 10);
+      final store = SyncRejectionStore(db: db, tenantId: tenant, nowMillis: () => t.millisecondsSinceEpoch);
+      await localPlant('f');
+      transport.rejectByEntityId['f'] = 'hlc_future';
+      final r = make(rejections: store, now: () => t);
+      await r.syncNow();
+      expect(await opLog.pendingCount(), 1);
+      t = t.add(const Duration(hours: 25));
+      await r.syncNow();
+      expect(await opLog.pendingCount(), 0);
+      expect((await store.all()).single.parked, isTrue);
+      expect(r.current.lastError, 'rejected');
+    });
+
+    test('retryAll re-queues parked ops and a clean push clears the ledger', () async {
+      await localPlant('bad');
+      transport.rejectByEntityId['bad'] = 'bad_value';
+      final r = make();
+      await r.syncNow();
+      expect(await opLog.pendingCount(), 0);
+
+      transport.rejectByEntityId.clear();
+      expect(await r.rejections.retryAll(), 1);
+      expect(await opLog.pendingCount(), 1);
+      await r.syncNow();
+      expect(transport.pushes.last.ops.single.entityId, 'bad');
+      expect(await opLog.pendingCount(), 0);
+      expect(await r.rejections.all(), isEmpty);
+      expect(r.current.lastError, isNull);
+    });
+
+    test('rejected outranks op_too_large in the status', () async {
+      await localPlant('bad');
+      transport.rejectByEntityId['bad'] = 'bad_hlc';
+      await opLog.recordFieldUpdate(entity: 'plants', entityId: 'giant', field: 'notes', value: 'x' * 5000);
+      transport.rejectPushesOver = 3000;
+      final r = make();
+      await r.syncNow();
+      expect(r.current.lastError, 'rejected');
+      expect(r.current.pendingOps, 0);
+    });
+  });
+
+  group('one HLC clock', () {
+    test('runner defaults to the op log\'s clock and refuses a different one', () {
+      final r = make();
+      expect(identical(r.clock, opLog.clock), isTrue);
+      expect(
+        () => HttpSyncRunner(
+          db: db,
+          opLog: opLog,
+          clock: HlcClock(deviceId: 'dev-a'),
+          transport: transport,
+          cursor: cursor,
+          deviceId: 'dev-a',
+          collectionId: tenant,
+          observeLifecycle: false,
+        ),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+
+    test('a remote op stamped in the far future is applied but does not drag the local clock along', () async {
+      // The QA device merged `20260927102954-…` (year ~2612) and every later
+      // local edit inherited that physical part. Now the merge is refused.
+      transport.serverOps.add(remotePlant('R-2612', 20260927102954));
+      final r = make();
+      await r.syncNow();
+      expect(await plantIds(), contains('R-2612'));
+      expect(clock.ignoredRemoteCount, 1);
+      final stamp = clock.now();
+      final wall = DateTime.now().toUtc().millisecondsSinceEpoch;
+      expect(stamp.physicalMs, lessThanOrEqualTo(wall + const Duration(minutes: 1).inMilliseconds));
+      // Sanity: a peer only slightly ahead still merges.
+      transport.serverOps.add(remotePlant('R-soon', wall + const Duration(hours: 1).inMilliseconds));
+      await r.syncNow();
+      expect(clock.ignoredRemoteCount, 1);
+      expect(clock.now().physicalMs, greaterThanOrEqualTo(wall + const Duration(hours: 1).inMilliseconds));
+    });
   });
 }

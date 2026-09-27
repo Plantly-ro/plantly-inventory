@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/navigation.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
+import '../collections/sharing_rows.dart';
 import '../home/home_providers.dart';
 import 'cloud_section.dart';
 
@@ -45,6 +46,7 @@ class CloudScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           CloudRows(surface: surface, detailed: true),
+          SharingRows(surface: surface),
         ],
       ),
     );

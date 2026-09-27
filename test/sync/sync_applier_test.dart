@@ -367,14 +367,90 @@ void main() {
     expect(await plant('p2'), isNotNull);
   });
 
-  test('the local clock absorbs remote HLCs', () async {
+  test('the local clock absorbs remote HLCs (within the drift window)', () async {
+    final ahead = 1000 + const Duration(hours: 1).inMilliseconds;
+    await applier.applyBatch([op('plants', 'p1', '*', plantJson('p1'), hlcAt(ahead))]);
+    expect(clock.now() > Hlc.parse(hlcAt(ahead)), isTrue);
+  });
+
+  test('a remote HLC far in the future is applied but does not move the local clock', () async {
     await applier.applyBatch([op('plants', 'p1', '*', plantJson('p1'), hlcAt(999999999))]);
-    expect(clock.now() > Hlc.parse(hlcAt(999999999)), isTrue);
+    expect(await plant('p1'), isNotNull);
+    expect(clock.ignoredRemoteCount, 1);
+    expect(clock.now().physicalMs, lessThan(10000));
   });
 
   test('applied `*` payload survives a JSON round trip (as it would over the wire)', () async {
     final wire = json.decode(json.encode(plantJson('p1', notes: 'n'))) as Map<String, dynamic>;
     await applier.applyBatch([op('plants', 'p1', '*', wire, hlcAt(5000))]);
     expect((await plant('p1'))!.notes, 'n');
+  });
+
+  group('shared collections (§3): who did what', () {
+    Map<String, dynamic> careJson(String id, {String hlc = ''}) => {
+          'id': id,
+          'plant_id': 'p1',
+          'type': 'water',
+          'done_at': '2026-09-27T08:00:00.000Z',
+          'notes': null,
+          'dose': null,
+          'product': null,
+          'photo_sha': null,
+          'updated_hlc': hlc,
+          'deleted_at': null,
+          'device_id': 'dev-b',
+        };
+
+    Future<CareEventRow?> event(String id) =>
+        (db.select(db.careEvents)..where((e) => e.id.equals(id))).getSingleOrNull();
+
+    test('pulled care_events `*` op with user_id → actor_user_id on the row; without → null', () async {
+      await localPlant('p1');
+      final withUser = SyncOpDto.fromJson({
+        'entity': 'care_events', 'entity_id': 'e1', 'field': '*', 'value': careJson('e1', hlc: hlcAt(5000)),
+        'hlc': hlcAt(5000), 'device_id': 'dev-b', 'seq': 1, 'user_id': 'u-bob',
+      });
+      final withoutUser = op('care_events', 'e2', '*', careJson('e2', hlc: hlcAt(5001)), hlcAt(5001), device: 'dev-b');
+      final r = await applier.applyBatch([withUser, withoutUser]);
+      expect(r.applied, 2);
+      expect((await event('e1'))!.actorUserId, 'u-bob');
+      expect((await event('e2'))!.actorUserId, isNull);
+      // Empty user_id is treated as absent.
+      expect(SyncOpDto.fromJson({'entity': 'x', 'entity_id': 'y', 'field': '*', 'value': null, 'hlc': 'h', 'user_id': ''}).userId, isNull);
+    });
+
+    test('a later `*` for a row we already hold fills in a missing actor, never overwrites one', () async {
+      await localPlant('p1');
+      await applier.applyBatch([op('care_events', 'e1', '*', careJson('e1', hlc: hlcAt(5000)), hlcAt(5000), device: 'dev-b')]);
+      expect((await event('e1'))!.actorUserId, isNull);
+      await applier.applyBatch([
+        SyncOpDto(entity: 'care_events', entityId: 'e1', field: '*', value: careJson('e1', hlc: hlcAt(6000)), hlc: hlcAt(6000), deviceId: 'dev-b', userId: 'u-bob'),
+      ]);
+      expect((await event('e1'))!.actorUserId, 'u-bob');
+      await applier.applyBatch([
+        SyncOpDto(entity: 'care_events', entityId: 'e1', field: '*', value: careJson('e1', hlc: hlcAt(7000)), hlc: hlcAt(7000), deviceId: 'dev-c', userId: 'u-carol'),
+      ]);
+      expect((await event('e1'))!.actorUserId, 'u-bob', reason: 'attribution is first-writer, device-local');
+    });
+
+    test('actor_user_id never travels: not in canonical `*` payloads, ignored on inbound rows, absent from toJson', () async {
+      final codec = opLog.codecs.forEntity('care_events')!;
+      expect(codec.wireColumnNames, isNot(contains('actor_user_id')));
+      expect(codec.wireColumnNames, isNot(contains('tenant_id')));
+      final h = await opLog.recordCreate(entity: 'care_events', entityId: 'e9', value: {
+        'id': 'e9', 'plant_id': 'p1', 'type': 'water', 'done_at': 1000, 'actor_user_id': 'u-me',
+      });
+      final row = await (db.select(db.syncOps)..where((o) => o.entityId.equals('e9'))).getSingle();
+      final payload = json.decode(row.valueJson!) as Map<String, dynamic>;
+      expect(payload.containsKey('actor_user_id'), isFalse);
+      expect(payload['updated_hlc'], h.encode());
+      // An inbound payload smuggling the column is ignored; only op.user_id counts.
+      await localPlant('p1');
+      await applier.applyBatch([
+        op('care_events', 'e3', '*', {...careJson('e3', hlc: hlcAt(5000)), 'actor_user_id': 'u-smuggled'}, hlcAt(5000), device: 'dev-b'),
+      ]);
+      expect((await event('e3'))!.actorUserId, isNull);
+      expect(SyncOpDto(entity: 'a', entityId: 'b', field: '*', value: null, hlc: 'h', userId: 'u').toJson().containsKey('user_id'), isFalse);
+    });
   });
 }

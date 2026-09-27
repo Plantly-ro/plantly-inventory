@@ -23,7 +23,7 @@ void main() {
     expect(PlantlyHosts.subscriptionUrl(), '${PlantlyHosts.host}/account/subscription?product=inventory_cloud');
   });
 
-  Future<void> pump(WidgetTester tester, Locale locale) async {
+  Future<void> pump(WidgetTester tester, Locale locale, {LoginPurpose purpose = LoginPurpose.sell}) async {
     tester.view.physicalSize = const Size(420, 1200);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -35,7 +35,7 @@ void main() {
         locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(body: PlantlyLoginSheet(auth: auth, host: 'https://dev.example')),
+        home: Scaffold(body: PlantlyLoginSheet(auth: auth, host: 'https://dev.example', purpose: purpose)),
       ),
     ));
     await tester.pumpAndSettle();
@@ -63,6 +63,26 @@ void main() {
     expect(find.text('Continuă cu Google'), findsOneWidget);
     expect(find.text('Continuă cu Facebook'), findsOneWidget);
     expect(find.text('sau'), findsOneWidget);
+  });
+
+  group('subtitle follows the purpose', () {
+    testWidgets('sell (default) keeps the listing copy', (tester) async {
+      await pump(tester, const Locale('en'));
+      expect(find.byKey(const Key('plantly-login-subtitle')), findsOneWidget);
+      expect(find.text('Use your plantly.ro account to post listings.'), findsOneWidget);
+      expect(find.text('Use your plantly.ro account for cloud backup & sync.'), findsNothing);
+    });
+
+    testWidgets('cloud (en)', (tester) async {
+      await pump(tester, const Locale('en'), purpose: LoginPurpose.cloud);
+      expect(find.text('Use your plantly.ro account for cloud backup & sync.'), findsOneWidget);
+      expect(find.text('Use your plantly.ro account to post listings.'), findsNothing);
+    });
+
+    testWidgets('cloud (ro)', (tester) async {
+      await pump(tester, const Locale('ro'), purpose: LoginPurpose.cloud);
+      expect(find.text('Folosește contul tău plantly.ro pentru backup și sincronizare în cloud.'), findsOneWidget);
+    });
   });
 
   group('showPlantlyLoginSheet is adaptive (bottom sheet ↔ side sheet)', () {

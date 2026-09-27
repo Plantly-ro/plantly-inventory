@@ -108,4 +108,41 @@ void main() {
       expect(sync.calls, 1);
     });
   });
+
+  group('LocationRepository.edit — ops only for fields that changed', () {
+    Future<List<SyncOpRow>> fieldOps() async =>
+        (await db.select(db.syncOps).get()).where((o) => o.field != kWholeRowField).toList();
+
+    test('notes-only edit → exactly one field op; identical re-save → none', () async {
+      final row = await repo.create(name: 'Balcony', kind: 'balcony', isOutdoor: true, light: 'bright');
+      Future<void> save({String? notes, int? humidityMax}) => repo.edit(
+            row.id,
+            name: 'Balcony',
+            kind: 'balcony',
+            parentId: null,
+            isOutdoor: true,
+            light: 'bright',
+            humidityMin: null,
+            humidityMax: humidityMax,
+            tempMinC: null,
+            tempMaxC: null,
+            notes: notes,
+          );
+      await save(notes: 'gets afternoon sun');
+      var ops = await fieldOps();
+      expect(ops, hasLength(1));
+      expect(ops.single.field, 'notes');
+
+      await save(notes: 'gets afternoon sun');
+      expect(await fieldOps(), hasLength(1), reason: 'nothing changed → no new ops');
+
+      await save(notes: 'gets afternoon sun', humidityMax: 70);
+      ops = await fieldOps();
+      expect(ops, hasLength(2));
+      expect(ops.last.field, 'humidity_max');
+      final after = await repo.byId(row.id);
+      expect(after!.humidityMax, 70);
+      expect(after.notes, 'gets afternoon sun');
+    });
+  });
 }

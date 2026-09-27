@@ -2696,4 +2696,311 @@ class AppLocalizationsRo extends AppLocalizations {
   @override
   String get homeNoPlantsBodyDesktop =>
       'Adaugă una cu butonul din bara laterală. Poți seta mementouri după ce apare.';
+
+  @override
+  String get shareSwitcherTitle => 'Colecții';
+
+  @override
+  String get shareSwitcherTooltip => 'Schimbă colecția';
+
+  @override
+  String get shareMineSection => 'Colecțiile mele';
+
+  @override
+  String get shareSharedWithMe => 'Partajate cu mine';
+
+  @override
+  String get shareRoleOwner => 'Proprietar';
+
+  @override
+  String get shareRoleEditor => 'Editor';
+
+  @override
+  String get shareJoinWithCode => 'Alătură-te cu un cod…';
+
+  @override
+  String get shareJoinTitle => 'Alătură-te unei colecții partajate';
+
+  @override
+  String get shareJoinBody =>
+      'Introdu codul de 8 caractere din invitația primită.';
+
+  @override
+  String get shareJoinCodeLabel => 'Cod de invitație';
+
+  @override
+  String get shareJoinCodeInvalid =>
+      'Codurile au 8 litere sau cifre (fără I, O, 0 sau 1).';
+
+  @override
+  String get shareJoinButton => 'Alătură-te';
+
+  @override
+  String get shareJoinSignInFirst =>
+      'Mai întâi ți se va cere să te autentifici pe plantly.ro.';
+
+  @override
+  String get shareJoinPaywallNote =>
+      'Poți folosi această colecție partajată — funcționează pe planul proprietarului. Plantele tale rămân locale până te abonezi.';
+
+  @override
+  String shareJoined(String name) {
+    return 'Te-ai alăturat colecției $name';
+  }
+
+  @override
+  String get shareJoinErrInvalid =>
+      'Acest cod de invitație nu este valid — poate a expirat sau a fost deja folosit.';
+
+  @override
+  String get shareJoinErrAlreadyMember =>
+      'Ești deja membru al acestei colecții.';
+
+  @override
+  String get shareSectionTitle => 'Partajare';
+
+  @override
+  String get shareSectionIntro =>
+      'Invită familia sau pe cel care îți îngrijește plantele să noteze îngrijirea împreună cu tine.';
+
+  @override
+  String get shareActiveLabel => 'Colecția activă';
+
+  @override
+  String shareActiveValue(String name, String role) {
+    return '$name · $role';
+  }
+
+  @override
+  String shareMembersCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n de membri',
+      few: '$n membri',
+      one: '1 membru',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shareInviteLabel => 'Invită pe cineva';
+
+  @override
+  String get shareInviteValue =>
+      'Creează un cod pe care îl introduce în aplicația sa';
+
+  @override
+  String shareInviteTitle(String name) {
+    return 'Invitație la $name';
+  }
+
+  @override
+  String get shareInviteCodeHint =>
+      'Trimite acest cod sau linkul. Funcționează o singură dată și expiră în 7 zile.';
+
+  @override
+  String get shareInviteCopy => 'Copiază';
+
+  @override
+  String get shareInviteCopied => 'Copiat';
+
+  @override
+  String get shareInviteShare => 'Trimite';
+
+  @override
+  String shareInviteMessage(String name, String url, String code) {
+    return 'Alătură-te colecției mele de plante „$name” în Plantly Inventory: $url (cod $code)';
+  }
+
+  @override
+  String get shareInviteCreating => 'Se creează invitația…';
+
+  @override
+  String get shareMembersLabel => 'Membri';
+
+  @override
+  String get shareMembersValue => 'Vezi cine are acces';
+
+  @override
+  String shareMembersTitle(String name) {
+    return 'Membrii colecției $name';
+  }
+
+  @override
+  String shareMemberJoined(String date) {
+    return 'Membru din $date';
+  }
+
+  @override
+  String get shareMemberYou => 'tu';
+
+  @override
+  String get shareRemoveMember => 'Elimină';
+
+  @override
+  String shareRemoveMemberTitle(String username) {
+    return 'Elimini pe $username?';
+  }
+
+  @override
+  String get shareRemoveMemberBody =>
+      'Pierde accesul la această colecție. Ce a notat rămâne.';
+
+  @override
+  String shareRemoved(String username) {
+    return '$username a fost eliminat';
+  }
+
+  @override
+  String get shareLeaveLabel => 'Părăsește colecția';
+
+  @override
+  String shareLeaveValue(String name) {
+    return 'Nu mai vezi $name pe acest dispozitiv';
+  }
+
+  @override
+  String shareLeaveTitle(String name) {
+    return 'Părăsești $name?';
+  }
+
+  @override
+  String get shareLeaveBody => 'Poți reveni mai târziu cu o invitație nouă.';
+
+  @override
+  String get shareLeave => 'Părăsește';
+
+  @override
+  String shareLeft(String name) {
+    return 'Ai părăsit $name';
+  }
+
+  @override
+  String shareByActor(String name) {
+    return 'de $name';
+  }
+
+  @override
+  String get shareByOtherMember => 'de alt membru';
+
+  @override
+  String shareSwitched(String name) {
+    return 'Ai trecut la $name';
+  }
+
+  @override
+  String get shareSwitchUnavailable =>
+      'Schimbarea colecției cere sincronizarea cloud activă pentru acest cont.';
+
+  @override
+  String shareMeRowValue(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n de colecții',
+      few: '$n colecții',
+      one: '1 colecție',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shareNoMembers => 'Încă niciun membru';
+
+  @override
+  String get shareMembersError => 'Nu s-au putut încărca membrii';
+
+  @override
+  String shareErrTooManyInvites(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Ai deja $n de invitații active — așteaptă ca una să fie folosită sau să expire.',
+      few:
+          'Ai deja $n invitații active — așteaptă ca una să fie folosită sau să expire.',
+      one:
+          'Ai deja 1 invitație activă — așteaptă să fie folosită sau să expire.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shareErrOwnerOnly => 'Doar proprietarul poate invita persoane.';
+
+  @override
+  String get shareErrOwnerCannotLeave =>
+      'Proprietarul nu își poate părăsi propria colecție.';
+
+  @override
+  String get shareErrMemberNotFound =>
+      'Persoana respectivă nu mai este membru.';
+
+  @override
+  String get shareErrOwnerLapsed =>
+      'Planul proprietarului a expirat — această colecție partajată este în pauză până îl reînnoiește.';
+
+  @override
+  String cloudErrRejected(int n, String reason) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n de modificări nu au putut fi sincronizate ($reason)',
+      few: '$n modificări nu au putut fi sincronizate ($reason)',
+      one: '1 modificare nu a putut fi sincronizată ($reason)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cloudRejDetailsLabel => 'Detalii';
+
+  @override
+  String get cloudRejDetailsValue => 'Vezi ce modificări a refuzat serverul';
+
+  @override
+  String get cloudRejScreenTitle => 'Modificări nesincronizate';
+
+  @override
+  String get cloudRejScreenIntro =>
+      'Serverul a refuzat aceste modificări. „Reîncearcă” le trimite din nou pe toate; „Ignoră” le păstrează doar pe acest dispozitiv.';
+
+  @override
+  String get cloudRejEmpty =>
+      'Nimic aici — toate modificările s-au sincronizat.';
+
+  @override
+  String get cloudRejRetry => 'Reîncearcă tot';
+
+  @override
+  String get cloudRejDismiss => 'Ignoră tot';
+
+  @override
+  String get cloudRejKindRetrying => 'se reîncearcă';
+
+  @override
+  String get cloudRejKindParked => 'abandonat';
+
+  @override
+  String cloudRejRequeued(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n de modificări puse din nou la coadă',
+      few: '$n modificări puse din nou la coadă',
+      one: '1 modificare pusă din nou la coadă',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get plantlyLoginSubtitleCloud =>
+      'Folosește contul tău plantly.ro pentru backup și sincronizare în cloud.';
+
+  @override
+  String get cloudRejRetryValue => 'Trimite din nou toate modificările listate';
+
+  @override
+  String get cloudRejDismissValue => 'Păstrează-le doar pe acest dispozitiv';
 }

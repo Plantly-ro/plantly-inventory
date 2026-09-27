@@ -29,6 +29,7 @@ final GlobalKey<NavigatorState> shellNavigatorKey = GlobalKey<NavigatorState>(de
 /// | `/me/:section`    | section screen (pushed)           | MeMasterDetail(section)                 |
 /// | `/import?d=`      | redirect `/` (HandoffListener opens the import sheet from the URL)  |
 /// | `/auth/callback`  | redirect `/` (HandoffListener adopted the token from the URL first) |
+/// | `/join?c=`        | redirect `/` (HandoffListener opens the join-collection sheet)      |
 ///
 /// All routes are siblings under one [ShellRoute]: on desktop a section's
 /// list and detail URLs produce pages with the *same key*, so `go()`
@@ -140,6 +141,9 @@ GoRouter buildAppRouter({
           // does, and must not 404 — the listener has already read the token
           // off `window.location` and scrubbed it.
           GoRoute(path: AppRoutes.authCallback, redirect: (context, state) => AppRoutes.home),
+          // Invite landing (§3): the listener has the code, the sheet does
+          // the rest; the URL must not keep the code around.
+          GoRoute(path: AppRoutes.join, redirect: (context, state) => AppRoutes.home),
         ],
       ),
     ],

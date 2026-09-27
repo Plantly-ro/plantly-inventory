@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../cloud/oauth_handshake.dart';
 import '../cloud/sign_in_events.dart';
 import '../data/providers.dart';
+import '../features/collections/join_collection_sheet.dart';
 import '../marketplace/plantly_auth.dart';
 import 'import_plant_sheet.dart';
 import 'incoming_links.dart';
@@ -16,7 +17,8 @@ import 'plantly_export.dart';
 /// the DB bootstrap before showing anything so a cold start via a link
 /// doesn't race the seed. OAuth callback links (`auth/callback#token=`)
 /// are adopted straight into [PlantlyAuth] and announced on
-/// [signInEventsProvider] — no UI of their own.
+/// [signInEventsProvider] — no UI of their own. Shared-collection invite
+/// links (`join#c=<code>`, §3) open the join sheet with the code filled in.
 class HandoffListener extends ConsumerStatefulWidget {
   const HandoffListener({super.key, required this.navigatorKey, required this.child});
   final GlobalKey<NavigatorState> navigatorKey;
@@ -28,7 +30,7 @@ class HandoffListener extends ConsumerStatefulWidget {
 
 class _HandoffListenerState extends ConsumerState<HandoffListener> {
   StreamSubscription<Uri>? _sub;
-  final _pending = <String>[];
+  final _pending = <_PendingLink>[];
   String? _lastHandled;
   bool _ready = false;
 
@@ -59,6 +61,16 @@ class _HandoffListenerState extends ConsumerState<HandoffListener> {
       unawaited(_adoptToken(callback));
       return;
     }
+    final code = extractJoinCode(uri);
+    if (code != null) {
+      final key = 'join:$code';
+      if (key == _lastHandled) return;
+      _lastHandled = key;
+      ref.read(incomingLinksProvider).consume();
+      _pending.add(_PendingLink.join(code));
+      _drain();
+      return;
+    }
     final d = extractImportParam(uri);
     // `_lastHandled` only dedupes the initial-link + stream double delivery
     // of the same URI; it is cleared once the sheet closes so the same link
@@ -66,7 +78,7 @@ class _HandoffListenerState extends ConsumerState<HandoffListener> {
     if (d == null || d == _lastHandled) return;
     _lastHandled = d;
     ref.read(incomingLinksProvider).consume();
-    _pending.add(d);
+    _pending.add(_PendingLink.import(d));
     _drain();
   }
 
@@ -101,10 +113,16 @@ class _HandoffListenerState extends ConsumerState<HandoffListener> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _drain());
       return;
     }
-    final d = _pending.removeAt(0);
+    final link = _pending.removeAt(0);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final ctx = widget.navigatorKey.currentContext;
       if (ctx == null || !ctx.mounted) return;
+      if (link.joinCode != null) {
+        final key = 'join:${link.joinCode}';
+        unawaited(showJoinCollectionSheet(ctx, initialCode: link.joinCode).whenComplete(() => _release(key)));
+        return;
+      }
+      final d = link.importParam!;
       try {
         final payload = PlantlyExportPayload.decodeParam(d);
         unawaited(showImportPlantSheet(ctx, payload).whenComplete(() => _release(d)));
@@ -133,4 +151,12 @@ class _HandoffListenerState extends ConsumerState<HandoffListener> {
     }
     return widget.child;
   }
+}
+
+/// One queued link: a PlantlyExport import param or a join code.
+class _PendingLink {
+  const _PendingLink.import(this.importParam) : joinCode = null;
+  const _PendingLink.join(this.joinCode) : importParam = null;
+  final String? importParam;
+  final String? joinCode;
 }

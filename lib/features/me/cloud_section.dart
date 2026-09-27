@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../cloud/cloud_state.dart';
 import '../../cloud/collection_link.dart';
+import '../../cloud/collections.dart';
 import '../../cloud/entitlement.dart';
 import '../../cloud/sign_in_events.dart';
 import '../../cloud/cloud_sync.dart';
@@ -19,7 +20,9 @@ import '../../marketplace/plantly_api.dart';
 import '../../marketplace/plantly_auth.dart';
 import '../../plugins/plantly_ro/login_sheet.dart';
 import '../../theme/tokens.dart';
+import '../collections/sharing_rows.dart';
 import 'me_rows.dart';
+import 'sync_rejections_screen.dart';
 
 /// Whether this build may link to the plantly.ro checkout. Google Play
 /// policy (CLOUD-SYNC-CONTRACT §0): the Android app never links to a web
@@ -59,6 +62,8 @@ class CloudSection extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         CloudRows(surface: surface, detailed: false),
+        // Shared collections (§3): hidden with 0/1 collection.
+        SharingSummaryRow(surface: surface, onTap: () => openMeSection(context, 'cloud')),
       ],
     );
   }
@@ -95,8 +100,12 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
     });
   }
 
+  /// Links entitled AND not-entitled accounts alike (§3: the link names
+  /// "home"; editors sync shared collections on the owner's plan) — never
+  /// while signed out, checking, unlinked by the user or undecided.
   void _maybeAutoLink(CloudState state) {
-    if (state.phase != CloudPhase.ready || state.linked || state.checking || state.unlinkedByUser) return;
+    if (state.phase == CloudPhase.off || state.phase == CloudPhase.signedOut) return;
+    if (state.linked || state.checking || state.unlinkedByUser) return;
     if (state.heldByOther != null) return; // the user decides — never automatic
     if (_linking || _autoLinkedFor == state.account) return;
     _autoLinkedFor = state.account;
@@ -160,7 +169,29 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
 
   List<Widget> _notEntitled(AppLocalizations t, CloudState state) {
     final purchaseLink = ref.watch(cloudPurchaseLinkAllowedProvider);
+    // A shared collection syncs on the owner's plan even here (§3).
+    final sharedActive = ref.watch(activeCollectionIsSharedProvider);
+    final status = ref.watch(syncStatusProvider).valueOrNull ?? SyncStatus.empty;
     return [
+      if (sharedActive)
+        MeActionRow(
+          key: const Key('cloud-status'),
+          label: t.cloudStatusLabel,
+          value: describeSyncStatus(t, status),
+          icon: status.inFlight ? Icons.cloud_sync_outlined : Icons.cloud_done_outlined,
+          surface: surface,
+          valueColor: status.lastError != null ? surface.terra : null,
+          onTap: widget.detailed ? null : () => openMeSection(context, 'cloud'),
+        ),
+      if (sharedActive && widget.detailed && status.lastError != null)
+        MeActionRow(
+          key: const Key('cloud-last-error'),
+          label: t.cloudLastErrorLabel,
+          value: describeSyncError(t, status.lastError!, detail: status.lastErrorDetail, status: status),
+          icon: Icons.error_outline,
+          surface: surface,
+          valueColor: surface.terra,
+        ),
       MeActionRow(
         key: const Key('cloud-not-included'),
         label: t.cloudNotIncludedLabel,
@@ -278,10 +309,21 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
           MeActionRow(
             key: const Key('cloud-last-error'),
             label: t.cloudLastErrorLabel,
-            value: describeSyncError(t, status.lastError!, detail: status.lastErrorDetail),
+            value: describeSyncError(t, status.lastError!, detail: status.lastErrorDetail, status: status),
             icon: Icons.error_outline,
             surface: surface,
             valueColor: surface.terra,
+          ),
+        if (status.lastError == 'rejected')
+          MeActionRow(
+            key: const Key('cloud-rejections'),
+            label: t.cloudRejDetailsLabel,
+            value: t.cloudRejDetailsValue,
+            icon: Icons.list_alt_outlined,
+            surface: surface,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SyncRejectionsScreen()),
+            ),
           ),
       ],
       MeActionRow(
@@ -355,7 +397,7 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
   Future<void> _signIn() async {
     final auth = ref.read(plantlyAuthProvider.notifier); // before the await (#14)
     final events = ref.read(signInEventsProvider);
-    final session = await showPlantlyLoginSheet(context, auth: auth);
+    final session = await showPlantlyLoginSheet(context, auth: auth, purpose: LoginPurpose.cloud);
     if (session != null) events.emit(session);
   }
 
@@ -462,13 +504,18 @@ String describeEntitlement(AppLocalizations t, CloudEntitlement? e) {
 
 /// Engine error codes (`SyncStatus.lastError`) → copy; anything else is
 /// shown as-is. [detail] is `SyncStatus.lastErrorDetail` (the offending
-/// `<entity>/<id>` for `op_too_large`).
-String describeSyncError(AppLocalizations t, String code, {String? detail}) => switch (code) {
-      'cloud_required' => t.cloudNotIncludedValue,
+/// `<entity>/<id>` for `op_too_large`, [kOwnerPlanLapsedDetail] for a 402
+/// on a shared collection); `rejected` reads the count and server reason
+/// from [status] and falls back to [detail] without it.
+String describeSyncError(AppLocalizations t, String code, {String? detail, SyncStatus? status}) => switch (code) {
+      'cloud_required' => detail == kOwnerPlanLapsedDetail ? t.shareErrOwnerLapsed : t.cloudNotIncludedValue,
       'unauthorized' => t.cloudSignInLabel,
       'collection_unavailable' => t.cloudErrCollectionUnavailable,
       'quota_exceeded' => t.cloudErrQuotaExceeded,
       'op_too_large' => detail == null || detail.isEmpty ? t.cloudErrOpTooLarge : t.cloudErrOpTooLargeDetail(detail),
+      'rejected' => status != null && status.rejectedOps > 0
+          ? t.cloudErrRejected(status.rejectedOps, status.rejectedReason ?? '?')
+          : (detail ?? code),
       'retrying' => t.cloudErrRetrying,
       'offline' => t.cloudErrOffline,
       'error' => t.cloudErrGeneric,

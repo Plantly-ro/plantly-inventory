@@ -27,6 +27,14 @@ void main() {
     expect(activity, contains('android:host="plantly.ro"'));
   });
 
+  test('AndroidManifest registers the shared-collection join links (§3)', () {
+    final xml = File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+    expect(xml, contains('android:scheme="plantlyinventory" android:host="join"'));
+    for (final prefix in ['', '/ro', '/en']) {
+      expect(xml, contains('android:path="$prefix/app/inventory/join"'));
+    }
+  });
+
   test('iOS Info.plist sets FlutterDeepLinkingEnabled = false', () {
     final plist = File('ios/Runner/Info.plist').readAsStringSync();
     final key = RegExp(r'<key>FlutterDeepLinkingEnabled</key>\s*<false/>');

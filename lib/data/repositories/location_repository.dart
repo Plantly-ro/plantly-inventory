@@ -87,9 +87,10 @@ class LocationRepository {
     });
   }
 
-  /// Full-row edit: covers every user-editable field in one transaction
-  /// so the op-log emits a coherent burst. Pass `null` to clear a field
-  /// (light / humidity / temp / notes can all be null-able).
+  /// Full-row edit: covers every user-editable field in one transaction.
+  /// Pass `null` to clear a field (light / humidity / temp / notes can all
+  /// be null-able). Only fields that differ from the stored row produce an
+  /// op, so the op-log burst is exactly what the user changed.
   Future<void> edit(
     String id, {
     required String name,
@@ -104,16 +105,21 @@ class LocationRepository {
     required String? notes,
   }) async {
     return db.transaction(() async {
-      await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'name', value: name);
-      await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'kind', value: kind);
-      await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'parent_id', value: parentId);
-      await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'is_outdoor', value: isOutdoor);
-      await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'light', value: light);
-      await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'humidity_min', value: humidityMin);
-      await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'humidity_max', value: humidityMax);
-      await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'temp_min_c', value: tempMinC);
-      await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'temp_max_c', value: tempMaxC);
-      final hlc = await opLog.recordFieldUpdate(entity: 'locations', entityId: id, field: 'notes', value: notes);
+      final current = await byId(id);
+      if (current == null) return;
+      final hlc = await opLog.recordFieldUpdates(entity: 'locations', entityId: id, fields: {
+        if (current.name != name) 'name': name,
+        if (current.kind != kind) 'kind': kind,
+        if (current.parentId != parentId) 'parent_id': parentId,
+        if (current.isOutdoor != isOutdoor) 'is_outdoor': isOutdoor,
+        if (current.light != light) 'light': light,
+        if (current.humidityMin != humidityMin) 'humidity_min': humidityMin,
+        if (current.humidityMax != humidityMax) 'humidity_max': humidityMax,
+        if (current.tempMinC != tempMinC) 'temp_min_c': tempMinC,
+        if (current.tempMaxC != tempMaxC) 'temp_max_c': tempMaxC,
+        if (current.notes != notes) 'notes': notes,
+      });
+      if (hlc == null) return;
       await (db.update(db.locations)..where((l) => l.id.equals(id))).write(
         LocationsCompanion(
           name: Value(name),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/collections/collection_switcher.dart';
 import '../features/home/add_plant_sheet.dart';
 import '../features/home/home_providers.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -201,6 +202,8 @@ class _SideNav extends StatelessWidget {
               ),
             ],
           ),
+          // Shared collections (§3): hidden with 0/1 collection.
+          CollectionSwitcherDropdown(surface: surface),
           const SizedBox(height: 20),
           FilledButton.icon(
             style: FilledButton.styleFrom(

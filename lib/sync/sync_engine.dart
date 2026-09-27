@@ -41,14 +41,21 @@ class SyncPushResult {
     required this.hasMore,
     required this.freshOps,
     this.tooLarge = const [],
+    this.acceptedSeqs = const [],
   });
 
   final int sent;
   final int accepted;
 
-  /// Rejections as reported by the server, paired with the local `seq` of the
-  /// offending row so callers can surface / quarantine it.
-  final List<({int seq, String reason})> rejected;
+  /// Local `seq` of every op the server accepted in this run (so a caller
+  /// tracking earlier rejections can forget them).
+  final List<int> acceptedSeqs;
+
+  /// Rejections as reported by the server, paired with the local row's
+  /// `seq` and identity so callers can surface / quarantine it. The runner
+  /// hands these to `SyncRejectionStore`, which decides per reason whether
+  /// the op stays pending or gets parked.
+  final List<SyncRejectedOp> rejected;
   final int batches;
 
   /// Cursor after the last push (empty when nothing was pushed).
@@ -62,18 +69,50 @@ class SyncPushResult {
 
   /// Ops the server refused as a batch of one (413): marked `pushed_at` so
   /// they can't wedge the queue, reported here for the UI.
-  final List<({int seq, String entity, String entityId})> tooLarge;
+  final List<SyncRejectedOp> tooLarge;
 
   bool get allAccepted => rejected.isEmpty && tooLarge.isEmpty;
+}
+
+/// One op the server would not take, with enough identity to list it.
+class SyncRejectedOp {
+  const SyncRejectedOp({
+    required this.seq,
+    required this.reason,
+    required this.entity,
+    required this.entityId,
+    required this.field,
+    required this.hlc,
+  });
+
+  factory SyncRejectedOp.fromRow(SyncOpRow row, String reason) => SyncRejectedOp(
+        seq: row.seq,
+        reason: reason,
+        entity: row.entity,
+        entityId: row.entityId,
+        field: row.field,
+        hlc: row.hlc,
+      );
+
+  final int seq;
+  final String reason;
+  final String entity;
+  final String entityId;
+  final String field;
+  final String hlc;
+
+  @override
+  String toString() => 'SyncRejectedOp($entity/$entityId.$field seq=$seq reason=$reason)';
 }
 
 /// Drives op-log push against `sync_ops`.
 ///
 /// Reads rows with `pushed_at IS NULL` for the tenant in `seq` order, ships
 /// them through a [SyncTransport] in batches, and stamps `pushed_at` on the
-/// ones the server accepted. Rejected rows are left unpushed and reported; the
-/// scan advances past them by `seq` so a persistent reject can't wedge the loop
-/// into re-sending the same op forever.
+/// ones the server accepted. Rejected rows are left unpushed and reported
+/// (the runner's `SyncRejectionStore` parks the permanent ones); the scan
+/// advances past them by `seq` so a persistent reject can't wedge the loop
+/// into re-sending the same op forever within one run.
 ///
 /// Each reply's `fresh_ops` (ops from other devices since `since`) are handed
 /// to `onFresh` before the cursor advances, so a crash between the two leaves
@@ -142,8 +181,9 @@ class SyncEngine {
     var fresh = 0;
     var lastCursor = '';
     var hasMore = false;
-    final rejected = <({int seq, String reason})>[];
-    final tooLarge = <({int seq, String entity, String entityId})>[];
+    final rejected = <SyncRejectedOp>[];
+    final tooLarge = <SyncRejectedOp>[];
+    final acceptedSeqs = <int>[];
     _batchLimit = (_batchLimit * 2).clamp(1, batchSize);
 
     while (true) {
@@ -166,7 +206,7 @@ class SyncEngine {
         // A single op the server will never take: park it.
         await (db.update(db.syncOps)..where((o) => o.seq.equals(rows.single.seq)))
             .write(SyncOpsCompanion(pushedAt: Value(_nowMillis())));
-        tooLarge.add((seq: rows.single.seq, entity: rows.single.entity, entityId: rows.single.entityId));
+        tooLarge.add(SyncRejectedOp.fromRow(rows.single, 'too_large'));
         afterSeq = rows.single.seq;
         continue;
       }
@@ -174,20 +214,21 @@ class SyncEngine {
       sent += rows.length;
 
       final rejectedIndexes = {for (final r in resp.rejected) r.opIndex};
-      final acceptedSeqs = <int>[];
+      final batchAccepted = <int>[];
       for (var i = 0; i < rows.length; i++) {
         if (rejectedIndexes.contains(i)) {
-          rejected.add((seq: rows[i].seq, reason: _reasonFor(resp.rejected, i)));
+          rejected.add(SyncRejectedOp.fromRow(rows[i], _reasonFor(resp.rejected, i)));
         } else {
-          acceptedSeqs.add(rows[i].seq);
+          batchAccepted.add(rows[i].seq);
         }
       }
 
-      if (acceptedSeqs.isNotEmpty) {
+      if (batchAccepted.isNotEmpty) {
         final now = _nowMillis();
-        await (db.update(db.syncOps)..where((o) => o.seq.isIn(acceptedSeqs)))
+        await (db.update(db.syncOps)..where((o) => o.seq.isIn(batchAccepted)))
             .write(SyncOpsCompanion(pushedAt: Value(now)));
-        accepted += acceptedSeqs.length;
+        accepted += batchAccepted.length;
+        acceptedSeqs.addAll(batchAccepted);
       }
 
       if (resp.freshOps.isNotEmpty && onFresh != null) {
@@ -213,6 +254,7 @@ class SyncEngine {
       hasMore: hasMore,
       freshOps: fresh,
       tooLarge: tooLarge,
+      acceptedSeqs: acceptedSeqs,
     );
   }
 

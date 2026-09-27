@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../collections/collection_switcher.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -184,6 +185,8 @@ class _Toolbar extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: PlantlyTokens.space3),
+          // Shared collections (§3): the active collection's name (> 1 only).
+          ActiveCollectionLabel(surface: surface),
           SizedBox(height: 32, child: FilterChipsRow(surface: surface)),
           const SizedBox(width: PlantlyTokens.space2),
           _SortDropdown(

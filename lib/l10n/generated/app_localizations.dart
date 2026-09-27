@@ -4561,6 +4561,438 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add one with the button in the side bar. You can set up reminders once it lands.'**
   String get homeNoPlantsBodyDesktop;
+
+  /// No description provided for @shareSwitcherTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Collections'**
+  String get shareSwitcherTitle;
+
+  /// No description provided for @shareSwitcherTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch collection'**
+  String get shareSwitcherTooltip;
+
+  /// No description provided for @shareMineSection.
+  ///
+  /// In en, this message translates to:
+  /// **'My collections'**
+  String get shareMineSection;
+
+  /// No description provided for @shareSharedWithMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared with me'**
+  String get shareSharedWithMe;
+
+  /// No description provided for @shareRoleOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get shareRoleOwner;
+
+  /// No description provided for @shareRoleEditor.
+  ///
+  /// In en, this message translates to:
+  /// **'Editor'**
+  String get shareRoleEditor;
+
+  /// No description provided for @shareJoinWithCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Join with code…'**
+  String get shareJoinWithCode;
+
+  /// No description provided for @shareJoinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Join a shared collection'**
+  String get shareJoinTitle;
+
+  /// No description provided for @shareJoinBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the 8-character code from the invite you received.'**
+  String get shareJoinBody;
+
+  /// No description provided for @shareJoinCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite code'**
+  String get shareJoinCodeLabel;
+
+  /// No description provided for @shareJoinCodeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Codes are 8 letters or digits (no I, O, 0 or 1).'**
+  String get shareJoinCodeInvalid;
+
+  /// No description provided for @shareJoinButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Join'**
+  String get shareJoinButton;
+
+  /// No description provided for @shareJoinSignInFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'You will be asked to sign in to plantly.ro first.'**
+  String get shareJoinSignInFirst;
+
+  /// No description provided for @shareJoinPaywallNote.
+  ///
+  /// In en, this message translates to:
+  /// **'You can use this shared collection — it runs on the owner’s plan. Your own plants stay local until you subscribe.'**
+  String get shareJoinPaywallNote;
+
+  /// No description provided for @shareJoined.
+  ///
+  /// In en, this message translates to:
+  /// **'Joined {name}'**
+  String shareJoined(String name);
+
+  /// No description provided for @shareJoinErrInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'This invite code is not valid — it may have expired or already been used.'**
+  String get shareJoinErrInvalid;
+
+  /// No description provided for @shareJoinErrAlreadyMember.
+  ///
+  /// In en, this message translates to:
+  /// **'You are already a member of this collection.'**
+  String get shareJoinErrAlreadyMember;
+
+  /// No description provided for @shareSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sharing'**
+  String get shareSectionTitle;
+
+  /// No description provided for @shareSectionIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite family or a plant-sitter to log care in this collection with you.'**
+  String get shareSectionIntro;
+
+  /// No description provided for @shareActiveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Active collection'**
+  String get shareActiveLabel;
+
+  /// No description provided for @shareActiveValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} · {role}'**
+  String shareActiveValue(String name, String role);
+
+  /// No description provided for @shareMembersCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 member} other{{n} members}}'**
+  String shareMembersCount(int n);
+
+  /// No description provided for @shareInviteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite someone'**
+  String get shareInviteLabel;
+
+  /// No description provided for @shareInviteValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a code they can enter in their app'**
+  String get shareInviteValue;
+
+  /// No description provided for @shareInviteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite to {name}'**
+  String shareInviteTitle(String name);
+
+  /// No description provided for @shareInviteCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Share this code or link. It works once and expires in 7 days.'**
+  String get shareInviteCodeHint;
+
+  /// No description provided for @shareInviteCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get shareInviteCopy;
+
+  /// No description provided for @shareInviteCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get shareInviteCopied;
+
+  /// No description provided for @shareInviteShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get shareInviteShare;
+
+  /// No description provided for @shareInviteMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Join my plant collection “{name}” in Plantly Inventory: {url} (code {code})'**
+  String shareInviteMessage(String name, String url, String code);
+
+  /// No description provided for @shareInviteCreating.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating invite…'**
+  String get shareInviteCreating;
+
+  /// No description provided for @shareMembersLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Members'**
+  String get shareMembersLabel;
+
+  /// No description provided for @shareMembersValue.
+  ///
+  /// In en, this message translates to:
+  /// **'See who has access'**
+  String get shareMembersValue;
+
+  /// No description provided for @shareMembersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Members of {name}'**
+  String shareMembersTitle(String name);
+
+  /// No description provided for @shareMemberJoined.
+  ///
+  /// In en, this message translates to:
+  /// **'Joined {date}'**
+  String shareMemberJoined(String date);
+
+  /// No description provided for @shareMemberYou.
+  ///
+  /// In en, this message translates to:
+  /// **'you'**
+  String get shareMemberYou;
+
+  /// No description provided for @shareRemoveMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get shareRemoveMember;
+
+  /// No description provided for @shareRemoveMemberTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {username}?'**
+  String shareRemoveMemberTitle(String username);
+
+  /// No description provided for @shareRemoveMemberBody.
+  ///
+  /// In en, this message translates to:
+  /// **'They lose access to this collection. What they logged stays.'**
+  String get shareRemoveMemberBody;
+
+  /// No description provided for @shareRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'{username} removed'**
+  String shareRemoved(String username);
+
+  /// No description provided for @shareLeaveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave collection'**
+  String get shareLeaveLabel;
+
+  /// No description provided for @shareLeaveValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop seeing {name} on this device'**
+  String shareLeaveValue(String name);
+
+  /// No description provided for @shareLeaveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave {name}?'**
+  String shareLeaveTitle(String name);
+
+  /// No description provided for @shareLeaveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You can rejoin later with a new invite.'**
+  String get shareLeaveBody;
+
+  /// No description provided for @shareLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get shareLeave;
+
+  /// No description provided for @shareLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'You left {name}'**
+  String shareLeft(String name);
+
+  /// No description provided for @shareByActor.
+  ///
+  /// In en, this message translates to:
+  /// **'by {name}'**
+  String shareByActor(String name);
+
+  /// No description provided for @shareByOtherMember.
+  ///
+  /// In en, this message translates to:
+  /// **'by another member'**
+  String get shareByOtherMember;
+
+  /// No description provided for @shareSwitched.
+  ///
+  /// In en, this message translates to:
+  /// **'Switched to {name}'**
+  String shareSwitched(String name);
+
+  /// No description provided for @shareSwitchUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Switching needs cloud sync to be on for this account.'**
+  String get shareSwitchUnavailable;
+
+  /// No description provided for @shareMeRowValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 collection} other{{n} collections}}'**
+  String shareMeRowValue(int n);
+
+  /// No description provided for @shareNoMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'No members yet'**
+  String get shareNoMembers;
+
+  /// No description provided for @shareMembersError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load members'**
+  String get shareMembersError;
+
+  /// No description provided for @shareErrTooManyInvites.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{You already have 1 active invite — wait for it to be used or to expire.} other{You already have {n} active invites — wait for one to be used or to expire.}}'**
+  String shareErrTooManyInvites(int n);
+
+  /// No description provided for @shareErrOwnerOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the owner can invite people.'**
+  String get shareErrOwnerOnly;
+
+  /// No description provided for @shareErrOwnerCannotLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'The owner can’t leave their own collection.'**
+  String get shareErrOwnerCannotLeave;
+
+  /// No description provided for @shareErrMemberNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'That person is no longer a member.'**
+  String get shareErrMemberNotFound;
+
+  /// No description provided for @shareErrOwnerLapsed.
+  ///
+  /// In en, this message translates to:
+  /// **'The owner’s plan lapsed — this shared collection is paused until they renew.'**
+  String get shareErrOwnerLapsed;
+
+  /// No description provided for @cloudErrRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 change could not be synced ({reason})} other{{n} changes could not be synced ({reason})}}'**
+  String cloudErrRejected(int n, String reason);
+
+  /// No description provided for @cloudRejDetailsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get cloudRejDetailsLabel;
+
+  /// No description provided for @cloudRejDetailsValue.
+  ///
+  /// In en, this message translates to:
+  /// **'See which changes the server refused'**
+  String get cloudRejDetailsValue;
+
+  /// No description provided for @cloudRejScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes not synced'**
+  String get cloudRejScreenTitle;
+
+  /// No description provided for @cloudRejScreenIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'The server refused these changes. Retry sends them all again; Dismiss keeps them on this device only.'**
+  String get cloudRejScreenIntro;
+
+  /// No description provided for @cloudRejEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing here — every change has synced.'**
+  String get cloudRejEmpty;
+
+  /// No description provided for @cloudRejRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry all'**
+  String get cloudRejRetry;
+
+  /// No description provided for @cloudRejDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss all'**
+  String get cloudRejDismiss;
+
+  /// No description provided for @cloudRejKindRetrying.
+  ///
+  /// In en, this message translates to:
+  /// **'retrying'**
+  String get cloudRejKindRetrying;
+
+  /// No description provided for @cloudRejKindParked.
+  ///
+  /// In en, this message translates to:
+  /// **'gave up'**
+  String get cloudRejKindParked;
+
+  /// No description provided for @cloudRejRequeued.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 change queued again} other{{n} changes queued again}}'**
+  String cloudRejRequeued(int n);
+
+  /// No description provided for @plantlyLoginSubtitleCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Use your plantly.ro account for cloud backup & sync.'**
+  String get plantlyLoginSubtitleCloud;
+
+  /// No description provided for @cloudRejRetryValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Send every listed change again'**
+  String get cloudRejRetryValue;
+
+  /// No description provided for @cloudRejDismissValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep them on this device only'**
+  String get cloudRejDismissValue;
 }
 
 class _AppLocalizationsDelegate
