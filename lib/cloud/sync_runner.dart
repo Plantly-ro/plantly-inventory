@@ -1,3 +1,8 @@
+/// Stable [SyncStatus.lastErrorDetail] for a `cloud_required` (402) on a
+/// collection shared with the account (CLOUD-SYNC-CONTRACT §3): the
+/// OWNER's plan lapsed, not the caller's.
+const String kOwnerPlanLapsedDetail = 'owner_plan_lapsed';
+
 /// Snapshot of the cloud sync loop for the status surface (Me → Cloud,
 /// CLOUD-SYNC-CONTRACT §2.4). Emitted by [SyncRunner.status]; every field
 /// is optional so the no-op runner and a half-initialised engine can both

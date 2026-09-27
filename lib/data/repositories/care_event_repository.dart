@@ -16,12 +16,18 @@ class CareEventRepository {
     required this.opLog,
     this.schedules,
     this.reminderSync,
+    this.currentUserId,
   });
 
   final AppDatabase db;
   final OpLogWriter opLog;
   final CareScheduleRepository? schedules;
   final ReminderSync? reminderSync;
+
+  /// plantly.ro user id of the signed-in account (null when signed out) —
+  /// stamped on new rows as `actor_user_id` (shared collections, §3).
+  /// Device-local, not on the wire.
+  final String? Function()? currentUserId;
 
   Stream<List<CareEventRow>> watchForPlant(String plantId) {
     return (db.select(db.careEvents)
@@ -75,6 +81,7 @@ class CareEventRepository {
         updatedHlc: hlc.encode(),
         deletedAt: const Value.absent(),
         deviceId: opLog.clock.deviceId,
+        actorUserId: Value(currentUserId?.call()),
       );
       await db.into(db.careEvents).insert(row);
       return (await (db.select(db.careEvents)..where((e) => e.id.equals(id))).getSingle());

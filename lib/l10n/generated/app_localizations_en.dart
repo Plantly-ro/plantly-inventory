@@ -2650,4 +2650,242 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get homeNoPlantsBodyDesktop =>
       'Add one with the button in the side bar. You can set up reminders once it lands.';
+
+  @override
+  String get shareSwitcherTitle => 'Collections';
+
+  @override
+  String get shareSwitcherTooltip => 'Switch collection';
+
+  @override
+  String get shareMineSection => 'My collections';
+
+  @override
+  String get shareSharedWithMe => 'Shared with me';
+
+  @override
+  String get shareRoleOwner => 'Owner';
+
+  @override
+  String get shareRoleEditor => 'Editor';
+
+  @override
+  String get shareJoinWithCode => 'Join with code…';
+
+  @override
+  String get shareJoinTitle => 'Join a shared collection';
+
+  @override
+  String get shareJoinBody =>
+      'Enter the 8-character code from the invite you received.';
+
+  @override
+  String get shareJoinCodeLabel => 'Invite code';
+
+  @override
+  String get shareJoinCodeInvalid =>
+      'Codes are 8 letters or digits (no I, O, 0 or 1).';
+
+  @override
+  String get shareJoinButton => 'Join';
+
+  @override
+  String get shareJoinSignInFirst =>
+      'You will be asked to sign in to plantly.ro first.';
+
+  @override
+  String get shareJoinPaywallNote =>
+      'You can use this shared collection — it runs on the owner’s plan. Your own plants stay local until you subscribe.';
+
+  @override
+  String shareJoined(String name) {
+    return 'Joined $name';
+  }
+
+  @override
+  String get shareJoinErrInvalid =>
+      'This invite code is not valid — it may have expired or already been used.';
+
+  @override
+  String get shareJoinErrAlreadyMember =>
+      'You are already a member of this collection.';
+
+  @override
+  String get shareSectionTitle => 'Sharing';
+
+  @override
+  String get shareSectionIntro =>
+      'Invite family or a plant-sitter to log care in this collection with you.';
+
+  @override
+  String get shareActiveLabel => 'Active collection';
+
+  @override
+  String shareActiveValue(String name, String role) {
+    return '$name · $role';
+  }
+
+  @override
+  String shareMembersCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n members',
+      one: '1 member',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shareInviteLabel => 'Invite someone';
+
+  @override
+  String get shareInviteValue => 'Create a code they can enter in their app';
+
+  @override
+  String shareInviteTitle(String name) {
+    return 'Invite to $name';
+  }
+
+  @override
+  String get shareInviteCodeHint =>
+      'Share this code or link. It works once and expires in 7 days.';
+
+  @override
+  String get shareInviteCopy => 'Copy';
+
+  @override
+  String get shareInviteCopied => 'Copied';
+
+  @override
+  String get shareInviteShare => 'Share';
+
+  @override
+  String shareInviteMessage(String name, String url, String code) {
+    return 'Join my plant collection “$name” in Plantly Inventory: $url (code $code)';
+  }
+
+  @override
+  String get shareInviteCreating => 'Creating invite…';
+
+  @override
+  String get shareMembersLabel => 'Members';
+
+  @override
+  String get shareMembersValue => 'See who has access';
+
+  @override
+  String shareMembersTitle(String name) {
+    return 'Members of $name';
+  }
+
+  @override
+  String shareMemberJoined(String date) {
+    return 'Joined $date';
+  }
+
+  @override
+  String get shareMemberYou => 'you';
+
+  @override
+  String get shareRemoveMember => 'Remove';
+
+  @override
+  String shareRemoveMemberTitle(String username) {
+    return 'Remove $username?';
+  }
+
+  @override
+  String get shareRemoveMemberBody =>
+      'They lose access to this collection. What they logged stays.';
+
+  @override
+  String shareRemoved(String username) {
+    return '$username removed';
+  }
+
+  @override
+  String get shareLeaveLabel => 'Leave collection';
+
+  @override
+  String shareLeaveValue(String name) {
+    return 'Stop seeing $name on this device';
+  }
+
+  @override
+  String shareLeaveTitle(String name) {
+    return 'Leave $name?';
+  }
+
+  @override
+  String get shareLeaveBody => 'You can rejoin later with a new invite.';
+
+  @override
+  String get shareLeave => 'Leave';
+
+  @override
+  String shareLeft(String name) {
+    return 'You left $name';
+  }
+
+  @override
+  String shareByActor(String name) {
+    return 'by $name';
+  }
+
+  @override
+  String get shareByOtherMember => 'by another member';
+
+  @override
+  String shareSwitched(String name) {
+    return 'Switched to $name';
+  }
+
+  @override
+  String get shareSwitchUnavailable =>
+      'Switching needs cloud sync to be on for this account.';
+
+  @override
+  String shareMeRowValue(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n collections',
+      one: '1 collection',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shareNoMembers => 'No members yet';
+
+  @override
+  String get shareMembersError => 'Could not load members';
+
+  @override
+  String shareErrTooManyInvites(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'You already have $n active invites — wait for one to be used or to expire.',
+      one:
+          'You already have 1 active invite — wait for it to be used or to expire.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shareErrOwnerOnly => 'Only the owner can invite people.';
+
+  @override
+  String get shareErrOwnerCannotLeave =>
+      'The owner can’t leave their own collection.';
+
+  @override
+  String get shareErrMemberNotFound => 'That person is no longer a member.';
+
+  @override
+  String get shareErrOwnerLapsed =>
+      'The owner’s plan lapsed — this shared collection is paused until they renew.';
 }

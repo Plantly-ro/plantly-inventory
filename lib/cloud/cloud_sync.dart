@@ -12,9 +12,10 @@ import 'sync_runner.dart';
 
 /// The runner the app talks to. While the feature flag is on this is
 /// always `httpSyncRunnerProvider`, which itself yields [NoopSyncRunner]
-/// unless `cloudStateProvider.canSync` (signed in + entitled + linked) and
-/// rebuilds — disposing the previous runner — whenever the collection id
-/// changes. Sign-out / unlink / lost entitlement therefore stop the loop,
+/// unless `activeCollectionIdProvider` names a collection (signed in +
+/// linked + the caller's plan for own collections / the owner's plan for
+/// shared ones, §3) and rebuilds — disposing the previous runner —
+/// whenever the collection id changes. Sign-out / unlink / lost entitlement therefore stop the loop,
 /// and a (re-)link starts a fresh runner bound to the new collection.
 ///
 /// Watched continuously by [cloudSyncCoordinatorProvider] so those
@@ -33,11 +34,11 @@ final syncStatusProvider = StreamProvider<SyncStatus>((ref) {
 /// Glue between the account layer and the engine that no widget owns:
 ///
 /// * keeps [syncRunnerProvider] alive for the app's lifetime (see there);
-/// * on a sign-in ([SignInEvents]): once the entitlement is confirmed
-///   active, links the device to the account's default collection when
-///   nothing is linked yet (never when the stored link belongs to another
-///   account — that is the user's call in Me → Cloud), or asks for a sync
-///   when it already is;
+/// * on a sign-in ([SignInEvents]): once the entitlement lookup settled,
+///   links the device to the account's default collection when nothing is
+///   linked yet (entitled or not — see [_handleSignIn]; never when the
+///   stored link belongs to another account — that is the user's call in
+///   Me → Cloud), or asks for a sync when it already is and is entitled;
 /// * on every link change asks the runner for a sync (debounced by
 ///   [debounce]; the freshly built runner's first cycle usually wins the
 ///   race, in which case the request just joins it).
@@ -76,19 +77,21 @@ class CloudSyncCoordinator {
     // The entitlement notifier listens to the same event and invalidates
     // itself; yield once so we await the refreshed value, not the cache.
     await Future<void>.delayed(Duration.zero);
-    CloudEntitlement? entitlement;
     try {
-      entitlement = await _ref.read(cloudEntitlementProvider.future);
+      await _ref.read(cloudEntitlementProvider.future);
     } catch (_) {
       return; // offline / server error — the Me section shows it
     }
-    if (entitlement == null || !entitlement.active) return;
     final state = _ref.read(cloudStateProvider);
-    if (state.phase != CloudPhase.ready || state.heldByOther != null) return;
+    if (state.phase == CloudPhase.signedOut || state.phase == CloudPhase.off || state.heldByOther != null) return;
     if (state.linked) {
-      requestSync();
+      if (state.phase == CloudPhase.ready) requestSync();
       return;
     }
+    // Linking needs no plan of the caller's own (§3: editors sync shared
+    // collections on the OWNER's plan, and the link is what tells the
+    // device which collection is "home"). `activeCollectionIdProvider`
+    // keeps the runner a no-op for their own collection until they subscribe.
     try {
       // A new sign-in is the documented way out of "unlinked by user"
       // (CollectionLinkState); `link()` clears that flag itself.

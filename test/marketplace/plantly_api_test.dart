@@ -189,4 +189,131 @@ void main() {
     expect(log.single.url.path, '/api/v1/posts/post-9/sold');
     expect(log.single.headers['Authorization'], 'Bearer jwt');
   });
+
+  group('shared collections (CLOUD-SYNC-CONTRACT §3)', () {
+    test('listCollections: GET /inventory/collections with client header → id/name/role/owner/member_count', () async {
+      final log = <http.Request>[];
+      final a = api(log: log, (_) async => http.Response(
+            json.encode({
+              'collections': [
+                {'id': 'c1', 'name': 'Mine', 'role': 'owner', 'owner_user_id': 'u1', 'member_count': 1},
+                {'id': 'c2', 'name': 'Shared', 'role': 'editor', 'owner_user_id': 'u2', 'member_count': 3},
+              ]
+            }),
+            200,
+          ));
+      final cols = await a.listCollections('tok');
+      expect(log.single.method, 'GET');
+      expect(log.single.url.toString(), '$host/api/v1/inventory/collections');
+      expect(log.single.headers['Authorization'], 'Bearer tok');
+      expect(log.single.headers['X-Plantly-Client'], startsWith('inventory/'));
+      expect(cols.map((c) => c.id), ['c1', 'c2']);
+      expect(cols[0].isOwner, isTrue);
+      expect(cols[1].role, 'editor');
+      expect(cols[1].ownerUserId, 'u2');
+      expect(cols[1].memberCount, 3);
+      // A bare array is tolerated too; rows without an id are dropped.
+      final b = api((_) async => http.Response(json.encode([{'id': 'c3', 'name': 'x'}, {'name': 'no id'}]), 200));
+      expect((await b.listCollections('tok')).map((c) => c.id), ['c3']);
+      expect((await b.listCollections('tok')).single.memberCount, 1);
+    });
+
+    test('createInvite: POST …/{id}/invites → code/url/expires_at; missing code = broken reply', () async {
+      final log = <http.Request>[];
+      final a = api(log: log, (_) async => http.Response(
+            json.encode({'code': 'ABCDEFGH', 'url': 'https://plantly.ro/app/inventory/join#c=ABCDEFGH', 'expires_at': '2026-10-04T10:00:00Z'}),
+            201,
+          ));
+      final inv = await a.createInvite('tok', 'c1');
+      expect(log.single.method, 'POST');
+      expect(log.single.url.toString(), '$host/api/v1/inventory/collections/c1/invites');
+      expect(log.single.headers['X-Plantly-Client'], startsWith('inventory/'));
+      expect(inv.code, 'ABCDEFGH');
+      expect(inv.url, endsWith('/join#c=ABCDEFGH'));
+      expect(inv.expiresAt, DateTime.utc(2026, 10, 4, 10));
+      // Enveloped variant.
+      final b = api((_) async => http.Response(json.encode({'invite': {'code': 'HGFEDCBA', 'url': 'u'}}), 200));
+      expect((await b.createInvite('tok', 'c1')).code, 'HGFEDCBA');
+      final c = api((_) async => http.Response('{}', 200));
+      await expectLater(c.createInvite('tok', 'c1'), throwsA(isA<PlantlyApiException>()));
+      // Server limits: 429 too_many_invites carries max_active; 403 owner_only.
+      final d = api((_) async => http.Response('{"error":"too many","code":"too_many_invites","max_active":5}', 429));
+      await expectLater(
+        d.createInvite('tok', 'c1'),
+        throwsA(isA<PlantlyApiException>()
+            .having((e) => e.code, 'code', 'too_many_invites')
+            .having((e) => e.details['max_active'], 'max_active', 5)),
+      );
+      final f = api((_) async => http.Response('{"error":"nope","code":"owner_only"}', 403));
+      await expectLater(f.createInvite('tok', 'c1'),
+          throwsA(isA<PlantlyApiException>().having((e) => e.code, 'code', 'owner_only')));
+    });
+
+    test('joinCollection: POST /inventory/collections/join {code} → collection; stable error codes pass through', () async {
+      final log = <http.Request>[];
+      final a = api(log: log, (_) async => http.Response(
+            json.encode({'collection': {'id': 'c2', 'name': 'Shared', 'role': 'editor', 'owner_user_id': 'u2', 'member_count': 2}}),
+            200,
+          ));
+      final col = await a.joinCollection('tok', 'ABCDEFGH');
+      expect(log.single.url.toString(), '$host/api/v1/inventory/collections/join');
+      expect(log.single.headers['Content-Type'], startsWith('application/json'));
+      expect(json.decode(log.single.body), {'code': 'ABCDEFGH'});
+      expect(col.id, 'c2');
+      expect(col.role, 'editor');
+      for (final (status, code) in [(404, 'invite_invalid'), (409, 'already_member')]) {
+        final b = api((_) async => http.Response('{"error":"nope","code":"$code"}', status));
+        await expectLater(
+          b.joinCollection('tok', 'ABCDEFGH'),
+          throwsA(isA<PlantlyApiException>().having((e) => e.status, 'status', status).having((e) => e.code, 'code', code)),
+        );
+      }
+    });
+
+    test('listMembers / removeMember: GET + DELETE on …/{id}/members[/{user_id}]', () async {
+      final log = <http.Request>[];
+      final a = api(log: log, (req) async {
+        if (req.method == 'DELETE') return http.Response('', 204);
+        return http.Response(
+          json.encode({
+            'members': [
+              {'user_id': 'u1', 'username': 'alice', 'role': 'owner', 'joined_at': '2026-09-01T00:00:00Z'},
+              {'user_id': 'u2', 'username': 'bob', 'role': 'editor', 'joined_at': '2026-09-20T00:00:00Z'},
+            ]
+          }),
+          200,
+        );
+      });
+      final members = await a.listMembers('tok', 'c1');
+      expect(members.map((m) => m.username), ['alice', 'bob']);
+      expect(members.first.isOwner, isTrue);
+      expect(members.last.joinedAt, DateTime.utc(2026, 9, 20));
+      expect(log.last.url.toString(), '$host/api/v1/inventory/collections/c1/members');
+      await a.removeMember('tok', 'c1', 'u2');
+      expect(log.last.method, 'DELETE');
+      expect(log.last.url.toString(), '$host/api/v1/inventory/collections/c1/members/u2');
+      expect(log.last.headers['X-Plantly-Client'], startsWith('inventory/'));
+      // Ids are path-encoded.
+      await a.removeMember('tok', 'c 1', 'u/2');
+      expect(log.last.url.path, '/api/v1/inventory/collections/c%201/members/u%2F2');
+      for (final (status, code) in [(409, 'owner_cannot_leave'), (404, 'member_not_found')]) {
+        final b = api((_) async => http.Response('{"error":"nope","code":"$code"}', status));
+        await expectLater(b.removeMember('tok', 'c1', 'u1'),
+            throwsA(isA<PlantlyApiException>().having((e) => e.status, 'status', status).having((e) => e.code, 'code', code)));
+      }
+    });
+
+    test('InviteCode: 8 chars from A-HJ-NP-Z2-9, case/dash/space tolerant', () {
+      expect(InviteCode.normalize('ABCDEFGH'), 'ABCDEFGH');
+      expect(InviteCode.normalize(' abcd-efgh '), 'ABCDEFGH');
+      expect(InviteCode.normalize('2345 6789'), '23456789');
+      expect(InviteCode.isValid('ABCDEFG'), isFalse, reason: '7 chars');
+      expect(InviteCode.isValid('ABCDEFGHJ'), isFalse, reason: '9 chars');
+      expect(InviteCode.isValid('ABCDEFGI'), isFalse, reason: 'I excluded');
+      expect(InviteCode.isValid('ABCDEFGO'), isFalse, reason: 'O excluded');
+      expect(InviteCode.isValid('ABCDEFG0'), isFalse, reason: '0 excluded');
+      expect(InviteCode.isValid('ABCDEFG1'), isFalse, reason: '1 excluded');
+      expect(InviteCode.isValid(''), isFalse);
+    });
+  });
 }

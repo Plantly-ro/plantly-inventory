@@ -196,6 +196,13 @@ class CareEvents extends Table {
   IntColumn get deletedAt => integer().named('deleted_at').nullable()();
   TextColumn get deviceId => text().named('device_id')();
 
+  /// plantly.ro user id of whoever logged the event (shared collections,
+  /// CLOUD-SYNC-CONTRACT §3 "who watered"). Device-local: set from the
+  /// pulled op's `user_id` for remote rows and from the signed-in session
+  /// for local ones; NOT on the wire (`entity_codecs.dart` excludes it —
+  /// the server stamps `user_id` from the bearer token).
+  TextColumn get actorUserId => text().named('actor_user_id').nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -306,7 +313,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -351,8 +358,21 @@ class AppDatabase extends _$AppDatabase {
               'CREATE INDEX IF NOT EXISTS idx_sync_ops_key ON sync_ops(tenant_id, entity, entity_id, field)',
             );
           }
+          if (from < 9) {
+            // Shared collections: who logged a care event. Guarded so a
+            // re-run (crash between ALTER and the version bump) is a no-op.
+            await _addColumnIfMissing(m, careEvents, careEvents.actorUserId);
+          }
         },
       );
+
+  /// `ALTER TABLE … ADD COLUMN` is not idempotent in SQLite; check
+  /// `PRAGMA table_info` first so an interrupted upgrade can be resumed.
+  Future<void> _addColumnIfMissing(Migrator m, TableInfo table, GeneratedColumn column) async {
+    final cols = await customSelect('PRAGMA table_info(${table.actualTableName})').get();
+    if (cols.any((r) => r.read<String>('name') == column.name)) return;
+    await m.addColumn(table, column);
+  }
 
   Future<void> _createIndexes() async {
     await customStatement(

@@ -11,6 +11,7 @@ import '../domain/services/zip_backup_service.dart';
 import '../notifications/dnd_settings.dart';
 import '../notifications/notification_service.dart';
 import '../notifications/platform_notification_service.dart';
+import '../marketplace/plantly_auth.dart';
 import '../notifications/reminder_sync.dart';
 import '../sync/device_id.dart';
 import '../sync/hlc.dart';
@@ -215,6 +216,8 @@ final careEventRepositoryProvider = Provider<CareEventRepository>((ref) {
     opLog: ctx.opLog,
     schedules: ref.watch(careScheduleRepositoryProvider),
     reminderSync: ref.watch(reminderSyncProvider),
+    // Read at call time (not watched): a sign-in must not rebuild the repo.
+    currentUserId: () => ref.read(plantlyAuthProvider).valueOrNull?.userId,
   );
 });
 

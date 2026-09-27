@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../cloud/cloud_state.dart';
+import '../cloud/collections.dart';
 import '../cloud/entitlement.dart';
 import '../cloud/sync_runner.dart';
 import '../data/photo_blob_store.dart';
@@ -18,9 +18,11 @@ import 'sync_transport.dart';
 /// Server collection id to sync against; null = cloud off. Derived from the
 /// account layer: only while `cloudStateProvider.canSync` (feature on,
 /// signed in, entitled, linked for *this* account) — never `'local'`, never
-/// a tenant id while unlinked.
+/// a tenant id while unlinked. With shared collections (§3) this is the
+/// *active* collection (`activeCollectionIdProvider`): the current tenant
+/// when it is a collection the account can see, else the linked default.
 final syncCollectionIdProvider = Provider<String?>((ref) {
-  return ref.watch(cloudStateProvider.select((s) => s.canSync ? s.collectionId : null));
+  return ref.watch(activeCollectionIdProvider);
 });
 
 /// Timings of the sync loop; overridden by tests to shorten the waits.
@@ -109,6 +111,7 @@ final httpSyncRunnerProvider = Provider<SyncRunner>((ref) {
   final config = ref.watch(syncRunnerConfigProvider);
   final photoTransport = ref.watch(photoTransportProvider);
   final auth = ref.read(plantlyAuthProvider.notifier);
+  final shared = ref.watch(activeCollectionIsSharedProvider);
   final opLog = ctx.opLog.tenantId == collectionId
       ? ctx.opLog
       : OpLogWriter(db: ctx.db, clock: ctx.clock, tenantId: collectionId);
@@ -136,6 +139,7 @@ final httpSyncRunnerProvider = Provider<SyncRunner>((ref) {
     minBackoff: config.minBackoff,
     maxBackoff: config.maxBackoff,
     usageInterval: config.usageInterval,
+    entitlementIsOwners: shared,
   );
 
   var refreshedForHalt = false;
@@ -144,7 +148,8 @@ final httpSyncRunnerProvider = Provider<SyncRunner>((ref) {
       refreshedForHalt = false;
       return;
     }
-    if (refreshedForHalt) return;
+    // A 402 on a shared collection is the OWNER's plan, not ours (§3).
+    if (refreshedForHalt || shared) return;
     refreshedForHalt = true;
     unawaited(ref.read(cloudEntitlementProvider.notifier).refresh().catchError((_) {}));
   });

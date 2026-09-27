@@ -7,6 +7,7 @@ import '../../data/database/app_database.dart' as db;
 import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
+import '../../shared/actor_label.dart';
 import '../../shared/care_type_labels.dart';
 import '../home/home_providers.dart';
 import '../../app/navigation.dart';
@@ -96,7 +97,7 @@ class ActivityScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       for (var i = 0; i < g.events.length; i++)
-                        _row(context, t, types, g.events[i], plantsById, surface, i == g.events.length - 1),
+                        _row(context, ref, t, types, g.events[i], plantsById, surface, i == g.events.length - 1),
                     ],
                   ),
                 ),
@@ -110,6 +111,7 @@ class ActivityScreen extends ConsumerWidget {
 
   Widget _row(
     BuildContext context,
+    WidgetRef ref,
     AppLocalizations t,
     List<CareType> types,
     db.CareEventRow event,
@@ -119,7 +121,7 @@ class ActivityScreen extends ConsumerWidget {
   ) {
     final plant = plantsById[event.plantId];
     final title = plant?.nickname ?? event.plantId;
-    final subtitle = _describe(t, types, event);
+    final subtitle = withActor(_describe(t, types, event), careEventActorLabel(ref, t, event));
     final when = DateTime.fromMillisecondsSinceEpoch(event.doneAt, isUtc: true).toLocal();
     final time = '${when.hour.toString().padLeft(2, '0')}:${when.minute.toString().padLeft(2, '0')}';
     return InkWell(

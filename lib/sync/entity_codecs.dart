@@ -283,6 +283,9 @@ class EntityCodecs {
           entity: 'care_events',
           table: db.careEvents,
           timestampColumns: {'done_at', 'deleted_at'},
+          // Device-local attribution (§3): the server derives `user_id`
+          // from the bearer token, the applier copies it off pulled ops.
+          excludedColumns: {'actor_user_id'},
         ),
         EntityCodec<CareScheduleRow>(
           entity: 'care_schedules',
