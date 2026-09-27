@@ -4,7 +4,10 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/open.dart';
+
+import 'helpers/tolerant_golden_comparator.dart';
 
 /// Global flutter_test config — loaded automatically by flutter_test before
 /// any test runs.
@@ -31,6 +34,15 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   // applicable in tests where each executor is isolated.
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
   await loadAppFonts();
+  // `flutter test` installs a LocalFileComparator for the current test file
+  // before this runs; wrap it so CI (a different SDK patch) tolerates text
+  // shaping drift while local runs stay exact. See the class doc.
+  if (goldenFileComparator case final LocalFileComparator local) {
+    goldenFileComparator = TolerantGoldenFileComparator(
+      local,
+      tolerance: TolerantGoldenFileComparator.toleranceFromEnvironment(),
+    );
+  }
   await testMain();
 }
 

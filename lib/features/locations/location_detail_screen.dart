@@ -43,13 +43,25 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
     // Desktop renders this screen straight from the URL (`/spaces/:id` on a
     // reload), before the DB has opened; the repositories below require the
-    // bootstrapped context, so wait for it like Home does.
-    if (!ref.watch(appContextProvider).hasValue) {
-      return Scaffold(
+    // bootstrapped context, so gate on it like Home does — including the
+    // error state, so a failed DB open shows copy instead of a spinner.
+    return ref.watch(appContextProvider).when(
+      loading: () => Scaffold(
         backgroundColor: surface.bg,
         body: Center(child: CircularProgressIndicator(color: surface.green)),
-      );
-    }
+      ),
+      error: (e, _) => Scaffold(
+        backgroundColor: surface.bg,
+        body: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(t.spaceLoadOneFailed('$e'), style: TextStyle(color: surface.terra)),
+        ),
+      ),
+      data: (_) => _loaded(context, t, surface),
+    );
+  }
+
+  Widget _loaded(BuildContext context, AppLocalizations t, PlantlySurface surface) {
     final repo = ref.watch(locationRepositoryProvider);
     final locAsync = ref.watch(locationByIdStreamProvider(widget.locationId));
     final plants = ref.watch(plantsByLocationProvider(widget.locationId)).maybeWhen(
