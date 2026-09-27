@@ -293,6 +293,77 @@ void main() {
     expect(result.sent, 1);
     expect(t.pushes.single.ops.single.entityId, 'p1');
   });
+
+  group('account attribution (sync_ops.user_id)', () {
+    SyncEngine forUser(SyncTransport t, String? userId) => SyncEngine(
+          db: db,
+          transport: t,
+          cursor: InMemoryCursor(),
+          tenantId: 'tenant-local',
+          deviceId: 'dev-a',
+          userId: userId,
+          nowMillis: () => 1234,
+        );
+
+    test('local ops are stamped with the writer\'s current user; remote/synthesized-without-user stay null', () async {
+      String? me = 'u-1';
+      final stamped = OpLogWriter(db: db, clock: HlcClock(deviceId: 'dev-a'), tenantId: 'tenant-local', currentUserId: () => me);
+      await stamped.recordCreate(entity: 'plants', entityId: 'p1', value: {'n': 1});
+      await stamped.recordFieldUpdate(entity: 'plants', entityId: 'p1', field: 'notes', value: 'x');
+      await stamped.recordTombstone(entity: 'plants', entityId: 'p1');
+      await stamped.recordSynthesized(entity: 'plants', entityId: 'p2', wireRow: {'id': 'p2'}, hlc: 'h', deviceId: 'dev-a');
+      me = null; // signed out: unattributed
+      await stamped.recordCreate(entity: 'plants', entityId: 'p3', value: {'n': 3});
+      await opLog.recordCreate(entity: 'plants', entityId: 'p4', value: {'n': 4}); // writer without the closure
+      await stamped.recordRemote(
+        const SyncOpDto(entity: 'plants', entityId: 'r1', field: 'notes', value: 'v', hlc: 'h2', deviceId: 'dev-b'),
+        deviceId: 'dev-b',
+        nowMillis: 1,
+      );
+      final rows = await allOps();
+      expect({for (final r in rows) r.entityId: r.userId}, {'p1': 'u-1', 'p2': 'u-1', 'p3': null, 'p4': null, 'r1': null});
+      expect(rows.where((r) => r.entityId == 'p1').map((r) => r.userId), everyElement('u-1'));
+    });
+
+    test('an engine for u-2 never pushes u-1\'s pending ops; legacy (null) ops go with anyone; pendingCount agrees', () async {
+      final alice = OpLogWriter(db: db, clock: HlcClock(deviceId: 'dev-a'), tenantId: 'tenant-local', currentUserId: () => 'u-1');
+      final bob = OpLogWriter(db: db, clock: HlcClock(deviceId: 'dev-a'), tenantId: 'tenant-local', currentUserId: () => 'u-2');
+      await alice.recordCreate(entity: 'plants', entityId: 'a1', value: {'n': 1});
+      await alice.recordFieldUpdate(entity: 'plants', entityId: 'a1', field: 'notes', value: 'x');
+      await opLog.recordCreate(entity: 'plants', entityId: 'legacy', value: {'n': 0});
+      await bob.recordCreate(entity: 'plants', entityId: 'b1', value: {'n': 2});
+
+      expect(await forUser(FakeSyncTransport(), 'u-2').pendingCount(), 2, reason: 'b1 + legacy');
+      expect(await forUser(FakeSyncTransport(), 'u-1').pendingCount(), 3, reason: 'a1 ×2 + legacy');
+      expect(await forUser(FakeSyncTransport(), null).pendingCount(), 1, reason: 'signed out: only unattributed');
+
+      final t = FakeSyncTransport();
+      final r = await forUser(t, 'u-2').pushPending();
+      expect(r.sent, 2);
+      expect(t.pushes.single.ops.map((o) => o.entityId), ['legacy', 'b1']);
+      expect(await forUser(t, 'u-2').pendingCount(), 0);
+
+      final left = (await allOps()).where((o) => o.pushedAt == null).toList();
+      expect(left.map((o) => o.entityId), ['a1', 'a1']);
+      expect(left.map((o) => o.userId), everyElement('u-1'), reason: 'still alice\'s, still pending');
+
+      // Alice signs back in: hers go up, nothing is re-sent.
+      final t2 = FakeSyncTransport();
+      final r2 = await forUser(t2, 'u-1').pushPending();
+      expect(r2.sent, 2);
+      expect(t2.pushes.single.ops.map((o) => o.entityId), ['a1', 'a1']);
+      expect(await forUser(t2, 'u-1').pendingCount(), 0);
+    });
+
+    test('signed-out engine (userId null) leaves every attributed op alone', () async {
+      final alice = OpLogWriter(db: db, clock: HlcClock(deviceId: 'dev-a'), tenantId: 'tenant-local', currentUserId: () => 'u-1');
+      await alice.recordCreate(entity: 'plants', entityId: 'a1', value: {'n': 1});
+      final t = FakeSyncTransport();
+      final r = await forUser(t, null).pushPending();
+      expect(r.sent, 0);
+      expect(t.pushes, isEmpty);
+    });
+  });
 }
 
 class _FreshTransport extends FakeSyncTransport {

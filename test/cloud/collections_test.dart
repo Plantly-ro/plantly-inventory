@@ -30,7 +30,9 @@ import 'package:plantly_inventory/marketplace/plantly_auth.dart';
 import 'package:plantly_inventory/marketplace/plantly_session.dart';
 import 'package:plantly_inventory/marketplace/session_store.dart';
 import 'package:plantly_inventory/notifications/notification_service.dart';
+import 'package:plantly_inventory/sync/hlc.dart';
 import 'package:plantly_inventory/sync/http_sync_runner.dart';
+import 'package:plantly_inventory/sync/op_log.dart';
 import 'package:plantly_inventory/sync/sync_engine.dart';
 import 'package:plantly_inventory/sync/sync_providers.dart';
 import 'package:plantly_inventory/sync/sync_transport.dart';
@@ -110,7 +112,9 @@ void main() {
             }
             if (req.method == 'POST' && path.endsWith('/inventory/collections/default')) {
               return jsonRes({
-                'collection': {'id': 'col-1', 'name': 'My plants', 'role': 'owner'},
+                'collection': uid == 'u-2'
+                    ? {'id': 'col-5', 'name': "Bob's plants", 'role': 'owner'}
+                    : {'id': 'col-1', 'name': 'My plants', 'role': 'owner'},
               });
             }
             if (req.method == 'GET' && path.endsWith('/inventory/collections')) {
@@ -394,6 +398,156 @@ void main() {
     await waitFor(() => container.read(syncRunnerProvider) is HttpSyncRunner &&
         (container.read(syncRunnerProvider) as HttpSyncRunner).collectionId == 'col-3');
     expect(fakes.containsKey('col-1'), isFalse, reason: 'the default was never synced against');
+  });
+
+  test('403 not_a_member on the active shared collection → dropped, back home, notice raised (once)', () async {
+    await signInAlice();
+    final notifier = container.read(collectionsProvider.notifier);
+    await notifier.switchCollection('col-2');
+    await waitFor(() => container.read(syncRunnerProvider) is HttpSyncRunner &&
+        (container.read(syncRunnerProvider) as HttpSyncRunner).collectionId == 'col-2');
+    final runner = container.read(syncRunnerProvider) as HttpSyncRunner;
+    expect(container.read(collectionRemovedNoticeProvider), isNull);
+
+    fakes['col-2']!.failures.add(const SyncCollectionError('not_a_member', status: 403));
+    await runner.syncNow();
+    expect(runner.current.lastError, 'collection_unavailable');
+    expect(runner.current.lastErrorDetail, kNotAMemberDetail);
+    final t = lookupAppLocalizations(const Locale('en'));
+    expect(describeSyncError(t, 'collection_unavailable', detail: runner.current.lastErrorDetail, collectionName: 'Family greenhouse'),
+        'You were removed from Family greenhouse');
+
+    await waitFor(() => container.read(currentTenantIdProvider) == 'col-1', reason: 'back home');
+    expect(container.read(collectionsProvider).items.map((c) => c.id), ['col-1']);
+    expect(container.read(collectionRemovedNoticeProvider), 'Family greenhouse');
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString(kTenantIdPrefKey), 'col-1');
+    final cache = json.decode(prefs.getString(kCollectionsCachePrefKey)!) as Map<String, dynamic>;
+    expect((cache['items'] as List).map((e) => (e as Map)['id']), ['col-1'], reason: 'cache dropped it too');
+    await waitFor(() => container.read(syncRunnerProvider) is HttpSyncRunner &&
+        (container.read(syncRunnerProvider) as HttpSyncRunner).collectionId == 'col-1');
+    // A second notice is not raised for the same event.
+    container.read(collectionRemovedNoticeProvider.notifier).state = null;
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    expect(container.read(collectionRemovedNoticeProvider), isNull);
+  });
+
+  test('404 collection_not_found / 403 on an OWN collection does not trigger the removal path', () async {
+    await signInAlice();
+    await waitFor(() => container.read(syncRunnerProvider) is HttpSyncRunner);
+    final runner = container.read(syncRunnerProvider) as HttpSyncRunner;
+    fakes['col-1']!.failures.add(const SyncCollectionError('not_a_member', status: 403));
+    await runner.syncNow();
+    expect(runner.current.lastError, 'collection_unavailable');
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(container.read(collectionRemovedNoticeProvider), isNull);
+    expect(container.read(collectionsProvider).items.map((c) => c.id), ['col-1', 'col-2']);
+  });
+
+  test('QA2 BUG-4: b signs in on a\'s device via a join link — decision first, a\'s pending ops never pushed as b (nor b\'s as a)', () async {
+    // Device linked by alice (u-1) to col-1 with two of her ops still pending.
+    SharedPreferences.setMockInitialValues({
+      kTenantIdPrefKey: 'col-1',
+      kSkipSeedPrefKey: true,
+      kCollectionIdPrefKey: 'col-1',
+      kCollectionNamePrefKey: 'My plants',
+      kCollectionUserIdPrefKey: 'u-1',
+      kCollectionUsernamePrefKey: 'alice',
+      kDataOwnerUserIdPrefKey: 'u-1',
+      kDataOwnerUsernamePrefKey: 'alice',
+    });
+    final aliceLog = OpLogWriter(db: db, clock: HlcClock(deviceId: 'dev-a'), tenantId: 'col-1', currentUserId: () => 'u-1');
+    final h = await aliceLog.recordCreate(entity: 'plants', entityId: 'alice-fern', value: {'id': 'alice-fern', 'nickname': 'Fern', 'status': 'active'});
+    await db.into(db.plants).insert(PlantsCompanion.insert(
+        id: 'alice-fern', tenantId: 'col-1', nickname: 'Fern', status: 'active', updatedHlc: h.encode(), deviceId: 'dev-a'));
+    await aliceLog.recordFieldUpdate(entity: 'plants', entityId: 'alice-fern', field: 'notes', value: 'water weekly');
+    const aliceIds = {'alice-fern'};
+    Future<List<SyncOpRow>> pendingOps() async => (await db.select(db.syncOps).get()).where((o) => o.pushedAt == null).toList();
+    expect(await pendingOps(), hasLength(2));
+
+    // The join deep link: bob (u-2) signs in.
+    final bobToken = fakeJwt(iat: nowSecs, exp: nowSecs + 86400, username: 'bob', userId: 'u-2');
+    serverCollections = [col('col-5', "Bob's plants", owner: 'u-2')];
+    final coordinator = container.read(cloudSyncCoordinatorProvider);
+    await container.read(appContextProvider.future);
+    await container.read(collectionLinkProvider.notifier).ready;
+    final bob = await container.read(plantlyAuthProvider.notifier).adoptToken(bobToken);
+    container.read(signInEventsProvider).emit(bob);
+    await coordinator.idle;
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    var cloud = container.read(cloudStateProvider);
+    expect(cloud.account, 'bob');
+    expect(cloud.heldByOther, 'alice');
+    expect(cloud.linked, isFalse, reason: 'alice\'s link is not bob\'s');
+    expect(container.read(activeCollectionIdProvider), isNull, reason: 'nothing syncs while undecided');
+    expect(container.read(syncRunnerProvider), isA<NoopSyncRunner>());
+    expect(requests.where((r) => r.url.path.endsWith('/collections/default')), isEmpty, reason: 'no automatic link');
+
+    // Bob adds a plant while still undecided (tenant is alice's col-1): the
+    // op is HIS, stamped so, and must never go up under alice's token.
+    final stray = await container.read(plantRepositoryProvider).create(nickname: 'Bob stray');
+    expect(stray.tenantId, 'col-1');
+    final strayOps = (await pendingOps()).where((o) => o.entityId == stray.id).toList();
+    expect(strayOps, isNotEmpty);
+    expect(strayOps.map((o) => o.userId), everyElement('u-2'));
+
+    // The dialog's "Start empty for bob" (provider-level equivalent), then the join.
+    await container.read(collectionLinkProvider.notifier).startEmpty();
+    cloud = container.read(cloudStateProvider);
+    expect(cloud.linked, isTrue);
+    expect(cloud.collectionId, 'col-5', reason: 'bob\'s own default, from POST /default under his token');
+    expect(cloud.heldByOther, isNull);
+    final joined = await container.read(collectionsProvider.notifier).join('ABCDEFGH');
+    expect(joined.id, 'col-3');
+    expect(container.read(currentTenantIdProvider), 'col-3');
+    await waitFor(() => container.read(syncRunnerProvider) is HttpSyncRunner &&
+        (container.read(syncRunnerProvider) as HttpSyncRunner).collectionId == 'col-3');
+    final bobRunner = container.read(syncRunnerProvider) as HttpSyncRunner;
+    expect(bobRunner.userId, 'u-2');
+    await bobRunner.syncNow();
+    final cactus = await container.read(plantRepositoryProvider).create(nickname: 'Shared cactus');
+    await waitFor(() => fakes['col-3']!.pushes.any((p) => p.ops.any((o) => o.entityId == cactus.id)),
+        timeout: config.debounce * 20, reason: 'bob\'s write in the joined collection pushed');
+
+    // Nothing of alice's went anywhere; her ops are still hers, still pending.
+    for (final fake in fakes.values) {
+      for (final push in fake.pushes) {
+        expect(push.ops.where((o) => aliceIds.contains(o.entityId)), isEmpty, reason: 'alice\'s ops pushed as bob');
+      }
+    }
+    expect(fakes.containsKey('col-1'), isFalse, reason: 'alice\'s collection never synced against');
+    final aliceLeft = (await pendingOps()).where((o) => aliceIds.contains(o.entityId)).toList();
+    expect(aliceLeft, hasLength(2));
+    expect(aliceLeft.map((o) => o.userId), everyElement('u-1'));
+    expect(aliceLeft.map((o) => o.tenantId), everyElement('col-1'));
+
+    // Alice comes back: decides "Start empty" too → her rows reappear under
+    // col-1; her runner pushes HER two ops and leaves bob's stray alone.
+    await container.read(plantlyAuthProvider.notifier).signOut();
+    final alice = await container.read(plantlyAuthProvider.notifier).adoptToken(aliceToken);
+    container.read(signInEventsProvider).emit(alice);
+    await coordinator.idle;
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(container.read(cloudStateProvider).heldByOther, 'bob');
+    serverCollections = [col('col-1', 'My plants')];
+    await container.read(collectionLinkProvider.notifier).startEmpty();
+    expect(container.read(cloudStateProvider).collectionId, 'col-1');
+    expect(container.read(currentTenantIdProvider), 'col-1');
+    await waitFor(() => container.read(syncRunnerProvider) is HttpSyncRunner &&
+        (container.read(syncRunnerProvider) as HttpSyncRunner).collectionId == 'col-1' &&
+        (container.read(syncRunnerProvider) as HttpSyncRunner).userId == 'u-1');
+    final aliceRunner = container.read(syncRunnerProvider) as HttpSyncRunner;
+    await aliceRunner.syncNow();
+    final serverA = fakes['col-1']!;
+    final pushedIds = [for (final p in serverA.pushes) for (final o in p.ops) o.entityId];
+    expect(pushedIds.where((id) => id == 'alice-fern'), hasLength(2), reason: 'alice\'s two ops went up under alice');
+    expect(pushedIds, isNot(contains(stray.id)), reason: 'bob\'s op is not alice\'s to push (QA2 BUG-4 wrong actor)');
+    expect(aliceRunner.current.pendingOps, 0);
+    final strayLeft = (await pendingOps()).where((o) => o.entityId == stray.id).toList();
+    expect(strayLeft, isNotEmpty);
+    expect(strayLeft.map((o) => o.userId), everyElement('u-2'));
+    await Future<void>.delayed(const Duration(milliseconds: 100));
   });
 
   test('removed on the server while active → refresh reconciles back to the default', () async {

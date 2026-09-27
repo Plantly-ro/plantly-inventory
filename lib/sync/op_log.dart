@@ -28,13 +28,21 @@ const String kWholeRowField = '*';
 ///     pushed but DO take part in the per-(entity, id, field) LWW lookup
 ///     ([latestHlcFor]) and in the idempotency check ([hasOp]).
 class OpLogWriter {
-  OpLogWriter({required this.db, required this.clock, required this.tenantId})
+  OpLogWriter({required this.db, required this.clock, required this.tenantId, this.currentUserId})
       : codecs = EntityCodecs(db);
 
   final AppDatabase db;
   final HlcClock clock;
   final String tenantId;
   final EntityCodecs codecs;
+
+  /// plantly.ro user id of the signed-in account, read at write time and
+  /// stamped on every LOCAL op (`sync_ops.user_id`) so the engine can skip
+  /// ops another account left pending on this device. Null (or a null
+  /// return) = unattributed: pushed by whoever syncs the tenant.
+  final String? Function()? currentUserId;
+
+  Value<String?> get _userId => Value(currentUserId?.call());
 
   final StreamController<void> _changes = StreamController<void>.broadcast();
 
@@ -75,6 +83,7 @@ class OpLogWriter {
           hlc: hlc.encode(),
           deviceId: clock.deviceId,
           valueJson: Value(json.encode(payload)),
+          userId: _userId,
         ));
     _notify();
     return hlc;
@@ -94,6 +103,7 @@ class OpLogWriter {
           field: kTombstoneField,
           hlc: hlc.encode(),
           deviceId: clock.deviceId,
+          userId: _userId,
         ));
     _notify();
     return hlc;
@@ -119,6 +129,7 @@ class OpLogWriter {
           hlc: hlc.encode(),
           deviceId: clock.deviceId,
           valueJson: Value(json.encode(wire)),
+          userId: _userId,
         ));
     _notify();
     return hlc;
@@ -158,6 +169,7 @@ class OpLogWriter {
           hlc: hlc,
           deviceId: deviceId,
           valueJson: Value(json.encode(wireRow)),
+          userId: _userId,
         ));
   }
 

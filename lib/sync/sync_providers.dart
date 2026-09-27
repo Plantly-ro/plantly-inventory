@@ -118,7 +118,8 @@ final syncRejectionsProvider = StreamProvider<List<SyncRejectionRow>>((ref) {
 ///
 /// A 402 halt (`cloud_required`) triggers one cache-bypassing entitlement
 /// refresh so the Me section flips to "not included" instead of showing a
-/// stale green light.
+/// stale green light. A 403 `not_a_member` halt on a shared collection
+/// hands over to `CollectionsNotifier.removedByServer`.
 final httpSyncRunnerProvider = Provider<SyncRunner>((ref) {
   final collectionId = ref.watch(syncCollectionIdProvider);
   final transport = ref.watch(syncTransportProvider);
@@ -131,9 +132,17 @@ final httpSyncRunnerProvider = Provider<SyncRunner>((ref) {
   final photoTransport = ref.watch(photoTransportProvider);
   final auth = ref.read(plantlyAuthProvider.notifier);
   final shared = ref.watch(activeCollectionIsSharedProvider);
+  // Watched: an account change rebuilds the runner so it only ever pushes
+  // (and counts) the signed-in account's pending ops.
+  final userId = ref.watch(currentUserIdProvider);
   final opLog = ctx.opLog.tenantId == collectionId
       ? ctx.opLog
-      : OpLogWriter(db: ctx.db, clock: ctx.clock, tenantId: collectionId);
+      : OpLogWriter(
+          db: ctx.db,
+          clock: ctx.clock,
+          tenantId: collectionId,
+          currentUserId: () => ref.read(plantlyAuthProvider).valueOrNull?.userId,
+        );
   final runner = HttpSyncRunner(
     db: ctx.db,
     opLog: opLog,
@@ -141,6 +150,7 @@ final httpSyncRunnerProvider = Provider<SyncRunner>((ref) {
     cursor: PrefsSyncCursor(prefs: prefs, tenantId: collectionId),
     deviceId: ctx.deviceId,
     collectionId: collectionId,
+    userId: userId,
     localChanges: ctx.opLog.changes,
     rejections: ref.watch(syncRejectionStoreProvider),
     photos: photoTransport == null
@@ -162,7 +172,18 @@ final httpSyncRunnerProvider = Provider<SyncRunner>((ref) {
   );
 
   var refreshedForHalt = false;
+  var removalHandled = false;
   final sub = runner.status.listen((s) {
+    // 403 `not_a_member` on a shared collection: the owner removed us.
+    // Drop it, go home, tell the user (once per runner — the tenant flip
+    // rebuilds this provider anyway).
+    if (shared &&
+        !removalHandled &&
+        s.lastError == 'collection_unavailable' &&
+        s.lastErrorDetail == kNotAMemberDetail) {
+      removalHandled = true;
+      unawaited(ref.read(collectionsProvider.notifier).removedByServer(collectionId));
+    }
     if (s.lastError != 'cloud_required') {
       refreshedForHalt = false;
       return;

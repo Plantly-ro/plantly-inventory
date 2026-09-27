@@ -103,7 +103,14 @@ final appContextProvider = FutureProvider<AppContext>((ref) async {
   final clock = await ref.watch(hlcClockProvider.future);
   final deviceId = clock.deviceId;
   final tenantId = ref.watch(currentTenantIdProvider);
-  final opLog = OpLogWriter(db: db, clock: clock, tenantId: tenantId);
+  // Account read at write time (not watched): a sign-in must not rebuild
+  // the context; the stamp tells the engine whose pending ops these are.
+  final opLog = OpLogWriter(
+    db: db,
+    clock: clock,
+    tenantId: tenantId,
+    currentUserId: () => ref.read(plantlyAuthProvider).valueOrNull?.userId,
+  );
   if (!(prefs.getBool(kSkipSeedPrefKey) ?? false)) {
     await seedIfEmpty(db: db, opLog: opLog);
   }
