@@ -23,6 +23,18 @@ void main() {
       deleted_at INTEGER NULL,
       device_id TEXT NOT NULL
     )''';
+  const v8SyncOps = '''
+    CREATE TABLE sync_ops (
+      seq INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      tenant_id TEXT NOT NULL,
+      entity TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      field TEXT NOT NULL,
+      value_json TEXT NULL,
+      hlc TEXT NOT NULL,
+      device_id TEXT NOT NULL,
+      pushed_at INTEGER NULL
+    )''';
 
   Future<List<String>> columns(AppDatabase db) async {
     final rows = await db.customSelect('PRAGMA table_info(care_events)').get();
@@ -42,6 +54,7 @@ void main() {
   test('v8 → v9 adds the column; existing rows read back with actor null', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory(setup: (raw) {
       raw.execute(v8CareEvents);
+      raw.execute(v8SyncOps); // the 10 → 11 step in the same chain ALTERs it
       raw.execute("INSERT INTO care_events (id, tenant_id, plant_id, type, done_at, updated_hlc, device_id) "
           "VALUES ('e1', 'local', 'p1', 'water', 1000, '0-0-t', 't')");
       raw.execute('PRAGMA user_version = 8');
@@ -58,6 +71,7 @@ void main() {
   test('v8 → v9 is idempotent: a column already present (interrupted upgrade) is left alone', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory(setup: (raw) {
       raw.execute(v8CareEvents);
+      raw.execute(v8SyncOps);
       raw.execute('ALTER TABLE care_events ADD COLUMN actor_user_id TEXT NULL');
       raw.execute("INSERT INTO care_events (id, tenant_id, plant_id, type, done_at, updated_hlc, device_id, actor_user_id) "
           "VALUES ('e1', 'local', 'p1', 'water', 1000, '0-0-t', 't', 'u-1')");

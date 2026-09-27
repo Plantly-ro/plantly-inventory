@@ -8110,6 +8110,15 @@ class $SyncOpsTable extends SyncOps with TableInfo<$SyncOpsTable, SyncOpRow> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     seq,
@@ -8121,6 +8130,7 @@ class $SyncOpsTable extends SyncOps with TableInfo<$SyncOpsTable, SyncOpRow> {
     hlc,
     deviceId,
     pushedAt,
+    userId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -8200,6 +8210,12 @@ class $SyncOpsTable extends SyncOps with TableInfo<$SyncOpsTable, SyncOpRow> {
         pushedAt.isAcceptableOrUnknown(data['pushed_at']!, _pushedAtMeta),
       );
     }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    }
     return context;
   }
 
@@ -8245,6 +8261,10 @@ class $SyncOpsTable extends SyncOps with TableInfo<$SyncOpsTable, SyncOpRow> {
         DriftSqlType.int,
         data['${effectivePrefix}pushed_at'],
       ),
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      ),
     );
   }
 
@@ -8264,6 +8284,13 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
   final String hlc;
   final String deviceId;
   final int? pushedAt;
+
+  /// plantly.ro user id of the session that recorded a LOCAL op (null for
+  /// ops recorded while signed out, for remote ops and for rows written
+  /// before schema 11). The engine pushes only ops whose `user_id` is null
+  /// or equals the signed-in user, so an account switch never uploads the
+  /// previous account's pending changes under the new bearer token.
+  final String? userId;
   const SyncOpRow({
     required this.seq,
     required this.tenantId,
@@ -8274,6 +8301,7 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
     required this.hlc,
     required this.deviceId,
     this.pushedAt,
+    this.userId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -8290,6 +8318,9 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
     map['device_id'] = Variable<String>(deviceId);
     if (!nullToAbsent || pushedAt != null) {
       map['pushed_at'] = Variable<int>(pushedAt);
+    }
+    if (!nullToAbsent || userId != null) {
+      map['user_id'] = Variable<String>(userId);
     }
     return map;
   }
@@ -8309,6 +8340,9 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
       pushedAt: pushedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(pushedAt),
+      userId: userId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userId),
     );
   }
 
@@ -8327,6 +8361,7 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
       hlc: serializer.fromJson<String>(json['hlc']),
       deviceId: serializer.fromJson<String>(json['deviceId']),
       pushedAt: serializer.fromJson<int?>(json['pushedAt']),
+      userId: serializer.fromJson<String?>(json['userId']),
     );
   }
   @override
@@ -8342,6 +8377,7 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
       'hlc': serializer.toJson<String>(hlc),
       'deviceId': serializer.toJson<String>(deviceId),
       'pushedAt': serializer.toJson<int?>(pushedAt),
+      'userId': serializer.toJson<String?>(userId),
     };
   }
 
@@ -8355,6 +8391,7 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
     String? hlc,
     String? deviceId,
     Value<int?> pushedAt = const Value.absent(),
+    Value<String?> userId = const Value.absent(),
   }) => SyncOpRow(
     seq: seq ?? this.seq,
     tenantId: tenantId ?? this.tenantId,
@@ -8365,6 +8402,7 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
     hlc: hlc ?? this.hlc,
     deviceId: deviceId ?? this.deviceId,
     pushedAt: pushedAt.present ? pushedAt.value : this.pushedAt,
+    userId: userId.present ? userId.value : this.userId,
   );
   SyncOpRow copyWithCompanion(SyncOpsCompanion data) {
     return SyncOpRow(
@@ -8377,6 +8415,7 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
       hlc: data.hlc.present ? data.hlc.value : this.hlc,
       deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
       pushedAt: data.pushedAt.present ? data.pushedAt.value : this.pushedAt,
+      userId: data.userId.present ? data.userId.value : this.userId,
     );
   }
 
@@ -8391,7 +8430,8 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
           ..write('valueJson: $valueJson, ')
           ..write('hlc: $hlc, ')
           ..write('deviceId: $deviceId, ')
-          ..write('pushedAt: $pushedAt')
+          ..write('pushedAt: $pushedAt, ')
+          ..write('userId: $userId')
           ..write(')'))
         .toString();
   }
@@ -8407,6 +8447,7 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
     hlc,
     deviceId,
     pushedAt,
+    userId,
   );
   @override
   bool operator ==(Object other) =>
@@ -8420,7 +8461,8 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
           other.valueJson == this.valueJson &&
           other.hlc == this.hlc &&
           other.deviceId == this.deviceId &&
-          other.pushedAt == this.pushedAt);
+          other.pushedAt == this.pushedAt &&
+          other.userId == this.userId);
 }
 
 class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
@@ -8433,6 +8475,7 @@ class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
   final Value<String> hlc;
   final Value<String> deviceId;
   final Value<int?> pushedAt;
+  final Value<String?> userId;
   const SyncOpsCompanion({
     this.seq = const Value.absent(),
     this.tenantId = const Value.absent(),
@@ -8443,6 +8486,7 @@ class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
     this.hlc = const Value.absent(),
     this.deviceId = const Value.absent(),
     this.pushedAt = const Value.absent(),
+    this.userId = const Value.absent(),
   });
   SyncOpsCompanion.insert({
     this.seq = const Value.absent(),
@@ -8454,6 +8498,7 @@ class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
     required String hlc,
     required String deviceId,
     this.pushedAt = const Value.absent(),
+    this.userId = const Value.absent(),
   }) : tenantId = Value(tenantId),
        entity = Value(entity),
        entityId = Value(entityId),
@@ -8470,6 +8515,7 @@ class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
     Expression<String>? hlc,
     Expression<String>? deviceId,
     Expression<int>? pushedAt,
+    Expression<String>? userId,
   }) {
     return RawValuesInsertable({
       if (seq != null) 'seq': seq,
@@ -8481,6 +8527,7 @@ class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
       if (hlc != null) 'hlc': hlc,
       if (deviceId != null) 'device_id': deviceId,
       if (pushedAt != null) 'pushed_at': pushedAt,
+      if (userId != null) 'user_id': userId,
     });
   }
 
@@ -8494,6 +8541,7 @@ class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
     Value<String>? hlc,
     Value<String>? deviceId,
     Value<int?>? pushedAt,
+    Value<String?>? userId,
   }) {
     return SyncOpsCompanion(
       seq: seq ?? this.seq,
@@ -8505,6 +8553,7 @@ class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
       hlc: hlc ?? this.hlc,
       deviceId: deviceId ?? this.deviceId,
       pushedAt: pushedAt ?? this.pushedAt,
+      userId: userId ?? this.userId,
     );
   }
 
@@ -8538,6 +8587,9 @@ class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
     if (pushedAt.present) {
       map['pushed_at'] = Variable<int>(pushedAt.value);
     }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
     return map;
   }
 
@@ -8552,7 +8604,8 @@ class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
           ..write('valueJson: $valueJson, ')
           ..write('hlc: $hlc, ')
           ..write('deviceId: $deviceId, ')
-          ..write('pushedAt: $pushedAt')
+          ..write('pushedAt: $pushedAt, ')
+          ..write('userId: $userId')
           ..write(')'))
         .toString();
   }
@@ -12924,6 +12977,7 @@ typedef $$SyncOpsTableCreateCompanionBuilder =
       required String hlc,
       required String deviceId,
       Value<int?> pushedAt,
+      Value<String?> userId,
     });
 typedef $$SyncOpsTableUpdateCompanionBuilder =
     SyncOpsCompanion Function({
@@ -12936,6 +12990,7 @@ typedef $$SyncOpsTableUpdateCompanionBuilder =
       Value<String> hlc,
       Value<String> deviceId,
       Value<int?> pushedAt,
+      Value<String?> userId,
     });
 
 class $$SyncOpsTableFilterComposer
@@ -12989,6 +13044,11 @@ class $$SyncOpsTableFilterComposer
 
   ColumnFilters<int> get pushedAt => $composableBuilder(
     column: $table.pushedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -13046,6 +13106,11 @@ class $$SyncOpsTableOrderingComposer
     column: $table.pushedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SyncOpsTableAnnotationComposer
@@ -13083,6 +13148,9 @@ class $$SyncOpsTableAnnotationComposer
 
   GeneratedColumn<int> get pushedAt =>
       $composableBuilder(column: $table.pushedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
 }
 
 class $$SyncOpsTableTableManager
@@ -13122,6 +13190,7 @@ class $$SyncOpsTableTableManager
                 Value<String> hlc = const Value.absent(),
                 Value<String> deviceId = const Value.absent(),
                 Value<int?> pushedAt = const Value.absent(),
+                Value<String?> userId = const Value.absent(),
               }) => SyncOpsCompanion(
                 seq: seq,
                 tenantId: tenantId,
@@ -13132,6 +13201,7 @@ class $$SyncOpsTableTableManager
                 hlc: hlc,
                 deviceId: deviceId,
                 pushedAt: pushedAt,
+                userId: userId,
               ),
           createCompanionCallback:
               ({
@@ -13144,6 +13214,7 @@ class $$SyncOpsTableTableManager
                 required String hlc,
                 required String deviceId,
                 Value<int?> pushedAt = const Value.absent(),
+                Value<String?> userId = const Value.absent(),
               }) => SyncOpsCompanion.insert(
                 seq: seq,
                 tenantId: tenantId,
@@ -13154,6 +13225,7 @@ class $$SyncOpsTableTableManager
                 hlc: hlc,
                 deviceId: deviceId,
                 pushedAt: pushedAt,
+                userId: userId,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

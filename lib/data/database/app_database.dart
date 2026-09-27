@@ -281,6 +281,13 @@ class SyncOps extends Table {
   TextColumn get hlc => text()();
   TextColumn get deviceId => text().named('device_id')();
   IntColumn get pushedAt => integer().named('pushed_at').nullable()();
+
+  /// plantly.ro user id of the session that recorded a LOCAL op (null for
+  /// ops recorded while signed out, for remote ops and for rows written
+  /// before schema 11). The engine pushes only ops whose `user_id` is null
+  /// or equals the signed-in user, so an account switch never uploads the
+  /// previous account's pending changes under the new bearer token.
+  TextColumn get userId => text().named('user_id').nullable()();
 }
 
 /// Ops the server refused (`rejected[]` in a push reply), kept so Me → Cloud
@@ -336,7 +343,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -392,6 +399,13 @@ class AppDatabase extends _$AppDatabase {
             await customStatement(
               'CREATE INDEX IF NOT EXISTS idx_sync_rejections_tenant ON sync_rejections(tenant_id)',
             );
+          }
+          if (from < 11) {
+            // Account attribution of pending ops (QA2 BUG-4c). Pure DDL; the
+            // one-time seed-id re-key that ships with this step is a data
+            // migration run from the app bootstrap (`SeedRekey`), guarded by
+            // its own pref, because it needs the op log.
+            await _addColumnIfMissing(m, syncOps, syncOps.userId);
           }
         },
       );
