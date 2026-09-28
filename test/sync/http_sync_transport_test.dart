@@ -249,7 +249,7 @@ void main() {
       expect(log[0].url.toString(), '$base/photos/abc');
       expect(log[0].headers['Accept'], 'application/json');
       expect(log[0].headers['Authorization'], 'Bearer tok');
-      expect(log[0].followRedirects, isTrue, reason: 'no redirect trick on the API request');
+      expect(log[0].followRedirects, isFalse, reason: 'io: a 302 fallback must expose Location so the blob is fetched without the bearer');
       expect(log[1].url.toString(), 'https://r2.example/get?sig=1');
       expect(log[1].headers.containsKey('Authorization'), isFalse);
       expect(log[1].headers.containsKey('X-Plantly-Client'), isFalse);
