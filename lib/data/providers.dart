@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -30,6 +31,7 @@ import 'repositories/search_repository.dart';
 import 'repositories/species_repository.dart';
 import 'repositories/tag_repository.dart';
 import 'seed.dart';
+import 'seed_rekey.dart';
 
 /// App-wide dependencies. Everything downstream of [appBootstrapProvider]
 /// waits for the async bootstrap to finish so widgets can consume the
@@ -102,8 +104,23 @@ final appContextProvider = FutureProvider<AppContext>((ref) async {
   final prefs = await ref.watch(sharedPreferencesProvider.future);
   final clock = await ref.watch(hlcClockProvider.future);
   final deviceId = clock.deviceId;
+  // One-time re-key of legacy literal seed ids (QA2 BUG-2), across every
+  // tenant in the DB and before the seed. Must never brick startup: the
+  // done-pref is only written on success, so a failure retries next boot.
+  try {
+    await rekeyLegacySeedIds(db: db, clock: clock, prefs: prefs);
+  } catch (e, st) {
+    debugPrint('seed_rekey: failed, will retry on next start: $e\n$st');
+  }
   final tenantId = ref.watch(currentTenantIdProvider);
-  final opLog = OpLogWriter(db: db, clock: clock, tenantId: tenantId);
+  // Account read at write time (not watched): a sign-in must not rebuild
+  // the context; the stamp tells the engine whose pending ops these are.
+  final opLog = OpLogWriter(
+    db: db,
+    clock: clock,
+    tenantId: tenantId,
+    currentUserId: () => ref.read(plantlyAuthProvider).valueOrNull?.userId,
+  );
   if (!(prefs.getBool(kSkipSeedPrefKey) ?? false)) {
     await seedIfEmpty(db: db, opLog: opLog);
   }

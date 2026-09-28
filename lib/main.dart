@@ -6,6 +6,7 @@ import 'app/desktop_theme.dart';
 import 'app/router.dart';
 import 'app/scroll_behavior.dart';
 import 'app/url_strategy.dart';
+import 'cloud/cloud_notices.dart';
 import 'cloud/cloud_sync.dart';
 import 'features/home/home_providers.dart';
 import 'handoff/handoff_listener.dart';
@@ -88,10 +89,12 @@ class _PlantlyAppState extends ConsumerState<PlantlyApp> {
       scrollBehavior: const AppScrollBehavior(),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
+      // `builder` runs under the root ScaffoldMessenger, which is what
+      // CloudNotices needs for its SnackBars.
       builder: (context, child) => DesktopThemeScope(
         child: HandoffListener(
           navigatorKey: _navKey,
-          child: child ?? const SizedBox.shrink(),
+          child: CloudNotices(child: child ?? const SizedBox.shrink()),
         ),
       ),
     );

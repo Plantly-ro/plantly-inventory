@@ -2829,6 +2829,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String shareRemovedFromCollection(String name) {
+    return 'You were removed from $name';
+  }
+
+  @override
   String shareByActor(String name) {
     return 'by $name';
   }

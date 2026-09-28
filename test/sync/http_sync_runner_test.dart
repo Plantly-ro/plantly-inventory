@@ -327,6 +327,56 @@ void main() {
     final r = make();
     await r.syncNow();
     expect(r.current.lastError, 'collection_unavailable');
+    expect(r.current.lastErrorDetail, 'collection_not_found');
+  });
+
+  test('403 not_a_member: the server code rides along as the detail', () async {
+    await localPlant('a');
+    transport.failures.add(const SyncCollectionError('not_a_member', status: 403));
+    final r = make();
+    await r.syncNow();
+    expect(r.current.lastError, 'collection_unavailable');
+    expect(r.current.lastErrorDetail, 'not_a_member');
+    expect(transport.pushes, hasLength(1));
+    // Halted: nothing is retried on its own.
+    await settle(const Duration(milliseconds: 150));
+    expect(transport.pushes, hasLength(1));
+  });
+
+  test('runner for one account: pushes/counts only that account\'s (and unattributed) ops', () async {
+    final alice = OpLogWriter(db: db, clock: clock, tenantId: tenant, currentUserId: () => 'u-1');
+    final bob = OpLogWriter(db: db, clock: clock, tenantId: tenant, currentUserId: () => 'u-2');
+    Future<void> plantBy(OpLogWriter w, String id) async {
+      final h = await w.recordCreate(entity: 'plants', entityId: id, value: {'id': id, 'nickname': id, 'status': 'active'});
+      await db.into(db.plants).insert(PlantsCompanion.insert(id: id, tenantId: tenant, nickname: id, status: 'active', updatedHlc: h.encode(), deviceId: 'dev-a'));
+    }
+
+    await plantBy(alice, 'A1');
+    await plantBy(alice, 'A2');
+    await plantBy(bob, 'B1');
+    await localPlant('legacy'); // writer without a user → unattributed
+
+    runner = HttpSyncRunner(
+      db: db,
+      opLog: bob,
+      transport: transport,
+      cursor: cursor,
+      deviceId: 'dev-a',
+      collectionId: tenant,
+      userId: 'u-2',
+      periodic: Duration.zero,
+      observeLifecycle: false,
+    );
+    final r = runner!;
+    await r.syncNow();
+    expect(transport.pushes, hasLength(1));
+    expect(transport.pushes.single.ops.map((o) => o.entityId), ['B1', 'legacy']);
+    expect(r.current.pendingOps, 0, reason: 'alice\'s two ops are not this account\'s to push');
+    expect(r.current.lastError, isNull);
+    final pending = (await db.select(db.syncOps).get()).where((o) => o.pushedAt == null).toList();
+    expect(pending.map((o) => o.entityId), ['A1', 'A2']);
+    expect(pending.map((o) => o.userId), everyElement('u-1'));
+    expect(await bob.pendingCount(), 2, reason: 'the raw tenant count still sees them (ledger view)');
   });
 
   test('single-flight: concurrent syncNow calls share the cycle and queue exactly one follow-up', () async {

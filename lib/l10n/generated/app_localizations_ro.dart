@@ -2877,6 +2877,11 @@ class AppLocalizationsRo extends AppLocalizations {
   }
 
   @override
+  String shareRemovedFromCollection(String name) {
+    return 'Ai fost eliminat din $name';
+  }
+
+  @override
   String shareByActor(String name) {
     return 'de $name';
   }

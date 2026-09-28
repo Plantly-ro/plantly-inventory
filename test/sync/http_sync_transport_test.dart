@@ -235,7 +235,27 @@ void main() {
       expect(log.single.url.toString(), '$base/photos/abc/complete');
     });
 
-    test('download follows the 302 to the presigned URL without the bearer token', () async {
+    test('download asks for JSON (Accept) and fetches {url} with a bare client (no bearer)', () async {
+      final log = <http.Request>[];
+      final t = transport(log: log, (req) async {
+        if (req.url.path.endsWith('/photos/abc')) {
+          return jsonRes({'url': 'https://r2.example/get?sig=1', 'expires_at': '2026-09-27T12:00:00Z'});
+        }
+        return http.Response.bytes([1, 2, 3], 200, headers: {'content-type': 'image/jpeg'});
+      });
+      final bytes = await t.download('abc');
+      expect(bytes, [1, 2, 3]);
+      expect(log, hasLength(2));
+      expect(log[0].url.toString(), '$base/photos/abc');
+      expect(log[0].headers['Accept'], 'application/json');
+      expect(log[0].headers['Authorization'], 'Bearer tok');
+      expect(log[0].followRedirects, isFalse, reason: 'io: a 302 fallback must expose Location so the blob is fetched without the bearer');
+      expect(log[1].url.toString(), 'https://r2.example/get?sig=1');
+      expect(log[1].headers.containsKey('Authorization'), isFalse);
+      expect(log[1].headers.containsKey('X-Plantly-Client'), isFalse);
+    });
+
+    test('download falls back to the 302 Location (older server) without the bearer token', () async {
       final log = <http.Request>[];
       final t = transport(log: log, (req) async {
         if (req.url.path.endsWith('/photos/abc')) {
@@ -247,10 +267,28 @@ void main() {
       expect(bytes, [9, 8]);
       expect(log, hasLength(2));
       expect(log[0].url.toString(), '$base/photos/abc');
-      expect(log[0].followRedirects, isFalse);
-      expect(log[0].headers['Authorization'], 'Bearer tok');
       expect(log[1].url.toString(), 'https://r2.example/get?sig=2');
       expect(log[1].headers.containsKey('Authorization'), isFalse);
+    });
+
+    test('download: a transparently followed redirect (browser) yields the bytes directly', () async {
+      final log = <http.Request>[];
+      final t = transport(log: log, (_) async => http.Response.bytes([7, 7], 200, headers: {'content-type': 'image/png'}));
+      expect(await t.download('abc'), [7, 7]);
+      expect(log, hasLength(1));
+    });
+
+    test('download: JSON reply without url → SyncProtocolError; relative url resolves against the API', () async {
+      final t = transport((_) async => jsonRes({'expires_at': 'x'}));
+      await expectLater(t.download('abc'), throwsA(isA<SyncProtocolError>()));
+
+      final log = <http.Request>[];
+      final t2 = transport(log: log, (req) async {
+        if (req.url.path.endsWith('/photos/abc')) return jsonRes({'url': '/blobs/abc?sig=3'});
+        return http.Response.bytes([4], 200);
+      });
+      expect(await t2.download('abc'), [4]);
+      expect(log[1].url.toString(), '$host/blobs/abc?sig=3');
     });
 
     test('download 404 → SyncCollectionError(404)', () async {

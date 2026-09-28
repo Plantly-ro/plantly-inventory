@@ -35,6 +35,15 @@ const String kCollectionsCachePrefKey = 'plantly_collections_cache';
 /// Prefix of the per-collection members cache (`<prefix><collection id>`).
 const String kMembersCachePrefPrefix = 'plantly_collection_members/';
 
+/// Server code (and `SyncStatus.lastErrorDetail` of a `collection_unavailable`
+/// halt) for a 403 on a collection the account is no longer a member of.
+const String kNotAMemberDetail = 'not_a_member';
+
+/// Display name of a shared collection the server just told us we were
+/// removed from ([CollectionsNotifier.removedByServer]); the UI shows it
+/// once (`CloudNotices` SnackBar) and resets it to null.
+final collectionRemovedNoticeProvider = StateProvider<String?>((_) => null);
+
 class CollectionsState {
   const CollectionsState({
     this.items = const [],
@@ -370,12 +379,27 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
     return _ref.read(plantlyApiProvider).createInvite(session.token, collectionId);
   }
 
-  Future<void> _drop(String collectionId, String userId) async {
+  /// The server answered 403 `not_a_member` for [collectionId] while it was
+  /// the active one (the owner removed this account): forget it locally,
+  /// fall back to the linked default when it was the current tenant, and
+  /// raise [collectionRemovedNoticeProvider] with its name for the UI. The
+  /// tenant's rows stay on disk, invisible, like after [leave]. No-op when
+  /// the list no longer knows the collection.
+  Future<void> removedByServer(String collectionId) async {
+    await _ready;
+    final name = state.byId(collectionId)?.displayName;
+    if (name == null) return;
+    final session = await _ref.read(plantlyAuthProvider.notifier).current();
+    await _drop(collectionId, session?.userId);
+    _ref.read(collectionRemovedNoticeProvider.notifier).state = name;
+  }
+
+  Future<void> _drop(String collectionId, String? userId) async {
     final items = [
       for (final c in state.items)
         if (c.id != collectionId) c,
     ];
-    await _saveCache(userId, items);
+    if (userId != null) await _saveCache(userId, items);
     if (mounted) state = state.copyWith(items: items);
     final home = _ref.read(cloudStateProvider).collectionId;
     if (_ref.read(currentTenantIdProvider) == collectionId && home != null) {

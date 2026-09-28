@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:plantly_inventory/cloud/cloud_state.dart';
 import 'package:plantly_inventory/cloud/collection_link.dart';
 import 'package:plantly_inventory/cloud/entitlement.dart';
 import 'package:plantly_inventory/cloud/cloud_sync.dart';
@@ -330,6 +331,41 @@ void main() {
       expect(find.byKey(const Key('cloud-sync-now')), findsOneWidget);
     });
 
+    testWidgets('QA2 BUG-4: notEntitled + heldByOther → the decision rows, not the paywall', (tester) async {
+      await pump(
+        tester,
+        entitlement: CloudEntitlement.none,
+        linked: false,
+        child: Scaffold(
+          body: ListView(
+            padding: const EdgeInsets.all(20),
+            children: const [CloudRows(surface: PlantlySurface.light, detailed: true)],
+          ),
+        ),
+        extra: [
+          cloudStateProvider.overrideWithValue(const CloudState(phase: CloudPhase.notEntitled, account: 'carol', heldByOther: 'alice')),
+        ],
+      );
+      expect(find.byKey(const Key('cloud-held-by-other')), findsOneWidget);
+      expect(find.text('This device holds plants synced by alice.'), findsOneWidget);
+      expect(find.byKey(const Key('cloud-move-to-me')), findsOneWidget);
+      expect(find.text("Move this device's plants to carol's cloud"), findsOneWidget);
+      expect(find.byKey(const Key('cloud-start-empty')), findsOneWidget);
+      expect(find.text('Start empty for carol'), findsOneWidget);
+      expect(find.byKey(const Key('cloud-not-included')), findsNothing, reason: 'decision first, paywall later');
+      expect(find.byKey(const Key('cloud-subscribe')), findsNothing);
+      expect(find.byKey(const Key('cloud-refresh')), findsNothing);
+      expect(collectionCreates, 0, reason: 'nothing automatic');
+      // Same confirm dialog as the ready-phase rows.
+      await tester.tap(find.byKey(const Key('cloud-move-to-me')));
+      await tester.pumpAndSettle();
+      expect(find.text('Move plants to your cloud?'), findsOneWidget);
+      expect(find.byKey(const Key('cloud-move-confirm')), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(collectionCreates, 0);
+    });
+
     testWidgets('account switch (ro): Start empty → fresh tenant, skip-seed set, linked for the new user', (tester) async {
       final db = AppDatabase.forTesting(NativeDatabase.memory());
       addTearDown(db.close);
@@ -437,6 +473,17 @@ void main() {
       expect(find.text('Modificări nesincronizate'), findsOneWidget);
       expect(find.byKey(const Key('cloud-rejections-empty')), findsOneWidget);
       expect(find.byKey(const Key('cloud-rejections-retry')), findsNothing);
+    });
+
+    test('describeSyncError: collection_unavailable + not_a_member names the collection; generic otherwise', () {
+      final t = lookupAppLocalizations(const Locale('en'));
+      expect(describeSyncError(t, 'collection_unavailable', detail: 'not_a_member', collectionName: 'Family greenhouse'),
+          'You were removed from Family greenhouse');
+      expect(describeSyncError(lookupAppLocalizations(const Locale('ro')), 'collection_unavailable', detail: 'not_a_member', collectionName: 'Sera'),
+          'Ai fost eliminat din Sera');
+      expect(describeSyncError(t, 'collection_unavailable', detail: 'not_a_member'), t.cloudErrCollectionUnavailable,
+          reason: 'no name to show → generic copy');
+      expect(describeSyncError(t, 'collection_unavailable', detail: 'collection_not_found', collectionName: 'x'), t.cloudErrCollectionUnavailable);
     });
 
     test('describeSyncError: rejected uses the typed count/reason, falls back to the detail string', () {

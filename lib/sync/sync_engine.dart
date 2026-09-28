@@ -124,6 +124,7 @@ class SyncEngine {
     required this.cursor,
     required this.tenantId,
     required this.deviceId,
+    this.userId,
     this.batchSize = 500,
     this.maxBatchBytes = 3 * 1024 * 1024,
     int Function()? nowMillis,
@@ -136,6 +137,13 @@ class SyncEngine {
   final SyncCursor cursor;
   final String tenantId;
   final String deviceId;
+
+  /// Account this engine pushes for. Only ops with `user_id` NULL (legacy /
+  /// signed-out writes) or equal to [userId] are pending *for this engine*;
+  /// ops another account recorded on this device stay on disk until that
+  /// account signs in again — never uploaded under the wrong bearer token.
+  /// Null = only unattributed ops.
+  final String? userId;
 
   /// Upper bound on ops per push (contract: ≤ 500).
   final int batchSize;
@@ -157,10 +165,17 @@ class SyncEngine {
   Future<int> pendingCount() async {
     final q = db.selectOnly(db.syncOps)
       ..addColumns([db.syncOps.seq.count()])
-      ..where(
-          db.syncOps.pushedAt.isNull() & db.syncOps.tenantId.equals(tenantId));
+      ..where(db.syncOps.pushedAt.isNull() &
+          db.syncOps.tenantId.equals(tenantId) &
+          _ownedBy(db.syncOps));
     final row = await q.getSingle();
     return row.read(db.syncOps.seq.count()) ?? 0;
+  }
+
+  /// `user_id IS NULL [OR user_id = ?]` — see [userId].
+  Expression<bool> _ownedBy($SyncOpsTable o) {
+    final me = userId;
+    return me == null ? o.userId.isNull() : (o.userId.isNull() | o.userId.equals(me));
   }
 
   /// Push all currently-pending ops. Returns a summary; on transport error the
@@ -266,6 +281,7 @@ class SyncEngine {
           ..where((o) =>
               o.pushedAt.isNull() &
               o.tenantId.equals(tenantId) &
+              _ownedBy(o) &
               o.seq.isBiggerThanValue(afterSeq))
           ..orderBy([(o) => OrderingTerm.asc(o.seq)])
           ..limit(_batchLimit))
