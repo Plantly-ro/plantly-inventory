@@ -4,6 +4,12 @@ import '../data/database/app_database.dart';
 import 'hlc.dart';
 import 'sync_engine.dart';
 
+/// Ledger reason written by the applier (not the server) when a pulled `*`
+/// op names an id that another tenant on this device already holds
+/// (`SyncApplier`). The op is remote, so "Retry all" must never re-queue
+/// it — see [SyncRejectionStore.retryAll].
+const String kIdCollisionReason = 'id_collision';
+
 /// What the runner does with a server-rejected op.
 enum SyncRejectionKind {
   /// The server will never take this op: park it (`pushed_at` set) so the
@@ -173,14 +179,21 @@ class SyncRejectionStore {
 
   /// User action "Retry all": un-park every listed op (`pushed_at` back to
   /// NULL so the next cycle sends it again) and forget the rows. Returns
-  /// how many ops were re-queued.
+  /// how many ops were re-queued. [kIdCollisionReason] rows point at
+  /// *remote* ops — re-queuing one would push another device's op under
+  /// ours — so they are only forgotten, never un-parked.
   Future<int> retryAll() async {
     return db.transaction(() async {
       final rows = await all();
       if (rows.isEmpty) return 0;
-      final seqs = [for (final r in rows) r.opSeq];
-      await (db.update(db.syncOps)..where((o) => o.seq.isIn(seqs)))
-          .write(const SyncOpsCompanion(pushedAt: Value(null)));
+      final seqs = [
+        for (final r in rows)
+          if (r.reason != kIdCollisionReason) r.opSeq,
+      ];
+      if (seqs.isNotEmpty) {
+        await (db.update(db.syncOps)..where((o) => o.seq.isIn(seqs)))
+            .write(const SyncOpsCompanion(pushedAt: Value(null)));
+      }
       await (db.delete(db.syncRejections)..where((r) => r.tenantId.equals(tenantId))).go();
       return seqs.length;
     });

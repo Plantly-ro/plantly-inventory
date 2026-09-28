@@ -163,9 +163,9 @@ class OpLogWriter {
 
   /// Persist an op received from the server. Stored with its origin
   /// `device_id` and `pushed_at` = [nowMillis] so it never enters the pending
-  /// queue; no change notification is emitted.
-  Future<void> recordRemote(SyncOpDto op, {required String deviceId, required int nowMillis}) async {
-    await db.into(db.syncOps).insert(SyncOpsCompanion.insert(
+  /// queue; no change notification is emitted. Returns the row's `seq`.
+  Future<int> recordRemote(SyncOpDto op, {required String deviceId, required int nowMillis}) {
+    return db.into(db.syncOps).insert(SyncOpsCompanion.insert(
           tenantId: tenantId,
           entity: op.entity,
           entityId: op.entityId,
