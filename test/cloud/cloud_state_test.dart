@@ -147,6 +147,19 @@ void main() {
       expect(own.heldByOther, isNull);
     });
 
+    test('QA2 BUG-4: a foreign link is never home — linked=false, no collection id, heldByOther set, in BOTH phases', () async {
+      for (final e in [CloudEntitlement.none, const CloudEntitlement(active: true, source: 'pro')]) {
+        final s = await settle(make(entitlement: e, linked: true, linkUser: 'u-other'));
+        expect(s.phase, e.active ? CloudPhase.ready : CloudPhase.notEntitled);
+        expect(s.linked, isFalse, reason: 'phase ${s.phase}');
+        expect(s.collectionId, isNull);
+        expect(s.collectionName, isNull);
+        expect(s.canSync, isFalse);
+        expect(s.heldByOther, 'bob');
+        expect(s.account, 'alice');
+      }
+    });
+
     test('data-owner marker alone (A unlinked, B signed in) → heldByOther, nothing syncs', () async {
       final db = AppDatabase.forTesting(NativeDatabase.memory());
       addTearDown(db.close);

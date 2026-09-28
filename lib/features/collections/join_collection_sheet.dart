@@ -5,8 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/side_sheet.dart';
+import '../../cloud/account_decision.dart';
 import '../../cloud/cloud_state.dart';
 import '../../cloud/cloud_sync.dart';
+import '../../cloud/collection_link.dart';
 import '../../cloud/collections.dart';
 import '../../cloud/sign_in_events.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -23,10 +25,12 @@ import 'collection_ui.dart';
 /// code arrives pre-filled). Resolves with the joined collection, or null.
 ///
 /// Flow: validate the code → sign in first when signed out (login sheet on
-/// top) → `POST /collections/join` → switch to it (when the device can
-/// sync) → one `syncNow()` so it fills straight away. Not entitled: the join
-/// still goes through (the server accepts; writes will 402) and the sheet
-/// says so up front.
+/// top) → the account-switch decision when this device still holds another
+/// account's plants (`resolveHeldByOther`; cancel = no join) →
+/// `POST /collections/join` → switch to it (when the device can sync) → one
+/// `syncNow()` so it fills straight away. Not entitled: the join still goes
+/// through (the server accepts; writes will 402) and the sheet says so up
+/// front.
 Future<CloudCollection?> showJoinCollectionSheet(BuildContext context, {String? initialCode}) {
   return showAdaptiveSheet<CloudCollection>(
     context,
@@ -74,6 +78,7 @@ class _JoinCollectionSheetState extends ConsumerState<JoinCollectionSheet> {
     final auth = ref.read(plantlyAuthProvider.notifier);
     final events = ref.read(signInEventsProvider);
     final collections = ref.read(collectionsProvider.notifier);
+    final links = ref.read(collectionLinkProvider.notifier);
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.maybeOf(context);
 
@@ -91,6 +96,20 @@ class _JoinCollectionSheetState extends ConsumerState<JoinCollectionSheet> {
           return;
         }
         events.emit(session);
+      }
+      // Another account's plants on this device (its link, or the marker it
+      // left behind): the user decides where they go BEFORE the join —
+      // otherwise `join` finds no link of ours and lands nowhere (QA2 BUG-4).
+      await links.ready;
+      if (!mounted) return;
+      final cloud = ref.read(cloudStateProvider);
+      final other = cloud.heldByOther;
+      if (other != null) {
+        final decided = await resolveHeldByOther(context, ref, other: other, me: cloud.account ?? session.username);
+        if (!decided) {
+          if (mounted) setState(() => _busy = false); // cancelled: no error, sheet stays
+          return;
+        }
       }
       final col = await collections.join(code);
       // Fill the new tenant right away (a no-op runner just returns).

@@ -4838,6 +4838,12 @@ abstract class AppLocalizations {
   /// **'You left {name}'**
   String shareLeft(String name);
 
+  /// No description provided for @shareRemovedFromCollection.
+  ///
+  /// In en, this message translates to:
+  /// **'You were removed from {name}'**
+  String shareRemovedFromCollection(String name);
+
   /// No description provided for @shareByActor.
   ///
   /// In en, this message translates to:

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../cloud/account_decision.dart';
 import '../../cloud/cloud_state.dart';
 import '../../cloud/collection_link.dart';
 import '../../cloud/collections.dart';
@@ -127,12 +128,7 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
     }
   }
 
-  String _describe(Object e) {
-    final t = AppLocalizations.of(context);
-    if (e is PlantlyNetworkException) return t.plantlyErrorNetwork;
-    if (e is PlantlyApiException) return e.isRateLimited ? t.plantlyErrorRateLimited : e.message;
-    return '$e';
-  }
+  String _describe(Object e) => describeLinkError(AppLocalizations.of(context), e);
 
   @override
   Widget build(BuildContext context) {
@@ -168,7 +164,12 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
       ];
 
   List<Widget> _notEntitled(AppLocalizations t, CloudState state) {
+    // The decision comes before the paywall: a user without a plan can
+    // still hold (and join, §3) collections, and never on top of another
+    // account's link.
+    if (state.heldByOther != null) return _heldByOther(t, state);
     final purchaseLink = ref.watch(cloudPurchaseLinkAllowedProvider);
+    final collectionName = ref.watch(activeCollectionProvider)?.displayName;
     // A shared collection syncs on the owner's plan even here (§3).
     final sharedActive = ref.watch(activeCollectionIsSharedProvider);
     final status = ref.watch(syncStatusProvider).valueOrNull ?? SyncStatus.empty;
@@ -187,7 +188,8 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
         MeActionRow(
           key: const Key('cloud-last-error'),
           label: t.cloudLastErrorLabel,
-          value: describeSyncError(t, status.lastError!, detail: status.lastErrorDetail, status: status),
+          value: describeSyncError(t, status.lastError!,
+              detail: status.lastErrorDetail, status: status, collectionName: collectionName),
           icon: Icons.error_outline,
           surface: surface,
           valueColor: surface.terra,
@@ -256,6 +258,7 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
   List<Widget> _ready(AppLocalizations t, CloudState state) {
     if (state.heldByOther != null) return _heldByOther(t, state);
     final status = ref.watch(syncStatusProvider).valueOrNull ?? SyncStatus.empty;
+    final collectionName = ref.watch(activeCollectionProvider)?.displayName;
     final String statusText;
     Color? statusColor;
     VoidCallback? statusTap;
@@ -309,7 +312,8 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
           MeActionRow(
             key: const Key('cloud-last-error'),
             label: t.cloudLastErrorLabel,
-            value: describeSyncError(t, status.lastError!, detail: status.lastErrorDetail, status: status),
+            value: describeSyncError(t, status.lastError!,
+                detail: status.lastErrorDetail, status: status, collectionName: collectionName),
             icon: Icons.error_outline,
             surface: surface,
             valueColor: surface.terra,
@@ -359,23 +363,8 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
   // --- actions -------------------------------------------------------------
 
   Future<void> _moveToMe(String other, String me) async {
-    final t = AppLocalizations.of(context);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(t.cloudMoveConfirmTitle),
-        content: Text(t.cloudMoveConfirmBody(other, me)),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.cancel)),
-          FilledButton(
-            key: const Key('cloud-move-confirm'),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(t.cloudMove),
-          ),
-        ],
-      ),
-    );
-    if (ok != true || !mounted) return; // cancel = stay as is (sticky)
+    final ok = await confirmMoveToMe(context, other: other, me: me);
+    if (!ok || !mounted) return; // cancel = stay as is (sticky)
     await _link();
   }
 
@@ -505,12 +494,17 @@ String describeEntitlement(AppLocalizations t, CloudEntitlement? e) {
 /// Engine error codes (`SyncStatus.lastError`) → copy; anything else is
 /// shown as-is. [detail] is `SyncStatus.lastErrorDetail` (the offending
 /// `<entity>/<id>` for `op_too_large`, [kOwnerPlanLapsedDetail] for a 402
-/// on a shared collection); `rejected` reads the count and server reason
-/// from [status] and falls back to [detail] without it.
-String describeSyncError(AppLocalizations t, String code, {String? detail, SyncStatus? status}) => switch (code) {
+/// on a shared collection, the server code for `collection_unavailable`);
+/// `rejected` reads the count and server reason from [status] and falls
+/// back to [detail] without it. [collectionName] names the collection for
+/// the `not_a_member` copy ("You were removed from …").
+String describeSyncError(AppLocalizations t, String code, {String? detail, SyncStatus? status, String? collectionName}) =>
+    switch (code) {
       'cloud_required' => detail == kOwnerPlanLapsedDetail ? t.shareErrOwnerLapsed : t.cloudNotIncludedValue,
       'unauthorized' => t.cloudSignInLabel,
-      'collection_unavailable' => t.cloudErrCollectionUnavailable,
+      'collection_unavailable' => detail == kNotAMemberDetail && collectionName != null && collectionName.isNotEmpty
+          ? t.shareRemovedFromCollection(collectionName)
+          : t.cloudErrCollectionUnavailable,
       'quota_exceeded' => t.cloudErrQuotaExceeded,
       'op_too_large' => detail == null || detail.isEmpty ? t.cloudErrOpTooLarge : t.cloudErrOpTooLargeDetail(detail),
       'rejected' => status != null && status.rejectedOps > 0

@@ -825,6 +825,8 @@
   "shareLeave": "Părăsește",
   "shareLeft": "Ai părăsit {name}",
   "@shareLeft": {"placeholders": {"name": {"type": "String"}}},
+  "shareRemovedFromCollection": "Ai fost eliminat din {name}",
+  "@shareRemovedFromCollection": {"placeholders": {"name": {"type": "String"}}},
   "shareByActor": "de {name}",
   "@shareByActor": {"placeholders": {"name": {"type": "String"}}},
   "shareByOtherMember": "de alt membru",

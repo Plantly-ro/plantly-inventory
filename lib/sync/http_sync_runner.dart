@@ -47,7 +47,8 @@ typedef SyncAuthRefresher = Future<bool> Function();
 /// Failure policy: retryable errors (429/5xx/network) back off exponentially
 /// from [minBackoff] to [maxBackoff] (`Retry-After` honoured); 402 halts with
 /// `cloud_required`; 401 refreshes once via [refreshAuth] then halts with
-/// `unauthorized`; 403/404 halt with `collection_unavailable`. A halted
+/// `unauthorized`; 403/404 halt with `collection_unavailable` (detail = the
+/// server code, e.g. `not_a_member`). A halted
 /// runner ignores debounce/periodic triggers until [syncNow] or app resume.
 class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
   HttpSyncRunner({
@@ -58,6 +59,7 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
     required this.cursor,
     required this.deviceId,
     required this.collectionId,
+    this.userId,
     Stream<void>? localChanges,
     this.photos,
     this.usage,
@@ -84,6 +86,7 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
           cursor: cursor,
           tenantId: collectionId,
           deviceId: deviceId,
+          userId: userId,
           batchSize: batchSize,
         ),
         _applier = SyncApplier(db: db, opLog: opLog, clock: opLog.clock) {
@@ -104,6 +107,10 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
   final SyncCursor cursor;
   final String deviceId;
   final String collectionId;
+
+  /// Account the runner pushes for (`SyncEngine.userId`): pending ops of
+  /// another account on this device are neither counted nor uploaded.
+  final String? userId;
   final PhotoUploader? photos;
   final CollectionUsageSource? usage;
   final SyncAuthRefresher? refreshAuth;
@@ -298,7 +305,7 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
         _emit(_status.copyWith(
           inFlight: false,
           lastSyncAt: _now(),
-          pendingOps: await opLog.pendingCount(),
+          pendingOps: await _engine.pendingCount(),
           lastError: error,
           lastErrorDetail: detail,
           clearError: error == null,
@@ -317,8 +324,11 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
       } on SyncEntitlementError {
         _halt('cloud_required', detail: entitlementIsOwners ? kOwnerPlanLapsedDetail : null);
         return;
-      } on SyncCollectionError {
-        _halt('collection_unavailable');
+      } on SyncCollectionError catch (e) {
+        // The server code (`not_a_member`, `collection_not_found`) rides
+        // along so the integrator can react (removed from a shared
+        // collection → back home + notice).
+        _halt('collection_unavailable', detail: e.message);
         return;
       } on SyncRetryableError catch (e) {
         _scheduleRetry(e.retryAfter);
@@ -406,9 +416,10 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
     if (n != _status.pendingOps) _emit(_status.copyWith(pendingOps: n));
   }
 
+  /// Ops *this account* still has to push (see [userId]).
   Future<int> _pendingSafe() async {
     try {
-      return await opLog.pendingCount();
+      return await _engine.pendingCount();
     } catch (_) {
       return _status.pendingOps;
     }

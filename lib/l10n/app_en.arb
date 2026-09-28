@@ -938,6 +938,8 @@
   "shareLeave": "Leave",
   "shareLeft": "You left {name}",
   "@shareLeft": {"placeholders": {"name": {"type": "String"}}},
+  "shareRemovedFromCollection": "You were removed from {name}",
+  "@shareRemovedFromCollection": {"placeholders": {"name": {"type": "String"}}},
   "shareByActor": "by {name}",
   "@shareByActor": {"placeholders": {"name": {"type": "String"}}},
   "shareByOtherMember": "by another member",

@@ -113,7 +113,14 @@ final appContextProvider = FutureProvider<AppContext>((ref) async {
     debugPrint('seed_rekey: failed, will retry on next start: $e\n$st');
   }
   final tenantId = ref.watch(currentTenantIdProvider);
-  final opLog = OpLogWriter(db: db, clock: clock, tenantId: tenantId);
+  // Account read at write time (not watched): a sign-in must not rebuild
+  // the context; the stamp tells the engine whose pending ops these are.
+  final opLog = OpLogWriter(
+    db: db,
+    clock: clock,
+    tenantId: tenantId,
+    currentUserId: () => ref.read(plantlyAuthProvider).valueOrNull?.userId,
+  );
   if (!(prefs.getBool(kSkipSeedPrefKey) ?? false)) {
     await seedIfEmpty(db: db, opLog: opLog);
   }
