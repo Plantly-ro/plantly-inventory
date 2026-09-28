@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -2926,7 +2925,8 @@ class AppLocalizationsRo extends AppLocalizations {
           'Ai deja $n de invitații active — așteaptă ca una să fie folosită sau să expire.',
       few:
           'Ai deja $n invitații active — așteaptă ca una să fie folosită sau să expire.',
-      one: 'Ai deja 1 invitație activă — așteaptă să fie folosită sau să expire.',
+      one:
+          'Ai deja 1 invitație activă — așteaptă să fie folosită sau să expire.',
     );
     return '$_temp0';
   }

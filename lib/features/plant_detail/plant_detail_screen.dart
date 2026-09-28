@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app/clock.dart';
 import '../../app/breakpoints.dart';
 import '../../app/desktop_theme.dart';
 import '../../app/navigation.dart';
@@ -921,7 +922,7 @@ class _UpcomingRowView extends ConsumerWidget {
     final t = AppLocalizations.of(context);
     final types = ref.watch(careTypesProvider);
     final ct = resolveCareType(types, schedule.type);
-    final (label, whenText, urgent) = _describeSchedule(t, schedule, careTypeLabel(t, ct));
+    final (label, whenText, urgent) = _describeSchedule(t, schedule, careTypeLabel(t, ct), now: ref.read(clockProvider)());
     final icon = ct.icon;
     final muted = schedule.notificationsMuted;
     // If the user gave this type a colour, use it as the chip fill; the
@@ -1030,12 +1031,13 @@ class _UpcomingRowView extends ConsumerWidget {
 (String label, String when, bool urgent) _describeSchedule(
   AppLocalizations t,
   db.CareScheduleRow s,
-  String label,
-) {
+  String label, {
+  DateTime? now,
+}) {
   final due = s.nextDueAt;
   if (due == null) return (label, t.detailNoDueDate, false);
-  final now = DateTime.now().millisecondsSinceEpoch;
-  final diffMs = due - now;
+  final nowMs = (now ?? DateTime.now()).millisecondsSinceEpoch;
+  final diffMs = due - nowMs;
   final days = (diffMs / (86400 * 1000)).round();
   if (diffMs < 0) {
     final late = -days;
@@ -1745,7 +1747,7 @@ class _StatsCard extends ConsumerWidget {
     final last = events.first;
     final lastType = last.type;
     final lastWhen = DateTime.fromMillisecondsSinceEpoch(last.doneAt, isUtc: true).toLocal();
-    final daysAgo = DateTime.now().difference(lastWhen).inDays;
+    final daysAgo = ref.read(clockProvider)().difference(lastWhen).inDays;
     // Average interval for the most-common type.
     final byType = <String, List<int>>{};
     for (final e in events) {
@@ -2423,7 +2425,7 @@ class _UpcomingTable extends ConsumerWidget {
   }
 
   DataRow _row(BuildContext context, WidgetRef ref, AppLocalizations t, db.CareScheduleRow s, CareType ct, TextStyle cellStyle) {
-    final (label, whenText, urgent) = _describeSchedule(t, s, careTypeLabel(t, ct));
+    final (label, whenText, urgent) = _describeSchedule(t, s, careTypeLabel(t, ct), now: ref.read(clockProvider)());
     final muted = s.notificationsMuted;
     final chipBg = urgent ? surface.terraSoft : (ct.color ?? surface.greenSoft);
     final chipFg = urgent ? surface.terra : (ct.color == null ? surface.green : Colors.white);
