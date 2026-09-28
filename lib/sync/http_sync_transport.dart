@@ -161,7 +161,7 @@ class HttpSyncTransport implements SyncTransport, CollectionUsageSource, PhotoTr
     final res = await _send(() async {
       final req = http.Request('GET', _uri('/photos/$sha256'))
         ..headers.addAll(await _headers())
-        ..followRedirects = !_isWeb;
+        ..followRedirects = _isWeb;
       return http.Response.fromStream(await _client.send(req));
     }, allowRedirect: true);
     if (res.statusCode >= 300 && res.statusCode < 400) {

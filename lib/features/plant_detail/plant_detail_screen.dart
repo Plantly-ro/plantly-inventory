@@ -400,7 +400,7 @@ class _PlantDetailBody extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Text(
                   plantRow.acquiredAt == null
-                      ? t.detailAddedOn(_fmtDateLong(context, DateTime.now()))
+                      ? t.detailAddedOn(_fmtDateLong(context, ref.read(clockProvider)()))
                       : t.detailAcquiredOn(_fmtDateLong(
                           context,
                           DateTime.fromMillisecondsSinceEpoch(plantRow.acquiredAt!, isUtc: true).toLocal(),
