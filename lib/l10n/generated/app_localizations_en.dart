@@ -3024,6 +3024,120 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cloudRejDismissValue => 'Keep them on this device only';
 
   @override
+  String get activityScreenTitle => 'Activity';
+
+  @override
+  String get activityEntryLabel => 'Activity';
+
+  @override
+  String get activityEntryValue => 'Who changed what in this collection';
+
+  @override
+  String activityEntryTooltip(String name) {
+    return 'Activity in $name';
+  }
+
+  @override
+  String get activityFeedEmpty =>
+      'No activity yet. Changes made by members of this collection will show up here.';
+
+  @override
+  String get activityLoadMore => 'Load more';
+
+  @override
+  String get activityCachedOffline =>
+      'Offline — showing the last saved activity';
+
+  @override
+  String get activityLoadError => 'Couldn\'t load the activity';
+
+  @override
+  String get activityUnknownUser => 'Another member';
+
+  @override
+  String activityCreated(String user, String object) {
+    return '$user added $object';
+  }
+
+  @override
+  String activityUpdated(String user, String object) {
+    return '$user edited $object';
+  }
+
+  @override
+  String activityDeleted(String user, String object) {
+    return '$user removed $object';
+  }
+
+  @override
+  String get activityObjPlant => 'a plant';
+
+  @override
+  String activityObjSpace(String name) {
+    return 'the space $name';
+  }
+
+  @override
+  String get activityObjSpaceUnnamed => 'a space';
+
+  @override
+  String activityObjReminder(String name) {
+    return 'a reminder for $name';
+  }
+
+  @override
+  String get activityObjReminderUnnamed => 'a reminder';
+
+  @override
+  String activityObjCareEvent(String name) {
+    return 'a care entry for $name';
+  }
+
+  @override
+  String get activityObjCareEventUnnamed => 'a care entry';
+
+  @override
+  String activityObjPhoto(String name) {
+    return 'a photo of $name';
+  }
+
+  @override
+  String get activityObjPhotoUnnamed => 'a photo';
+
+  @override
+  String get activityObjItem => 'an item';
+
+  @override
+  String get activityJustNow => 'just now';
+
+  @override
+  String activityMinutesAgo(int n) {
+    return '$n min ago';
+  }
+
+  @override
+  String activityHoursAgo(int n) {
+    return '$n h ago';
+  }
+
+  @override
+  String activityLastEditedBy(String name, String when) {
+    return 'Last edited by $name · $when';
+  }
+
+  @override
+  String activityLastEditedByNoTime(String name) {
+    return 'Last edited by $name';
+  }
+
+  @override
+  String get cloudSharedAccessLabel => 'Access via a shared collection';
+
+  @override
+  String get cloudSharedAccessValue =>
+      'You have access through a shared collection. Your own collection stays on this device only.';
+
+  @override
   String get gateHeadline => 'Your collection, in sync everywhere';
 
   @override
