@@ -11,6 +11,8 @@ import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../../app/navigation.dart';
+import '../../cloud/collections.dart';
+import '../collections/read_only_banner.dart';
 
 /// Streams every row that has `notifications_muted = true` across
 /// plants, schedules, and locations. Same provider scope
@@ -66,6 +68,9 @@ class NotificationsScreen extends ConsumerWidget {
           orElse: () => const <String, PlantRow>{},
         );
     final types = ref.watch(careTypesProvider);
+    // MULTI-USER-V2 §3: `notifications_muted` is a synced row field, so
+    // un-muting is an edit — a viewer gets the read-only snackbar instead.
+    final canEdit = ref.watch(canEditActiveCollectionProvider);
 
     return Scaffold(
       backgroundColor: surface.bg,
@@ -104,8 +109,11 @@ class NotificationsScreen extends ConsumerWidget {
                   icon: Icons.eco_outlined,
                   surface: surface,
                   onTap: () => openPlant(context, p.id),
-                  onUnmute: () =>
-                      ref.read(plantRepositoryProvider).setNotificationsMuted(p.id, false),
+                  onUnmute: () {
+                    if (!ensureCanEdit(context, ref)) return;
+                    ref.read(plantRepositoryProvider).setNotificationsMuted(p.id, false);
+                  },
+                  readOnly: !canEdit,
                 ),
               const SizedBox(height: 20),
             ],
@@ -119,9 +127,11 @@ class NotificationsScreen extends ConsumerWidget {
                   icon: resolveCareType(types, s.type).icon,
                   surface: surface,
                   onTap: () => openPlant(context, s.plantId),
-                  onUnmute: () => ref
-                      .read(careScheduleRepositoryProvider)
-                      .setNotificationsMuted(s.id, false),
+                  onUnmute: () {
+                    if (!ensureCanEdit(context, ref)) return;
+                    ref.read(careScheduleRepositoryProvider).setNotificationsMuted(s.id, false);
+                  },
+                  readOnly: !canEdit,
                 ),
               const SizedBox(height: 20),
             ],
@@ -135,8 +145,11 @@ class NotificationsScreen extends ConsumerWidget {
                   icon: Icons.place_outlined,
                   surface: surface,
                   onTap: () => openSpace(context, l.id),
-                  onUnmute: () =>
-                      ref.read(locationRepositoryProvider).setNotificationsMuted(l.id, false),
+                  onUnmute: () {
+                    if (!ensureCanEdit(context, ref)) return;
+                    ref.read(locationRepositoryProvider).setNotificationsMuted(l.id, false);
+                  },
+                  readOnly: !canEdit,
                 ),
             ],
           ],
@@ -257,6 +270,7 @@ class _MutedRow extends StatelessWidget {
     required this.surface,
     required this.onTap,
     required this.onUnmute,
+    this.readOnly = false,
   });
 
   final String title;
@@ -265,6 +279,11 @@ class _MutedRow extends StatelessWidget {
   final PlantlySurface surface;
   final VoidCallback onTap;
   final VoidCallback onUnmute;
+
+  /// Viewer of a shared collection: the row still lists (it explains why
+  /// nothing fires) but "Unmute" is dimmed — the guarded callback shows
+  /// the read-only snackbar.
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -297,8 +316,11 @@ class _MutedRow extends StatelessWidget {
                   ),
                 ),
                 TextButton.icon(
-                  icon: Icon(Icons.notifications_active_outlined, size: 14, color: surface.green),
-                  label: Text(t.meUnmute, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: surface.green)),
+                  key: const Key('muted-row-unmute'),
+                  icon: Icon(Icons.notifications_active_outlined, size: 14, color: readOnly ? surface.muted : surface.green),
+                  label: Text(t.meUnmute,
+                      style: TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w700, color: readOnly ? surface.muted : surface.green)),
                   onPressed: onUnmute,
                 ),
               ],
@@ -318,10 +340,14 @@ class _DndCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = AppLocalizations.of(context);
     final dnd = ref.watch(dndSettingsProvider);
-    return Container(
-      decoration: BoxDecoration(
-        color: surface.surface,
-        border: Border.all(color: surface.border),
+    // A Material (not a decorated Container): the SwitchListTiles paint
+    // their ink on the nearest Material, and a coloured DecoratedBox above
+    // them trips Flutter's debug assertion.
+    return Material(
+      color: surface.surface,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: surface.border),
         borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
       ),
       child: Column(

@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/clock.dart';
+import '../../cloud/collections.dart';
+import '../collections/read_only_banner.dart';
 import '../../app/breakpoints.dart';
 import '../../app/desktop_theme.dart';
 import '../../app/navigation.dart';
@@ -22,6 +24,7 @@ import '../../marketplace/listing_records.dart';
 import '../../plugins/plantly_ro/plantly_ro_plugin.dart';
 import '../../plugins/plugin_registry.dart';
 import '../../shared/plant_thumb.dart';
+import '../../shared/assignee_initial.dart';
 import '../../shared/stored_photo_image.dart';
 import '../../sync/hlc.dart';
 import '../../theme/tokens.dart';
@@ -142,6 +145,9 @@ class _PlantDetailBody extends ConsumerWidget {
     final types = ref.watch(careTypesProvider);
     final fabKey = ref.watch(quickFabTypeProvider);
     final fabType = resolveCareType(types, fabKey);
+    // Viewer of a shared collection (MULTI-USER-V2 §3): every mutating
+    // affordance below is hidden; the body shows the read-only banner.
+    final canEdit = ref.watch(canEditActiveCollectionProvider);
     if (context.isDesktop) {
       // DESKTOP-POLISH §2: full-width two-column page; the toolbar carries
       // every AppBar/FAB action, so neither is rendered.
@@ -163,7 +169,7 @@ class _PlantDetailBody extends ConsumerWidget {
     }
     return Scaffold(
       backgroundColor: surface.bg,
-      floatingActionButton: GestureDetector(
+      floatingActionButton: !canEdit ? null : GestureDetector(
         onLongPress: () => _pickFabType(context, ref, types),
         child: FloatingActionButton.extended(
           backgroundColor: fabType.color ?? surface.green,
@@ -193,20 +199,27 @@ class _PlantDetailBody extends ConsumerWidget {
         elevation: 0,
         leading: detailLeading(context, surface, parent: AppRoutes.home),
         actions: [
-          IconButton(
-            icon: Icon(Icons.edit_outlined, color: surface.text),
-            tooltip: t.plantDetailEdit,
-            onPressed: () => _editPlant(context),
-          ),
-          IconButton(
-            icon: Icon(Icons.add_a_photo_outlined, color: surface.text),
-            tooltip: t.plantDetailAddPhotos,
-            onPressed: () => _addPhotos(context, ref),
-          ),
-          _moreMenu(context, ref),
+          if (canEdit) ...[
+            IconButton(
+              icon: Icon(Icons.edit_outlined, color: surface.text),
+              tooltip: t.plantDetailEdit,
+              onPressed: () => _editPlant(context),
+            ),
+            IconButton(
+              icon: Icon(Icons.add_a_photo_outlined, color: surface.text),
+              tooltip: t.plantDetailAddPhotos,
+              onPressed: () => _addPhotos(context, ref),
+            ),
+            _moreMenu(context, ref),
+          ],
         ],
       ),
-      body: _phoneBody(context, ref),
+      body: Column(
+        children: [
+          const ReadOnlyBanner(),
+          Expanded(child: _phoneBody(context, ref)),
+        ],
+      ),
     );
   }
 
@@ -630,6 +643,7 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
+    final canEdit = ref.watch(canEditActiveCollectionProvider);
     final attachedAsync = ref.watch(attachedPhotosProvider(widget.plantId));
     final rows = ref.watch(plantPhotoRowsProvider(widget.plantId)).maybeWhen(
           data: (r) => r,
@@ -658,7 +672,7 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
               itemCount: shas.length,
               onPageChanged: (i) => setState(() => _index = i),
               itemBuilder: (_, i) => GestureDetector(
-                onLongPress: () => _confirmDetach(shas[i]),
+                onLongPress: canEdit ? () => _confirmDetach(shas[i]) : null,
                 child: _PhotoView(sha: shas[i], fallback: widget.fallback),
               ),
             ),
@@ -701,6 +715,7 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
                       style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
                     ),
                   ),
+                  if (canEdit) ...[
                   const SizedBox(width: 6),
                   if (rows.length > 1)
                     _CarouselIconBtn(
@@ -730,6 +745,7 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
                     tooltip: t.commonRemove,
                     onTap: () => _confirmDetach(shas[_index]),
                   ),
+                  ],
                 ],
               ),
             ),
@@ -740,7 +756,7 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
                 child: MouseRegion(
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
-                  onTap: () => _editCapturedAt(rows[_index]),
+                  onTap: canEdit ? () => _editCapturedAt(rows[_index]) : null,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
@@ -855,6 +871,7 @@ class _UpcomingCare extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = AppLocalizations.of(context);
+    final canEdit = ref.watch(canEditActiveCollectionProvider);
     final schedulesAsync = ref.watch(schedulesForPlantProvider(plantId));
     return Container(
       decoration: BoxDecoration(
@@ -883,7 +900,7 @@ class _UpcomingCare extends ConsumerWidget {
                     style: TextStyle(fontSize: 12, color: surface.muted),
                   ),
                 ),
-                _AddReminderButton(surface: surface, plantId: plantId, leadingDivider: true),
+                if (canEdit) _AddReminderButton(surface: surface, plantId: plantId, leadingDivider: true),
               ],
             );
           }
@@ -896,7 +913,7 @@ class _UpcomingCare extends ConsumerWidget {
                   surface: surface,
                   last: i == schedules.length - 1,
                 ),
-              _AddReminderButton(surface: surface, plantId: plantId, leadingDivider: true),
+              if (canEdit) _AddReminderButton(surface: surface, plantId: plantId, leadingDivider: true),
             ],
           );
         },
@@ -929,8 +946,9 @@ class _UpcomingRowView extends ConsumerWidget {
     // terra urgent tint still wins when the reminder is actually overdue.
     final chipBg = urgent ? surface.terraSoft : (ct.color ?? surface.greenSoft);
     final chipFg = urgent ? surface.terra : (ct.color == null ? surface.green : Colors.white);
+    final canEdit = ref.watch(canEditActiveCollectionProvider);
     return InkWell(
-      onLongPress: () {
+      onLongPress: !canEdit ? null : () {
         showAdaptiveSheet(
           context,
           isScrollControlled: true,
@@ -966,6 +984,7 @@ class _UpcomingRowView extends ConsumerWidget {
                       const SizedBox(width: 4),
                       Icon(Icons.notifications_off_outlined, size: 13, color: surface.muted),
                     ],
+                    AssigneeChip(userId: schedule.assigneeUserId, tenantId: schedule.tenantId, surface: surface, size: 18),
                   ],
                 ),
                 Text(
@@ -979,6 +998,7 @@ class _UpcomingRowView extends ConsumerWidget {
               ],
             ),
           ),
+          if (canEdit) ...[
           IconButton(
             tooltip: muted ? t.detailUnmuteReminderTooltip : t.detailMuteReminderTooltip,
             padding: EdgeInsets.zero,
@@ -1020,6 +1040,7 @@ class _UpcomingRowView extends ConsumerWidget {
             onPressed: () => _snoozeSchedule(context, ref, schedule),
             child: Text(t.snoozeBtn),
           ),
+          ],
         ],
       ),
       ),
@@ -1159,11 +1180,13 @@ class _Timeline extends ConsumerWidget {
           child: Text('$e', style: TextStyle(color: surface.terra, fontSize: 12)),
         ),
         data: (events) {
-          final logButton = _LogEventButton(
-            surface: surface,
-            plantId: plantId,
-            leadingDivider: events.isNotEmpty,
-          );
+          final Widget logButton = ref.watch(canEditActiveCollectionProvider)
+              ? _LogEventButton(
+                  surface: surface,
+                  plantId: plantId,
+                  leadingDivider: events.isNotEmpty,
+                )
+              : const SizedBox.shrink();
           if (events.isEmpty) {
             return Column(
               children: [
@@ -1212,6 +1235,7 @@ class _Timeline extends ConsumerWidget {
       letterSpacing: 0.08 * 11,
     );
     final cellStyle = TextStyle(fontSize: 13, color: surface.text);
+    final canEdit = ref.watch(canEditActiveCollectionProvider);
     return Column(
       children: [
         SizedBox(
@@ -1243,7 +1267,7 @@ class _Timeline extends ConsumerWidget {
                     DateTime.fromMillisecondsSinceEpoch(event.doneAt, isUtc: true).toLocal(),
                   );
                   return DataRow(
-                    onSelectChanged: (_) {
+                    onSelectChanged: !canEdit ? null : (_) {
                       showAdaptiveSheet(
                         context,
                         isScrollControlled: true,
@@ -1267,13 +1291,15 @@ class _Timeline extends ConsumerWidget {
                         ],
                       )),
                       DataCell(Text(details.isEmpty ? '—' : details, overflow: TextOverflow.ellipsis)),
-                      DataCell(IconButton(
-                        icon: Icon(Icons.delete_outline, size: 16, color: surface.muted),
-                        tooltip: t.plantDetailDeleteEvent,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        onPressed: () => _deleteEvent(context, ref, event, _describe(t, event, verb)),
-                      )),
+                      DataCell(!canEdit
+                          ? const SizedBox.shrink()
+                          : IconButton(
+                              icon: Icon(Icons.delete_outline, size: 16, color: surface.muted),
+                              tooltip: t.plantDetailDeleteEvent,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                              onPressed: () => _deleteEvent(context, ref, event, _describe(t, event, verb)),
+                            )),
                     ],
                   );
                 }(),
@@ -1286,6 +1312,7 @@ class _Timeline extends ConsumerWidget {
   }
 
   Future<void> _deleteEvent(BuildContext context, WidgetRef ref, db.CareEventRow event, String text) async {
+    if (!ensureCanEdit(context, ref)) return;
     final t = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final confirm = await showDialog<bool>(
@@ -1330,10 +1357,11 @@ class _Timeline extends ConsumerWidget {
     final when = _fmtDate(context, DateTime.fromMillisecondsSinceEpoch(event.doneAt, isUtc: true).toLocal());
     final text = withActor(_describe(t, event, careKeyPastLabel(t, types, event.type)), careEventActorLabel(ref, t, event));
     Future<void> delete() => _deleteEvent(context, ref, event, text);
+    final canEdit = ref.watch(canEditActiveCollectionProvider);
 
     return InkWell(
-      onLongPress: delete,
-      onTap: () {
+      onLongPress: canEdit ? delete : null,
+      onTap: !canEdit ? null : () {
         showAdaptiveSheet(
           context,
           isScrollControlled: true,
@@ -1363,6 +1391,7 @@ class _Timeline extends ConsumerWidget {
             const SizedBox(width: 11),
             Expanded(child: Text(text, style: TextStyle(fontSize: 13, color: surface.text))),
             Text(when, style: TextStyle(fontSize: 11, color: surface.muted, fontWeight: FontWeight.w500)),
+            if (canEdit) ...[
             const SizedBox(width: 4),
             IconButton(
               icon: Icon(Icons.delete_outline, size: 16, color: surface.muted),
@@ -1371,6 +1400,7 @@ class _Timeline extends ConsumerWidget {
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               onPressed: delete,
             ),
+            ],
           ],
         ),
       ),
@@ -2033,7 +2063,8 @@ class _DesktopDetailLayout extends ConsumerWidget {
           children: [
             const SizedBox(height: PlantlyTokens.space4),
             _header(context, t, ref, prev: prev, next: next),
-            _toolbar(context, t, ref),
+            // Every toolbar action mutates; a viewer gets the banner instead.
+            if (ref.watch(canEditActiveCollectionProvider)) _toolbar(context, t, ref) else const ReadOnlyBanner(),
             const SizedBox(height: PlantlyTokens.space4),
             Expanded(
               child: SingleChildScrollView(
@@ -2355,6 +2386,7 @@ class _UpcomingTable extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = AppLocalizations.of(context);
+    final canEdit = ref.watch(canEditActiveCollectionProvider);
     final schedulesAsync = ref.watch(schedulesForPlantProvider(plantId));
     final types = ref.watch(careTypesProvider);
     final rowHeight = Theme.of(context).extension<PlantlyDensity>()?.tableRowHeight ?? 44;
@@ -2381,7 +2413,7 @@ class _UpcomingTable extends ConsumerWidget {
                   padding: const EdgeInsets.all(14),
                   child: Text(t.plantDetailNoReminders, style: TextStyle(fontSize: 12, color: surface.muted)),
                 ),
-                _AddReminderButton(surface: surface, plantId: plantId, leadingDivider: true),
+                if (canEdit) _AddReminderButton(surface: surface, plantId: plantId, leadingDivider: true),
               ],
             );
           }
@@ -2406,11 +2438,11 @@ class _UpcomingTable extends ConsumerWidget {
                     const DataColumn(label: SizedBox.shrink()),
                   ],
                   rows: [
-                    for (final s in schedules) _row(context, ref, t, s, resolveCareType(types, s.type), cellStyle),
+                    for (final s in schedules) _row(context, ref, t, s, resolveCareType(types, s.type), cellStyle, canEdit),
                   ],
                 ),
               ),
-              _AddReminderButton(surface: surface, plantId: plantId, leadingDivider: true),
+              if (canEdit) _AddReminderButton(surface: surface, plantId: plantId, leadingDivider: true),
             ],
           );
         },
@@ -2424,7 +2456,7 @@ class _UpcomingTable extends ConsumerWidget {
     return '${(days * 24).toStringAsFixed(1)} h';
   }
 
-  DataRow _row(BuildContext context, WidgetRef ref, AppLocalizations t, db.CareScheduleRow s, CareType ct, TextStyle cellStyle) {
+  DataRow _row(BuildContext context, WidgetRef ref, AppLocalizations t, db.CareScheduleRow s, CareType ct, TextStyle cellStyle, bool canEdit) {
     final (label, whenText, urgent) = _describeSchedule(t, s, careTypeLabel(t, ct), now: ref.read(clockProvider)());
     final muted = s.notificationsMuted;
     final chipBg = urgent ? surface.terraSoft : (ct.color ?? surface.greenSoft);
@@ -2440,7 +2472,7 @@ class _UpcomingTable extends ConsumerWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radiusMd)),
         );
     return DataRow(
-      onSelectChanged: (_) => _editReminder(context, s),
+      onSelectChanged: canEdit ? (_) => _editReminder(context, s) : null,
       cells: [
         DataCell(Row(
           mainAxisSize: MainAxisSize.min,
@@ -2468,7 +2500,7 @@ class _UpcomingTable extends ConsumerWidget {
             fontWeight: urgent ? FontWeight.w600 : FontWeight.w500,
           ),
         )),
-        DataCell(Row(
+        DataCell(!canEdit ? const SizedBox.shrink() : Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(

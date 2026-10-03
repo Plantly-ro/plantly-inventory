@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/navigation.dart';
+import '../../cloud/collections.dart';
+import '../collections/read_only_banner.dart';
 import '../../app/side_sheet.dart';
 import '../../data/providers.dart';
 import '../../data/user_prefs.dart';
@@ -46,10 +48,11 @@ class _HomeDashboardState extends ConsumerState<HomeDashboard> with FirstRunOnbo
     final bootstrap = ref.watch(appContextProvider);
     maybePushOnboarding(ref.watch(userPrefsProvider));
     final hasSelection = ref.watch(plantSelectionProvider).isNotEmpty;
+    final canEdit = ref.watch(canEditActiveCollectionProvider);
 
     return Scaffold(
       backgroundColor: surface.bg,
-      bottomNavigationBar: bootstrap.hasValue && hasSelection ? BulkActionBar(surface: surface) : null,
+      bottomNavigationBar: bootstrap.hasValue && hasSelection && canEdit ? BulkActionBar(surface: surface) : null,
       body: SafeArea(
         child: bootstrap.when(
           loading: () => BootstrapLoading(surface: surface),
@@ -59,6 +62,7 @@ class _HomeDashboardState extends ConsumerState<HomeDashboard> with FirstRunOnbo
             final permDenied = ref.watch(notificationBannerVisibleProvider);
             return Column(
               children: [
+                const ReadOnlyBanner(),
                 if (permDenied) NotificationPermissionBanner(surface: surface),
                 Expanded(
                   child: ListView(

@@ -36,6 +36,19 @@ void main() {
       pushed_at INTEGER NULL
     )''';
 
+  // The 11 → 12 step in the same chain ALTERs care_schedules (assignee).
+  const v8CareSchedules = '''
+    CREATE TABLE care_schedules (
+      id TEXT NOT NULL PRIMARY KEY,
+      tenant_id TEXT NOT NULL,
+      plant_id TEXT NOT NULL,
+      type TEXT NOT NULL,
+      base_interval_days REAL NOT NULL,
+      current_interval_days REAL NOT NULL,
+      updated_hlc TEXT NOT NULL,
+      device_id TEXT NOT NULL
+    )''';
+
   Future<List<String>> columns(AppDatabase db) async {
     final rows = await db.customSelect('PRAGMA table_info(care_events)').get();
     return [for (final r in rows) r.read<String>('name')];
@@ -55,6 +68,7 @@ void main() {
     final db = AppDatabase.forTesting(NativeDatabase.memory(setup: (raw) {
       raw.execute(v8CareEvents);
       raw.execute(v8SyncOps); // the 10 → 11 step in the same chain ALTERs it
+      raw.execute(v8CareSchedules);
       raw.execute("INSERT INTO care_events (id, tenant_id, plant_id, type, done_at, updated_hlc, device_id) "
           "VALUES ('e1', 'local', 'p1', 'water', 1000, '0-0-t', 't')");
       raw.execute('PRAGMA user_version = 8');
@@ -72,6 +86,7 @@ void main() {
     final db = AppDatabase.forTesting(NativeDatabase.memory(setup: (raw) {
       raw.execute(v8CareEvents);
       raw.execute(v8SyncOps);
+      raw.execute(v8CareSchedules);
       raw.execute('ALTER TABLE care_events ADD COLUMN actor_user_id TEXT NULL');
       raw.execute("INSERT INTO care_events (id, tenant_id, plant_id, type, done_at, updated_hlc, device_id, actor_user_id) "
           "VALUES ('e1', 'local', 'p1', 'water', 1000, '0-0-t', 't', 'u-1')");

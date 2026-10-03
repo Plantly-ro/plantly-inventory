@@ -208,13 +208,24 @@ final iCalFutureProvider = FutureProvider.autoDispose<String>((ref) async {
 
 final reminderSyncProvider = Provider<ReminderSync>((ref) {
   final ctx = ref.watch(appContextProvider).requireValue;
-  return ReminderSync(
+  final sync = ReminderSync(
     db: ctx.db,
     notifications: ref.watch(notificationServiceProvider),
     tenantId: ctx.opLog.tenantId,
     mutedTypesSnapshot: () => ref.read(mutedCareTypesProvider),
     typeLabel: (type) => careKeyVerb(appLocalizationsForPlatform(), ref.read(careTypesProvider), type),
+    // Read at call time (not watched): a sign-in must not rebuild the sync.
+    currentUserId: () => ref.read(plantlyAuthProvider).valueOrNull?.userId,
   );
+  // Assigned schedules (MULTI-USER-V2 §0) are filtered per signed-in user,
+  // so a sign-in / sign-out / account switch re-derives the OS reminders.
+  ref.listen<String?>(
+    plantlyAuthProvider.select((s) => s.valueOrNull?.userId),
+    (prev, next) {
+      if (prev != next) unawaited(sync.syncFromDatabase());
+    },
+  );
+  return sync;
 });
 
 final careScheduleRepositoryProvider = Provider<CareScheduleRepository>((ref) {

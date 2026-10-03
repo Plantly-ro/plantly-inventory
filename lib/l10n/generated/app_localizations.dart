@@ -4712,6 +4712,60 @@ abstract class AppLocalizations {
   /// **'Editor'**
   String get shareRoleEditor;
 
+  /// No description provided for @shareRoleViewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewer'**
+  String get shareRoleViewer;
+
+  /// No description provided for @shareErrReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'View only — ask the owner for edit rights.'**
+  String get shareErrReadOnly;
+
+  /// No description provided for @shareReadOnlyBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'View only — ask the owner for edit rights'**
+  String get shareReadOnlyBanner;
+
+  /// No description provided for @shareErrDeviceRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'Device disconnected — this device was signed out of cloud sync. Sign in again to reconnect.'**
+  String get shareErrDeviceRevoked;
+
+  /// No description provided for @shareErrTooManyDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many devices on this account — disconnect one in Me → Cloud → Devices, then try again.'**
+  String get shareErrTooManyDevices;
+
+  /// No description provided for @shareErrDeviceLookupFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not verify this device right now — retrying shortly.'**
+  String get shareErrDeviceLookupFailed;
+
+  /// No description provided for @shareErrCollectionDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'This collection was deleted by its owner.'**
+  String get shareErrCollectionDeleted;
+
+  /// No description provided for @shareErrCloudRequiredNewOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'The new owner needs an active Plantly Cloud plan before the collection can be transferred.'**
+  String get shareErrCloudRequiredNewOwner;
+
+  /// No description provided for @shareErrNotAMember.
+  ///
+  /// In en, this message translates to:
+  /// **'You are no longer a member of this collection.'**
+  String get shareErrNotAMember;
+
   /// No description provided for @shareJoinWithCode.
   ///
   /// In en, this message translates to:
@@ -5024,11 +5078,359 @@ abstract class AppLocalizations {
   /// **'That person is no longer a member.'**
   String get shareErrMemberNotFound;
 
+  /// No description provided for @assigneeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Assignee'**
+  String get assigneeLabel;
+
+  /// No description provided for @assigneeEveryone.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone'**
+  String get assigneeEveryone;
+
+  /// No description provided for @assigneeYouSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'(you)'**
+  String get assigneeYouSuffix;
+
+  /// No description provided for @assigneeUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Former member'**
+  String get assigneeUnknown;
+
+  /// No description provided for @assigneeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders for this task only reach the assignee’s devices.'**
+  String get assigneeHint;
+
+  /// No description provided for @assigneeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned to {name}'**
+  String assigneeTooltip(String name);
+
   /// No description provided for @shareErrOwnerLapsed.
   ///
   /// In en, this message translates to:
   /// **'The owner’s plan lapsed — this shared collection is paused until they renew.'**
   String get shareErrOwnerLapsed;
+
+  /// No description provided for @shareMembersActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Member actions'**
+  String get shareMembersActions;
+
+  /// No description provided for @shareMembersMakeEditor.
+  ///
+  /// In en, this message translates to:
+  /// **'Make editor'**
+  String get shareMembersMakeEditor;
+
+  /// No description provided for @shareMembersMakeViewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Make viewer'**
+  String get shareMembersMakeViewer;
+
+  /// No description provided for @shareMembersRoleChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'{username} is now {role}'**
+  String shareMembersRoleChanged(String username, String role);
+
+  /// No description provided for @shareTransferAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer ownership'**
+  String get shareTransferAction;
+
+  /// No description provided for @shareTransferTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer {name} to {username}?'**
+  String shareTransferTitle(String name, String username);
+
+  /// No description provided for @shareTransferBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{username} becomes the owner of this collection. Their Plantly Cloud plan and storage quota apply from now on. You stay in it as an editor.'**
+  String shareTransferBody(String username);
+
+  /// No description provided for @shareTransferConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer'**
+  String get shareTransferConfirm;
+
+  /// No description provided for @shareTransferDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{username} now owns {name}'**
+  String shareTransferDone(String username, String name);
+
+  /// No description provided for @shareInvitesSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Invites'**
+  String get shareInvitesSection;
+
+  /// No description provided for @shareInviteNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New invite'**
+  String get shareInviteNew;
+
+  /// No description provided for @shareInviteDefaultLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite'**
+  String get shareInviteDefaultLabel;
+
+  /// No description provided for @shareInvitesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No active invites. Create one to let someone join.'**
+  String get shareInvitesEmpty;
+
+  /// No description provided for @shareInvitesError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load invites'**
+  String get shareInvitesError;
+
+  /// No description provided for @shareInviteUses.
+  ///
+  /// In en, this message translates to:
+  /// **'{used}/{max} used'**
+  String shareInviteUses(int used, int max);
+
+  /// No description provided for @shareInviteExpiresDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{expires in 1 day} other{expires in {n} days}}'**
+  String shareInviteExpiresDays(int n);
+
+  /// No description provided for @shareInviteExpiresHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{expires in 1 hour} other{expires in {n} hours}}'**
+  String shareInviteExpiresHours(int n);
+
+  /// No description provided for @shareInviteExpiresSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'expires soon'**
+  String get shareInviteExpiresSoon;
+
+  /// No description provided for @shareInviteExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'expired'**
+  String get shareInviteExpired;
+
+  /// No description provided for @shareInviteRevoke.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke'**
+  String get shareInviteRevoke;
+
+  /// No description provided for @shareInviteRevokeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke this invite?'**
+  String get shareInviteRevokeTitle;
+
+  /// No description provided for @shareInviteRevokeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone who still has the code won’t be able to join with it.'**
+  String get shareInviteRevokeBody;
+
+  /// No description provided for @shareInviteRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite revoked'**
+  String get shareInviteRevoked;
+
+  /// No description provided for @shareInviteFormHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose what the invite allows, then share the code.'**
+  String get shareInviteFormHint;
+
+  /// No description provided for @shareInviteRoleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Role'**
+  String get shareInviteRoleLabel;
+
+  /// No description provided for @shareInviteRoleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Editors add plants and log care. Viewers only look.'**
+  String get shareInviteRoleHint;
+
+  /// No description provided for @shareInvitePresetSingle.
+  ///
+  /// In en, this message translates to:
+  /// **'Single use · 7 days'**
+  String get shareInvitePresetSingle;
+
+  /// No description provided for @shareInvitePresetFamily.
+  ///
+  /// In en, this message translates to:
+  /// **'Family'**
+  String get shareInvitePresetFamily;
+
+  /// No description provided for @shareInvitePresetCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get shareInvitePresetCustom;
+
+  /// No description provided for @shareInviteMaxUses.
+  ///
+  /// In en, this message translates to:
+  /// **'Max uses'**
+  String get shareInviteMaxUses;
+
+  /// No description provided for @shareInviteTtlDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Valid for (days)'**
+  String get shareInviteTtlDays;
+
+  /// No description provided for @shareInviteLabelField.
+  ///
+  /// In en, this message translates to:
+  /// **'Label (optional)'**
+  String get shareInviteLabelField;
+
+  /// No description provided for @shareInviteLabelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Grandma, plant-sitter'**
+  String get shareInviteLabelHint;
+
+  /// No description provided for @shareInviteCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create invite'**
+  String get shareInviteCreate;
+
+  /// No description provided for @shareInviteSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{role} · {uses, plural, =1{single use} other{{uses} uses}} · {days, plural, =1{1 day} other{{days} days}}'**
+  String shareInviteSummary(String role, int uses, int days);
+
+  /// No description provided for @shareInviteMaxUsesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{uses, plural, =1{single use} other{{uses} uses}}'**
+  String shareInviteMaxUsesLabel(int uses);
+
+  /// No description provided for @stepperDecrease.
+  ///
+  /// In en, this message translates to:
+  /// **'Decrease {what}'**
+  String stepperDecrease(String what);
+
+  /// No description provided for @stepperIncrease.
+  ///
+  /// In en, this message translates to:
+  /// **'Increase {what}'**
+  String stepperIncrease(String what);
+
+  /// No description provided for @shareInviteCodeShownOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'Share this code or link now — it won’t be shown again.'**
+  String get shareInviteCodeShownOnce;
+
+  /// No description provided for @collectionActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Collection actions'**
+  String get collectionActions;
+
+  /// No description provided for @collectionRenameAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get collectionRenameAction;
+
+  /// No description provided for @collectionRenameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename collection'**
+  String get collectionRenameTitle;
+
+  /// No description provided for @collectionRenameField.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get collectionRenameField;
+
+  /// No description provided for @collectionRenameInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Use 1 to 60 characters.'**
+  String get collectionRenameInvalid;
+
+  /// No description provided for @collectionRenameSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get collectionRenameSave;
+
+  /// No description provided for @collectionRenamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Renamed to {name}'**
+  String collectionRenamed(String name);
+
+  /// No description provided for @collectionDeleteAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete collection'**
+  String get collectionDeleteAction;
+
+  /// No description provided for @collectionDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {name}?'**
+  String collectionDeleteTitle(String name);
+
+  /// No description provided for @collectionDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Members lose access and the shared data on the server is deleted. The copy on this device stays.'**
+  String get collectionDeleteBody;
+
+  /// No description provided for @collectionDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get collectionDeleteConfirm;
+
+  /// No description provided for @collectionDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} deleted'**
+  String collectionDeleted(String name);
+
+  /// No description provided for @shareV2Paused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get shareV2Paused;
 
   /// No description provided for @cloudErrRejected.
   ///
@@ -5113,6 +5515,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Keep them on this device only'**
   String get cloudRejDismissValue;
+
+  /// No description provided for @devicesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Devices'**
+  String get devicesTitle;
+
+  /// No description provided for @devicesIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Every device signed in to cloud sync with this account. Disconnect one you no longer use — it stops syncing and has to sign in again.'**
+  String get devicesIntro;
+
+  /// No description provided for @devicesRowLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Devices'**
+  String get devicesRowLabel;
+
+  /// No description provided for @devicesRowValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage which devices sync this account'**
+  String get devicesRowValue;
+
+  /// No description provided for @devicesThisDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'This device'**
+  String get devicesThisDevice;
+
+  /// No description provided for @devicesRevoke.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
+  String get devicesRevoke;
+
+  /// No description provided for @devicesRevokeConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect this device?'**
+  String get devicesRevokeConfirmTitle;
+
+  /// No description provided for @devicesRevokeConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} will stop syncing and must sign in again to reconnect. Its plants stay on that device.'**
+  String devicesRevokeConfirmBody(String name);
+
+  /// No description provided for @devicesRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'Device disconnected'**
+  String get devicesRevoked;
+
+  /// No description provided for @devicesRevokeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not disconnect the device. Try again.'**
+  String get devicesRevokeFailed;
+
+  /// No description provided for @devicesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Only this device'**
+  String get devicesEmpty;
+
+  /// No description provided for @devicesError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load your devices.'**
+  String get devicesError;
+
+  /// No description provided for @devicesRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get devicesRetry;
+
+  /// No description provided for @devicesSignedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to plantly.ro to manage your devices.'**
+  String get devicesSignedOut;
+
+  /// No description provided for @devicesLastSeen.
+  ///
+  /// In en, this message translates to:
+  /// **'last seen {when}'**
+  String devicesLastSeen(String when);
+
+  /// No description provided for @devicesPlatformAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'Android'**
+  String get devicesPlatformAndroid;
+
+  /// No description provided for @devicesPlatformIos.
+  ///
+  /// In en, this message translates to:
+  /// **'iPhone / iPad'**
+  String get devicesPlatformIos;
+
+  /// No description provided for @devicesPlatformWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Web'**
+  String get devicesPlatformWeb;
+
+  /// No description provided for @devicesPlatformDesktop.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop'**
+  String get devicesPlatformDesktop;
+
+  /// No description provided for @devicesPlatformUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Device'**
+  String get devicesPlatformUnknown;
 }
 
 class _AppLocalizationsDelegate

@@ -73,6 +73,7 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
     this.observeLifecycle = true,
     this.batchSize = 500,
     this.entitlementIsOwners = false,
+    this.readOnly = false,
     DateTime Function()? now,
   })  : assert(clock == null || identical(clock, opLog.clock),
             'one HlcClock per device: pass the OpLogWriter\'s clock (or omit it)'),
@@ -126,6 +127,11 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
   /// means the OWNER's plan lapsed, reported as `cloud_required` with
   /// detail [kOwnerPlanLapsedDetail] rather than a paywall for the caller.
   final bool entitlementIsOwners;
+
+  /// Viewer role (MULTI-USER-V2 §0): never push — the server would answer
+  /// `403 read_only` and halt the runner. Pull still runs, pending local
+  /// ops (if any slipped in) stay queued for a later role change.
+  final bool readOnly;
 
   final Stream<void> _localChanges;
   final DateTime Function() _now;
@@ -267,11 +273,14 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
     while (true) {
       try {
         await _synthesizeInitialOps();
-        final pushed = await _engine.pushPending(
-          onFresh: (ops) async {
-            await _applier.applyBatch(ops);
-          },
-        );
+        final pushed = readOnly
+            ? const SyncPushResult(
+                sent: 0, accepted: 0, rejected: [], batches: 0, cursor: '', hasMore: false, freshOps: 0)
+            : await _engine.pushPending(
+                onFresh: (ops) async {
+                  await _applier.applyBatch(ops);
+                },
+              );
         if (pushed.batches == 0 || pushed.hasMore) {
           await _engine.pullAll(onOps: (ops) async {
             await _applier.applyBatch(ops);
@@ -325,17 +334,22 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
         _halt('cloud_required', detail: entitlementIsOwners ? kOwnerPlanLapsedDetail : null);
         return;
       } on SyncCollectionError catch (e) {
-        // The server code (`not_a_member`, `collection_not_found`) rides
-        // along so the integrator can react (removed from a shared
-        // collection → back home + notice).
+        // The server code (`not_a_member`, `collection_not_found`,
+        // `read_only`, `device_revoked`, `too_many_devices`) rides along so
+        // the integrator can react (removed → back home + notice; role
+        // downgrade → list refresh → read-only rebuild; device cap → point
+        // at Me → Cloud → Devices). None of these heal by retrying.
         _halt('collection_unavailable', detail: e.message);
         return;
       } on SyncRetryableError catch (e) {
         _scheduleRetry(e.retryAfter);
+        // The server code (e.g. `device_lookup_failed`) rides along as the
+        // detail so the Me section can say *why* it is retrying.
         _emit(_status.copyWith(
           inFlight: false,
           pendingOps: await _pendingSafe(),
           lastError: e.status == null ? 'offline' : 'retrying',
+          lastErrorDetail: e.status == null ? null : e.message,
         ));
         return;
       } on SyncQuotaError {

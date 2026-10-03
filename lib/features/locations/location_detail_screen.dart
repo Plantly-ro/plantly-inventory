@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../cloud/collections.dart';
+import '../collections/read_only_banner.dart';
 import '../../data/database/app_database.dart';
 import '../../data/image_processor.dart';
 import '../../data/mock_plants.dart';
@@ -69,6 +71,10 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
           data: (rows) => rows,
           orElse: () => const <PlantRow>[],
         );
+    // Viewer of a shared collection (MULTI-USER-V2 §3): no edit / menu /
+    // pin placement / map or photo adds; the banner says why.
+    final canEdit = ref.watch(canEditActiveCollectionProvider);
+    final editingPins = _editingPins && canEdit;
 
     return Scaffold(
       backgroundColor: surface.bg,
@@ -104,6 +110,7 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                   ),
                 ),
                 actions: [
+                  if (canEdit) ...[
                   IconButton(
                     tooltip: t.commonEdit,
                     onPressed: () {
@@ -174,8 +181,10 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                       PopupMenuItem(value: 'delete', child: Text(t.spaceMenuDelete)),
                     ],
                   ),
+                  ],
                 ],
               ),
+              const SliverToBoxAdapter(child: ReadOnlyBanner()),
               SliverList(
                 delegate: SliverChildListDelegate([
                   _Meta(loc: loc, surface: surface),
@@ -186,9 +195,10 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                         children: [
                           Text(t.spaceSectionMap, style: _sectionStyle(surface)),
                           const Spacer(),
+                          if (canEdit)
                           TextButton.icon(
-                            icon: Icon(_editingPins ? Icons.check : Icons.edit_location_outlined, size: 16),
-                            label: Text(_editingPins ? t.spaceDonePlacing : t.spacePlacePins, style: const TextStyle(fontSize: 11.5)),
+                            icon: Icon(editingPins ? Icons.check : Icons.edit_location_outlined, size: 16),
+                            label: Text(editingPins ? t.spaceDonePlacing : t.spacePlacePins, style: const TextStyle(fontSize: 11.5)),
                             onPressed: () => setState(() => _editingPins = !_editingPins),
                           ),
                         ],
@@ -200,10 +210,10 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                         mapPhotoSha: loc.mapPhotoSha!,
                         plants: plants,
                         surface: surface,
-                        editing: _editingPins,
+                        editing: editingPins,
                       ),
                     ),
-                  ] else ...[
+                  ] else if (canEdit) ...[
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
                       child: Text(t.spaceSectionMap, style: _sectionStyle(surface)),
@@ -635,12 +645,13 @@ class _LocationGallery extends ConsumerWidget {
           data: (rows) => rows,
           orElse: () => const <LocationPhotoRow>[],
         );
+    final canEdit = ref.watch(canEditActiveCollectionProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (photos.isEmpty)
+        if (photos.isEmpty && canEdit)
           _AddTile(surface: surface, onTap: () => _addPhoto(context, ref))
-        else
+        else if (photos.isNotEmpty)
           GridView.count(
             crossAxisCount: 3,
             shrinkWrap: true,
@@ -651,7 +662,7 @@ class _LocationGallery extends ConsumerWidget {
             children: [
               for (final row in photos)
                 _GalleryTile(row: row, surface: surface, onTap: () => _viewPhoto(context, ref, row)),
-              _AddTile(surface: surface, onTap: () => _addPhoto(context, ref)),
+              if (canEdit) _AddTile(surface: surface, onTap: () => _addPhoto(context, ref)),
             ],
           ),
       ],
@@ -669,6 +680,8 @@ class _LocationGallery extends ConsumerWidget {
   }
 
   Future<void> _viewPhoto(BuildContext context, WidgetRef ref, LocationPhotoRow row) async {
+    // The sheet only offers edits (date / caption / remove).
+    if (!ensureCanEdit(context, ref)) return;
     final t = AppLocalizations.of(context);
     final choice = await showAdaptiveSheet<String>(
       context,

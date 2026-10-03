@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../cloud/collections.dart';
 import '../../../data/care_types.dart';
 import '../../../data/database/app_database.dart';
 import '../../../data/mock_plants.dart';
 import '../../../data/providers.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/hover_card.dart';
+import '../../../shared/assignee_initial.dart';
 import '../../../shared/plant_thumb.dart';
 import '../../../theme/tokens.dart';
 import '../../search/search_screen.dart';
@@ -61,6 +63,13 @@ class GridWidget extends ConsumerWidget {
       for (final s in allSchedules)
         if (s.nextDueAt != null && s.nextDueAt == earliestDue[s.plantId]) s.plantId: s.type,
     };
+    // Assignee of that same next task (MULTI-USER-V2 §0) → initial on the pill.
+    final nextAssigneeByPlant = <String, String>{
+      for (final s in allSchedules)
+        if (s.assigneeUserId != null && s.nextDueAt != null && s.nextDueAt == earliestDue[s.plantId])
+          s.plantId: s.assigneeUserId!,
+    };
+    final tenantId = ref.watch(currentTenantIdProvider);
     // Desktop: chips + sort live in the dashboard toolbar and search is the
     // inline field, so the shell action focuses it instead of pushing a screen.
     final desktop = context.isDesktop;
@@ -131,6 +140,8 @@ class GridWidget extends ConsumerWidget {
                   final selection = ref.watch(plantSelectionProvider);
                   final selected = selection.contains(row.id);
                   final inSelectionMode = selection.isNotEmpty;
+                  // Bulk actions all mutate — no selection mode for viewers.
+                  final canEdit = ref.watch(canEditActiveCollectionProvider);
                   return _Card(
                     plantId: row.id,
                     swatch: swatch,
@@ -139,6 +150,8 @@ class GridWidget extends ConsumerWidget {
                     ok: !overdue,
                     dueLabel: dueLabel,
                     nextType: nextType,
+                    nextAssignee: nextAssigneeByPlant[row.id],
+                    tenantId: tenantId,
                     types: types,
                     selected: selected,
                     selectionMode: inSelectionMode,
@@ -147,8 +160,9 @@ class GridWidget extends ConsumerWidget {
                     onTap: inSelectionMode
                         ? () => ref.read(plantSelectionProvider.notifier).toggle(row.id)
                         : () => onPlantTap?.call(row.id),
-                    onLongPress: () =>
-                        ref.read(plantSelectionProvider.notifier).toggle(row.id),
+                    onLongPress: canEdit
+                        ? () => ref.read(plantSelectionProvider.notifier).toggle(row.id)
+                        : null,
                   );
                 }).toList(growable: false),
               ));
@@ -169,6 +183,8 @@ class _Card extends StatelessWidget {
     required this.ok,
     required this.dueLabel,
     required this.nextType,
+    required this.nextAssignee,
+    required this.tenantId,
     required this.types,
     required this.selected,
     required this.selectionMode,
@@ -185,13 +201,15 @@ class _Card extends StatelessWidget {
   final bool ok;
   final String? dueLabel;
   final String? nextType;
+  final String? nextAssignee;
+  final String tenantId;
   final List<CareType> types;
   final bool selected;
   final bool selectionMode;
   final bool desktop;
   final PlantlySurface surface;
   final VoidCallback onTap;
-  final VoidCallback onLongPress;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -290,6 +308,7 @@ class _Card extends StatelessWidget {
                               dueLabel!,
                               style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
                             ),
+                            AssigneeChip(userId: nextAssignee, tenantId: tenantId, surface: surface, size: 14, padLeft: 4),
                           ],
                         ),
                       ),

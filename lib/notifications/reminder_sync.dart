@@ -20,8 +20,10 @@ class ReminderSync {
     Set<String> Function()? mutedTypesSnapshot,
     DateTime Function()? clock,
     String Function(String type)? typeLabel,
+    String? Function()? currentUserId,
   })  : _mutedTypesSnapshot = mutedTypesSnapshot,
         _typeLabel = typeLabel,
+        _currentUserId = currentUserId,
         _clock = clock ?? DateTime.now;
 
   final AppDatabase db;
@@ -41,6 +43,13 @@ class ReminderSync {
   /// to-refresh and every repository write all pick up the *current*
   /// device locale and any care-type renames. Null = English fallback.
   final String Function(String type)? _typeLabel;
+  /// plantly.ro user id of the signed-in account, read on every run
+  /// (MULTI-USER-V2 §0 task assignment). A schedule with a non-null
+  /// `assignee_user_id` only reaches the OS on the assignee's devices:
+  /// when the id differs from the current user — or there is no signed-in
+  /// user at all — it is skipped. Unassigned schedules fire everywhere.
+  /// Home / Calendar / Upcoming Care still list every schedule.
+  final String? Function()? _currentUserId;
 
   // Single-flight + trailing run. Every repository mutation calls
   // [syncFromDatabase]; a bulk mute/delete of N plants would otherwise do
@@ -115,11 +124,13 @@ class ReminderSync {
     final locationsById = {for (final l in locationRows) l.id: l};
 
     final mutedTypes = _mutedTypesSnapshot?.call() ?? const <String>{};
-    // Drop schedules whose plant is muted, whose location is muted, or
-    // whose care-type is globally silenced.
+    final me = _currentUserId?.call();
+    // Drop schedules whose plant is muted, whose location is muted, whose
+    // care-type is globally silenced, or that are assigned to someone else.
     final activeSchedules = [
       for (final s in schedules)
-        if (!mutedTypes.contains(s.type) &&
+        if ((s.assigneeUserId == null || s.assigneeUserId == me) &&
+            !mutedTypes.contains(s.type) &&
             !(plantsById[s.plantId]?.notificationsMuted ?? false) &&
             !((plantsById[s.plantId]?.locationId != null &&
                 (locationsById[plantsById[s.plantId]!.locationId]?.notificationsMuted ?? false))))

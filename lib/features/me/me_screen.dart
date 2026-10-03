@@ -5,6 +5,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../cloud/collections.dart';
 import '../../data/providers.dart';
 import '../../data/user_prefs.dart';
 import '../../domain/services/backup_service.dart';
@@ -19,6 +20,7 @@ import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../../app/navigation.dart';
 import 'backup_actions.dart';
+import '../collections/read_only_banner.dart';
 import 'cloud_section.dart';
 import 'me_rows.dart';
 
@@ -479,6 +481,8 @@ class _ImportRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = AppLocalizations.of(context);
+    // Restore writes into the active collection — hidden for a viewer.
+    if (!ref.watch(canEditActiveCollectionProvider)) return const SizedBox.shrink();
     return _ActionRow(
       label: t.meImportLabel,
       value: t.meImportValue,
@@ -489,6 +493,7 @@ class _ImportRow extends ConsumerWidget {
   }
 
   Future<void> _run(BuildContext context, WidgetRef ref) async {
+    if (!ensureCanEdit(context, ref)) return;
     // Same as _BackupRow: the file picker + passphrase dialog can both
     // unmount this row, so resolve the controller before any await (#14).
     final t = AppLocalizations.of(context);
@@ -511,6 +516,10 @@ class _ImportRow extends ConsumerWidget {
       messenger
         ..clearSnackBars()
         ..showSnackBar(SnackBar(content: Text(msg)));
+    } on ReadOnlyCollectionError {
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(t.shareErrReadOnly)));
     } on BackupSignatureError {
       messenger
         ..clearSnackBars()

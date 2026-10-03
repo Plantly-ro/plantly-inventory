@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../cloud/collections.dart';
+import '../collections/read_only_banner.dart';
 import '../../data/database/app_database.dart';
 import '../../data/mock_plants.dart';
 import '../../data/providers.dart';
@@ -41,8 +43,9 @@ class LocationsScreen extends ConsumerWidget {
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
     final async = ref.watch(locationsStreamProvider);
     final t = AppLocalizations.of(context);
+    final canEdit = ref.watch(canEditActiveCollectionProvider);
 
-    if (context.isDesktop) return _DesktopSpaces(surface: surface, async: async);
+    if (context.isDesktop) return _DesktopSpaces(surface: surface, async: async, canEdit: canEdit);
 
     return Scaffold(
       backgroundColor: surface.bg,
@@ -61,14 +64,14 @@ class LocationsScreen extends ConsumerWidget {
           ),
         ),
         actions: [
-          if (context.isWide)
+          if (context.isWide && canEdit)
             Padding(
               padding: const EdgeInsets.only(right: PlantlyTokens.space4),
               child: _AddSpaceButton(surface: surface, onPressed: () => _openAdd(context)),
             ),
         ],
       ),
-      floatingActionButton: context.isWide
+      floatingActionButton: context.isWide || !canEdit
           ? null
           : FloatingActionButton(
               backgroundColor: surface.green,
@@ -77,7 +80,10 @@ class LocationsScreen extends ConsumerWidget {
               onPressed: () => _openAdd(context),
               child: const Icon(Icons.add),
             ),
-      body: async.when(
+      body: Column(
+        children: [
+          const ReadOnlyBanner(),
+          Expanded(child: async.when(
         loading: () => Center(child: CircularProgressIndicator(color: surface.green)),
         error: (e, _) => Padding(
           padding: const EdgeInsets.all(24),
@@ -94,6 +100,8 @@ class LocationsScreen extends ConsumerWidget {
             ],
           );
         },
+      )),
+        ],
       ),
     );
   }
@@ -137,9 +145,10 @@ class _Empty extends StatelessWidget {
 /// `/spaces` on desktop: page header + flattened tree as a card grid. The
 /// shell already centres the content column and applies the gutters.
 class _DesktopSpaces extends StatelessWidget {
-  const _DesktopSpaces({required this.surface, required this.async});
+  const _DesktopSpaces({required this.surface, required this.async, required this.canEdit});
   final PlantlySurface surface;
   final AsyncValue<List<LocationRow>> async;
+  final bool canEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -166,11 +175,12 @@ class _DesktopSpaces extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  _AddSpaceButton(surface: surface, onPressed: () => LocationsScreen._openAdd(context)),
+                  if (canEdit) _AddSpaceButton(surface: surface, onPressed: () => LocationsScreen._openAdd(context)),
                 ],
               ),
             ),
           ),
+          if (!canEdit) const ReadOnlyBanner(),
           Expanded(
             child: async.when(
               loading: () => Center(child: CircularProgressIndicator(color: surface.green)),
@@ -411,6 +421,7 @@ class _LocationTile extends ConsumerWidget {
                         ],
                       ),
                     ),
+                    if (ref.watch(canEditActiveCollectionProvider))
                     TextButton.icon(
                       icon: Icon(Icons.eco_outlined, size: 14, color: surface.green),
                       label: Text(

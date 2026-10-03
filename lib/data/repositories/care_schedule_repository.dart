@@ -71,6 +71,7 @@ class CareScheduleRepository {
     required double baseIntervalDays,
     DateTime? firstDueAt,
     String recurrenceMode = 'after_completion',
+    String? assigneeUserId,
   }) async {
     final existing = await forPlantAndType(plantId, type);
     final row = existing ??
@@ -92,6 +93,7 @@ class CareScheduleRepository {
             'recent_events_json': '[]',
             'snooze_count': 0,
             'recurrence_mode': recurrenceMode,
+            'assignee_user_id': ?assigneeUserId,
           };
           final hlc = await opLog.recordCreate(
             entity: 'care_schedules',
@@ -108,6 +110,7 @@ class CareScheduleRepository {
                   currentIntervalDays: baseIntervalDays,
                   nextDueAt: Value(firstDue.millisecondsSinceEpoch),
                   recurrenceMode: Value(recurrenceMode),
+                  assigneeUserId: Value(assigneeUserId),
                   updatedHlc: hlc.encode(),
                   deviceId: opLog.clock.deviceId,
                 ),
@@ -234,17 +237,23 @@ class CareScheduleRepository {
   /// reset too (a manual edit is an authoritative signal that overrides
   /// past snooze/early data). Every column that actually changes gets its
   /// own op — nothing more, nothing less.
+  ///
+  /// [assigneeUserId] (MULTI-USER-V2 §0) is only written when the caller
+  /// passes it (`Value.absent()` = leave as is; `Value(null)` = back to
+  /// "everyone"); it records its own `assignee_user_id` op when it changes.
   Future<void> edit(
     String scheduleId, {
     required double baseIntervalDays,
     required String recurrenceMode,
     required DateTime nextDueAt,
+    Value<String?> assigneeUserId = const Value.absent(),
   }) async {
     await db.transaction(() async {
       final current =
           await (db.select(db.careSchedules)..where((r) => r.id.equals(scheduleId))).getSingleOrNull();
       if (current == null) return;
       final nextDueMs = nextDueAt.millisecondsSinceEpoch;
+      final assigneeChanged = assigneeUserId.present && current.assigneeUserId != assigneeUserId.value;
       final hlc = await opLog.recordFieldUpdates(entity: 'care_schedules', entityId: scheduleId, fields: {
         if (current.baseIntervalDays != baseIntervalDays) 'base_interval_days': baseIntervalDays,
         if (current.currentIntervalDays != baseIntervalDays) 'current_interval_days': baseIntervalDays,
@@ -253,6 +262,7 @@ class CareScheduleRepository {
         if (!current.enabled) 'enabled': true,
         if (current.snoozeCount != 0) 'snooze_count': 0,
         if (current.recentEventsJson != '[]') 'recent_events_json': '[]',
+        if (assigneeChanged) 'assignee_user_id': assigneeUserId.value,
       });
       if (hlc == null) return;
       await (db.update(db.careSchedules)..where((r) => r.id.equals(scheduleId))).write(
@@ -264,12 +274,83 @@ class CareScheduleRepository {
           enabled: const Value(true),
           snoozeCount: const Value(0),
           recentEventsJson: const Value('[]'),
+          assigneeUserId: assigneeChanged ? Value(assigneeUserId.value) : const Value.absent(),
           updatedHlc: Value(hlc.encode()),
           deviceId: Value(opLog.clock.deviceId),
         ),
       );
     });
     await _resync();
+  }
+
+  /// Set / clear the assignee of one schedule without touching anything
+  /// else (null = everyone). Records one `assignee_user_id` op when the
+  /// value changes.
+  Future<void> setAssignee(String scheduleId, String? assigneeUserId) async {
+    await db.transaction(() async {
+      final current =
+          await (db.select(db.careSchedules)..where((r) => r.id.equals(scheduleId))).getSingleOrNull();
+      if (current == null || current.assigneeUserId == assigneeUserId) return;
+      await _writeAssignee(scheduleId, assigneeUserId);
+    });
+    await _resync();
+  }
+
+  /// MULTI-USER-V2 §0 stale-assignee rule: after a successful members
+  /// fetch, every live schedule of this tenant assigned to someone who is
+  /// NOT in [memberIds] goes back to "everyone" (`assignee_user_id = null`)
+  /// through an ordinary local field op, so the other devices converge.
+  /// Returns how many schedules were cleared. The server never validates
+  /// the assignee, so this is the only place a removed member's
+  /// assignments are undone.
+  Future<int> clearAssigneesNotIn(Set<String> memberIds) async {
+    final stale = await (db.select(db.careSchedules)
+          ..where((s) => s.tenantId.equals(opLog.tenantId) & s.deletedAt.isNull() & s.assigneeUserId.isNotNull()))
+        .get();
+    final toClear = [
+      for (final s in stale)
+        if (!memberIds.contains(s.assigneeUserId)) s.id,
+    ];
+    if (toClear.isEmpty) return 0;
+    await db.transaction(() async {
+      for (final id in toClear) {
+        await _writeAssignee(id, null);
+      }
+    });
+    await _resync();
+    return toClear.length;
+  }
+
+  /// Clear every live assignment of [userId] in this tenant (a member who
+  /// left / was removed). Returns the count.
+  Future<int> clearAssigneesFor(String userId) async {
+    final rows = await (db.select(db.careSchedules)
+          ..where((s) => s.tenantId.equals(opLog.tenantId) & s.deletedAt.isNull() & s.assigneeUserId.equals(userId)))
+        .get();
+    if (rows.isEmpty) return 0;
+    await db.transaction(() async {
+      for (final s in rows) {
+        await _writeAssignee(s.id, null);
+      }
+    });
+    await _resync();
+    return rows.length;
+  }
+
+  Future<void> _writeAssignee(String scheduleId, String? assigneeUserId) async {
+    final hlc = await opLog.recordFieldUpdate(
+      entity: 'care_schedules',
+      entityId: scheduleId,
+      field: 'assignee_user_id',
+      value: assigneeUserId,
+    );
+    await (db.update(db.careSchedules)..where((r) => r.id.equals(scheduleId))).write(
+      CareSchedulesCompanion(
+        assigneeUserId: Value(assigneeUserId),
+        updatedHlc: Value(hlc.encode()),
+        deviceId: Value(opLog.clock.deviceId),
+      ),
+    );
   }
 
   /// Remove a schedule entirely (tombstone). For one-off reminders the
