@@ -28,6 +28,31 @@ void main() {
       expect(e.currentPeriodEnd, DateTime.utc(2026, 10, 27, 10));
     });
 
+    test('reads provider (PLAY-BILLING-CONTRACT §2, additive); absent → not managed by Play', () {
+      final play = CloudEntitlement.fromSubscriptionJson({
+        'entitlements': {
+          'inventory_cloud': {'active': true, 'source': 'inventory_cloud', 'provider': 'play', 'current_period_end': '2026-10-27T10:00:00Z'},
+        },
+      });
+      expect(play.provider, 'play');
+      expect(play.managedByPlay, isTrue);
+      final roundTrip = CloudEntitlement.fromJson(json.decode(json.encode(play.toJson())) as Map<String, dynamic>);
+      expect(roundTrip, play);
+      expect(roundTrip.managedByPlay, isTrue);
+
+      final legacy = CloudEntitlement.fromSubscriptionJson({
+        'entitlements': {
+          'inventory_cloud': {'active': true, 'source': 'inventory_cloud'},
+        },
+      });
+      expect(legacy.provider, isNull);
+      expect(legacy.managedByPlay, isFalse);
+      expect(legacy, isNot(equals(play)));
+
+      // An inactive row never counts as Play-managed, whatever it says.
+      expect(const CloudEntitlement(active: false, provider: 'play').managedByPlay, isFalse);
+    });
+
     test('entitlements block wins over is_pro (server is authoritative)', () {
       final e = CloudEntitlement.fromSubscriptionJson({
         'is_pro': true,

@@ -45,6 +45,17 @@ class PlantlyNetworkException implements Exception {
   String toString() => 'PlantlyNetworkException($cause)';
 }
 
+/// A 2xx reply of `POST /subscriptions/play/verify`.
+class PlayVerifyReply {
+  const PlayVerifyReply({required this.status, required this.body});
+
+  /// 200 (active, acknowledged) or 202 (Play still PENDING).
+  final int status;
+  final Map<String, dynamic> body;
+
+  bool get pending => status == 202 || body['status'] == 'pending';
+}
+
 class LoginResult {
   const LoginResult({required this.token, required this.userId, required this.username, required this.email});
   final String token;
@@ -364,6 +375,28 @@ class PlantlyApi {
           headers: _headers(token: token, inventoryClient: true),
         ));
     return _decodeObject(res);
+  }
+
+  /// `POST /subscriptions/play/verify` (PLAY-BILLING-CONTRACT §2): hand a
+  /// Google Play purchase token to the server, which re-fetches it from
+  /// Google, upserts the subscription row and acknowledges it. Idempotent.
+  /// 200 = active (`status`, `interval`, `entitlements`), 202 = Play still
+  /// reports PENDING (retry later). Non-2xx surface as [PlantlyApiException]
+  /// with [PlantlyApiException.message] = the stable error code:
+  /// `already_entitled` (409, `details.source` / `details.provider`),
+  /// `token_owned_by_other_user` (409), `invalid_purchase` (400),
+  /// `play_unavailable` (502), `play_billing_unavailable` (503).
+  Future<PlayVerifyReply> verifyPlayPurchase(
+    String token, {
+    required String purchaseToken,
+    required String productId,
+  }) async {
+    final res = await _send(() => _client.post(
+          _uri('/subscriptions/play/verify'),
+          headers: _headers(token: token, json: true, inventoryClient: true),
+          body: json.encode({'purchase_token': purchaseToken, 'product_id': productId}),
+        ));
+    return PlayVerifyReply(status: res.statusCode, body: _decodeObject(res));
   }
 
   /// `POST /inventory/collections/default` (§2.2) — the caller's default
