@@ -77,6 +77,45 @@ the click on `publish-production`.
 - Store metadata layout, console-only items and CI variables: [`android/fastlane/README.md`](android/fastlane/README.md), [`docs/play-console-checklist.md`](docs/play-console-checklist.md).
 - Privacy policy (en/ro): [`docs/privacy-policy.en.md`](docs/privacy-policy.en.md), [`docs/privacy-policy.ro.md`](docs/privacy-policy.ro.md) — to be hosted at `https://plantly.ro/app/inventory/privacy`.
 
+## Release (Web / inventory.plantly.ro)
+
+The Flutter **web** build is deployed as static files to the plantly-prod host and
+served by its Caddy at `https://inventory.plantly.ro` (TLS via Cloudflare). The host
+side (Caddy site block, read-only volume, release-dir layout, first-time steps) lives
+in the quadlets repo, `plantly-prod/README.md` § *Inventory web*.
+
+| Branch | Job | What ships |
+|---|---|---|
+| every branch | `build-web` | `flutter build web --release --no-web-resources-cdn --dart-define=PLANTLY_APP_VERSION=<pubspec version> $INVENTORY_WEB_DART_DEFINES` → artifact `build/web/` |
+| `main` | `deploy-web-prod` (automatic, after `build-web`) | `ci/prod/deploy-web.sh`: tar `build/web` over ssh → extract into `/var/lib/plantly/inventory-web/releases/<short-sha>/` → write `.deployed-commit` → flip the `current` symlink atomically → verify (on-host via Caddy with the Host header + public URL) → auto-rollback of the symlink on verify failure → keep the last 3 releases → append to the quadlets `DEPLOYED.md` ledger |
+
+- `INVENTORY_WEB_DART_DEFINES` (optional, unprotected project CI variable): extra
+  space-separated `--dart-define=K=V` flags for `build-web`, e.g.
+  `--dart-define=PLANTLY_CLOUD_ENABLED=true` when Inventory Cloud goes live on web.
+  Unset = compile-time defaults (cloud OFF, sell OFF).
+- Verify: `/version.json`, `/`, `/flutter_bootstrap.js` and the SPA fallback must be
+  200 through Caddy on the host; the public URL (`INVENTORY_WEB_VERIFY_URL`, default
+  `https://inventory.plantly.ro`, `skip` to disable) must be 200 too — a DNS/connect
+  failure only warns (hostname not live yet), any other status rolls back.
+- Rollback by hand: `sudo ln -sfn releases/<sha> /var/lib/plantly/inventory-web/current.tmp && sudo mv -T /var/lib/plantly/inventory-web/current.tmp /var/lib/plantly/inventory-web/current`
+  (relative target on purpose — the dir is bind-mounted into the caddy container).
+- Prod is a curated release line: ship via a `Promote:` MR `development` → `main`.
+- The web app calls plantly.ro's API cross-origin, so `https://inventory.plantly.ro`
+  must be in the monolith's `ALLOWED_ORIGINS`.
+
+Required **protected** CI variables on this project (same values as `plantly.ro/web/frontend`;
+`main` is a protected branch so they are only exposed there):
+
+| Variable | Type | Purpose |
+|---|---|---|
+| `PROD_DEPLOY_SSH_KEY` | file | private key for `$PROD_SSH_USER@$PROD_SSH_HOST` (needs passwordless sudo for `tar`/`ln`/`mv`/`rm` under `/var/lib/plantly/inventory-web`) |
+| `PROD_SSH_HOST` | var | plantly-prod LAN address (the runner is LAN-homed; the host is not reachable from the mesh) |
+| `PROD_SSH_USER` | var | deploy user on the host |
+| `DEPLOY_LEDGER_TOKEN` | var | GitLab PAT (scope `api`, Maintainer on quadlets project 34) used by `ci/prod/ledger_append.py`; missing/broken → deploy stays live but the job exits 3 |
+
+Without `PROD_SSH_HOST`/`PROD_SSH_USER` the `deploy-web-prod` job is not created at all
+(rules gate), so pipelines on forks or before first-time setup are unaffected.
+
 ### Local release signing
 
 Release builds are signed with a keystore referenced via `android/key.properties`. That file is **not committed** — copy `android/key.properties.example` and fill in your own values, then run:
