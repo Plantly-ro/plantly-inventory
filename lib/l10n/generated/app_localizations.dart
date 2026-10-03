@@ -5113,6 +5113,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Keep them on this device only'**
   String get cloudRejDismissValue;
+
+  /// No description provided for @activityScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get activityScreenTitle;
+
+  /// No description provided for @activityEntryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get activityEntryLabel;
+
+  /// No description provided for @activityEntryValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Who changed what in this collection'**
+  String get activityEntryValue;
+
+  /// No description provided for @activityEntryTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity in {name}'**
+  String activityEntryTooltip(String name);
+
+  /// No description provided for @activityFeedEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No activity yet. Changes made by members of this collection will show up here.'**
+  String get activityFeedEmpty;
+
+  /// No description provided for @activityLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get activityLoadMore;
+
+  /// No description provided for @activityCachedOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline — showing the last saved activity'**
+  String get activityCachedOffline;
+
+  /// No description provided for @activityLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the activity'**
+  String get activityLoadError;
+
+  /// No description provided for @activityUnknownUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Another member'**
+  String get activityUnknownUser;
+
+  /// No description provided for @activityCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'{user} added {object}'**
+  String activityCreated(String user, String object);
+
+  /// No description provided for @activityUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'{user} edited {object}'**
+  String activityUpdated(String user, String object);
+
+  /// No description provided for @activityDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{user} removed {object}'**
+  String activityDeleted(String user, String object);
+
+  /// No description provided for @activityObjPlant.
+  ///
+  /// In en, this message translates to:
+  /// **'a plant'**
+  String get activityObjPlant;
+
+  /// No description provided for @activityObjSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'the space {name}'**
+  String activityObjSpace(String name);
+
+  /// No description provided for @activityObjSpaceUnnamed.
+  ///
+  /// In en, this message translates to:
+  /// **'a space'**
+  String get activityObjSpaceUnnamed;
+
+  /// No description provided for @activityObjReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'a reminder for {name}'**
+  String activityObjReminder(String name);
+
+  /// No description provided for @activityObjReminderUnnamed.
+  ///
+  /// In en, this message translates to:
+  /// **'a reminder'**
+  String get activityObjReminderUnnamed;
+
+  /// No description provided for @activityObjCareEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'a care entry for {name}'**
+  String activityObjCareEvent(String name);
+
+  /// No description provided for @activityObjCareEventUnnamed.
+  ///
+  /// In en, this message translates to:
+  /// **'a care entry'**
+  String get activityObjCareEventUnnamed;
+
+  /// No description provided for @activityObjPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'a photo of {name}'**
+  String activityObjPhoto(String name);
+
+  /// No description provided for @activityObjPhotoUnnamed.
+  ///
+  /// In en, this message translates to:
+  /// **'a photo'**
+  String get activityObjPhotoUnnamed;
+
+  /// No description provided for @activityObjItem.
+  ///
+  /// In en, this message translates to:
+  /// **'an item'**
+  String get activityObjItem;
+
+  /// No description provided for @activityJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get activityJustNow;
+
+  /// No description provided for @activityMinutesAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} min ago'**
+  String activityMinutesAgo(int n);
+
+  /// No description provided for @activityHoursAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} h ago'**
+  String activityHoursAgo(int n);
+
+  /// No description provided for @activityLastEditedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Last edited by {name} · {when}'**
+  String activityLastEditedBy(String name, String when);
+
+  /// No description provided for @activityLastEditedByNoTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Last edited by {name}'**
+  String activityLastEditedByNoTime(String name);
+
+  /// No description provided for @cloudSharedAccessLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Access via a shared collection'**
+  String get cloudSharedAccessLabel;
+
+  /// No description provided for @cloudSharedAccessValue.
+  ///
+  /// In en, this message translates to:
+  /// **'You have access through a shared collection. Your own collection stays on this device only.'**
+  String get cloudSharedAccessValue;
 }
 
 class _AppLocalizationsDelegate

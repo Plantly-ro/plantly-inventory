@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
 import '../config/plantly_hosts.dart';
+export 'activity_models.dart';
+import 'activity_models.dart';
 
 /// A non-2xx reply from the marketplace, with the JSON error envelope
 /// decoded (`{"error":"msg"}` or `{"error":"msg","code":"stable_code"}`).
@@ -486,6 +488,20 @@ class PlantlyApi {
           _uri('/inventory/collections/${Uri.encodeComponent(collectionId)}/members/${Uri.encodeComponent(userId)}'),
           headers: _headers(token: token, inventoryClient: true),
         ));
+  }
+
+  /// `GET /inventory/collections/{id}/activity?before&limit` (MULTI-USER-V2
+  /// §2.11, any member): the server-grouped change feed, newest first.
+  /// [before] = `seq` cursor from a previous page's `next_before`.
+  Future<ActivityPage> listActivity(String token, String collectionId, {int? before, int limit = 50}) async {
+    final res = await _send(() => _client.get(
+          _uri('/inventory/collections/${Uri.encodeComponent(collectionId)}/activity', {
+            if (before != null) 'before': '$before',
+            'limit': '${limit.clamp(1, 100)}',
+          }),
+          headers: _headers(token: token, inventoryClient: true),
+        ));
+    return ActivityPage.fromJson(_decode(res));
   }
 
   /// `POST /posts/{id}/sold` — owner-only, idempotent.

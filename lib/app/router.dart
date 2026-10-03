@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/calendar/calendar_screen.dart';
+import '../features/collections/collection_activity_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/locations/location_detail_screen.dart';
 import '../features/locations/locations_screen.dart';
@@ -135,6 +136,19 @@ GoRouter buildAppRouter({
           // (`IncomingLinks.initial()`), which also opens the sheet once the
           // DB is up; the router only has to land somewhere sensible and
           // clear the address bar.
+          GoRoute(
+            path: '/collections/:id/activity',
+            pageBuilder: (context, state) {
+              final id = state.pathParameters['id']!;
+              return _adaptive(
+                context,
+                state,
+                desktopKey: 'collection-activity-$id',
+                phone: () => CollectionActivityScreen(collectionId: id),
+                desktop: () => CollectionActivityScreen(collectionId: id),
+              );
+            },
+          ),
           GoRoute(path: AppRoutes.import, redirect: (context, state) => AppRoutes.home),
           // Same for the OAuth return: the hash form (`/#/auth/callback?…`)
           // never reaches the router under the path strategy; the path form

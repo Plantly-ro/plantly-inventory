@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/calendar/calendar_screen.dart';
+import '../features/collections/collection_activity_screen.dart';
 import '../features/locations/location_detail_screen.dart';
 import '../features/locations/locations_screen.dart';
 import '../features/me/care_types_screen.dart';
@@ -41,6 +42,7 @@ abstract final class AppRoutes {
   static String plant(String id) => '/plants/${Uri.encodeComponent(id)}';
   static String space(String id) => '/spaces/${Uri.encodeComponent(id)}';
   static String meSection(String section) => '/me/$section';
+  static String collectionActivity(String id) => '/collections/${Uri.encodeComponent(id)}/activity';
 
   /// `/me/:section` values with a screen. `cloud` renders regardless of the
   /// `PLANTLY_CLOUD_ENABLED` flag (the screen shows nothing useful when off;
@@ -84,6 +86,10 @@ void openSpaces(BuildContext context) => _open(context, AppRoutes.spaces, () => 
 void openCalendar(BuildContext context) => _open(context, AppRoutes.calendar, () => const CalendarScreen());
 
 void openMe(BuildContext context) => _open(context, AppRoutes.me, () => const MeScreen());
+
+/// Activity feed of a shared collection (MULTI-USER-V2 §3).
+void openCollectionActivity(BuildContext context, String id) =>
+    _open(context, AppRoutes.collectionActivity(id), () => CollectionActivityScreen(collectionId: id));
 
 void openMeSection(BuildContext context, String section) {
   final screen = meSectionScreen(section);

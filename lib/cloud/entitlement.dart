@@ -10,12 +10,67 @@ import '../marketplace/plantly_api.dart';
 import '../marketplace/plantly_auth.dart';
 import 'sign_in_events.dart';
 
+/// `entitlements.inventory_cloud.shared_access` (MULTI-USER-V2 §0/§2.13):
+/// the caller is a member (any role) of [collections] ≥ 1 non-deleted
+/// collections whose owner is currently entitled. Absent on older servers
+/// → [none].
+class SharedAccess {
+  const SharedAccess({required this.active, this.collections = 0});
+
+  final bool active;
+
+  /// Number of such collections (0 when inactive / unknown).
+  final int collections;
+
+  static const SharedAccess none = SharedAccess(active: false);
+
+  factory SharedAccess.fromJson(Object? m) {
+    if (m is! Map<String, dynamic>) return none;
+    return SharedAccess(
+      active: m['active'] == true,
+      collections: (m['collections'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {'active': active, 'collections': collections};
+
+  @override
+  bool operator ==(Object other) => other is SharedAccess && other.active == active && other.collections == collections;
+
+  @override
+  int get hashCode => Object.hash(active, collections);
+
+  @override
+  String toString() => 'SharedAccess(active=$active, collections=$collections)';
+}
+
 /// The `inventory_cloud` entitlement (CLOUD-SYNC-CONTRACT §1.2/§1.3):
 /// granted by an active Plantly Pro OR Plantly Inventory Cloud subscription.
 class CloudEntitlement {
-  const CloudEntitlement({required this.active, this.source, this.provider, this.currentPeriodEnd});
+  const CloudEntitlement({
+    required this.active,
+    this.source,
+    this.provider,
+    this.currentPeriodEnd,
+    this.sharedAccess = SharedAccess.none,
+  });
 
+  /// The caller's OWN entitlement. Shared collections do not set this —
+  /// see [sharedAccess] and [hasCloudAccess].
   final bool active;
+
+  /// Membership in an entitled owner's collection (MULTI-USER-V2 §0):
+  /// opens the web gate and the shared collections, never the personal
+  /// one (push there → 402 as today).
+  final SharedAccess sharedAccess;
+
+  /// Own plan active OR access through a shared collection — the web-gate
+  /// predicate (§3 "Web gate").
+  bool get hasCloudAccess => active || sharedAccess.active;
+
+  /// Only shared access: the Cloud screen explains that the personal
+  /// collection stays local-only.
+  bool get sharedAccessOnly => !active && sharedAccess.active;
 
   /// `pro` | `inventory_cloud` | null (not entitled, or the server predates
   /// the `entitlements` block and we fell back to `is_pro`).
@@ -46,6 +101,7 @@ class CloudEntitlement {
           source: e['source'] as String?,
           provider: e['provider'] as String?,
           currentPeriodEnd: _date(e['current_period_end']),
+          sharedAccess: SharedAccess.fromJson(e['shared_access']),
         );
       }
       // Block present but no inventory_cloud key: the server knows about
@@ -67,6 +123,7 @@ class CloudEntitlement {
         'source': source,
         'provider': provider,
         'current_period_end': currentPeriodEnd?.toIso8601String(),
+        'shared_access': sharedAccess.toJson(),
       };
 
   factory CloudEntitlement.fromJson(Map<String, dynamic> m) => CloudEntitlement(
@@ -74,6 +131,7 @@ class CloudEntitlement {
         source: m['source'] as String?,
         provider: m['provider'] as String?,
         currentPeriodEnd: _date(m['current_period_end']),
+        sharedAccess: SharedAccess.fromJson(m['shared_access']),
       );
 
   @override
@@ -82,14 +140,15 @@ class CloudEntitlement {
       other.active == active &&
       other.source == source &&
       other.provider == provider &&
-      other.currentPeriodEnd == currentPeriodEnd;
+      other.currentPeriodEnd == currentPeriodEnd &&
+      other.sharedAccess == sharedAccess;
 
   @override
-  int get hashCode => Object.hash(active, source, provider, currentPeriodEnd);
+  int get hashCode => Object.hash(active, source, provider, currentPeriodEnd, sharedAccess);
 
   @override
   String toString() =>
-      'CloudEntitlement(active=$active, source=$source, provider=$provider, until=$currentPeriodEnd)';
+      'CloudEntitlement(active=$active, source=$source, provider=$provider, until=$currentPeriodEnd, shared=$sharedAccess)';
 }
 
 /// Prefs-cached entitlement for the signed-in user. `null` = signed out.
@@ -232,3 +291,11 @@ class CloudEntitlementNotifier extends AsyncNotifier<CloudEntitlement?> with Wid
 
 final cloudEntitlementProvider =
     AsyncNotifierProvider<CloudEntitlementNotifier, CloudEntitlement?>(CloudEntitlementNotifier.new);
+
+/// Web-gate predicate (MULTI-USER-V2 §3): the signed-in account may use the
+/// cloud surfaces when its own entitlement is active OR it has access
+/// through a shared collection. False while signed out / still loading.
+final hasCloudAccessProvider = Provider<bool>((ref) {
+  final e = ref.watch(cloudEntitlementProvider).valueOrNull;
+  return e?.hasCloudAccess ?? false;
+});

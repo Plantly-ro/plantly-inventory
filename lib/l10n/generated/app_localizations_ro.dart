@@ -3076,4 +3076,118 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get cloudRejDismissValue => 'Păstrează-le doar pe acest dispozitiv';
+
+  @override
+  String get activityScreenTitle => 'Activitate';
+
+  @override
+  String get activityEntryLabel => 'Activitate';
+
+  @override
+  String get activityEntryValue => 'Cine a modificat ce în această colecție';
+
+  @override
+  String activityEntryTooltip(String name) {
+    return 'Activitate în $name';
+  }
+
+  @override
+  String get activityFeedEmpty =>
+      'Nicio activitate încă. Modificările făcute de membrii acestei colecții vor apărea aici.';
+
+  @override
+  String get activityLoadMore => 'Încarcă mai mult';
+
+  @override
+  String get activityCachedOffline =>
+      'Offline — se afișează ultima activitate salvată';
+
+  @override
+  String get activityLoadError => 'Nu s-a putut încărca activitatea';
+
+  @override
+  String get activityUnknownUser => 'Alt membru';
+
+  @override
+  String activityCreated(String user, String object) {
+    return '$user a adăugat $object';
+  }
+
+  @override
+  String activityUpdated(String user, String object) {
+    return '$user a modificat $object';
+  }
+
+  @override
+  String activityDeleted(String user, String object) {
+    return '$user a șters $object';
+  }
+
+  @override
+  String get activityObjPlant => 'o plantă';
+
+  @override
+  String activityObjSpace(String name) {
+    return 'spațiul $name';
+  }
+
+  @override
+  String get activityObjSpaceUnnamed => 'un spațiu';
+
+  @override
+  String activityObjReminder(String name) {
+    return 'un memento pentru $name';
+  }
+
+  @override
+  String get activityObjReminderUnnamed => 'un memento';
+
+  @override
+  String activityObjCareEvent(String name) {
+    return 'o îngrijire pentru $name';
+  }
+
+  @override
+  String get activityObjCareEventUnnamed => 'o îngrijire';
+
+  @override
+  String activityObjPhoto(String name) {
+    return 'o fotografie la $name';
+  }
+
+  @override
+  String get activityObjPhotoUnnamed => 'o fotografie';
+
+  @override
+  String get activityObjItem => 'un element';
+
+  @override
+  String get activityJustNow => 'chiar acum';
+
+  @override
+  String activityMinutesAgo(int n) {
+    return 'acum $n min';
+  }
+
+  @override
+  String activityHoursAgo(int n) {
+    return 'acum $n h';
+  }
+
+  @override
+  String activityLastEditedBy(String name, String when) {
+    return 'Ultima modificare de $name · $when';
+  }
+
+  @override
+  String activityLastEditedByNoTime(String name) {
+    return 'Ultima modificare de $name';
+  }
+
+  @override
+  String get cloudSharedAccessLabel => 'Acces prin colecția partajată';
+
+  @override
+  String get cloudSharedAccessValue =>
+      'Ai acces prin colecția partajată. Colecția ta personală rămâne doar pe acest dispozitiv.';
 }
