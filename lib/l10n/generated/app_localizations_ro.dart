@@ -2487,6 +2487,74 @@ class AppLocalizationsRo extends AppLocalizations {
   }
 
   @override
+  String get cloudPlayPlansTitle => 'Abonează-te prin Google Play';
+
+  @override
+  String get cloudPlayPlanMonthly => 'Lunar';
+
+  @override
+  String get cloudPlayPlanYearly => 'Anual';
+
+  @override
+  String cloudPlayPerMonth(String price) {
+    return '$price / lună';
+  }
+
+  @override
+  String cloudPlayPerYear(String price) {
+    return '$price / an';
+  }
+
+  @override
+  String get cloudPlayLoadingPlans => 'Se încarcă prețurile din Google Play…';
+
+  @override
+  String get cloudPlayUnavailable =>
+      'Plățile prin Google Play nu sunt disponibile acum pe acest dispozitiv.';
+
+  @override
+  String get cloudPlayRetry => 'Reîncearcă';
+
+  @override
+  String get cloudPlayActivating => 'Se activează…';
+
+  @override
+  String get cloudPlayManageLabel => 'Gestionezi abonamentul în Google Play';
+
+  @override
+  String get cloudPlayManageValue =>
+      'Anulezi, pui pauză sau schimbi planul în Google Play';
+
+  @override
+  String get cloudEntitlementViaPlay => 'prin Google Play';
+
+  @override
+  String get cloudPlayAlreadyEntitledTitle => 'Ai deja Inventory Cloud';
+
+  @override
+  String get cloudPlayAlreadyEntitledBody =>
+      'Ai deja Inventory Cloud (inclus în Plantly Pro / abonament web). Achiziția din Google Play nu a fost activată și va fi rambursată automat de Google în 3 zile.';
+
+  @override
+  String get cloudPlayPending =>
+      'Plata este în așteptare. Inventory Cloud se activează după ce Google Play o confirmă.';
+
+  @override
+  String get cloudPlayVerified => 'Inventory Cloud este activ.';
+
+  @override
+  String get cloudPlayVerifyFailed =>
+      'Nu s-a putut confirma achiziția cu plantly.ro.';
+
+  @override
+  String get cloudPlayPurchaseFailed =>
+      'Google Play nu a putut finaliza achiziția.';
+
+  @override
+  String get cloudPlayTokenOwnedByOther =>
+      'Acest abonament Google Play aparține altui cont plantly.ro.';
+
+  @override
   String get cloudCollectionLabel => 'Colecție';
 
   @override

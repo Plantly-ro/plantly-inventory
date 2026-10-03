@@ -13,14 +13,23 @@ import 'sign_in_events.dart';
 /// The `inventory_cloud` entitlement (CLOUD-SYNC-CONTRACT §1.2/§1.3):
 /// granted by an active Plantly Pro OR Plantly Inventory Cloud subscription.
 class CloudEntitlement {
-  const CloudEntitlement({required this.active, this.source, this.currentPeriodEnd});
+  const CloudEntitlement({required this.active, this.source, this.provider, this.currentPeriodEnd});
 
   final bool active;
 
   /// `pro` | `inventory_cloud` | null (not entitled, or the server predates
   /// the `entitlements` block and we fell back to `is_pro`).
   final String? source;
+
+  /// `stripe` | `play` (PLAY-BILLING-CONTRACT §2, additive). Null when the
+  /// server predates the field — treated as Stripe everywhere
+  /// ([managedByPlay] is false).
+  final String? provider;
   final DateTime? currentPeriodEnd;
+
+  /// The entitling row is a Google Play subscription: managed (cancel /
+  /// pause / change plan) in Play, not on plantly.ro.
+  bool get managedByPlay => active && provider == 'play';
 
   static const CloudEntitlement none = CloudEntitlement(active: false);
 
@@ -35,6 +44,7 @@ class CloudEntitlement {
         return CloudEntitlement(
           active: e['active'] == true,
           source: e['source'] as String?,
+          provider: e['provider'] as String?,
           currentPeriodEnd: _date(e['current_period_end']),
         );
       }
@@ -55,12 +65,14 @@ class CloudEntitlement {
   Map<String, dynamic> toJson() => {
         'active': active,
         'source': source,
+        'provider': provider,
         'current_period_end': currentPeriodEnd?.toIso8601String(),
       };
 
   factory CloudEntitlement.fromJson(Map<String, dynamic> m) => CloudEntitlement(
         active: m['active'] == true,
         source: m['source'] as String?,
+        provider: m['provider'] as String?,
         currentPeriodEnd: _date(m['current_period_end']),
       );
 
@@ -69,13 +81,15 @@ class CloudEntitlement {
       other is CloudEntitlement &&
       other.active == active &&
       other.source == source &&
+      other.provider == provider &&
       other.currentPeriodEnd == currentPeriodEnd;
 
   @override
-  int get hashCode => Object.hash(active, source, currentPeriodEnd);
+  int get hashCode => Object.hash(active, source, provider, currentPeriodEnd);
 
   @override
-  String toString() => 'CloudEntitlement(active=$active, source=$source, until=$currentPeriodEnd)';
+  String toString() =>
+      'CloudEntitlement(active=$active, source=$source, provider=$provider, until=$currentPeriodEnd)';
 }
 
 /// Prefs-cached entitlement for the signed-in user. `null` = signed out.

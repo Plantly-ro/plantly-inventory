@@ -2444,6 +2444,75 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get cloudPlayPlansTitle => 'Subscribe in Google Play';
+
+  @override
+  String get cloudPlayPlanMonthly => 'Monthly';
+
+  @override
+  String get cloudPlayPlanYearly => 'Yearly';
+
+  @override
+  String cloudPlayPerMonth(String price) {
+    return '$price / month';
+  }
+
+  @override
+  String cloudPlayPerYear(String price) {
+    return '$price / year';
+  }
+
+  @override
+  String get cloudPlayLoadingPlans => 'Loading prices from Google Play…';
+
+  @override
+  String get cloudPlayUnavailable =>
+      'Google Play billing isn\'t available on this device right now.';
+
+  @override
+  String get cloudPlayRetry => 'Retry';
+
+  @override
+  String get cloudPlayActivating => 'Activating…';
+
+  @override
+  String get cloudPlayManageLabel => 'Manage subscription in Google Play';
+
+  @override
+  String get cloudPlayManageValue =>
+      'Cancel, pause or change your plan in Google Play';
+
+  @override
+  String get cloudEntitlementViaPlay => 'via Google Play';
+
+  @override
+  String get cloudPlayAlreadyEntitledTitle =>
+      'You already have Inventory Cloud';
+
+  @override
+  String get cloudPlayAlreadyEntitledBody =>
+      'You already have Inventory Cloud (included with Plantly Pro / your web subscription). The Google Play purchase was not activated and will be refunded automatically by Google within 3 days.';
+
+  @override
+  String get cloudPlayPending =>
+      'Your payment is pending. Inventory Cloud activates once Google Play confirms it.';
+
+  @override
+  String get cloudPlayVerified => 'Inventory Cloud is active.';
+
+  @override
+  String get cloudPlayVerifyFailed =>
+      'Couldn\'t confirm your purchase with plantly.ro.';
+
+  @override
+  String get cloudPlayPurchaseFailed =>
+      'Google Play couldn\'t complete the purchase.';
+
+  @override
+  String get cloudPlayTokenOwnedByOther =>
+      'This Google Play subscription belongs to another plantly.ro account.';
+
+  @override
   String get cloudCollectionLabel => 'Collection';
 
   @override

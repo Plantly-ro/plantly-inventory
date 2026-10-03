@@ -11,6 +11,8 @@ import '../../cloud/cloud_state.dart';
 import '../../cloud/collection_link.dart';
 import '../../cloud/collections.dart';
 import '../../cloud/entitlement.dart';
+import '../../cloud/play_billing.dart';
+import '../../cloud/play_billing_providers.dart';
 import '../../cloud/sign_in_events.dart';
 import '../../cloud/cloud_sync.dart';
 import '../../cloud/sync_runner.dart';
@@ -23,6 +25,7 @@ import '../../plugins/plantly_ro/login_sheet.dart';
 import '../../theme/tokens.dart';
 import '../collections/sharing_rows.dart';
 import 'me_rows.dart';
+import 'play_plan_picker.dart';
 import 'sync_rejections_screen.dart';
 
 /// Whether this build may link to the plantly.ro checkout. Google Play
@@ -169,6 +172,10 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
     // account's link.
     if (state.heldByOther != null) return _heldByOther(t, state);
     final purchaseLink = ref.watch(cloudPurchaseLinkAllowedProvider);
+    // Android with both flags on: buy in-app (PLAY-BILLING-CONTRACT §4). The
+    // picker never shows while the entitlement is still being checked —
+    // "no purchase CTA when entitled" (§0) must be decided on fresh data.
+    final playBilling = ref.watch(playBillingAvailableProvider) && !state.checking;
     final collectionName = ref.watch(activeCollectionProvider)?.displayName;
     // A shared collection syncs on the owner's plan even here (§3).
     final sharedActive = ref.watch(activeCollectionIsSharedProvider);
@@ -201,6 +208,7 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
         icon: Icons.cloud_off_outlined,
         surface: surface,
       ),
+      if (playBilling) PlayPlanPicker(surface: surface),
       if (purchaseLink)
         MeActionRow(
           key: const Key('cloud-subscribe'),
@@ -300,6 +308,15 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
           icon: Icons.workspace_premium_outlined,
           surface: surface,
         ),
+        if (state.entitlement?.managedByPlay == true)
+          MeActionRow(
+            key: const Key('cloud-manage-play'),
+            label: t.cloudPlayManageLabel,
+            value: t.cloudPlayManageValue,
+            icon: Icons.open_in_new,
+            surface: surface,
+            onTap: () => launchUrl(Uri.parse(kPlayManageSubscriptionUrl), mode: LaunchMode.externalApplication),
+          ),
         if (state.linked)
           MeActionRow(
             key: const Key('cloud-collection'),
@@ -485,7 +502,8 @@ String describeLastSync(AppLocalizations t, DateTime? at, {DateTime? now}) {
 
 String describeEntitlement(AppLocalizations t, CloudEntitlement? e) {
   if (e == null || !e.active) return t.cloudNotIncludedValue;
-  final source = e.source == 'pro' ? t.cloudEntitlementSourcePro : t.cloudEntitlementSourceCloud;
+  final base = e.source == 'pro' ? t.cloudEntitlementSourcePro : t.cloudEntitlementSourceCloud;
+  final source = e.managedByPlay ? '$base · ${t.cloudEntitlementViaPlay}' : base;
   final end = e.currentPeriodEnd;
   if (end == null) return source;
   return '$source · ${t.cloudRenewsOn(DateFormat.yMMMd(t.localeName).format(end.toLocal()))}';

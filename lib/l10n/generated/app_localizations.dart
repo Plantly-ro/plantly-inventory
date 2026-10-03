@@ -4232,6 +4232,120 @@ abstract class AppLocalizations {
   /// **'renews {date}'**
   String cloudRenewsOn(String date);
 
+  /// No description provided for @cloudPlayPlansTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe in Google Play'**
+  String get cloudPlayPlansTitle;
+
+  /// No description provided for @cloudPlayPlanMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly'**
+  String get cloudPlayPlanMonthly;
+
+  /// No description provided for @cloudPlayPlanYearly.
+  ///
+  /// In en, this message translates to:
+  /// **'Yearly'**
+  String get cloudPlayPlanYearly;
+
+  /// No description provided for @cloudPlayPerMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'{price} / month'**
+  String cloudPlayPerMonth(String price);
+
+  /// No description provided for @cloudPlayPerYear.
+  ///
+  /// In en, this message translates to:
+  /// **'{price} / year'**
+  String cloudPlayPerYear(String price);
+
+  /// No description provided for @cloudPlayLoadingPlans.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading prices from Google Play…'**
+  String get cloudPlayLoadingPlans;
+
+  /// No description provided for @cloudPlayUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Google Play billing isn\'t available on this device right now.'**
+  String get cloudPlayUnavailable;
+
+  /// No description provided for @cloudPlayRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get cloudPlayRetry;
+
+  /// No description provided for @cloudPlayActivating.
+  ///
+  /// In en, this message translates to:
+  /// **'Activating…'**
+  String get cloudPlayActivating;
+
+  /// No description provided for @cloudPlayManageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage subscription in Google Play'**
+  String get cloudPlayManageLabel;
+
+  /// No description provided for @cloudPlayManageValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel, pause or change your plan in Google Play'**
+  String get cloudPlayManageValue;
+
+  /// No description provided for @cloudEntitlementViaPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'via Google Play'**
+  String get cloudEntitlementViaPlay;
+
+  /// No description provided for @cloudPlayAlreadyEntitledTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You already have Inventory Cloud'**
+  String get cloudPlayAlreadyEntitledTitle;
+
+  /// No description provided for @cloudPlayAlreadyEntitledBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You already have Inventory Cloud (included with Plantly Pro / your web subscription). The Google Play purchase was not activated and will be refunded automatically by Google within 3 days.'**
+  String get cloudPlayAlreadyEntitledBody;
+
+  /// No description provided for @cloudPlayPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Your payment is pending. Inventory Cloud activates once Google Play confirms it.'**
+  String get cloudPlayPending;
+
+  /// No description provided for @cloudPlayVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Inventory Cloud is active.'**
+  String get cloudPlayVerified;
+
+  /// No description provided for @cloudPlayVerifyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t confirm your purchase with plantly.ro.'**
+  String get cloudPlayVerifyFailed;
+
+  /// No description provided for @cloudPlayPurchaseFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Google Play couldn\'t complete the purchase.'**
+  String get cloudPlayPurchaseFailed;
+
+  /// No description provided for @cloudPlayTokenOwnedByOther.
+  ///
+  /// In en, this message translates to:
+  /// **'This Google Play subscription belongs to another plantly.ro account.'**
+  String get cloudPlayTokenOwnedByOther;
+
   /// No description provided for @cloudCollectionLabel.
   ///
   /// In en, this message translates to:

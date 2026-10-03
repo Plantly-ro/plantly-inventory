@@ -8,6 +8,8 @@ import 'app/scroll_behavior.dart';
 import 'app/url_strategy.dart';
 import 'cloud/cloud_notices.dart';
 import 'cloud/cloud_sync.dart';
+import 'cloud/play_billing_notices.dart';
+import 'cloud/play_billing_providers.dart';
 import 'features/home/home_providers.dart';
 import 'handoff/handoff_listener.dart';
 import 'l10n/generated/app_localizations.dart';
@@ -79,6 +81,8 @@ class _PlantlyAppState extends ConsumerState<PlantlyApp> {
     final mode = ref.watch(themeModeProvider);
     // Cloud sync glue lives for the whole session (inert when the flag is off).
     ref.watch(cloudSyncCoordinatorProvider);
+    // Play Billing restore/resume glue (inert off Android or with the flags off).
+    ref.watch(playBillingCoordinatorProvider);
     return MaterialApp.router(
       title: 'PlantlyInventory',
       debugShowCheckedModeBanner: false,
@@ -94,7 +98,9 @@ class _PlantlyAppState extends ConsumerState<PlantlyApp> {
       builder: (context, child) => DesktopThemeScope(
         child: HandoffListener(
           navigatorKey: _navKey,
-          child: CloudNotices(child: child ?? const SizedBox.shrink()),
+          child: CloudNotices(
+            child: PlayBillingNotices(navigatorKey: _navKey, child: child ?? const SizedBox.shrink()),
+          ),
         ),
       ),
     );

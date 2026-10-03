@@ -16,6 +16,15 @@ abstract final class PlantlyFeatures {
   /// sync runner stays the no-op. Dev/preview builds pass
   /// `--dart-define=PLANTLY_CLOUD_ENABLED=true`.
   static const bool cloudEnabled = bool.fromEnvironment('PLANTLY_CLOUD_ENABLED', defaultValue: false);
+
+  /// Google Play in-app purchase of Inventory Cloud (PLAY-BILLING-CONTRACT
+  /// §0). OFF by default; only meaningful together with [cloudEnabled] and
+  /// only on Android — both true ⇒ the Cloud screen shows the Play plan
+  /// picker instead of the no-link "available on plantly.ro" copy, and the
+  /// app restores/verifies Play purchases on start + sign-in.
+  /// `--dart-define=PLANTLY_PLAY_BILLING_ENABLED=true`.
+  static const bool playBillingEnabled =
+      bool.fromEnvironment('PLANTLY_PLAY_BILLING_ENABLED', defaultValue: false);
 }
 
 /// Riverpod view of [PlantlyFeatures.sellEnabled] so tests can exercise both
@@ -24,3 +33,6 @@ final sellEnabledProvider = Provider<bool>((_) => PlantlyFeatures.sellEnabled);
 
 /// Riverpod view of [PlantlyFeatures.cloudEnabled] (overridable in tests).
 final cloudEnabledProvider = Provider<bool>((_) => PlantlyFeatures.cloudEnabled);
+
+/// Riverpod view of [PlantlyFeatures.playBillingEnabled] (overridable in tests).
+final playBillingEnabledProvider = Provider<bool>((_) => PlantlyFeatures.playBillingEnabled);
