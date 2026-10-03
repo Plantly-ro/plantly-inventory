@@ -5113,6 +5113,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Keep them on this device only'**
   String get cloudRejDismissValue;
+
+  /// No description provided for @gateHeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Your collection, in sync everywhere'**
+  String get gateHeadline;
+
+  /// No description provided for @gateValueProp.
+  ///
+  /// In en, this message translates to:
+  /// **'The web version of Plantly Inventory is part of Inventory Cloud: your plants, care history and photos, saved in your plantly.ro account and kept in sync between phone and browser.'**
+  String get gateValueProp;
+
+  /// No description provided for @gateSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get gateSignIn;
+
+  /// No description provided for @gateAndroidTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Prefer your phone?'**
+  String get gateAndroidTitle;
+
+  /// No description provided for @gateAndroidBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The Android app is free and works offline.'**
+  String get gateAndroidBody;
+
+  /// No description provided for @gateAndroidCloudLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe to Inventory Cloud and everything syncs between phone and web.'**
+  String get gateAndroidCloudLine;
+
+  /// No description provided for @gatePlayBadgeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Get it on Google Play'**
+  String get gatePlayBadgeLabel;
+
+  /// No description provided for @gateHello.
+  ///
+  /// In en, this message translates to:
+  /// **'Hi, {username}. The web version is included in Inventory Cloud.'**
+  String gateHello(String username);
+
+  /// No description provided for @gatePlanMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'{price}/month'**
+  String gatePlanMonthly(String price);
+
+  /// No description provided for @gatePlanYearly.
+  ///
+  /// In en, this message translates to:
+  /// **'{price}/year'**
+  String gatePlanYearly(String price);
+
+  /// No description provided for @gatePlansOr.
+  ///
+  /// In en, this message translates to:
+  /// **'or'**
+  String get gatePlansOr;
+
+  /// No description provided for @gatePlansFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'€1.99/month or €17.99/year'**
+  String get gatePlansFallback;
+
+  /// No description provided for @gatePlansLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading prices…'**
+  String get gatePlansLoading;
+
+  /// No description provided for @gateSubscribe.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe on plantly.ro'**
+  String get gateSubscribe;
+
+  /// No description provided for @gateRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'I already subscribed — check again'**
+  String get gateRetry;
+
+  /// No description provided for @gateIncludedInPro.
+  ///
+  /// In en, this message translates to:
+  /// **'Included in Plantly Pro.'**
+  String get gateIncludedInPro;
+
+  /// No description provided for @gateDataKept.
+  ///
+  /// In en, this message translates to:
+  /// **'Plants saved in this browser stay here; sync resumes as soon as you subscribe.'**
+  String get gateDataKept;
+
+  /// No description provided for @gateSignOutLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Not you? Sign out'**
+  String get gateSignOutLink;
+
+  /// No description provided for @gateUnreachableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'We can\'t verify your subscription'**
+  String get gateUnreachableTitle;
+
+  /// No description provided for @gateUnreachableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'plantly.ro can\'t be reached right now. Check your connection and try again.'**
+  String get gateUnreachableBody;
+
+  /// No description provided for @gateTryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get gateTryAgain;
+
+  /// No description provided for @gateChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking your subscription…'**
+  String get gateChecking;
+
+  /// No description provided for @gateOfflineBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline — changes will sync when you\'re back online'**
+  String get gateOfflineBanner;
 }
 
 class _AppLocalizationsDelegate

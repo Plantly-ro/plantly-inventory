@@ -3076,4 +3076,85 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get cloudRejDismissValue => 'Păstrează-le doar pe acest dispozitiv';
+
+  @override
+  String get gateHeadline => 'Colecția ta, sincronizată peste tot';
+
+  @override
+  String get gateValueProp =>
+      'Versiunea web a Plantly Inventory face parte din Inventory Cloud: plantele, istoricul de îngrijire și fotografiile tale, salvate în contul plantly.ro și sincronizate între telefon și browser.';
+
+  @override
+  String get gateSignIn => 'Intră în cont';
+
+  @override
+  String get gateAndroidTitle => 'Preferi telefonul?';
+
+  @override
+  String get gateAndroidBody =>
+      'Aplicația Android este gratuită și merge offline.';
+
+  @override
+  String get gateAndroidCloudLine =>
+      'Abonează-te la Inventory Cloud și totul se sincronizează între telefon și web.';
+
+  @override
+  String get gatePlayBadgeLabel => 'Disponibil pe Google Play';
+
+  @override
+  String gateHello(String username) {
+    return 'Bună, $username. Versiunea web este inclusă în Inventory Cloud.';
+  }
+
+  @override
+  String gatePlanMonthly(String price) {
+    return '$price/lună';
+  }
+
+  @override
+  String gatePlanYearly(String price) {
+    return '$price/an';
+  }
+
+  @override
+  String get gatePlansOr => 'sau';
+
+  @override
+  String get gatePlansFallback => '1,99 €/lună sau 17,99 €/an';
+
+  @override
+  String get gatePlansLoading => 'Se încarcă prețurile…';
+
+  @override
+  String get gateSubscribe => 'Abonează-te pe plantly.ro';
+
+  @override
+  String get gateRetry => 'Am deja abonament — reîncearcă';
+
+  @override
+  String get gateIncludedInPro => 'Inclus în Plantly Pro.';
+
+  @override
+  String get gateDataKept =>
+      'Plantele salvate în acest browser rămân aici; sincronizarea se reia imediat ce te abonezi.';
+
+  @override
+  String get gateSignOutLink => 'Nu ești tu? Deconectează-te';
+
+  @override
+  String get gateUnreachableTitle => 'Nu putem verifica abonamentul';
+
+  @override
+  String get gateUnreachableBody =>
+      'plantly.ro nu poate fi contactat acum. Verifică conexiunea și încearcă din nou.';
+
+  @override
+  String get gateTryAgain => 'Reîncearcă';
+
+  @override
+  String get gateChecking => 'Se verifică abonamentul…';
+
+  @override
+  String get gateOfflineBanner =>
+      'Fără conexiune — modificările se vor sincroniza când revii online';
 }

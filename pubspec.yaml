@@ -93,6 +93,13 @@ flutter:
   uses-material-design: true
   generate: true
 
+  # Official Google Play badges (RO + EN) for the web access gate's
+  # "prefer your phone?" card. Downloaded unmodified from
+  # https://play.google.com/intl/en_us/badges/ — never recolour or crop
+  # them; keep clear space ≥ 1/4 of the badge height around them.
+  assets:
+    - assets/badges/
+
   # Typography — Inter + Plus Jakarta Sans (the prototype's two families),
   # bundled so release builds never fetch from fonts.gstatic.com (privacy
   # issue #12). Static instances cut from the Google Fonts variable TTFs

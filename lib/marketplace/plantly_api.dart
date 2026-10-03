@@ -56,6 +56,48 @@ class PlayVerifyReply {
   bool get pending => status == 202 || body['status'] == 'pending';
 }
 
+/// One row of `GET /subscriptions/plans` (`planView` on the monolith):
+/// `interval` (`month` | `year`), the Stripe default price and the
+/// per-currency amounts (`currency_options`, lower-case ISO codes → minor
+/// units). [amountMinor] is null when the price is unknown server-side.
+class SubscriptionPlan {
+  const SubscriptionPlan({required this.interval, this.amountMinor, this.currency, this.prices = const {}});
+
+  final String interval;
+  final int? amountMinor;
+  final String? currency;
+  final Map<String, int> prices;
+
+  factory SubscriptionPlan.fromJson(Map<String, dynamic> m) {
+    final raw = m['prices'];
+    return SubscriptionPlan(
+      interval: m['interval'] as String,
+      amountMinor: (m['amount_minor'] as num?)?.toInt(),
+      currency: (m['currency'] as String?)?.toLowerCase(),
+      prices: {
+        if (raw is Map)
+          for (final e in raw.entries)
+            if (e.value is num) '${e.key}'.toLowerCase(): (e.value as num).toInt(),
+      },
+    );
+  }
+
+  /// Amount in [currency] (lower-case ISO) when the server offers it, else
+  /// the default price; null when nothing is priced.
+  ({int amountMinor, String currency})? priceIn(String currency) {
+    final want = currency.toLowerCase();
+    final inWanted = prices[want];
+    if (inWanted != null) return (amountMinor: inWanted, currency: want);
+    final c = this.currency;
+    final a = amountMinor;
+    if (c != null && a != null) return (amountMinor: a, currency: c);
+    return null;
+  }
+
+  @override
+  String toString() => 'SubscriptionPlan($interval, $amountMinor $currency, $prices)';
+}
+
 class LoginResult {
   const LoginResult({required this.token, required this.userId, required this.username, required this.email});
   final String token;
@@ -375,6 +417,19 @@ class PlantlyApi {
           headers: _headers(token: token, inventoryClient: true),
         ));
     return _decodeObject(res);
+  }
+
+  /// `GET /subscriptions/plans?product=` (public): the offered intervals of
+  /// one product with their display prices. Always 200 for a known product;
+  /// a plan without a priced Stripe row comes back without an amount.
+  Future<List<SubscriptionPlan>> getPlans({String product = 'inventory_cloud'}) async {
+    final res = await _send(() => _client.get(_uri('/subscriptions/plans', {'product': product}), headers: _headers()));
+    final plans = _decodeObject(res)['plans'];
+    if (plans is! List) return const [];
+    return [
+      for (final p in plans)
+        if (p is Map<String, dynamic> && p['interval'] is String) SubscriptionPlan.fromJson(p),
+    ];
   }
 
   /// `POST /subscriptions/play/verify` (PLAY-BILLING-CONTRACT §2): hand a
