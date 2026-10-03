@@ -3022,4 +3022,84 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cloudRejDismissValue => 'Keep them on this device only';
+
+  @override
+  String get gateHeadline => 'Your collection, in sync everywhere';
+
+  @override
+  String get gateValueProp =>
+      'The web version of Plantly Inventory is part of Inventory Cloud: your plants, care history and photos, saved in your plantly.ro account and kept in sync between phone and browser.';
+
+  @override
+  String get gateSignIn => 'Sign in';
+
+  @override
+  String get gateAndroidTitle => 'Prefer your phone?';
+
+  @override
+  String get gateAndroidBody => 'The Android app is free and works offline.';
+
+  @override
+  String get gateAndroidCloudLine =>
+      'Subscribe to Inventory Cloud and everything syncs between phone and web.';
+
+  @override
+  String get gatePlayBadgeLabel => 'Get it on Google Play';
+
+  @override
+  String gateHello(String username) {
+    return 'Hi, $username. The web version is included in Inventory Cloud.';
+  }
+
+  @override
+  String gatePlanMonthly(String price) {
+    return '$price/month';
+  }
+
+  @override
+  String gatePlanYearly(String price) {
+    return '$price/year';
+  }
+
+  @override
+  String get gatePlansOr => 'or';
+
+  @override
+  String get gatePlansFallback => '€1.99/month or €17.99/year';
+
+  @override
+  String get gatePlansLoading => 'Loading prices…';
+
+  @override
+  String get gateSubscribe => 'Subscribe on plantly.ro';
+
+  @override
+  String get gateRetry => 'I already subscribed — check again';
+
+  @override
+  String get gateIncludedInPro => 'Included in Plantly Pro.';
+
+  @override
+  String get gateDataKept =>
+      'Plants saved in this browser stay here; sync resumes as soon as you subscribe.';
+
+  @override
+  String get gateSignOutLink => 'Not you? Sign out';
+
+  @override
+  String get gateUnreachableTitle => 'We can\'t verify your subscription';
+
+  @override
+  String get gateUnreachableBody =>
+      'plantly.ro can\'t be reached right now. Check your connection and try again.';
+
+  @override
+  String get gateTryAgain => 'Try again';
+
+  @override
+  String get gateChecking => 'Checking your subscription…';
+
+  @override
+  String get gateOfflineBanner =>
+      'Offline — changes will sync when you\'re back online';
 }

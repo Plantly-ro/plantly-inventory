@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../cloud/web_access.dart';
 import '../features/calendar/calendar_screen.dart';
+import '../features/gate/web_access_gate.dart';
+import '../handoff/incoming_links.dart';
 import '../features/home/home_screen.dart';
 import '../features/locations/location_detail_screen.dart';
 import '../features/locations/locations_screen.dart';
@@ -30,25 +34,38 @@ final GlobalKey<NavigatorState> shellNavigatorKey = GlobalKey<NavigatorState>(de
 /// | `/import?d=`      | redirect `/` (HandoffListener opens the import sheet from the URL)  |
 /// | `/auth/callback`  | redirect `/` (HandoffListener adopted the token from the URL first) |
 /// | `/join?c=`        | redirect `/` (HandoffListener opens the join-collection sheet)      |
+/// | `/gate`           | [WebAccessGate] — web only, outside the shell (WEB-ACCESS-POLICY)   |
 ///
-/// All routes are siblings under one [ShellRoute]: on desktop a section's
-/// list and detail URLs produce pages with the *same key*, so `go()`
-/// updates the page in place instead of rebuilding the master pane.
+/// All app routes are siblings under one [ShellRoute]: on desktop a
+/// section's list and detail URLs produce pages with the *same key*, so
+/// `go()` updates the page in place instead of rebuilding the master pane.
+///
+/// Web access gate (WEB-ACCESS-POLICY §1): while [webAccessProvider] is not
+/// open, every route except `/gate`, `/auth/callback`, `/join` and `/import`
+/// redirects to `/gate`, parking the requested location; the link routes
+/// redirect to `/gate` too but the payload is parked by `HandoffListener`.
+/// Once open, `/gate` resumes the parked location (or Home). Off web the
+/// provider is always open, so the gate never engages. [refreshListenable]
+/// (see [webAccessListenableProvider]) re-runs the redirect on each verdict.
 GoRouter buildAppRouter({
   required GlobalKey<NavigatorState> navigatorKey,
   String? initialLocation,
+  Listenable? refreshListenable,
 }) {
   return GoRouter(
     navigatorKey: navigatorKey,
     initialLocation: initialLocation ?? AppRoutes.home,
+    refreshListenable: refreshListenable,
+    redirect: webAccessRedirect,
     routes: [
+      GoRoute(
+        path: AppRoutes.gate,
+        pageBuilder: (context, state) => const NoTransitionPage<void>(child: WebAccessGate()),
+      ),
       ShellRoute(
         navigatorKey: shellNavigatorKey,
-        builder: (context, state, child) => AppShell(
-          location: state.uri.path,
-          shellNavigatorKey: shellNavigatorKey,
-          child: child,
-        ),
+        builder: (context, state, child) =>
+            AppShell(location: state.uri.path, shellNavigatorKey: shellNavigatorKey, child: child),
         routes: [
           GoRoute(
             path: AppRoutes.home,
@@ -148,6 +165,30 @@ GoRouter buildAppRouter({
       ),
     ],
   );
+}
+
+/// Top-level redirect implementing the gate (see [buildAppRouter]).
+String? webAccessRedirect(BuildContext context, GoRouterState state) {
+  final container = ProviderScope.containerOf(context, listen: false);
+  final access = container.read(webAccessProvider);
+  final path = state.uri.path;
+  final atGate = path == AppRoutes.gate;
+  if (access.isOpen) {
+    if (!atGate) return null;
+    final parked = container.read(webGateParkingProvider).takeRoute();
+    return parked ?? AppRoutes.home;
+  }
+  if (atGate) return null;
+  // Payload links: the listener parks the import param / join code off the
+  // browser URL itself; the router only has to land on the gate.
+  if (isAuthCallbackPath(path) || isJoinPath(path) || isImportPath(path)) return AppRoutes.gate;
+  // Compare the full location: `/` with a query (`?prefill=…`) is a
+  // destination worth coming back to; bare Home is where the gate lands anyway.
+  final location = state.uri.toString();
+  if (location != AppRoutes.home) {
+    container.read(webGateParkingProvider).parkRoute(location);
+  }
+  return AppRoutes.gate;
 }
 
 /// Phone/tablet: a normal [MaterialPage] (slide transition, pushes stack).

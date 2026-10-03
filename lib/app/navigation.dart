@@ -38,6 +38,10 @@ abstract final class AppRoutes {
   /// opens the join sheet, the router redirects home (like [import]).
   static const String join = '/join';
 
+  /// Web access gate (WEB-ACCESS-POLICY §1) — outside the shell; the router
+  /// sends every closed-gate visit here and resumes the parked URL after.
+  static const String gate = '/gate';
+
   static String plant(String id) => '/plants/${Uri.encodeComponent(id)}';
   static String space(String id) => '/spaces/${Uri.encodeComponent(id)}';
   static String meSection(String section) => '/me/$section';

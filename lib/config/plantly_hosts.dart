@@ -66,6 +66,10 @@ abstract final class PlantlyHosts {
   static String subscriptionUrl({String product = 'inventory_cloud', String? origin}) =>
       '${origin ?? host}/account/subscription?product=$product';
 
+  /// Google Play listing of the Android app (the free, local-first build the
+  /// web gate points phone users to — WEB-ACCESS-POLICY §0).
+  static const String playStoreUrl = 'https://play.google.com/store/apps/details?id=ro.plantly.inventory';
+
   /// `X-Plantly-Client` value logged by the inventory routes (§2.2).
   static String get clientHeader => 'inventory/$appVersion';
 }
