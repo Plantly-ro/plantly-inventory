@@ -45,6 +45,7 @@ import 'propagate_dialog.dart';
 import 'tag_chip_input.dart';
 import '../../app/side_sheet.dart';
 import '../../shared/actor_label.dart';
+import '../collections/collection_activity_screen.dart';
 import '../../shared/sheet_chrome.dart';
 
 String _localeOf(BuildContext context) => Localizations.localeOf(context).toString();
@@ -420,6 +421,9 @@ class _PlantDetailBody extends ConsumerWidget {
                         )),
                   style: TextStyle(fontSize: 12, color: surface.muted),
                 ),
+                // MULTI-USER-V2 §3: who touched this plant last (shared
+                // collections only, from the activity cache).
+                LastEditedByLine(tenantId: plantRow.tenantId, entityId: plantId, surface: surface),
                 if (plantRow.notes != null && plantRow.notes!.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Text(

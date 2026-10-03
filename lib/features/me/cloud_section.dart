@@ -201,13 +201,26 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
           surface: surface,
           valueColor: surface.terra,
         ),
-      MeActionRow(
-        key: const Key('cloud-not-included'),
-        label: t.cloudNotIncludedLabel,
-        value: state.checking ? t.cloudChecking : t.cloudNotIncludedValue,
-        icon: Icons.cloud_off_outlined,
-        surface: surface,
-      ),
+      // MULTI-USER-V2 §0: a member of an entitled owner's collection has
+      // access through it; their own collection stays local-only. The
+      // subscribe hint below still applies to the personal collection.
+      if (!state.checking && state.entitlement?.sharedAccessOnly == true)
+        MeActionRow(
+          key: const Key('cloud-shared-access'),
+          label: t.cloudSharedAccessLabel,
+          value: t.cloudSharedAccessValue,
+          icon: Icons.group_outlined,
+          surface: surface,
+          valueColor: surface.green,
+        )
+      else
+        MeActionRow(
+          key: const Key('cloud-not-included'),
+          label: t.cloudNotIncludedLabel,
+          value: state.checking ? t.cloudChecking : t.cloudNotIncludedValue,
+          icon: Icons.cloud_off_outlined,
+          surface: surface,
+        ),
       if (playBilling) PlayPlanPicker(surface: surface),
       if (purchaseLink)
         MeActionRow(

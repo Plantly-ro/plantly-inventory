@@ -12,8 +12,10 @@ import 'entitlement.dart';
 
 /// Web access gate (WEB-ACCESS-POLICY §0/§1): the browser build is the
 /// Inventory Cloud surface, so the app shell renders only for a signed-in
-/// plantly.ro account holding an active `inventory_cloud` entitlement. Off
-/// web the gate never engages ([WebAccess.open] always).
+/// plantly.ro account with cloud access: its own `inventory_cloud`
+/// entitlement active OR membership in an entitled owner's shared
+/// collection ([CloudEntitlement.hasCloudAccess], shared-access amendment).
+/// Off web the gate never engages ([WebAccess.open] always).
 ///
 /// Derived — never fetched here — from the existing session / entitlement
 /// providers; the only web-specific ingredient is the offline rule, which
@@ -144,7 +146,7 @@ final webAccessProvider = Provider<WebAccess>((ref) {
     // refreshing): the auth layer is clearing it — treat as signed out.
     return WebAccess.closedSignedOut;
   }
-  if (!e.active) return WebAccess.closedNotEntitled(username);
+  if (!e.hasCloudAccess) return WebAccess.closedNotEntitled(username);
 
   // A 403 is a verdict about this account, not an outage: never open (§0).
   if (notifier.source == EntitlementSource.forbidden) return WebAccess.closedNotEntitled(username);

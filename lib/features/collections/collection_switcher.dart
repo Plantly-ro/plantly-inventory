@@ -10,6 +10,7 @@ import '../../marketplace/plantly_api.dart';
 import '../../shared/sheet_chrome.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
+import 'collection_activity_screen.dart';
 import 'collection_ui.dart';
 import 'join_collection_sheet.dart';
 
@@ -298,6 +299,7 @@ class CollectionSwitcherSheet extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               RoleBadge(role: c.role, surface: surface),
+              CollectionActivityIconButton(collection: c, surface: surface),
               if (isActive) ...[
                 const SizedBox(width: 8),
                 Icon(Icons.check_circle, size: 18, color: surface.green, key: Key('collection-active-${c.id}')),
