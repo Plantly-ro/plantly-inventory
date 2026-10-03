@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/side_sheet.dart';
+import '../../cloud/cloud_state.dart';
 import '../../cloud/cloud_sync.dart';
 import '../../cloud/collections.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -185,7 +186,7 @@ class CollectionSwitcherDropdown extends ConsumerWidget {
                       const SizedBox(width: 8),
                       Expanded(child: Text(c.displayName, overflow: TextOverflow.ellipsis)),
                       const SizedBox(width: 8),
-                      _RoleBadge(role: c.role, surface: surface),
+                      RoleBadge(role: c.role, surface: surface),
                     ],
                   ),
                 ),
@@ -245,8 +246,12 @@ class CollectionSwitcherSheet extends ConsumerWidget {
 
     // ListTile paints ink on the nearest Material; the sheet chrome's
     // decorated box would hide it, so every tile gets a transparent one.
+    final homeId = ref.watch(cloudStateProvider).collectionId;
+
     Widget tile(CloudCollection c) {
       final isActive = c.id == active?.id;
+      final by = !c.isOwner && (c.ownerUsername ?? '').isNotEmpty ? t.shareByActor(c.ownerUsername!) : null;
+      final subtitle = [t.shareMembersCount(c.memberCount), ?by].join(' · ');
       return Material(
         type: MaterialType.transparency,
         child: ListTile(
@@ -264,14 +269,80 @@ class CollectionSwitcherSheet extends ConsumerWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: surface.text),
           ),
-          subtitle: Text(t.shareMembersCount(c.memberCount), style: TextStyle(fontSize: 11.5, color: surface.muted)),
+          subtitle: Row(
+            children: [
+              Flexible(
+                child: Text(subtitle, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, color: surface.muted)),
+              ),
+              if (!c.ownerEntitled) ...[
+                const SizedBox(width: 6),
+                Tooltip(
+                  message: t.shareErrOwnerLapsed,
+                  child: Container(
+                    key: Key('collection-paused-${c.id}'),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: surface.terraSoft,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      t.shareV2Paused,
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: surface.terra),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _RoleBadge(role: c.role, surface: surface),
+              RoleBadge(role: c.role, surface: surface),
               if (isActive) ...[
                 const SizedBox(width: 8),
                 Icon(Icons.check_circle, size: 18, color: surface.green, key: Key('collection-active-${c.id}')),
+              ],
+              if (c.isOwner) ...[
+                const SizedBox(width: 2),
+                PopupMenuButton<String>(
+                  key: Key('collection-menu-${c.id}'),
+                  tooltip: t.collectionActions,
+                  padding: EdgeInsets.zero,
+                  icon: Icon(Icons.more_vert, size: 20, color: surface.muted),
+                  onSelected: (v) {
+                    switch (v) {
+                      case 'rename':
+                        showRenameCollectionDialog(context, ref, c);
+                      case 'delete':
+                        confirmDeleteCollection(context, ref, c, closeSheet: true);
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      key: Key('collection-rename-${c.id}'),
+                      value: 'rename',
+                      child: ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.drive_file_rename_outline, size: 18),
+                        title: Text(t.collectionRenameAction),
+                      ),
+                    ),
+                    // The account's linked default is "home": never offered
+                    // for deletion (the fallback tenant must keep existing).
+                    if (c.id != homeId)
+                      PopupMenuItem(
+                        key: Key('collection-delete-${c.id}'),
+                        value: 'delete',
+                        child: ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(Icons.delete_outline, size: 18, color: surface.terra),
+                          title: Text(t.collectionDeleteAction, style: TextStyle(color: surface.terra)),
+                        ),
+                      ),
+                  ],
+                ),
               ],
             ],
           ),
@@ -356,26 +427,123 @@ class CollectionSwitcherSheet extends ConsumerWidget {
   }
 }
 
-class _RoleBadge extends StatelessWidget {
-  const _RoleBadge({required this.role, required this.surface});
-  final String role;
-  final PlantlySurface surface;
+/// Owner: rename (`PATCH /collections/{id} {name}`, 1..60 chars). The
+/// field is prefilled; Save stays disabled while the trimmed name is empty,
+/// unchanged or over 60 characters.
+Future<void> showRenameCollectionDialog(BuildContext context, WidgetRef ref, CloudCollection col) async {
+  final t = AppLocalizations.of(context);
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final collections = ref.read(collectionsProvider.notifier); // before the await (#14)
+  final name = await showDialog<String>(
+    context: context,
+    builder: (ctx) => _RenameDialog(initial: col.displayName),
+  );
+  if (name == null || name == col.displayName) return;
+  try {
+    await collections.rename(col.id, name);
+    messenger
+      ?..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(t.collectionRenamed(name))));
+  } catch (e) {
+    messenger
+      ?..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(describeShareError(t, e, action: ShareAction.collection))));
+  }
+}
+
+class _RenameDialog extends StatefulWidget {
+  const _RenameDialog({required this.initial});
+  final String initial;
+
+  @override
+  State<_RenameDialog> createState() => _RenameDialogState();
+}
+
+class _RenameDialogState extends State<_RenameDialog> {
+  static const int _max = 60;
+  late final TextEditingController _ctrl = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  String get _value => _ctrl.text.trim();
+  bool get _valid => _value.isNotEmpty && _value.length <= _max;
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    final owner = role == 'owner';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: owner ? surface.greenSoft : surface.bg,
-        border: Border.all(color: owner ? Colors.transparent : surface.border),
-        borderRadius: BorderRadius.circular(999),
+    final touched = _ctrl.text != widget.initial;
+    return AlertDialog(
+      title: Text(t.collectionRenameTitle),
+      content: TextField(
+        key: const Key('collection-rename-field'),
+        controller: _ctrl,
+        autofocus: true,
+        maxLength: _max,
+        textCapitalization: TextCapitalization.sentences,
+        decoration: InputDecoration(
+          labelText: t.collectionRenameField,
+          errorText: touched && !_valid ? t.collectionRenameInvalid : null,
+        ),
+        onChanged: (_) => setState(() {}),
+        onSubmitted: (_) {
+          if (_valid) Navigator.of(context).pop(_value);
+        },
       ),
-      child: Text(
-        roleLabel(t, role),
-        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: owner ? surface.green : surface.muted),
-      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(t.cancel)),
+        FilledButton(
+          key: const Key('collection-rename-save'),
+          onPressed: _valid && _value != widget.initial ? () => Navigator.of(context).pop(_value) : null,
+          child: Text(t.collectionRenameSave),
+        ),
+      ],
     );
+  }
+}
+
+/// Owner: `Delete <name>?` → `DELETE /collections/{id}`. Members lose
+/// access, the server copy goes, the local copy stays on this device.
+/// [closeSheet] pops the enclosing switcher sheet after success.
+Future<void> confirmDeleteCollection(
+  BuildContext context,
+  WidgetRef ref,
+  CloudCollection col, {
+  bool closeSheet = false,
+}) async {
+  final t = AppLocalizations.of(context);
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final nav = Navigator.of(context);
+  final collections = ref.read(collectionsProvider.notifier); // before the await (#14)
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(t.collectionDeleteTitle(col.displayName)),
+      content: Text(t.collectionDeleteBody),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.cancel)),
+        FilledButton(
+          key: const Key('collection-delete-confirm'),
+          style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: Text(t.collectionDeleteConfirm),
+        ),
+      ],
+    ),
+  );
+  if (ok != true) return;
+  try {
+    await collections.delete(col.id);
+    messenger
+      ?..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(t.collectionDeleted(col.displayName))));
+    if (closeSheet && nav.mounted) nav.pop();
+  } catch (e) {
+    messenger
+      ?..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(describeShareError(t, e, action: ShareAction.collection))));
   }
 }

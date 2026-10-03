@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,6 +11,7 @@ import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../../app/breakpoints.dart';
 import '../../shared/sheet_chrome.dart';
+import 'assignee_picker.dart';
 
 enum _Unit { minutes, hours, days, months }
 
@@ -52,6 +54,7 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
   late _Unit _unit;
   late String _recurrenceMode;
   late DateTime _firstDue;
+  String? _assigneeUserId;
   bool _saving = false;
   String? _error;
 
@@ -62,6 +65,7 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
     _unit = conv.unit;
     _interval = TextEditingController(text: _format(conv.count));
     _recurrenceMode = widget.schedule.recurrenceMode;
+    _assigneeUserId = widget.schedule.assigneeUserId;
     _firstDue = widget.schedule.nextDueAt != null
         ? DateTime.fromMillisecondsSinceEpoch(widget.schedule.nextDueAt!, isUtc: true).toLocal()
         : DateTime.now().add(const Duration(days: 1));
@@ -94,6 +98,7 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
             baseIntervalDays: _unit.toDays(count),
             recurrenceMode: _recurrenceMode,
             nextDueAt: _firstDue.toUtc(),
+            assigneeUserId: Value(_assigneeUserId),
           );
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -237,6 +242,14 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
                   ),
                 ),
               ),
+              if (ref.watch(assigneePickerVisibleProvider)) ...[
+                const SizedBox(height: 14),
+                AssigneePicker(
+                  value: _assigneeUserId,
+                  surface: surface,
+                  onChanged: (v) => setState(() => _assigneeUserId = v),
+                ),
+              ],
               if (_error != null) ...[
                 const SizedBox(height: 10),
                 Text(_error!, style: TextStyle(color: surface.terra, fontSize: 12)),

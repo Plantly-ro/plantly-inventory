@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../cloud/collections.dart';
 import '../features/collections/collection_switcher.dart';
 import '../features/home/add_plant_sheet.dart';
 import '../features/home/home_providers.dart';
@@ -52,6 +53,8 @@ class AppShell extends ConsumerWidget {
     final t = AppLocalizations.of(context);
     final selected = sectionIndexFor(location);
     final width = MediaQuery.sizeOf(context).width;
+    // Viewer of a shared collection (MULTI-USER-V2 §3): no primary add action.
+    final canEdit = ref.watch(canEditActiveCollectionProvider);
 
     void select(int i) => context.go(_sectionPaths[i]);
     void addPlant() => showAdaptiveSheet<void>(
@@ -83,7 +86,7 @@ class AppShell extends ConsumerWidget {
             labelType: NavigationRailLabelType.selected,
             selectedIndex: selected,
             onDestinationSelected: select,
-            leading: Padding(
+            leading: canEdit ? Padding(
               padding: const EdgeInsets.only(top: 8, bottom: 12),
               child: FloatingActionButton.small(
                 heroTag: 'shell-add-plant',
@@ -93,7 +96,7 @@ class AppShell extends ConsumerWidget {
                 onPressed: addPlant,
                 child: const Icon(Icons.add),
               ),
-            ),
+            ) : null,
             destinations: [
               for (final it in items)
                 NavigationRailDestination(
@@ -111,7 +114,7 @@ class AppShell extends ConsumerWidget {
       final gutter = Breakpoints.gutterFor(width);
       body = Row(
         children: [
-          _SideNav(items: items, selected: selected, surface: surface, onSelect: select, onAddPlant: addPlant),
+          _SideNav(items: items, selected: selected, surface: surface, onSelect: select, onAddPlant: canEdit ? addPlant : null),
           VerticalDivider(width: 1, thickness: 1, color: surface.border),
           Expanded(
             child: Center(
@@ -154,7 +157,8 @@ class _SideNav extends StatelessWidget {
   final int selected;
   final PlantlySurface surface;
   final ValueChanged<int> onSelect;
-  final VoidCallback onAddPlant;
+  /// Null hides the primary add-plant button (read-only collection).
+  final VoidCallback? onAddPlant;
 
   @override
   Widget build(BuildContext context) {
@@ -205,18 +209,20 @@ class _SideNav extends StatelessWidget {
           // Shared collections (§3): hidden with 0/1 collection.
           CollectionSwitcherDropdown(surface: surface),
           const SizedBox(height: 20),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: surface.green,
-              foregroundColor: Colors.white,
-              minimumSize: const Size.fromHeight(40),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius)),
+          if (onAddPlant != null) ...[
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: surface.green,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(40),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius)),
+              ),
+              onPressed: onAddPlant,
+              icon: const Icon(Icons.add, size: 18),
+              label: Text(t.addPlant, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
             ),
-            onPressed: onAddPlant,
-            icon: const Icon(Icons.add, size: 18),
-            label: Text(t.addPlant, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-          ),
-          const SizedBox(height: 20),
+            const SizedBox(height: 20),
+          ],
           for (var i = 0; i < items.length; i++) ...[
             _SideNavTile(item: items[i], active: i == selected, surface: surface, onTap: () => onSelect(i)),
             const SizedBox(height: 2),

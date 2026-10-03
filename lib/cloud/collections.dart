@@ -8,6 +8,7 @@ import '../config/plantly_features.dart';
 import '../data/providers.dart';
 import '../marketplace/plantly_api.dart';
 import '../marketplace/plantly_auth.dart';
+import '../marketplace/plantly_session.dart';
 import 'cloud_state.dart';
 import 'collection_link.dart';
 import 'sign_in_events.dart';
@@ -38,6 +39,38 @@ const String kMembersCachePrefPrefix = 'plantly_collection_members/';
 /// Server code (and `SyncStatus.lastErrorDetail` of a `collection_unavailable`
 /// halt) for a 403 on a collection the account is no longer a member of.
 const String kNotAMemberDetail = 'not_a_member';
+
+/// `410 collection_deleted` (MULTI-USER-V2 §2.3): the owner deleted the
+/// collection. Handled like a removal (drop + go home + notice).
+const String kCollectionDeletedDetail = 'collection_deleted';
+
+/// `404 collection_not_found`: a soft-deleted collection answers 410 to
+/// former members and 404 to non-members; both mean "gone" for a shared
+/// collection in the list.
+const String kCollectionNotFoundDetail = 'collection_not_found';
+
+/// `403 device_revoked` (§2.12): the account revoked this device. The
+/// client signs out the cloud session and shows "Dispozitiv deconectat".
+const String kDeviceRevokedDetail = 'device_revoked';
+
+/// `403 read_only` (§2.10): a viewer tried to push. The runner never pushes
+/// for viewers, so this only shows up after a role downgrade raced a push.
+const String kReadOnlyDetail = 'read_only';
+
+/// `400 too_many_devices` (§2.12): the account hit its device cap. Not
+/// retryable — the user frees a slot in Me → Cloud → Devices. The transport
+/// raises it as a `SyncCollectionError` so the runner halts (rather than
+/// backing off forever) and the Me section shows the pointer.
+const String kTooManyDevicesDetail = 'too_many_devices';
+
+/// `503 device_lookup_failed` (§2.12): the server could not check the
+/// device registry; retryable, surfaced as the `retrying` detail.
+const String kDeviceLookupFailedDetail = 'device_lookup_failed';
+
+/// Set once after the server answered `device_revoked` and the cloud
+/// session was cleared; the UI shows "Dispozitiv deconectat" once
+/// (`CloudNotices`) and resets it to false.
+final deviceRevokedNoticeProvider = StateProvider<bool>((_) => false);
 
 /// Display name of a shared collection the server just told us we were
 /// removed from ([CollectionsNotifier.removedByServer]); the UI shows it
@@ -157,7 +190,7 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
       (prev, next) {
         if (next.$2 == null) {
           // Signed out: nothing to list, but keep the cache for the account.
-          if (mounted) state = state.copyWith(items: const [], loading: false, error: null);
+          _onSessionLost();
           return;
         }
         if (prev != next) unawaited(refresh());
@@ -228,7 +261,7 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
     if (!_ref.read(cloudEnabledProvider)) return;
     final session = await _ref.read(plantlyAuthProvider.notifier).current();
     if (session == null) {
-      if (mounted) state = state.copyWith(items: const [], loading: false, error: null);
+      _onSessionLost();
       return;
     }
     if (mounted) state = state.copyWith(loading: true);
@@ -319,6 +352,35 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
     _ref.read(currentTenantIdProvider.notifier).state = collectionId;
   }
 
+  /// The linked default ("home"): the link store first — `CloudState`
+  /// drops `collectionId` the moment the session is gone, which is exactly
+  /// when the fallback below needs it.
+  String? _homeId() => _ref.read(homeCollectionIdProvider) ?? _ref.read(cloudStateProvider).collectionId;
+
+  /// Same rule `CollectionLinkService.unlink` applies: a device parked on a
+  /// tenant that is not its own collection must not stay there once the
+  /// session is gone — signed out, nothing syncs, and a viewer's tenant
+  /// would otherwise turn editable (local-only = editable). Returns the
+  /// home id to switch to, or null when the current tenant may stay
+  /// (home itself, an owned collection, or no link at all). Decided
+  /// against the list as it is NOW — call it before clearing the items.
+  String? _sharedTenantFallback() {
+    final home = _homeId();
+    if (home == null) return null;
+    final tenant = _ref.read(currentTenantIdProvider);
+    if (tenant == home) return null;
+    return state.byId(tenant)?.isOwner == true ? null : home;
+  }
+
+  /// Sign-out / expired session (401 that did not refresh): go home first
+  /// when parked on a shared tenant, then forget the list (the on-disk
+  /// cache stays for the account that wrote it).
+  void _onSessionLost() {
+    final home = _sharedTenantFallback();
+    if (mounted) state = state.copyWith(items: const [], loading: false, error: null);
+    if (home != null) unawaited(_setTenant(home));
+  }
+
   /// `POST /inventory/collections/join`. Adds the collection to the list
   /// and switches to it (editors sync on the owner's plan, so a caller
   /// without a plan of their own still gets there — the device only needs
@@ -372,11 +434,98 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
     unawaited(refresh());
   }
 
-  /// Owner: mint a 7-day invite for [collectionId].
-  Future<CollectionInvite> createInvite(String collectionId) async {
+  /// Owner: mint an invite for [collectionId] (default 1 use / 7 days /
+  /// editor; see [InviteOptions]).
+  Future<CollectionInvite> createInvite(String collectionId, {InviteOptions options = const InviteOptions()}) async {
+    final session = await _requireSession();
+    return _ref.read(plantlyApiProvider).createInvite(session.token, collectionId, options: options);
+  }
+
+  /// Owner: active invites of [collectionId] (`GET …/invites`).
+  Future<List<CollectionInvite>> listInvites(String collectionId) async {
+    final session = await _requireSession();
+    return _ref.read(plantlyApiProvider).listInvites(session.token, collectionId);
+  }
+
+  /// Owner: revoke an invite (`DELETE …/invites/{id}`).
+  Future<void> revokeInvite(String collectionId, String inviteId) async {
+    final session = await _requireSession();
+    await _ref.read(plantlyApiProvider).revokeInvite(session.token, collectionId, inviteId);
+  }
+
+  /// Owner: change a member's role (`PATCH …/members/{uid} {role}`,
+  /// editor ↔ viewer). Refreshes the members list on success.
+  Future<void> setMemberRole(String collectionId, String userId, String role) async {
+    final session = await _requireSession();
+    await _ref.read(plantlyApiProvider).setMemberRole(session.token, collectionId, userId, role);
+    _ref.invalidate(membersProvider(collectionId));
+  }
+
+  /// Owner: hand [collectionId] to [userId] (`POST …/transfer`). On
+  /// success the caller becomes an editor: the local list is patched
+  /// right away (role + owner) and refreshed from the server. `402
+  /// cloud_required_new_owner` passes through.
+  Future<void> transferOwnership(String collectionId, String userId) async {
+    final session = await _requireSession();
+    final newOwner = await _ref.read(plantlyApiProvider).transferOwnership(session.token, collectionId, userId);
+    final members = _ref.read(membersProvider(collectionId)).valueOrNull;
+    final items = [
+      for (final c in state.items)
+        if (c.id == collectionId)
+          c.copyWith(
+            role: CollectionRole.editor,
+            ownerUserId: newOwner,
+            ownerUsername: memberUsername(members, newOwner),
+          )
+        else
+          c,
+    ];
+    await _saveCache(session.userId, _sorted(items));
+    if (mounted) state = state.copyWith(items: _sorted(items));
+    _ref.invalidate(membersProvider(collectionId));
+    unawaited(refresh());
+  }
+
+  /// Owner: rename (`PATCH /collections/{id} {name}`). Patches the local
+  /// list with the server's stored name and refreshes.
+  Future<void> rename(String collectionId, String name) async {
+    final session = await _requireSession();
+    final stored = await _ref.read(plantlyApiProvider).renameCollection(session.token, collectionId, name);
+    final items = _sorted([
+      for (final c in state.items) c.id == collectionId ? c.copyWith(name: stored) : c,
+    ]);
+    await _saveCache(session.userId, items);
+    if (mounted) state = state.copyWith(items: items);
+    unawaited(refresh());
+  }
+
+  /// Owner: delete (`DELETE /collections/{id}`). The local tenant stays on
+  /// disk, invisible, like after [leave]; the active collection falls back
+  /// to the linked default when it was this one.
+  Future<void> delete(String collectionId) async {
+    final session = await _requireSession();
+    await _ref.read(plantlyApiProvider).deleteCollection(session.token, collectionId);
+    await _drop(collectionId, session.userId);
+  }
+
+  /// The server answered `403 device_revoked` (§2.12) on a sync call: this
+  /// install was revoked from Me → Cloud → Devices on another device. Drop
+  /// the cloud session (the user signs in again to re-register) and raise
+  /// [deviceRevokedNoticeProvider] for the one-shot notice.
+  Future<void> deviceRevoked() async {
+    // Leave a shared tenant BEFORE the session goes (the sign-out listener
+    // would do it too, but the list is still intact here — deterministic).
+    final home = _sharedTenantFallback();
+    if (home != null) await _setTenant(home);
+    await _ref.read(plantlyAuthProvider.notifier).signOut();
+    _ref.read(deviceRevokedNoticeProvider.notifier).state = true;
+  }
+
+  Future<PlantlySession> _requireSession() async {
+    await _ready;
     final session = await _ref.read(plantlyAuthProvider.notifier).current();
     if (session == null) throw StateError('not signed in');
-    return _ref.read(plantlyApiProvider).createInvite(session.token, collectionId);
+    return session;
   }
 
   /// The server answered 403 `not_a_member` for [collectionId] while it was
@@ -420,6 +569,14 @@ final collectionsRefreshIntervalProvider = Provider<Duration>((_) => const Durat
 
 final collectionsProvider = StateNotifierProvider<CollectionsNotifier, CollectionsState>((ref) {
   return CollectionsNotifier(ref, refreshInterval: ref.watch(collectionsRefreshIntervalProvider));
+});
+
+/// Id of the linked default collection ("home") straight from the link
+/// store. Unlike `CloudState.collectionId` it survives sign-out, so the
+/// session-loss fallback and the signed-out read-only guard can tell a
+/// shared tenant from home. Null = never linked / unlinked.
+final homeCollectionIdProvider = Provider<String?>((ref) {
+  return ref.watch(collectionLinkProvider.select((s) => s.link?.id));
 });
 
 /// The collection the runner syncs against: the current tenant when it is
@@ -473,6 +630,32 @@ final activeCollectionIsSharedProvider = Provider<bool>((ref) {
   return ref.watch(collectionsProvider.select((s) => s.byId(id)?.isOwner == false));
 });
 
+/// Whether the signed-in account may mutate rows of the collection on
+/// screen (MULTI-USER-V2 §0/§3): false only for a *viewer* of a shared
+/// collection. Local-only / own collections are always editable —
+/// read-only is a role, not a connectivity state. Every mutating
+/// affordance in the active tenant (FABs, swipe actions, editors, photo
+/// add/delete, import, care actions) watches this and shows the
+/// `ReadOnlyBanner` instead.
+///
+/// Belt and braces for the signed-out case: `CollectionsNotifier` sends a
+/// device parked on a shared tenant home on session loss; should it still
+/// be sitting on a tenant that is not home (not yet flipped, or a link
+/// that resolves later), that tenant is somebody else's collection and
+/// stays read-only rather than silently turning into local edits.
+final canEditActiveCollectionProvider = Provider<bool>((ref) {
+  final cloud = ref.watch(cloudStateProvider);
+  final tenant = ref.watch(currentTenantIdProvider);
+  if (!cloudAccountReady(cloud)) {
+    if (cloud.phase != CloudPhase.signedOut) return true;
+    final home = ref.watch(homeCollectionIdProvider);
+    return home == null || tenant == home;
+  }
+  if (tenant == cloud.collectionId) return true;
+  final col = ref.watch(collectionsProvider.select((s) => s.byId(tenant)));
+  return col?.canEdit ?? true;
+});
+
 /// Display record for the collection on screen ([shownCollectionProvider]);
 /// kept as the name every UI surface reads.
 final activeCollectionProvider = Provider<CloudCollection?>((ref) => ref.watch(shownCollectionProvider));
@@ -517,11 +700,58 @@ final membersProvider = FutureProvider.family<List<CollectionMember>, String>((r
   try {
     final members = await ref.read(plantlyApiProvider).listMembers(session.token, collectionId);
     await prefs.setString(key, json.encode([for (final m in members) m.toJson()]));
+    _clearStaleAssignees(ref, collectionId, members, me: session.userId);
     return members;
   } catch (_) {
     return cached();
   }
 });
+
+/// MULTI-USER-V2 §0: after a SUCCESSFUL members fetch of the repository's
+/// own tenant, schedules assigned to someone who is no longer a member go
+/// back to "everyone" (a local op, so it syncs). Never fails the fetch.
+///
+/// Guards, each one a reason the list cannot be trusted as "the members":
+/// the app context must be open and bound to [collectionId] (the
+/// repository writes under `opLog.tenantId`, not whatever the tenant pref
+/// says mid-switch); the list must be non-empty and name the signed-in
+/// account [me] (an empty / foreign answer is not authoritative); and that
+/// account must hold an editing role — a viewer never writes ops, the
+/// server would reject them as `read_only`.
+void _clearStaleAssignees(Ref ref, String collectionId, List<CollectionMember> members, {required String me}) {
+  try {
+    // Cheap pre-check before touching the app context (which opens the
+    // database): a tenant pref that is not this collection means the
+    // repository cannot be bound to it either — skip without side effects.
+    if (ref.read(currentTenantIdProvider) != collectionId) return;
+    final ctx = ref.read(appContextProvider).asData?.value;
+    if (ctx == null || ctx.opLog.tenantId != collectionId) return;
+    if (members.isEmpty) return;
+    CollectionMember? mine;
+    for (final m in members) {
+      if (m.userId == me) {
+        mine = m;
+        break;
+      }
+    }
+    if (mine == null || !mine.canEdit) return;
+    final ids = <String>{
+      for (final m in members)
+        if (m.userId.isNotEmpty) m.userId,
+      // Belt and braces: the owner is always a member, even on a server
+      // that lists only the invited accounts.
+      ...?_ownerOf(ref, collectionId),
+    };
+    unawaited(ref.read(careScheduleRepositoryProvider).clearAssigneesNotIn(ids).catchError((Object _) => 0));
+  } catch (_) {
+    // Provider not ready / disposed: nothing to clear this time round.
+  }
+}
+
+Set<String>? _ownerOf(Ref ref, String collectionId) {
+  final owner = ref.read(collectionsProvider).byId(collectionId)?.ownerUserId;
+  return owner == null || owner.isEmpty ? null : {owner};
+}
 
 /// Username for [userId] in a members list (`membersProvider(...).valueOrNull`),
 /// or null when unknown (not fetched yet / no longer a member).

@@ -9,6 +9,7 @@ import '../handoff/incoming_links.dart';
 import '../features/home/home_screen.dart';
 import '../features/locations/location_detail_screen.dart';
 import '../features/locations/locations_screen.dart';
+import '../features/me/devices_screen.dart';
 import '../features/me/me_screen.dart';
 import '../features/plant_detail/plant_detail_screen.dart';
 import 'breakpoints.dart';
@@ -131,6 +132,18 @@ GoRouter buildAppRouter({
               desktopKey: 'me',
               phone: () => const MeScreen(),
               desktop: () => const MeMasterDetail(),
+            ),
+          ),
+          // Before `/me/:section` for readability only — two segments never
+          // match the one-segment pattern.
+          GoRoute(
+            path: AppRoutes.meCloudDevices,
+            pageBuilder: (context, state) => _adaptive(
+              context,
+              state,
+              desktopKey: 'me',
+              phone: () => const DevicesScreen(),
+              desktop: () => const MeMasterDetail(section: 'cloud/devices'),
             ),
           ),
           GoRoute(

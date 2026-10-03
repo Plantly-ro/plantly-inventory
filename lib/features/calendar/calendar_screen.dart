@@ -8,7 +8,9 @@ import '../../data/database/app_database.dart' as db;
 import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../shared/care_type_labels.dart';
+import '../../shared/assignee_initial.dart';
 import '../../theme/tokens.dart';
+import '../collections/read_only_banner.dart';
 import '../home/home_providers.dart';
 import 'day_detail_sheet.dart';
 import '../../app/side_sheet.dart';
@@ -162,6 +164,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       ),
       body: Column(
         children: [
+          const ReadOnlyBanner(),
           // View toggle row.
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
@@ -670,6 +673,8 @@ class _UpcomingScheduleRow extends StatelessWidget {
                 ],
               ),
             ),
+            AssigneeChip(userId: schedule.assigneeUserId, tenantId: schedule.tenantId, surface: surface, size: 18, padLeft: 0),
+            if (schedule.assigneeUserId != null) const SizedBox(width: 6),
             Text(
               DateFormat.MMMd(_localeOf(context)).format(due),
               style: TextStyle(fontSize: 11, color: surface.muted, fontWeight: FontWeight.w500),

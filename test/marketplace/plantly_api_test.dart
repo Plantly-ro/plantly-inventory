@@ -303,6 +303,77 @@ void main() {
       }
     });
 
+    test('listDevices: GET /inventory/devices?device_id= → wrapped {devices:[…]} parsed; bare list tolerated', () async {
+      final log = <http.Request>[];
+      final a = api(log: log, (req) async {
+        return http.Response(
+          json.encode({
+            'devices': [
+              {
+                'device_id': 'dev-a',
+                'platform': 'android',
+                'app_version': '1.2.3',
+                'device_name': 'Pixel 8',
+                'first_seen_at': '2026-09-01T10:00:00Z',
+                'last_seen_at': '2026-10-02T08:30:00Z',
+                'current': true,
+              },
+              {'device_id': 'dev-b', 'platform': 'web', 'current': false},
+              {'platform': 'ios'}, // no device_id → dropped
+            ],
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+      final list = await a.listDevices('tok', deviceId: 'dev-a');
+      final req = log.single;
+      expect(req.method, 'GET');
+      expect(req.url.path, '/api/v1/inventory/devices');
+      expect(req.url.queryParameters['device_id'], 'dev-a');
+      expect(req.headers['Authorization'], 'Bearer tok');
+      expect(req.headers['X-Plantly-Client'], startsWith('inventory/'));
+      expect(list.map((d) => d.deviceId), ['dev-a', 'dev-b']);
+      expect(list.first.current, isTrue);
+      expect(list.first.deviceName, 'Pixel 8');
+      expect(list.first.appVersion, '1.2.3');
+      expect(list.first.platform, 'android');
+      expect(list.first.lastSeenAt, DateTime.utc(2026, 10, 2, 8, 30));
+      expect(list.first.firstSeenAt, DateTime.utc(2026, 9, 1, 10));
+      expect(list.last.current, isFalse);
+      expect(list.last.deviceName, isNull);
+
+      // No deviceId → no query; bare-list reply (older server) still parses.
+      final log2 = <http.Request>[];
+      final b = api(log: log2, (_) async => http.Response(
+            json.encode([
+              {'device_id': 'dev-c', 'platform': 'linux'},
+            ]),
+            200,
+            headers: {'content-type': 'application/json'},
+          ));
+      final bare = await b.listDevices('tok');
+      expect(log2.single.url.queryParameters.containsKey('device_id'), isFalse);
+      expect(bare.single.deviceId, 'dev-c');
+      expect(bare.single.current, isFalse);
+    });
+
+    test('revokeDevice: DELETE /inventory/devices/{id} with the bearer; errors pass through', () async {
+      final log = <http.Request>[];
+      final a = api(log: log, (_) async => http.Response('', 204));
+      await a.revokeDevice('tok', 'dev b/1');
+      final req = log.single;
+      expect(req.method, 'DELETE');
+      expect(req.url.toString(), '$host/api/v1/inventory/devices/dev%20b%2F1');
+      expect(req.headers['Authorization'], 'Bearer tok');
+
+      final gone = api((_) async => http.Response('{"error":"device_not_found"}', 404));
+      await expectLater(
+        gone.revokeDevice('tok', 'dev-x'),
+        throwsA(isA<PlantlyApiException>().having((e) => e.status, 'status', 404)),
+      );
+    });
+
     test('InviteCode: 8 chars from A-HJ-NP-Z2-9, case/dash/space tolerant', () {
       expect(InviteCode.normalize('ABCDEFGH'), 'ABCDEFGH');
       expect(InviteCode.normalize(' abcd-efgh '), 'ABCDEFGH');

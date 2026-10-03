@@ -6,6 +6,7 @@ import '../features/locations/location_detail_screen.dart';
 import '../features/locations/locations_screen.dart';
 import '../features/me/care_types_screen.dart';
 import '../features/me/cloud_screen.dart';
+import '../features/me/devices_screen.dart';
 import '../features/me/me_screen.dart';
 import '../features/me/notifications_screen.dart';
 import '../features/me/privacy_screen.dart';
@@ -46,6 +47,11 @@ abstract final class AppRoutes {
   static String space(String id) => '/spaces/${Uri.encodeComponent(id)}';
   static String meSection(String section) => '/me/$section';
 
+  /// Me → Cloud → Devices (MULTI-USER-V2 §2.12): the installs syncing this
+  /// account, with revoke. Two segments, so it never collides with
+  /// `/me/:section`; desktop renders it in the Me detail pane like a section.
+  static const String meCloudDevices = '/me/cloud/devices';
+
   /// `/me/:section` values with a screen. `cloud` renders regardless of the
   /// `PLANTLY_CLOUD_ENABLED` flag (the screen shows nothing useful when off;
   /// the Me list simply doesn't link to it).
@@ -65,6 +71,8 @@ Widget? meSectionScreen(String section) {
       return const PrivacyScreen();
     case 'cloud':
       return const CloudScreen();
+    case 'cloud/devices':
+      return const DevicesScreen();
     default:
       return null;
   }
@@ -88,6 +96,9 @@ void openSpaces(BuildContext context) => _open(context, AppRoutes.spaces, () => 
 void openCalendar(BuildContext context) => _open(context, AppRoutes.calendar, () => const CalendarScreen());
 
 void openMe(BuildContext context) => _open(context, AppRoutes.me, () => const MeScreen());
+
+void openMeCloudDevices(BuildContext context) =>
+    _open(context, AppRoutes.meCloudDevices, () => const DevicesScreen());
 
 void openMeSection(BuildContext context, String section) {
   final screen = meSectionScreen(section);

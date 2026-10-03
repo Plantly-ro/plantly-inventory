@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../cloud/collections.dart';
 import '../../data/care_types.dart';
 import '../../data/database/app_database.dart' as db;
 import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../shared/care_type_labels.dart';
+import '../../shared/assignee_initial.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../../app/breakpoints.dart';
@@ -258,6 +260,9 @@ class _ScheduledRow extends ConsumerWidget {
                   ],
                 ),
               ),
+              AssigneeChip(userId: schedule.assigneeUserId, tenantId: schedule.tenantId, surface: surface, padLeft: 0),
+              if (schedule.assigneeUserId != null) const SizedBox(width: 6),
+              if (ref.watch(canEditActiveCollectionProvider)) ...[
               TextButton(
                 style: TextButton.styleFrom(
                   backgroundColor: surface.green,
@@ -293,6 +298,7 @@ class _ScheduledRow extends ConsumerWidget {
                     .snooze(schedule.id, by: const Duration(days: 1)),
                 child: Text(AppLocalizations.of(context).snoozeBtn),
               ),
+              ],
             ],
           ),
         ),

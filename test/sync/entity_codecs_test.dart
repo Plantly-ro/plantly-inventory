@@ -142,7 +142,8 @@ void main() {
           id: 'ce1', tenantId: t, plantId: 'p1', type: 'water', doneAt: 1700000000000, updatedHlc: hlc, deviceId: 'd', dose: const Value('200ml')));
       await db.into(db.careSchedules).insert(CareSchedulesCompanion.insert(
           id: 'cs1', tenantId: t, plantId: 'p1', type: 'water', baseIntervalDays: 7, currentIntervalDays: 7.5, updatedHlc: hlc, deviceId: 'd',
-          nextDueAt: const Value(1700000000000), enabled: const Value(false), recurrenceMode: const Value('fixed')));
+          nextDueAt: const Value(1700000000000), enabled: const Value(false), recurrenceMode: const Value('fixed'),
+          assigneeUserId: const Value('u-bob')));
       await db.into(db.inventoryTransactions).insert(InventoryTransactionsCompanion.insert(
           id: 'it1', tenantId: t, type: 'sale', at: 1700000000000, updatedHlc: hlc, deviceId: 'd', amountMinor: const Value(1500), currency: const Value('RON')));
     }
@@ -194,6 +195,24 @@ void main() {
         }
       });
     }
+  });
+
+  test('care_schedules: assignee_user_id is a wire column (MULTI-USER-V2 §0) and round-trips null / id', () {
+    final c = codecs.forEntity('care_schedules')!;
+    expect(c.wireColumnNames, contains('assignee_user_id'));
+    expect(c.hasColumn('assignee_user_id'), isTrue);
+    expect(c.encodeField('assignee_user_id', 'u-bob'), 'u-bob');
+    expect(c.encodeField('assignee_user_id', null), isNull);
+    expect(c.decodeField('assignee_user_id', 'u-bob'), 'u-bob');
+    expect(c.decodeField('assignee_user_id', null), isNull);
+    final wire = c.encodeRow({
+      'id': 'cs9', 'tenant_id': 't', 'plant_id': 'p1', 'type': 'water', 'base_interval_days': 7.0, 'current_interval_days': 7.0,
+      'last_done_at': null, 'next_due_at': null, 'snooze_count': 0, 'recent_events_json': '[]', 'enabled': 1,
+      'recurrence_mode': 'after_completion', 'notifications_muted': 0, 'assignee_user_id': 'u-bob',
+      'updated_hlc': hlc, 'deleted_at': null, 'device_id': 'd',
+    });
+    expect(wire['assignee_user_id'], 'u-bob');
+    expect(c.decodeRow(json.decode(json.encode(wire)) as Map<String, dynamic>)['assignee_user_id'], 'u-bob');
   });
 
   test('OpLogWriter.recordCreate stores the canonical full-row payload', () async {

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../cloud/collections.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/tokens.dart';
 
@@ -11,7 +13,7 @@ import '../../../theme/tokens.dart';
 /// back after the gesture — we never actually remove the widget.
 /// The swipe just triggers the action, identical to tapping Done /
 /// Snooze but quicker for power users.
-class SwipeRow extends StatelessWidget {
+class SwipeRow extends ConsumerWidget {
   const SwipeRow({
     super.key,
     required this.child,
@@ -26,7 +28,9 @@ class SwipeRow extends StatelessWidget {
   final PlantlySurface surface;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Read-only collection: the row stays, the gestures go.
+    if (!ref.watch(canEditActiveCollectionProvider)) return child;
     return Dismissible(
       key: key ?? UniqueKey(),
       background: _Action(

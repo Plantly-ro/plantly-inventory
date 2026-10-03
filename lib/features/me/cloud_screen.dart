@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/navigation.dart';
+import '../../cloud/cloud_state.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../collections/sharing_rows.dart';
 import '../home/home_providers.dart';
 import 'cloud_section.dart';
+import 'me_rows.dart';
 
 /// Me → Cloud, full page (`/me/cloud`): the same rows as the section plus
 /// plan, collection and last-error detail.
@@ -18,6 +20,7 @@ class CloudScreen extends ConsumerWidget {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
     final t = AppLocalizations.of(context);
+    final state = ref.watch(cloudStateProvider);
     return Scaffold(
       backgroundColor: surface.bg,
       appBar: AppBar(
@@ -47,6 +50,17 @@ class CloudScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           CloudRows(surface: surface, detailed: true),
           SharingRows(surface: surface),
+          if (state.phase != CloudPhase.off && state.phase != CloudPhase.signedOut) ...[
+            const SizedBox(height: 6),
+            MeActionRow(
+              key: const Key('cloud-devices-row'),
+              label: t.devicesRowLabel,
+              value: t.devicesRowValue,
+              icon: Icons.devices,
+              surface: surface,
+              onTap: () => openMeCloudDevices(context),
+            ),
+          ],
         ],
       ),
     );

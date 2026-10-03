@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../cloud/collections.dart';
 import '../../data/providers.dart';
 import '../../domain/services/backup_service.dart';
 import '../../services/file_export.dart';
@@ -59,6 +60,10 @@ class BackupActions {
     required Uint8List bytes,
     required String secret,
   }) async {
+    // A restore writes rows into the active tenant; a viewer of a shared
+    // collection may not (MULTI-USER-V2 §3). The row hides itself too —
+    // this is the belt for the braces.
+    if (!_ref.read(canEditActiveCollectionProvider)) throw const ReadOnlyCollectionError();
     final opLog = _ref.read(appContextProvider).requireValue.opLog;
     ({int rows, int? photos}) summary;
     if (fileName.toLowerCase().endsWith('.zip')) {
@@ -88,3 +93,9 @@ class BackupActions {
 }
 
 final backupActionsProvider = Provider<BackupActions>(BackupActions.new);
+
+/// Thrown by [BackupActions.importBackup] when the active collection is
+/// read-only for this account.
+class ReadOnlyCollectionError implements Exception {
+  const ReadOnlyCollectionError();
+}

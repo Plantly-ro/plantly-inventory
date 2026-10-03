@@ -6391,6 +6391,17 @@ class $CareSchedulesTable extends CareSchedules
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _assigneeUserIdMeta = const VerificationMeta(
+    'assigneeUserId',
+  );
+  @override
+  late final GeneratedColumn<String> assigneeUserId = GeneratedColumn<String>(
+    'assignee_user_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _updatedHlcMeta = const VerificationMeta(
     'updatedHlc',
   );
@@ -6439,6 +6450,7 @@ class $CareSchedulesTable extends CareSchedules
     enabled,
     recurrenceMode,
     notificationsMuted,
+    assigneeUserId,
     updatedHlc,
     deletedAt,
     deviceId,
@@ -6563,6 +6575,15 @@ class $CareSchedulesTable extends CareSchedules
         ),
       );
     }
+    if (data.containsKey('assignee_user_id')) {
+      context.handle(
+        _assigneeUserIdMeta,
+        assigneeUserId.isAcceptableOrUnknown(
+          data['assignee_user_id']!,
+          _assigneeUserIdMeta,
+        ),
+      );
+    }
     if (data.containsKey('updated_hlc')) {
       context.handle(
         _updatedHlcMeta,
@@ -6646,6 +6667,10 @@ class $CareSchedulesTable extends CareSchedules
         DriftSqlType.bool,
         data['${effectivePrefix}notifications_muted'],
       )!,
+      assigneeUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}assignee_user_id'],
+      ),
       updatedHlc: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}updated_hlc'],
@@ -6691,6 +6716,13 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
   /// weekly fertilize reminder but keep the daily mist reminder firing).
   /// The schedule still shows up on Home / Calendar / Upcoming Care.
   final bool notificationsMuted;
+
+  /// Shared collections (MULTI-USER-V2 §0): member user id responsible for
+  /// this schedule. Synced (codec field `assignee_user_id`). Null = everyone:
+  /// reminders fire on every member's devices; set = only on the assignee's.
+  /// The server never validates it; the client offers current members and
+  /// clears it when the assignee is no longer a member.
+  final String? assigneeUserId;
   final String updatedHlc;
   final int? deletedAt;
   final String deviceId;
@@ -6708,6 +6740,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     required this.enabled,
     required this.recurrenceMode,
     required this.notificationsMuted,
+    this.assigneeUserId,
     required this.updatedHlc,
     this.deletedAt,
     required this.deviceId,
@@ -6732,6 +6765,9 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     map['enabled'] = Variable<bool>(enabled);
     map['recurrence_mode'] = Variable<String>(recurrenceMode);
     map['notifications_muted'] = Variable<bool>(notificationsMuted);
+    if (!nullToAbsent || assigneeUserId != null) {
+      map['assignee_user_id'] = Variable<String>(assigneeUserId);
+    }
     map['updated_hlc'] = Variable<String>(updatedHlc);
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<int>(deletedAt);
@@ -6759,6 +6795,9 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
       enabled: Value(enabled),
       recurrenceMode: Value(recurrenceMode),
       notificationsMuted: Value(notificationsMuted),
+      assigneeUserId: assigneeUserId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(assigneeUserId),
       updatedHlc: Value(updatedHlc),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
@@ -6788,6 +6827,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
       enabled: serializer.fromJson<bool>(json['enabled']),
       recurrenceMode: serializer.fromJson<String>(json['recurrenceMode']),
       notificationsMuted: serializer.fromJson<bool>(json['notificationsMuted']),
+      assigneeUserId: serializer.fromJson<String?>(json['assigneeUserId']),
       updatedHlc: serializer.fromJson<String>(json['updatedHlc']),
       deletedAt: serializer.fromJson<int?>(json['deletedAt']),
       deviceId: serializer.fromJson<String>(json['deviceId']),
@@ -6810,6 +6850,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
       'enabled': serializer.toJson<bool>(enabled),
       'recurrenceMode': serializer.toJson<String>(recurrenceMode),
       'notificationsMuted': serializer.toJson<bool>(notificationsMuted),
+      'assigneeUserId': serializer.toJson<String?>(assigneeUserId),
       'updatedHlc': serializer.toJson<String>(updatedHlc),
       'deletedAt': serializer.toJson<int?>(deletedAt),
       'deviceId': serializer.toJson<String>(deviceId),
@@ -6830,6 +6871,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     bool? enabled,
     String? recurrenceMode,
     bool? notificationsMuted,
+    Value<String?> assigneeUserId = const Value.absent(),
     String? updatedHlc,
     Value<int?> deletedAt = const Value.absent(),
     String? deviceId,
@@ -6847,6 +6889,9 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     enabled: enabled ?? this.enabled,
     recurrenceMode: recurrenceMode ?? this.recurrenceMode,
     notificationsMuted: notificationsMuted ?? this.notificationsMuted,
+    assigneeUserId: assigneeUserId.present
+        ? assigneeUserId.value
+        : this.assigneeUserId,
     updatedHlc: updatedHlc ?? this.updatedHlc,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
     deviceId: deviceId ?? this.deviceId,
@@ -6880,6 +6925,9 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
       notificationsMuted: data.notificationsMuted.present
           ? data.notificationsMuted.value
           : this.notificationsMuted,
+      assigneeUserId: data.assigneeUserId.present
+          ? data.assigneeUserId.value
+          : this.assigneeUserId,
       updatedHlc: data.updatedHlc.present
           ? data.updatedHlc.value
           : this.updatedHlc,
@@ -6904,6 +6952,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
           ..write('enabled: $enabled, ')
           ..write('recurrenceMode: $recurrenceMode, ')
           ..write('notificationsMuted: $notificationsMuted, ')
+          ..write('assigneeUserId: $assigneeUserId, ')
           ..write('updatedHlc: $updatedHlc, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('deviceId: $deviceId')
@@ -6926,6 +6975,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     enabled,
     recurrenceMode,
     notificationsMuted,
+    assigneeUserId,
     updatedHlc,
     deletedAt,
     deviceId,
@@ -6947,6 +6997,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
           other.enabled == this.enabled &&
           other.recurrenceMode == this.recurrenceMode &&
           other.notificationsMuted == this.notificationsMuted &&
+          other.assigneeUserId == this.assigneeUserId &&
           other.updatedHlc == this.updatedHlc &&
           other.deletedAt == this.deletedAt &&
           other.deviceId == this.deviceId);
@@ -6966,6 +7017,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
   final Value<bool> enabled;
   final Value<String> recurrenceMode;
   final Value<bool> notificationsMuted;
+  final Value<String?> assigneeUserId;
   final Value<String> updatedHlc;
   final Value<int?> deletedAt;
   final Value<String> deviceId;
@@ -6984,6 +7036,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     this.enabled = const Value.absent(),
     this.recurrenceMode = const Value.absent(),
     this.notificationsMuted = const Value.absent(),
+    this.assigneeUserId = const Value.absent(),
     this.updatedHlc = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.deviceId = const Value.absent(),
@@ -7003,6 +7056,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     this.enabled = const Value.absent(),
     this.recurrenceMode = const Value.absent(),
     this.notificationsMuted = const Value.absent(),
+    this.assigneeUserId = const Value.absent(),
     required String updatedHlc,
     this.deletedAt = const Value.absent(),
     required String deviceId,
@@ -7029,6 +7083,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     Expression<bool>? enabled,
     Expression<String>? recurrenceMode,
     Expression<bool>? notificationsMuted,
+    Expression<String>? assigneeUserId,
     Expression<String>? updatedHlc,
     Expression<int>? deletedAt,
     Expression<String>? deviceId,
@@ -7049,6 +7104,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
       if (enabled != null) 'enabled': enabled,
       if (recurrenceMode != null) 'recurrence_mode': recurrenceMode,
       if (notificationsMuted != null) 'notifications_muted': notificationsMuted,
+      if (assigneeUserId != null) 'assignee_user_id': assigneeUserId,
       if (updatedHlc != null) 'updated_hlc': updatedHlc,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (deviceId != null) 'device_id': deviceId,
@@ -7070,6 +7126,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     Value<bool>? enabled,
     Value<String>? recurrenceMode,
     Value<bool>? notificationsMuted,
+    Value<String?>? assigneeUserId,
     Value<String>? updatedHlc,
     Value<int?>? deletedAt,
     Value<String>? deviceId,
@@ -7089,6 +7146,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
       enabled: enabled ?? this.enabled,
       recurrenceMode: recurrenceMode ?? this.recurrenceMode,
       notificationsMuted: notificationsMuted ?? this.notificationsMuted,
+      assigneeUserId: assigneeUserId ?? this.assigneeUserId,
       updatedHlc: updatedHlc ?? this.updatedHlc,
       deletedAt: deletedAt ?? this.deletedAt,
       deviceId: deviceId ?? this.deviceId,
@@ -7140,6 +7198,9 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     if (notificationsMuted.present) {
       map['notifications_muted'] = Variable<bool>(notificationsMuted.value);
     }
+    if (assigneeUserId.present) {
+      map['assignee_user_id'] = Variable<String>(assigneeUserId.value);
+    }
     if (updatedHlc.present) {
       map['updated_hlc'] = Variable<String>(updatedHlc.value);
     }
@@ -7171,6 +7232,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
           ..write('enabled: $enabled, ')
           ..write('recurrenceMode: $recurrenceMode, ')
           ..write('notificationsMuted: $notificationsMuted, ')
+          ..write('assigneeUserId: $assigneeUserId, ')
           ..write('updatedHlc: $updatedHlc, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('deviceId: $deviceId, ')
@@ -12156,6 +12218,7 @@ typedef $$CareSchedulesTableCreateCompanionBuilder =
       Value<bool> enabled,
       Value<String> recurrenceMode,
       Value<bool> notificationsMuted,
+      Value<String?> assigneeUserId,
       required String updatedHlc,
       Value<int?> deletedAt,
       required String deviceId,
@@ -12176,6 +12239,7 @@ typedef $$CareSchedulesTableUpdateCompanionBuilder =
       Value<bool> enabled,
       Value<String> recurrenceMode,
       Value<bool> notificationsMuted,
+      Value<String?> assigneeUserId,
       Value<String> updatedHlc,
       Value<int?> deletedAt,
       Value<String> deviceId,
@@ -12253,6 +12317,11 @@ class $$CareSchedulesTableFilterComposer
 
   ColumnFilters<bool> get notificationsMuted => $composableBuilder(
     column: $table.notificationsMuted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get assigneeUserId => $composableBuilder(
+    column: $table.assigneeUserId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12346,6 +12415,11 @@ class $$CareSchedulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get assigneeUserId => $composableBuilder(
+    column: $table.assigneeUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get updatedHlc => $composableBuilder(
     column: $table.updatedHlc,
     builder: (column) => ColumnOrderings(column),
@@ -12424,6 +12498,11 @@ class $$CareSchedulesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get assigneeUserId => $composableBuilder(
+    column: $table.assigneeUserId,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get updatedHlc => $composableBuilder(
     column: $table.updatedHlc,
     builder: (column) => column,
@@ -12480,6 +12559,7 @@ class $$CareSchedulesTableTableManager
                 Value<bool> enabled = const Value.absent(),
                 Value<String> recurrenceMode = const Value.absent(),
                 Value<bool> notificationsMuted = const Value.absent(),
+                Value<String?> assigneeUserId = const Value.absent(),
                 Value<String> updatedHlc = const Value.absent(),
                 Value<int?> deletedAt = const Value.absent(),
                 Value<String> deviceId = const Value.absent(),
@@ -12498,6 +12578,7 @@ class $$CareSchedulesTableTableManager
                 enabled: enabled,
                 recurrenceMode: recurrenceMode,
                 notificationsMuted: notificationsMuted,
+                assigneeUserId: assigneeUserId,
                 updatedHlc: updatedHlc,
                 deletedAt: deletedAt,
                 deviceId: deviceId,
@@ -12518,6 +12599,7 @@ class $$CareSchedulesTableTableManager
                 Value<bool> enabled = const Value.absent(),
                 Value<String> recurrenceMode = const Value.absent(),
                 Value<bool> notificationsMuted = const Value.absent(),
+                Value<String?> assigneeUserId = const Value.absent(),
                 required String updatedHlc,
                 Value<int?> deletedAt = const Value.absent(),
                 required String deviceId,
@@ -12536,6 +12618,7 @@ class $$CareSchedulesTableTableManager
                 enabled: enabled,
                 recurrenceMode: recurrenceMode,
                 notificationsMuted: notificationsMuted,
+                assigneeUserId: assigneeUserId,
                 updatedHlc: updatedHlc,
                 deletedAt: deletedAt,
                 deviceId: deviceId,

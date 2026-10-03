@@ -232,6 +232,12 @@ class CareSchedules extends Table {
   /// The schedule still shows up on Home / Calendar / Upcoming Care.
   BoolColumn get notificationsMuted =>
       boolean().named('notifications_muted').withDefault(const Constant(false))();
+  /// Shared collections (MULTI-USER-V2 §0): member user id responsible for
+  /// this schedule. Synced (codec field `assignee_user_id`). Null = everyone:
+  /// reminders fire on every member's devices; set = only on the assignee's.
+  /// The server never validates it; the client offers current members and
+  /// clears it when the assignee is no longer a member.
+  TextColumn get assigneeUserId => text().named('assignee_user_id').nullable()();
   TextColumn get updatedHlc => text().named('updated_hlc')();
   IntColumn get deletedAt => integer().named('deleted_at').nullable()();
   TextColumn get deviceId => text().named('device_id')();
@@ -343,7 +349,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -406,6 +412,10 @@ class AppDatabase extends _$AppDatabase {
             // migration run from the app bootstrap (`SeedRekey`), guarded by
             // its own pref, because it needs the op log.
             await _addColumnIfMissing(m, syncOps, syncOps.userId);
+          }
+          if (from < 12) {
+            // Multi-user v2: task assignment (synced, nullable).
+            await _addColumnIfMissing(m, careSchedules, careSchedules.assigneeUserId);
           }
         },
       );

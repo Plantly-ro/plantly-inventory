@@ -515,20 +515,27 @@ String describeEntitlement(AppLocalizations t, CloudEntitlement? e) {
 /// on a shared collection, the server code for `collection_unavailable`);
 /// `rejected` reads the count and server reason from [status] and falls
 /// back to [detail] without it. [collectionName] names the collection for
-/// the `not_a_member` copy ("You were removed from …").
+/// the `not_a_member` copy ("You were removed from …"). The MULTI-USER-V2
+/// halts (`read_only`, `device_revoked`, `too_many_devices`) and the
+/// `device_lookup_failed` retry each get their own line.
 String describeSyncError(AppLocalizations t, String code, {String? detail, SyncStatus? status, String? collectionName}) =>
     switch (code) {
       'cloud_required' => detail == kOwnerPlanLapsedDetail ? t.shareErrOwnerLapsed : t.cloudNotIncludedValue,
       'unauthorized' => t.cloudSignInLabel,
-      'collection_unavailable' => detail == kNotAMemberDetail && collectionName != null && collectionName.isNotEmpty
-          ? t.shareRemovedFromCollection(collectionName)
-          : t.cloudErrCollectionUnavailable,
+      'collection_unavailable' => switch (detail) {
+          kNotAMemberDetail when collectionName != null && collectionName.isNotEmpty =>
+            t.shareRemovedFromCollection(collectionName),
+          kReadOnlyDetail => t.shareErrReadOnly,
+          kDeviceRevokedDetail => t.shareErrDeviceRevoked,
+          kTooManyDevicesDetail => t.shareErrTooManyDevices,
+          _ => t.cloudErrCollectionUnavailable,
+        },
       'quota_exceeded' => t.cloudErrQuotaExceeded,
       'op_too_large' => detail == null || detail.isEmpty ? t.cloudErrOpTooLarge : t.cloudErrOpTooLargeDetail(detail),
       'rejected' => status != null && status.rejectedOps > 0
           ? t.cloudErrRejected(status.rejectedOps, status.rejectedReason ?? '?')
           : (detail ?? code),
-      'retrying' => t.cloudErrRetrying,
+      'retrying' => detail == kDeviceLookupFailedDetail ? t.shareErrDeviceLookupFailed : t.cloudErrRetrying,
       'offline' => t.cloudErrOffline,
       'error' => t.cloudErrGeneric,
       _ => code,

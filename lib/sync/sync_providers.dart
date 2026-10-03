@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../cloud/cloud_state.dart';
 import '../cloud/collections.dart';
 import '../cloud/entitlement.dart';
 import '../cloud/sync_runner.dart';
@@ -9,6 +10,7 @@ import '../data/database/app_database.dart';
 import '../data/photo_blob_store.dart';
 import '../data/providers.dart';
 import '../marketplace/plantly_auth.dart';
+import 'device_meta.dart';
 import 'http_sync_runner.dart';
 import 'http_sync_transport.dart';
 import 'op_log.dart';
@@ -65,7 +67,14 @@ final httpSyncTransportProvider = Provider<HttpSyncTransport?>((ref) {
     client: ref.watch(httpClientProvider),
     collectionId: collectionId,
     token: () async => (await auth.current())?.token,
+    deviceMeta: ref.watch(syncDeviceMetaProvider),
   );
+});
+
+/// Device descriptor for the §2.12 push/pull headers; tests override.
+final syncDeviceMetaProvider = Provider<SyncDeviceMeta?>((ref) {
+  final ctx = ref.watch(appContextProvider).asData?.value;
+  return currentDeviceMeta(deviceId: ctx?.deviceId ?? '');
 });
 
 /// The three faces of the transport the runner consumes, split so tests can
@@ -118,8 +127,10 @@ final syncRejectionsProvider = StreamProvider<List<SyncRejectionRow>>((ref) {
 ///
 /// A 402 halt (`cloud_required`) triggers one cache-bypassing entitlement
 /// refresh so the Me section flips to "not included" instead of showing a
-/// stale green light. A 403 `not_a_member` halt on a shared collection
-/// hands over to `CollectionsNotifier.removedByServer`.
+/// stale green light. A 403 `not_a_member` / 410 / 404 halt on any
+/// collection that is not the linked home hands over to
+/// `CollectionsNotifier.removedByServer`; a 403 `read_only` halt refetches
+/// the list so the role flip rebuilds this runner pull-only.
 final httpSyncRunnerProvider = Provider<SyncRunner>((ref) {
   final collectionId = ref.watch(syncCollectionIdProvider);
   final transport = ref.watch(syncTransportProvider);
@@ -132,6 +143,12 @@ final httpSyncRunnerProvider = Provider<SyncRunner>((ref) {
   final photoTransport = ref.watch(photoTransportProvider);
   final auth = ref.read(plantlyAuthProvider.notifier);
   final shared = ref.watch(activeCollectionIsSharedProvider);
+  // The linked default ("home") is the one collection a 410/404 never
+  // removes locally — it is re-created by the link flow, not by the list.
+  final homeId = ref.watch(cloudStateProvider.select((s) => s.collectionId));
+  // Viewer (MULTI-USER-V2 §0): pull only. Watched so a role change
+  // (editor ↔ viewer) rebuilds the runner.
+  final readOnly = !ref.watch(canEditActiveCollectionProvider);
   // Watched: an account change rebuilds the runner so it only ever pushes
   // (and counts) the signed-in account's pending ops.
   final userId = ref.watch(currentUserIdProvider);
@@ -169,20 +186,39 @@ final httpSyncRunnerProvider = Provider<SyncRunner>((ref) {
     maxBackoff: config.maxBackoff,
     usageInterval: config.usageInterval,
     entitlementIsOwners: shared,
+    readOnly: readOnly,
   );
 
   var refreshedForHalt = false;
   var removalHandled = false;
+  var roleRefreshed = false;
   final sub = runner.status.listen((s) {
-    // 403 `not_a_member` on a shared collection: the owner removed us.
-    // Drop it, go home, tell the user (once per runner — the tenant flip
-    // rebuilds this provider anyway).
-    if (shared &&
+    // 403 `not_a_member` / 410 `collection_deleted` / 404
+    // `collection_not_found` (deleted, and we were already removed) on any
+    // collection but the linked home — shared, or an owned non-default the
+    // account deleted elsewhere: drop it, go home, tell the user (once per
+    // runner — the tenant flip rebuilds this provider anyway).
+    if (collectionId != homeId &&
         !removalHandled &&
         s.lastError == 'collection_unavailable' &&
-        s.lastErrorDetail == kNotAMemberDetail) {
+        (s.lastErrorDetail == kNotAMemberDetail ||
+            s.lastErrorDetail == kCollectionDeletedDetail ||
+            s.lastErrorDetail == kCollectionNotFoundDetail)) {
       removalHandled = true;
       unawaited(ref.read(collectionsProvider.notifier).removedByServer(collectionId));
+    }
+    // 403 `device_revoked` (§2.12): this install was revoked from another
+    // device. Any collection, own or shared: sign the cloud session out.
+    if (!removalHandled && s.lastError == 'collection_unavailable' && s.lastErrorDetail == kDeviceRevokedDetail) {
+      removalHandled = true;
+      unawaited(ref.read(collectionsProvider.notifier).deviceRevoked());
+    }
+    // 403 `read_only` (§2.10): our role was downgraded under a push. The
+    // list refetch flips `canEdit`, which rebuilds this runner read-only
+    // and raises the banner; until then the halt shows in Me → Cloud.
+    if (!roleRefreshed && s.lastError == 'collection_unavailable' && s.lastErrorDetail == kReadOnlyDetail) {
+      roleRefreshed = true;
+      unawaited(ref.read(collectionsProvider.notifier).refresh());
     }
     if (s.lastError != 'cloud_required') {
       refreshedForHalt = false;

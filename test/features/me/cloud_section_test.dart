@@ -486,6 +486,20 @@ void main() {
       expect(describeSyncError(t, 'collection_unavailable', detail: 'collection_not_found', collectionName: 'x'), t.cloudErrCollectionUnavailable);
     });
 
+    test('describeSyncError: MULTI-USER-V2 halts — read_only, device_revoked, too_many_devices; device_lookup_failed retry', () {
+      final t = lookupAppLocalizations(const Locale('en'));
+      final ro = lookupAppLocalizations(const Locale('ro'));
+      expect(describeSyncError(t, 'collection_unavailable', detail: 'read_only'), t.shareErrReadOnly);
+      expect(describeSyncError(ro, 'collection_unavailable', detail: 'read_only'), ro.shareErrReadOnly);
+      expect(describeSyncError(t, 'collection_unavailable', detail: 'read_only', collectionName: 'x'), t.shareErrReadOnly,
+          reason: 'the name only matters for not_a_member');
+      expect(describeSyncError(t, 'collection_unavailable', detail: 'device_revoked'), t.shareErrDeviceRevoked);
+      expect(describeSyncError(t, 'collection_unavailable', detail: 'too_many_devices'), t.shareErrTooManyDevices);
+      expect(describeSyncError(t, 'retrying', detail: 'device_lookup_failed'), t.shareErrDeviceLookupFailed);
+      expect(describeSyncError(t, 'retrying'), t.cloudErrRetrying);
+      expect(describeSyncError(t, 'retrying', detail: 'HTTP 502'), t.cloudErrRetrying);
+    });
+
     test('describeSyncError: rejected uses the typed count/reason, falls back to the detail string', () {
       final t = lookupAppLocalizations(const Locale('en'));
       expect(
