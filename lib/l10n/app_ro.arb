@@ -238,7 +238,6 @@
   "topLevel": "— nivel superior —",
   "cancel": "Renunță",
   "addBtn": "Adaugă",
-
   "commonSave": "Salvează",
   "commonDelete": "Șterge",
   "commonRemove": "Elimină",
@@ -248,7 +247,6 @@
   "commonOk": "OK",
   "commonTodayLabel": "Astăzi",
   "commonNextLabel": "Următorul",
-
   "plantDetailEdit": "Modifică planta",
   "plantDetailAddPhotos": "Adaugă fotografii",
   "plantDetailMoveToSpace": "Mută în spațiul…",
@@ -276,7 +274,6 @@
   "plantDetailCaptionHint": "ex.: frunză îngălbenită",
   "plantDetailRemovePhotoTitle": "Elimini fotografia?",
   "plantDetailRemovePhotoBody": "Fișierul rămâne pe dispozitiv (poate fi folosit la alte plante) — se desparte doar de această plantă.",
-
   "logEventTitle": "Înregistrează eveniment",
   "logEventWhat": "CE",
   "logEventWhen": "CÂND",
@@ -287,11 +284,9 @@
   "logEventNotes": "NOTE (OPȚIONAL)",
   "logEventNotesHint": "ex.: frunză nouă deschizându-se",
   "logEventEnterName": "Introdu un nume pentru eveniment",
-
   "editEventTitle": "Modifică evenimentul",
   "editEventDose": "DOZĂ (OPȚIONAL)",
   "editEventDoseHint": "ex.: 100 ml",
-
   "addReminderTitle": "Adaugă memento",
   "addReminderType": "TIP",
   "addReminderCustom": "Personalizat",
@@ -317,12 +312,10 @@
   "addReminderPresetMondays": "Luni 09:00",
   "addReminderPresetBiweekly": "La două săptămâni",
   "addReminderPresetMonthly": "Lunar",
-
   "editReminderTitle": "Modifică memento-ul {type}",
   "editReminderNextDue": "URMĂTOAREA SCADENȚĂ",
   "editReminderDeleteTitle": "Ștergi memento-ul?",
   "editReminderDeleteBody": "Elimină acest program. Evenimentele anterioare rămân în istoric.",
-
   "meSectionYou": "TU",
   "meSectionAppearance": "ASPECT",
   "meSectionLists": "LISTE",
@@ -343,7 +336,6 @@
   "meYourName": "Numele tău",
   "meYourNameEmpty": "Adaugă unul pentru salut.",
   "meYourNameHint": "ex.: Ana",
-
   "calendarToday": "Astăzi",
   "calendarNext": "Următor",
   "calendarWeek": "Săptămână",
@@ -353,29 +345,22 @@
   "calendarDayScheduled": "PROGRAMAT",
   "calendarDayDone": "EFECTUAT",
   "calendarDayEmpty": "Nimic programat sau înregistrat în această zi.",
-
   "searchTitle": "Căutare",
-
   "careTypesTitle": "Tipuri de îngrijire",
   "careTypesReset": "Resetează la implicite",
   "careTypesResetTitle": "Resetezi la implicite?",
   "careTypesResetBody": "Restaurează cele 6 tipuri implicite + elimină cele personalizate. Programele și evenimentele existente își păstrează cheile.",
-
   "statsTitle": "Statistici",
   "statsActivityHeader": "ACTIVITATE ÎN 30 DE ZILE PE TIPURI",
   "statsTopPlants": "PLANTE DE TOP — 30 DE ZILE",
-
   "activityTitle": "Activitate",
   "activityEmpty": "Nicio activitate încă.\nÎnregistrează primul eveniment pe orice plantă.",
-
   "quickLogTitle": "Înregistrare rapidă",
   "quickLogWater": "Udare",
   "quickLogFertilize": "Fertilizare",
   "quickLogMist": "Pulverizare",
   "quickLogRotate": "Rotire",
-
   "tipOfTheDay": "SFATUL ZILEI",
-
   "exportTitleField": "TITLU",
   "exportDescriptionField": "DESCRIERE",
   "exportPriceField": "PREȚ",
@@ -388,7 +373,6 @@
   "exportDraftSaved": "Ciornă salvată",
   "exportPostOnPlantlyRoCta": "Publică pe plantly.ro",
   "exportSavedLocally": "Salvat local — sincronizarea cu plantly.ro vine în Faza 2",
-
   "tagAdd": "Adaugă o etichetă",
   "tagHint": "ex.: variegat",
   "tagPickExisting": "SAU ALEGE DIN EXISTENTE",
@@ -417,7 +401,6 @@
   "exportIssueCategoryRequired": "Alege o categorie",
   "exportIssuePhotosRequired": "Selectează cel puțin o fotografie",
   "exportIssuePhotosTooMany": "Cel mult 6 fotografii",
-
   "plantlyLoginTitle": "Conectare la plantly.ro",
   "plantlyLoginSubtitle": "Folosește contul tău plantly.ro pentru a publica anunțuri.",
   "plantlyLoginEmail": "Email",
@@ -433,7 +416,6 @@
   "plantlyErrorNetwork": "Fără conexiune la plantly.ro — verifică internetul și încearcă din nou",
   "plantlyErrorRateLimited": "Prea multe încercări — așteaptă un minut și încearcă din nou",
   "plantlyErrorSignInAgain": "Sesiunea plantly.ro a expirat — conectează-te din nou",
-
   "listedOnPlantly": "Listată pe plantly.ro",
   "listedStatusActive": "ACTIV",
   "listedStatusSold": "VÂNDUT",
@@ -443,7 +425,6 @@
   "listedMarkSoldBody": "Anunțul de pe plantly.ro va fi închis. Nu se poate anula din aplicație.",
   "listedMarkedSold": "Marcat ca vândut pe plantly.ro",
   "listedCancel": "Anulează",
-
   "meSectionPlantlyAccount": "CONT PLANTLY",
   "mePlantlyAccountLabel": "plantly.ro",
   "mePlantlySignedInAs": "Conectat ca {username}",
@@ -451,7 +432,6 @@
   "mePlantlySignOutTitle": "Te deconectezi?",
   "mePlantlySignOutBody": "Vei fi deconectat de la plantly.ro ({username}) pe acest dispozitiv.",
   "mePlantlySignOut": "Deconectare",
-
   "importTitle": "Adaugă la plantele tale",
   "importSourceAssistant": "DIN PLANTLY ASSISTANT",
   "importSourceMarketplace": "DE PE PLANTLY.RO",
@@ -490,7 +470,6 @@
   "exportCategoryPlaceholder": "Alege categoria",
   "exportCategoryTitle": "Categorie",
   "importErrorDismiss": "OK",
-
   "meTitle": "Eu",
   "meStatCardPlants": "PLANTE",
   "meStatCardSpaces": "SPAȚII",
@@ -782,9 +761,21 @@
   "detailFactTags": "Etichete",
   "detailFactNotes": "Note",
   "detailEveryNDays": "{n, plural, =1{1 zi} few{{n} zile} other{{n} de zile}}",
-  "@detailEveryNDays": { "placeholders": { "n": { "type": "int" } } },
+  "@detailEveryNDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "spaceCardPlantCount": "{n, plural, =0{Nicio plantă} =1{1 plantă} few{{n} plante} other{{n} de plante}}",
-  "@spaceCardPlantCount": { "placeholders": { "n": { "type": "int" } } },
+  "@spaceCardPlantCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "homeNoPlantsBodyDesktop": "Adaugă una cu butonul din bara laterală. Poți seta mementouri după ce apare.",
   "shareSwitcherTitle": "Colecții",
   "shareSwitcherTooltip": "Schimbă colecția",
@@ -792,15 +783,6 @@
   "shareSharedWithMe": "Partajate cu mine",
   "shareRoleOwner": "Proprietar",
   "shareRoleEditor": "Editor",
-  "shareRoleViewer": "Vizualizator",
-  "shareErrReadOnly": "Doar vizualizare — cere proprietarului drepturi de editare.",
-  "shareReadOnlyBanner": "Doar vizualizare — cere proprietarului drepturi de editare",
-  "shareErrDeviceRevoked": "Dispozitiv deconectat — acest dispozitiv a fost delogat din sincronizarea cloud. Autentifică-te din nou pentru a reconecta.",
-  "shareErrTooManyDevices": "Prea multe dispozitive pe acest cont — deconectează unul din Eu → Cloud → Dispozitive, apoi încearcă din nou.",
-  "shareErrDeviceLookupFailed": "Nu am putut verifica acest dispozitiv acum — reîncercăm în curând.",
-  "shareErrCollectionDeleted": "Această colecție a fost ștearsă de proprietar.",
-  "shareErrCloudRequiredNewOwner": "Noul proprietar are nevoie de un plan Plantly Cloud activ înainte ca această colecție să poată fi transferată.",
-  "shareErrNotAMember": "Nu mai ești membru al acestei colecții.",
   "shareJoinWithCode": "Alătură-te cu un cod…",
   "shareJoinTitle": "Alătură-te unei colecții partajate",
   "shareJoinBody": "Introdu codul de 8 caractere din invitația primită.",
@@ -810,98 +792,353 @@
   "shareJoinSignInFirst": "Mai întâi ți se va cere să te autentifici pe plantly.ro.",
   "shareJoinPaywallNote": "Poți folosi această colecție partajată — funcționează pe planul proprietarului. Plantele tale rămân locale până te abonezi.",
   "shareJoined": "Te-ai alăturat colecției {name}",
-  "@shareJoined": {"placeholders": {"name": {"type": "String"}}},
+  "@shareJoined": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "shareJoinErrInvalid": "Acest cod de invitație nu este valid — poate a expirat sau a fost deja folosit.",
   "shareJoinErrAlreadyMember": "Ești deja membru al acestei colecții.",
   "shareSectionTitle": "Partajare",
   "shareSectionIntro": "Invită familia sau pe cel care îți îngrijește plantele să noteze îngrijirea împreună cu tine.",
   "shareActiveLabel": "Colecția activă",
   "shareActiveValue": "{name} · {role}",
-  "@shareActiveValue": {"placeholders": {"name": {"type": "String"}, "role": {"type": "String"}}},
+  "@shareActiveValue": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "role": {
+        "type": "String"
+      }
+    }
+  },
   "shareMembersCount": "{n, plural, =1{1 membru} few{{n} membri} other{{n} de membri}}",
-  "@shareMembersCount": {"placeholders": {"n": {"type": "int"}}},
+  "@shareMembersCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "shareInviteLabel": "Invită pe cineva",
   "shareInviteValue": "Creează un cod pe care îl introduce în aplicația sa",
   "shareInviteTitle": "Invitație la {name}",
-  "@shareInviteTitle": {"placeholders": {"name": {"type": "String"}}},
+  "@shareInviteTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "shareInviteCodeHint": "Trimite acest cod sau linkul. Funcționează o singură dată și expiră în 7 zile.",
   "shareInviteCopy": "Copiază",
   "shareInviteCopied": "Copiat",
   "shareInviteShare": "Trimite",
   "shareInviteMessage": "Alătură-te colecției mele de plante „{name}” în Plantly Inventory: {url} (cod {code})",
-  "@shareInviteMessage": {"placeholders": {"name": {"type": "String"}, "url": {"type": "String"}, "code": {"type": "String"}}},
+  "@shareInviteMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "url": {
+        "type": "String"
+      },
+      "code": {
+        "type": "String"
+      }
+    }
+  },
   "shareInviteCreating": "Se creează invitația…",
   "shareMembersLabel": "Membri",
   "shareMembersValue": "Vezi cine are acces",
   "shareMembersTitle": "Membrii colecției {name}",
-  "@shareMembersTitle": {"placeholders": {"name": {"type": "String"}}},
+  "@shareMembersTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "shareMemberJoined": "Membru din {date}",
-  "@shareMemberJoined": {"placeholders": {"date": {"type": "String"}}},
+  "@shareMemberJoined": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "shareMemberYou": "tu",
   "shareRemoveMember": "Elimină",
   "shareRemoveMemberTitle": "Elimini pe {username}?",
-  "@shareRemoveMemberTitle": {"placeholders": {"username": {"type": "String"}}},
+  "@shareRemoveMemberTitle": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
   "shareRemoveMemberBody": "Pierde accesul la această colecție. Ce a notat rămâne.",
   "shareRemoved": "{username} a fost eliminat",
-  "@shareRemoved": {"placeholders": {"username": {"type": "String"}}},
+  "@shareRemoved": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
   "shareLeaveLabel": "Părăsește colecția",
   "shareLeaveValue": "Nu mai vezi {name} pe acest dispozitiv",
-  "@shareLeaveValue": {"placeholders": {"name": {"type": "String"}}},
+  "@shareLeaveValue": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "shareLeaveTitle": "Părăsești {name}?",
-  "@shareLeaveTitle": {"placeholders": {"name": {"type": "String"}}},
+  "@shareLeaveTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "shareLeaveBody": "Poți reveni mai târziu cu o invitație nouă.",
   "shareLeave": "Părăsește",
   "shareLeft": "Ai părăsit {name}",
-  "@shareLeft": {"placeholders": {"name": {"type": "String"}}},
+  "@shareLeft": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "shareRemovedFromCollection": "Ai fost eliminat din {name}",
-  "@shareRemovedFromCollection": {"placeholders": {"name": {"type": "String"}}},
+  "@shareRemovedFromCollection": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "shareByActor": "de {name}",
-  "@shareByActor": {"placeholders": {"name": {"type": "String"}}},
+  "@shareByActor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "shareByOtherMember": "de alt membru",
   "shareSwitched": "Ai trecut la {name}",
-  "@shareSwitched": {"placeholders": {"name": {"type": "String"}}},
+  "@shareSwitched": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "shareSwitchUnavailable": "Schimbarea colecției cere sincronizarea cloud activă pentru acest cont.",
   "shareMeRowValue": "{n, plural, =1{1 colecție} few{{n} colecții} other{{n} de colecții}}",
-  "@shareMeRowValue": {"placeholders": {"n": {"type": "int"}}},
+  "@shareMeRowValue": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "shareNoMembers": "Încă niciun membru",
   "shareMembersError": "Nu s-au putut încărca membrii",
   "shareErrTooManyInvites": "{n, plural, =1{Ai deja 1 invitație activă — așteaptă să fie folosită sau să expire.} few{Ai deja {n} invitații active — așteaptă ca una să fie folosită sau să expire.} other{Ai deja {n} de invitații active — așteaptă ca una să fie folosită sau să expire.}}",
-  "@shareErrTooManyInvites": {"placeholders": {"n": {"type": "int"}}},
+  "@shareErrTooManyInvites": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "shareErrOwnerOnly": "Doar proprietarul poate invita persoane.",
   "shareErrOwnerCannotLeave": "Proprietarul nu își poate părăsi propria colecție.",
   "shareErrMemberNotFound": "Persoana respectivă nu mai este membru.",
+  "shareErrOwnerLapsed": "Planul proprietarului a expirat — această colecție partajată este în pauză până îl reînnoiește.",
+  "cloudErrRejected": "{n, plural, =1{1 modificare nu a putut fi sincronizată ({reason})} few{{n} modificări nu au putut fi sincronizate ({reason})} other{{n} de modificări nu au putut fi sincronizate ({reason})}}",
+  "@cloudErrRejected": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudRejDetailsLabel": "Detalii",
+  "cloudRejDetailsValue": "Vezi ce modificări a refuzat serverul",
+  "cloudRejScreenTitle": "Modificări nesincronizate",
+  "cloudRejScreenIntro": "Serverul a refuzat aceste modificări. „Reîncearcă” le trimite din nou pe toate; „Ignoră” le păstrează doar pe acest dispozitiv.",
+  "cloudRejEmpty": "Nimic aici — toate modificările s-au sincronizat.",
+  "cloudRejRetry": "Reîncearcă tot",
+  "cloudRejDismiss": "Ignoră tot",
+  "cloudRejKindRetrying": "se reîncearcă",
+  "cloudRejKindParked": "abandonat",
+  "cloudRejRequeued": "{n, plural, =1{1 modificare pusă din nou la coadă} few{{n} modificări puse din nou la coadă} other{{n} de modificări puse din nou la coadă}}",
+  "@cloudRejRequeued": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "plantlyLoginSubtitleCloud": "Folosește contul tău plantly.ro pentru backup și sincronizare în cloud.",
+  "cloudRejRetryValue": "Trimite din nou toate modificările listate",
+  "cloudRejDismissValue": "Păstrează-le doar pe acest dispozitiv",
+  "gateHeadline": "Colecția ta, sincronizată peste tot",
+  "gateValueProp": "Versiunea web a Plantly Inventory face parte din Inventory Cloud: plantele, istoricul de îngrijire și fotografiile tale, salvate în contul plantly.ro și sincronizate între telefon și browser.",
+  "gateSignIn": "Intră în cont",
+  "gateAndroidTitle": "Preferi telefonul?",
+  "gateAndroidBody": "Aplicația Android este gratuită și merge offline.",
+  "gateAndroidCloudLine": "Abonează-te la Inventory Cloud și totul se sincronizează între telefon și web.",
+  "gatePlayBadgeLabel": "Disponibil pe Google Play",
+  "gateHello": "Bună, {username}. Versiunea web este inclusă în Inventory Cloud.",
+  "@gateHello": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "gatePlanMonthly": "{price}/lună",
+  "@gatePlanMonthly": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "gatePlanYearly": "{price}/an",
+  "@gatePlanYearly": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "gatePlansOr": "sau",
+  "gatePlansFallback": "1,99 €/lună sau 17,99 €/an",
+  "gatePlansLoading": "Se încarcă prețurile…",
+  "gateSubscribe": "Abonează-te pe plantly.ro",
+  "gateRetry": "Am deja abonament — reîncearcă",
+  "gateIncludedInPro": "Inclus în Plantly Pro.",
+  "gateDataKept": "Plantele salvate în acest browser rămân aici; sincronizarea se reia imediat ce te abonezi.",
+  "gateSignOutLink": "Nu ești tu? Deconectează-te",
+  "gateUnreachableTitle": "Nu putem verifica abonamentul",
+  "gateUnreachableBody": "plantly.ro nu poate fi contactat acum. Verifică conexiunea și încearcă din nou.",
+  "gateTryAgain": "Reîncearcă",
+  "gateChecking": "Se verifică abonamentul…",
+  "gateOfflineBanner": "Fără conexiune — modificările se vor sincroniza când revii online",
+  "shareRoleViewer": "Vizualizator",
+  "shareErrReadOnly": "Doar vizualizare — cere proprietarului drepturi de editare.",
+  "shareReadOnlyBanner": "Doar vizualizare — cere proprietarului drepturi de editare",
+  "shareErrDeviceRevoked": "Dispozitiv deconectat — acest dispozitiv a fost delogat din sincronizarea cloud. Autentifică-te din nou pentru a reconecta.",
+  "shareErrTooManyDevices": "Prea multe dispozitive pe acest cont — deconectează unul din Eu → Cloud → Dispozitive, apoi încearcă din nou.",
+  "shareErrDeviceLookupFailed": "Nu am putut verifica acest dispozitiv acum — reîncercăm în curând.",
+  "shareErrCollectionDeleted": "Această colecție a fost ștearsă de proprietar.",
+  "shareErrCloudRequiredNewOwner": "Noul proprietar are nevoie de un plan Plantly Cloud activ înainte ca această colecție să poată fi transferată.",
+  "shareErrNotAMember": "Nu mai ești membru al acestei colecții.",
   "assigneeLabel": "Responsabil",
   "assigneeEveryone": "Toți",
   "assigneeYouSuffix": "(tu)",
   "assigneeUnknown": "Fost membru",
   "assigneeHint": "Notificările pentru această sarcină ajung doar pe dispozitivele responsabilului.",
   "assigneeTooltip": "Responsabil: {name}",
-  "@assigneeTooltip": {"placeholders": {"name": {"type": "String"}}},
-  "shareErrOwnerLapsed": "Planul proprietarului a expirat — această colecție partajată este în pauză până îl reînnoiește.",
+  "@assigneeTooltip": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "shareMembersActions": "Acțiuni membru",
   "shareMembersMakeEditor": "Fă editor",
   "shareMembersMakeViewer": "Fă vizualizator",
   "shareMembersRoleChanged": "{username} este acum {role}",
-  "@shareMembersRoleChanged": {"placeholders": {"username": {"type": "String"}, "role": {"type": "String"}}},
+  "@shareMembersRoleChanged": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      },
+      "role": {
+        "type": "String"
+      }
+    }
+  },
   "shareTransferAction": "Transferă proprietatea",
   "shareTransferTitle": "Transferi {name} către {username}?",
-  "@shareTransferTitle": {"placeholders": {"name": {"type": "String"}, "username": {"type": "String"}}},
+  "@shareTransferTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "username": {
+        "type": "String"
+      }
+    }
+  },
   "shareTransferBody": "{username} devine proprietarul acestei colecții. Planul Plantly Cloud și spațiul de stocare ale lui/ei se aplică de acum înainte. Tu rămâi în colecție ca editor.",
-  "@shareTransferBody": {"placeholders": {"username": {"type": "String"}}},
+  "@shareTransferBody": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
   "shareTransferConfirm": "Transferă",
   "shareTransferDone": "{username} este acum proprietarul colecției {name}",
-  "@shareTransferDone": {"placeholders": {"username": {"type": "String"}, "name": {"type": "String"}}},
+  "@shareTransferDone": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "shareInvitesSection": "Invitații",
   "shareInviteNew": "Invitație nouă",
   "shareInviteDefaultLabel": "Invitație",
   "shareInvitesEmpty": "Nicio invitație activă. Creează una ca să poată intra cineva.",
   "shareInvitesError": "Nu am putut încărca invitațiile",
   "shareInviteUses": "{used}/{max} folosite",
-  "@shareInviteUses": {"placeholders": {"used": {"type": "int"}, "max": {"type": "int"}}},
+  "@shareInviteUses": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "shareInviteExpiresDays": "{n, plural, =1{expiră într-o zi} few{expiră în {n} zile} other{expiră în {n} de zile}}",
-  "@shareInviteExpiresDays": {"placeholders": {"n": {"type": "int"}}},
+  "@shareInviteExpiresDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "shareInviteExpiresHours": "{n, plural, =1{expiră într-o oră} few{expiră în {n} ore} other{expiră în {n} de ore}}",
-  "@shareInviteExpiresHours": {"placeholders": {"n": {"type": "int"}}},
+  "@shareInviteExpiresHours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "shareInviteExpiresSoon": "expiră curând",
   "shareInviteExpired": "expirată",
   "shareInviteRevoke": "Revocă",
@@ -920,13 +1157,43 @@
   "shareInviteLabelHint": "ex. Bunica, îngrijitorul plantelor",
   "shareInviteCreate": "Creează invitația",
   "shareInviteSummary": "{role} · {uses, plural, =1{o singură folosire} few{{uses} folosiri} other{{uses} de folosiri}} · {days, plural, =1{1 zi} few{{days} zile} other{{days} de zile}}",
-  "@shareInviteSummary": {"placeholders": {"role": {"type": "String"}, "uses": {"type": "int"}, "days": {"type": "int"}}},
+  "@shareInviteSummary": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      },
+      "uses": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "shareInviteMaxUsesLabel": "{uses, plural, =1{o singură folosire} few{{uses} folosiri} other{{uses} de folosiri}}",
-  "@shareInviteMaxUsesLabel": {"placeholders": {"uses": {"type": "int"}}},
+  "@shareInviteMaxUsesLabel": {
+    "placeholders": {
+      "uses": {
+        "type": "int"
+      }
+    }
+  },
   "stepperDecrease": "Scade {what}",
-  "@stepperDecrease": {"placeholders": {"what": {"type": "String"}}},
+  "@stepperDecrease": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      }
+    }
+  },
   "stepperIncrease": "Crește {what}",
-  "@stepperIncrease": {"placeholders": {"what": {"type": "String"}}},
+  "@stepperIncrease": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      }
+    }
+  },
   "shareInviteCodeShownOnce": "Trimite codul sau linkul acum — nu va mai fi afișat.",
   "collectionActions": "Acțiuni colecție",
   "collectionRenameAction": "Redenumește",
@@ -935,31 +1202,33 @@
   "collectionRenameInvalid": "Folosește între 1 și 60 de caractere.",
   "collectionRenameSave": "Salvează",
   "collectionRenamed": "Redenumită în {name}",
-  "@collectionRenamed": {"placeholders": {"name": {"type": "String"}}},
+  "@collectionRenamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "collectionDeleteAction": "Șterge colecția",
   "collectionDeleteTitle": "Ștergi {name}?",
-  "@collectionDeleteTitle": {"placeholders": {"name": {"type": "String"}}},
+  "@collectionDeleteTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "collectionDeleteBody": "Membrii pierd accesul, iar datele partajate de pe server sunt șterse. Copia de pe acest dispozitiv rămâne.",
   "collectionDeleteConfirm": "Șterge",
   "collectionDeleted": "{name} a fost ștearsă",
-  "@collectionDeleted": {"placeholders": {"name": {"type": "String"}}},
+  "@collectionDeleted": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "shareV2Paused": "În pauză",
-  "cloudErrRejected": "{n, plural, =1{1 modificare nu a putut fi sincronizată ({reason})} few{{n} modificări nu au putut fi sincronizate ({reason})} other{{n} de modificări nu au putut fi sincronizate ({reason})}}",
-  "@cloudErrRejected": {"placeholders": {"n": {"type": "int"}, "reason": {"type": "String"}}},
-  "cloudRejDetailsLabel": "Detalii",
-  "cloudRejDetailsValue": "Vezi ce modificări a refuzat serverul",
-  "cloudRejScreenTitle": "Modificări nesincronizate",
-  "cloudRejScreenIntro": "Serverul a refuzat aceste modificări. „Reîncearcă” le trimite din nou pe toate; „Ignoră” le păstrează doar pe acest dispozitiv.",
-  "cloudRejEmpty": "Nimic aici — toate modificările s-au sincronizat.",
-  "cloudRejRetry": "Reîncearcă tot",
-  "cloudRejDismiss": "Ignoră tot",
-  "cloudRejKindRetrying": "se reîncearcă",
-  "cloudRejKindParked": "abandonat",
-  "cloudRejRequeued": "{n, plural, =1{1 modificare pusă din nou la coadă} few{{n} modificări puse din nou la coadă} other{{n} de modificări puse din nou la coadă}}",
-  "@cloudRejRequeued": {"placeholders": {"n": {"type": "int"}}},
-  "plantlyLoginSubtitleCloud": "Folosește contul tău plantly.ro pentru backup și sincronizare în cloud.",
-  "cloudRejRetryValue": "Trimite din nou toate modificările listate",
-  "cloudRejDismissValue": "Păstrează-le doar pe acest dispozitiv",
   "devicesTitle": "Dispozitive",
   "devicesIntro": "Toate dispozitivele conectate la sincronizarea cloud cu acest cont. Deconectează unul pe care nu-l mai folosești — nu se mai sincronizează și trebuie să se autentifice din nou.",
   "devicesRowLabel": "Dispozitive",
@@ -968,7 +1237,13 @@
   "devicesRevoke": "Deconectează",
   "devicesRevokeConfirmTitle": "Deconectezi acest dispozitiv?",
   "devicesRevokeConfirmBody": "{name} nu se va mai sincroniza și va trebui să se autentifice din nou pentru a reconecta. Plantele rămân pe acel dispozitiv.",
-  "@devicesRevokeConfirmBody": {"placeholders": {"name": {"type": "String"}}},
+  "@devicesRevokeConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "devicesRevoked": "Dispozitiv deconectat",
   "devicesRevokeFailed": "Nu am putut deconecta dispozitivul. Încearcă din nou.",
   "devicesEmpty": "Doar acest dispozitiv",
@@ -976,7 +1251,13 @@
   "devicesRetry": "Reîncearcă",
   "devicesSignedOut": "Conectează-te la plantly.ro pentru a-ți gestiona dispozitivele.",
   "devicesLastSeen": "văzut ultima dată {when}",
-  "@devicesLastSeen": {"placeholders": {"when": {"type": "String"}}},
+  "@devicesLastSeen": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
   "devicesPlatformAndroid": "Android",
   "devicesPlatformIos": "iPhone / iPad",
   "devicesPlatformWeb": "Web",

@@ -2739,39 +2739,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shareRoleEditor => 'Editor';
 
   @override
-  String get shareRoleViewer => 'Viewer';
-
-  @override
-  String get shareErrReadOnly => 'View only — ask the owner for edit rights.';
-
-  @override
-  String get shareReadOnlyBanner => 'View only — ask the owner for edit rights';
-
-  @override
-  String get shareErrDeviceRevoked =>
-      'Device disconnected — this device was signed out of cloud sync. Sign in again to reconnect.';
-
-  @override
-  String get shareErrTooManyDevices =>
-      'Too many devices on this account — disconnect one in Me → Cloud → Devices, then try again.';
-
-  @override
-  String get shareErrDeviceLookupFailed =>
-      'Could not verify this device right now — retrying shortly.';
-
-  @override
-  String get shareErrCollectionDeleted =>
-      'This collection was deleted by its owner.';
-
-  @override
-  String get shareErrCloudRequiredNewOwner =>
-      'The new owner needs an active Plantly Cloud plan before the collection can be transferred.';
-
-  @override
-  String get shareErrNotAMember =>
-      'You are no longer a member of this collection.';
-
-  @override
   String get shareJoinWithCode => 'Join with code…';
 
   @override
@@ -2993,6 +2960,183 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shareErrMemberNotFound => 'That person is no longer a member.';
 
   @override
+  String get shareErrOwnerLapsed =>
+      'The owner’s plan lapsed — this shared collection is paused until they renew.';
+
+  @override
+  String cloudErrRejected(int n, String reason) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n changes could not be synced ($reason)',
+      one: '1 change could not be synced ($reason)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cloudRejDetailsLabel => 'Details';
+
+  @override
+  String get cloudRejDetailsValue => 'See which changes the server refused';
+
+  @override
+  String get cloudRejScreenTitle => 'Changes not synced';
+
+  @override
+  String get cloudRejScreenIntro =>
+      'The server refused these changes. Retry sends them all again; Dismiss keeps them on this device only.';
+
+  @override
+  String get cloudRejEmpty => 'Nothing here — every change has synced.';
+
+  @override
+  String get cloudRejRetry => 'Retry all';
+
+  @override
+  String get cloudRejDismiss => 'Dismiss all';
+
+  @override
+  String get cloudRejKindRetrying => 'retrying';
+
+  @override
+  String get cloudRejKindParked => 'gave up';
+
+  @override
+  String cloudRejRequeued(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n changes queued again',
+      one: '1 change queued again',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get plantlyLoginSubtitleCloud =>
+      'Use your plantly.ro account for cloud backup & sync.';
+
+  @override
+  String get cloudRejRetryValue => 'Send every listed change again';
+
+  @override
+  String get cloudRejDismissValue => 'Keep them on this device only';
+
+  @override
+  String get gateHeadline => 'Your collection, in sync everywhere';
+
+  @override
+  String get gateValueProp =>
+      'The web version of Plantly Inventory is part of Inventory Cloud: your plants, care history and photos, saved in your plantly.ro account and kept in sync between phone and browser.';
+
+  @override
+  String get gateSignIn => 'Sign in';
+
+  @override
+  String get gateAndroidTitle => 'Prefer your phone?';
+
+  @override
+  String get gateAndroidBody => 'The Android app is free and works offline.';
+
+  @override
+  String get gateAndroidCloudLine =>
+      'Subscribe to Inventory Cloud and everything syncs between phone and web.';
+
+  @override
+  String get gatePlayBadgeLabel => 'Get it on Google Play';
+
+  @override
+  String gateHello(String username) {
+    return 'Hi, $username. The web version is included in Inventory Cloud.';
+  }
+
+  @override
+  String gatePlanMonthly(String price) {
+    return '$price/month';
+  }
+
+  @override
+  String gatePlanYearly(String price) {
+    return '$price/year';
+  }
+
+  @override
+  String get gatePlansOr => 'or';
+
+  @override
+  String get gatePlansFallback => '€1.99/month or €17.99/year';
+
+  @override
+  String get gatePlansLoading => 'Loading prices…';
+
+  @override
+  String get gateSubscribe => 'Subscribe on plantly.ro';
+
+  @override
+  String get gateRetry => 'I already subscribed — check again';
+
+  @override
+  String get gateIncludedInPro => 'Included in Plantly Pro.';
+
+  @override
+  String get gateDataKept =>
+      'Plants saved in this browser stay here; sync resumes as soon as you subscribe.';
+
+  @override
+  String get gateSignOutLink => 'Not you? Sign out';
+
+  @override
+  String get gateUnreachableTitle => 'We can\'t verify your subscription';
+
+  @override
+  String get gateUnreachableBody =>
+      'plantly.ro can\'t be reached right now. Check your connection and try again.';
+
+  @override
+  String get gateTryAgain => 'Try again';
+
+  @override
+  String get gateChecking => 'Checking your subscription…';
+
+  @override
+  String get gateOfflineBanner =>
+      'Offline — changes will sync when you\'re back online';
+
+  @override
+  String get shareRoleViewer => 'Viewer';
+
+  @override
+  String get shareErrReadOnly => 'View only — ask the owner for edit rights.';
+
+  @override
+  String get shareReadOnlyBanner => 'View only — ask the owner for edit rights';
+
+  @override
+  String get shareErrDeviceRevoked =>
+      'Device disconnected — this device was signed out of cloud sync. Sign in again to reconnect.';
+
+  @override
+  String get shareErrTooManyDevices =>
+      'Too many devices on this account — disconnect one in Me → Cloud → Devices, then try again.';
+
+  @override
+  String get shareErrDeviceLookupFailed =>
+      'Could not verify this device right now — retrying shortly.';
+
+  @override
+  String get shareErrCollectionDeleted =>
+      'This collection was deleted by its owner.';
+
+  @override
+  String get shareErrCloudRequiredNewOwner =>
+      'The new owner needs an active Plantly Cloud plan before the collection can be transferred.';
+
+  @override
+  String get shareErrNotAMember =>
+      'You are no longer a member of this collection.';
+
+  @override
   String get assigneeLabel => 'Assignee';
 
   @override
@@ -3012,10 +3156,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String assigneeTooltip(String name) {
     return 'Assigned to $name';
   }
-
-  @override
-  String get shareErrOwnerLapsed =>
-      'The owner’s plan lapsed — this shared collection is paused until they renew.';
 
   @override
   String get shareMembersActions => 'Member actions';
@@ -3236,66 +3376,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shareV2Paused => 'Paused';
-
-  @override
-  String cloudErrRejected(int n, String reason) {
-    String _temp0 = intl.Intl.pluralLogic(
-      n,
-      locale: localeName,
-      other: '$n changes could not be synced ($reason)',
-      one: '1 change could not be synced ($reason)',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get cloudRejDetailsLabel => 'Details';
-
-  @override
-  String get cloudRejDetailsValue => 'See which changes the server refused';
-
-  @override
-  String get cloudRejScreenTitle => 'Changes not synced';
-
-  @override
-  String get cloudRejScreenIntro =>
-      'The server refused these changes. Retry sends them all again; Dismiss keeps them on this device only.';
-
-  @override
-  String get cloudRejEmpty => 'Nothing here — every change has synced.';
-
-  @override
-  String get cloudRejRetry => 'Retry all';
-
-  @override
-  String get cloudRejDismiss => 'Dismiss all';
-
-  @override
-  String get cloudRejKindRetrying => 'retrying';
-
-  @override
-  String get cloudRejKindParked => 'gave up';
-
-  @override
-  String cloudRejRequeued(int n) {
-    String _temp0 = intl.Intl.pluralLogic(
-      n,
-      locale: localeName,
-      other: '$n changes queued again',
-      one: '1 change queued again',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get plantlyLoginSubtitleCloud =>
-      'Use your plantly.ro account for cloud backup & sync.';
-
-  @override
-  String get cloudRejRetryValue => 'Send every listed change again';
-
-  @override
-  String get cloudRejDismissValue => 'Keep them on this device only';
 
   @override
   String get devicesTitle => 'Devices';

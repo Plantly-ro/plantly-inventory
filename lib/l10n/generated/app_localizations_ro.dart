@@ -2784,40 +2784,6 @@ class AppLocalizationsRo extends AppLocalizations {
   String get shareRoleEditor => 'Editor';
 
   @override
-  String get shareRoleViewer => 'Vizualizator';
-
-  @override
-  String get shareErrReadOnly =>
-      'Doar vizualizare — cere proprietarului drepturi de editare.';
-
-  @override
-  String get shareReadOnlyBanner =>
-      'Doar vizualizare — cere proprietarului drepturi de editare';
-
-  @override
-  String get shareErrDeviceRevoked =>
-      'Dispozitiv deconectat — acest dispozitiv a fost delogat din sincronizarea cloud. Autentifică-te din nou pentru a reconecta.';
-
-  @override
-  String get shareErrTooManyDevices =>
-      'Prea multe dispozitive pe acest cont — deconectează unul din Eu → Cloud → Dispozitive, apoi încearcă din nou.';
-
-  @override
-  String get shareErrDeviceLookupFailed =>
-      'Nu am putut verifica acest dispozitiv acum — reîncercăm în curând.';
-
-  @override
-  String get shareErrCollectionDeleted =>
-      'Această colecție a fost ștearsă de proprietar.';
-
-  @override
-  String get shareErrCloudRequiredNewOwner =>
-      'Noul proprietar are nevoie de un plan Plantly Cloud activ înainte ca această colecție să poată fi transferată.';
-
-  @override
-  String get shareErrNotAMember => 'Nu mai ești membru al acestei colecții.';
-
-  @override
   String get shareJoinWithCode => 'Alătură-te cu un cod…';
 
   @override
@@ -3045,6 +3011,188 @@ class AppLocalizationsRo extends AppLocalizations {
       'Persoana respectivă nu mai este membru.';
 
   @override
+  String get shareErrOwnerLapsed =>
+      'Planul proprietarului a expirat — această colecție partajată este în pauză până îl reînnoiește.';
+
+  @override
+  String cloudErrRejected(int n, String reason) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n de modificări nu au putut fi sincronizate ($reason)',
+      few: '$n modificări nu au putut fi sincronizate ($reason)',
+      one: '1 modificare nu a putut fi sincronizată ($reason)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cloudRejDetailsLabel => 'Detalii';
+
+  @override
+  String get cloudRejDetailsValue => 'Vezi ce modificări a refuzat serverul';
+
+  @override
+  String get cloudRejScreenTitle => 'Modificări nesincronizate';
+
+  @override
+  String get cloudRejScreenIntro =>
+      'Serverul a refuzat aceste modificări. „Reîncearcă” le trimite din nou pe toate; „Ignoră” le păstrează doar pe acest dispozitiv.';
+
+  @override
+  String get cloudRejEmpty =>
+      'Nimic aici — toate modificările s-au sincronizat.';
+
+  @override
+  String get cloudRejRetry => 'Reîncearcă tot';
+
+  @override
+  String get cloudRejDismiss => 'Ignoră tot';
+
+  @override
+  String get cloudRejKindRetrying => 'se reîncearcă';
+
+  @override
+  String get cloudRejKindParked => 'abandonat';
+
+  @override
+  String cloudRejRequeued(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n de modificări puse din nou la coadă',
+      few: '$n modificări puse din nou la coadă',
+      one: '1 modificare pusă din nou la coadă',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get plantlyLoginSubtitleCloud =>
+      'Folosește contul tău plantly.ro pentru backup și sincronizare în cloud.';
+
+  @override
+  String get cloudRejRetryValue => 'Trimite din nou toate modificările listate';
+
+  @override
+  String get cloudRejDismissValue => 'Păstrează-le doar pe acest dispozitiv';
+
+  @override
+  String get gateHeadline => 'Colecția ta, sincronizată peste tot';
+
+  @override
+  String get gateValueProp =>
+      'Versiunea web a Plantly Inventory face parte din Inventory Cloud: plantele, istoricul de îngrijire și fotografiile tale, salvate în contul plantly.ro și sincronizate între telefon și browser.';
+
+  @override
+  String get gateSignIn => 'Intră în cont';
+
+  @override
+  String get gateAndroidTitle => 'Preferi telefonul?';
+
+  @override
+  String get gateAndroidBody =>
+      'Aplicația Android este gratuită și merge offline.';
+
+  @override
+  String get gateAndroidCloudLine =>
+      'Abonează-te la Inventory Cloud și totul se sincronizează între telefon și web.';
+
+  @override
+  String get gatePlayBadgeLabel => 'Disponibil pe Google Play';
+
+  @override
+  String gateHello(String username) {
+    return 'Bună, $username. Versiunea web este inclusă în Inventory Cloud.';
+  }
+
+  @override
+  String gatePlanMonthly(String price) {
+    return '$price/lună';
+  }
+
+  @override
+  String gatePlanYearly(String price) {
+    return '$price/an';
+  }
+
+  @override
+  String get gatePlansOr => 'sau';
+
+  @override
+  String get gatePlansFallback => '1,99 €/lună sau 17,99 €/an';
+
+  @override
+  String get gatePlansLoading => 'Se încarcă prețurile…';
+
+  @override
+  String get gateSubscribe => 'Abonează-te pe plantly.ro';
+
+  @override
+  String get gateRetry => 'Am deja abonament — reîncearcă';
+
+  @override
+  String get gateIncludedInPro => 'Inclus în Plantly Pro.';
+
+  @override
+  String get gateDataKept =>
+      'Plantele salvate în acest browser rămân aici; sincronizarea se reia imediat ce te abonezi.';
+
+  @override
+  String get gateSignOutLink => 'Nu ești tu? Deconectează-te';
+
+  @override
+  String get gateUnreachableTitle => 'Nu putem verifica abonamentul';
+
+  @override
+  String get gateUnreachableBody =>
+      'plantly.ro nu poate fi contactat acum. Verifică conexiunea și încearcă din nou.';
+
+  @override
+  String get gateTryAgain => 'Reîncearcă';
+
+  @override
+  String get gateChecking => 'Se verifică abonamentul…';
+
+  @override
+  String get gateOfflineBanner =>
+      'Fără conexiune — modificările se vor sincroniza când revii online';
+
+  @override
+  String get shareRoleViewer => 'Vizualizator';
+
+  @override
+  String get shareErrReadOnly =>
+      'Doar vizualizare — cere proprietarului drepturi de editare.';
+
+  @override
+  String get shareReadOnlyBanner =>
+      'Doar vizualizare — cere proprietarului drepturi de editare';
+
+  @override
+  String get shareErrDeviceRevoked =>
+      'Dispozitiv deconectat — acest dispozitiv a fost delogat din sincronizarea cloud. Autentifică-te din nou pentru a reconecta.';
+
+  @override
+  String get shareErrTooManyDevices =>
+      'Prea multe dispozitive pe acest cont — deconectează unul din Eu → Cloud → Dispozitive, apoi încearcă din nou.';
+
+  @override
+  String get shareErrDeviceLookupFailed =>
+      'Nu am putut verifica acest dispozitiv acum — reîncercăm în curând.';
+
+  @override
+  String get shareErrCollectionDeleted =>
+      'Această colecție a fost ștearsă de proprietar.';
+
+  @override
+  String get shareErrCloudRequiredNewOwner =>
+      'Noul proprietar are nevoie de un plan Plantly Cloud activ înainte ca această colecție să poată fi transferată.';
+
+  @override
+  String get shareErrNotAMember => 'Nu mai ești membru al acestei colecții.';
+
+  @override
   String get assigneeLabel => 'Responsabil';
 
   @override
@@ -3064,10 +3212,6 @@ class AppLocalizationsRo extends AppLocalizations {
   String assigneeTooltip(String name) {
     return 'Responsabil: $name';
   }
-
-  @override
-  String get shareErrOwnerLapsed =>
-      'Planul proprietarului a expirat — această colecție partajată este în pauză până îl reînnoiește.';
 
   @override
   String get shareMembersActions => 'Acțiuni membru';
@@ -3293,69 +3437,6 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get shareV2Paused => 'În pauză';
-
-  @override
-  String cloudErrRejected(int n, String reason) {
-    String _temp0 = intl.Intl.pluralLogic(
-      n,
-      locale: localeName,
-      other: '$n de modificări nu au putut fi sincronizate ($reason)',
-      few: '$n modificări nu au putut fi sincronizate ($reason)',
-      one: '1 modificare nu a putut fi sincronizată ($reason)',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get cloudRejDetailsLabel => 'Detalii';
-
-  @override
-  String get cloudRejDetailsValue => 'Vezi ce modificări a refuzat serverul';
-
-  @override
-  String get cloudRejScreenTitle => 'Modificări nesincronizate';
-
-  @override
-  String get cloudRejScreenIntro =>
-      'Serverul a refuzat aceste modificări. „Reîncearcă” le trimite din nou pe toate; „Ignoră” le păstrează doar pe acest dispozitiv.';
-
-  @override
-  String get cloudRejEmpty =>
-      'Nimic aici — toate modificările s-au sincronizat.';
-
-  @override
-  String get cloudRejRetry => 'Reîncearcă tot';
-
-  @override
-  String get cloudRejDismiss => 'Ignoră tot';
-
-  @override
-  String get cloudRejKindRetrying => 'se reîncearcă';
-
-  @override
-  String get cloudRejKindParked => 'abandonat';
-
-  @override
-  String cloudRejRequeued(int n) {
-    String _temp0 = intl.Intl.pluralLogic(
-      n,
-      locale: localeName,
-      other: '$n de modificări puse din nou la coadă',
-      few: '$n modificări puse din nou la coadă',
-      one: '1 modificare pusă din nou la coadă',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get plantlyLoginSubtitleCloud =>
-      'Folosește contul tău plantly.ro pentru backup și sincronizare în cloud.';
-
-  @override
-  String get cloudRejRetryValue => 'Trimite din nou toate modificările listate';
-
-  @override
-  String get cloudRejDismissValue => 'Păstrează-le doar pe acest dispozitiv';
 
   @override
   String get devicesTitle => 'Dispozitive';

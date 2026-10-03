@@ -4712,60 +4712,6 @@ abstract class AppLocalizations {
   /// **'Editor'**
   String get shareRoleEditor;
 
-  /// No description provided for @shareRoleViewer.
-  ///
-  /// In en, this message translates to:
-  /// **'Viewer'**
-  String get shareRoleViewer;
-
-  /// No description provided for @shareErrReadOnly.
-  ///
-  /// In en, this message translates to:
-  /// **'View only — ask the owner for edit rights.'**
-  String get shareErrReadOnly;
-
-  /// No description provided for @shareReadOnlyBanner.
-  ///
-  /// In en, this message translates to:
-  /// **'View only — ask the owner for edit rights'**
-  String get shareReadOnlyBanner;
-
-  /// No description provided for @shareErrDeviceRevoked.
-  ///
-  /// In en, this message translates to:
-  /// **'Device disconnected — this device was signed out of cloud sync. Sign in again to reconnect.'**
-  String get shareErrDeviceRevoked;
-
-  /// No description provided for @shareErrTooManyDevices.
-  ///
-  /// In en, this message translates to:
-  /// **'Too many devices on this account — disconnect one in Me → Cloud → Devices, then try again.'**
-  String get shareErrTooManyDevices;
-
-  /// No description provided for @shareErrDeviceLookupFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Could not verify this device right now — retrying shortly.'**
-  String get shareErrDeviceLookupFailed;
-
-  /// No description provided for @shareErrCollectionDeleted.
-  ///
-  /// In en, this message translates to:
-  /// **'This collection was deleted by its owner.'**
-  String get shareErrCollectionDeleted;
-
-  /// No description provided for @shareErrCloudRequiredNewOwner.
-  ///
-  /// In en, this message translates to:
-  /// **'The new owner needs an active Plantly Cloud plan before the collection can be transferred.'**
-  String get shareErrCloudRequiredNewOwner;
-
-  /// No description provided for @shareErrNotAMember.
-  ///
-  /// In en, this message translates to:
-  /// **'You are no longer a member of this collection.'**
-  String get shareErrNotAMember;
-
   /// No description provided for @shareJoinWithCode.
   ///
   /// In en, this message translates to:
@@ -5078,6 +5024,288 @@ abstract class AppLocalizations {
   /// **'That person is no longer a member.'**
   String get shareErrMemberNotFound;
 
+  /// No description provided for @shareErrOwnerLapsed.
+  ///
+  /// In en, this message translates to:
+  /// **'The owner’s plan lapsed — this shared collection is paused until they renew.'**
+  String get shareErrOwnerLapsed;
+
+  /// No description provided for @cloudErrRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 change could not be synced ({reason})} other{{n} changes could not be synced ({reason})}}'**
+  String cloudErrRejected(int n, String reason);
+
+  /// No description provided for @cloudRejDetailsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get cloudRejDetailsLabel;
+
+  /// No description provided for @cloudRejDetailsValue.
+  ///
+  /// In en, this message translates to:
+  /// **'See which changes the server refused'**
+  String get cloudRejDetailsValue;
+
+  /// No description provided for @cloudRejScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes not synced'**
+  String get cloudRejScreenTitle;
+
+  /// No description provided for @cloudRejScreenIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'The server refused these changes. Retry sends them all again; Dismiss keeps them on this device only.'**
+  String get cloudRejScreenIntro;
+
+  /// No description provided for @cloudRejEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing here — every change has synced.'**
+  String get cloudRejEmpty;
+
+  /// No description provided for @cloudRejRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry all'**
+  String get cloudRejRetry;
+
+  /// No description provided for @cloudRejDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss all'**
+  String get cloudRejDismiss;
+
+  /// No description provided for @cloudRejKindRetrying.
+  ///
+  /// In en, this message translates to:
+  /// **'retrying'**
+  String get cloudRejKindRetrying;
+
+  /// No description provided for @cloudRejKindParked.
+  ///
+  /// In en, this message translates to:
+  /// **'gave up'**
+  String get cloudRejKindParked;
+
+  /// No description provided for @cloudRejRequeued.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 change queued again} other{{n} changes queued again}}'**
+  String cloudRejRequeued(int n);
+
+  /// No description provided for @plantlyLoginSubtitleCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Use your plantly.ro account for cloud backup & sync.'**
+  String get plantlyLoginSubtitleCloud;
+
+  /// No description provided for @cloudRejRetryValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Send every listed change again'**
+  String get cloudRejRetryValue;
+
+  /// No description provided for @cloudRejDismissValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep them on this device only'**
+  String get cloudRejDismissValue;
+
+  /// No description provided for @gateHeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Your collection, in sync everywhere'**
+  String get gateHeadline;
+
+  /// No description provided for @gateValueProp.
+  ///
+  /// In en, this message translates to:
+  /// **'The web version of Plantly Inventory is part of Inventory Cloud: your plants, care history and photos, saved in your plantly.ro account and kept in sync between phone and browser.'**
+  String get gateValueProp;
+
+  /// No description provided for @gateSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get gateSignIn;
+
+  /// No description provided for @gateAndroidTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Prefer your phone?'**
+  String get gateAndroidTitle;
+
+  /// No description provided for @gateAndroidBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The Android app is free and works offline.'**
+  String get gateAndroidBody;
+
+  /// No description provided for @gateAndroidCloudLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe to Inventory Cloud and everything syncs between phone and web.'**
+  String get gateAndroidCloudLine;
+
+  /// No description provided for @gatePlayBadgeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Get it on Google Play'**
+  String get gatePlayBadgeLabel;
+
+  /// No description provided for @gateHello.
+  ///
+  /// In en, this message translates to:
+  /// **'Hi, {username}. The web version is included in Inventory Cloud.'**
+  String gateHello(String username);
+
+  /// No description provided for @gatePlanMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'{price}/month'**
+  String gatePlanMonthly(String price);
+
+  /// No description provided for @gatePlanYearly.
+  ///
+  /// In en, this message translates to:
+  /// **'{price}/year'**
+  String gatePlanYearly(String price);
+
+  /// No description provided for @gatePlansOr.
+  ///
+  /// In en, this message translates to:
+  /// **'or'**
+  String get gatePlansOr;
+
+  /// No description provided for @gatePlansFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'€1.99/month or €17.99/year'**
+  String get gatePlansFallback;
+
+  /// No description provided for @gatePlansLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading prices…'**
+  String get gatePlansLoading;
+
+  /// No description provided for @gateSubscribe.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe on plantly.ro'**
+  String get gateSubscribe;
+
+  /// No description provided for @gateRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'I already subscribed — check again'**
+  String get gateRetry;
+
+  /// No description provided for @gateIncludedInPro.
+  ///
+  /// In en, this message translates to:
+  /// **'Included in Plantly Pro.'**
+  String get gateIncludedInPro;
+
+  /// No description provided for @gateDataKept.
+  ///
+  /// In en, this message translates to:
+  /// **'Plants saved in this browser stay here; sync resumes as soon as you subscribe.'**
+  String get gateDataKept;
+
+  /// No description provided for @gateSignOutLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Not you? Sign out'**
+  String get gateSignOutLink;
+
+  /// No description provided for @gateUnreachableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'We can\'t verify your subscription'**
+  String get gateUnreachableTitle;
+
+  /// No description provided for @gateUnreachableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'plantly.ro can\'t be reached right now. Check your connection and try again.'**
+  String get gateUnreachableBody;
+
+  /// No description provided for @gateTryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get gateTryAgain;
+
+  /// No description provided for @gateChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking your subscription…'**
+  String get gateChecking;
+
+  /// No description provided for @gateOfflineBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline — changes will sync when you\'re back online'**
+  String get gateOfflineBanner;
+
+  /// No description provided for @shareRoleViewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewer'**
+  String get shareRoleViewer;
+
+  /// No description provided for @shareErrReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'View only — ask the owner for edit rights.'**
+  String get shareErrReadOnly;
+
+  /// No description provided for @shareReadOnlyBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'View only — ask the owner for edit rights'**
+  String get shareReadOnlyBanner;
+
+  /// No description provided for @shareErrDeviceRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'Device disconnected — this device was signed out of cloud sync. Sign in again to reconnect.'**
+  String get shareErrDeviceRevoked;
+
+  /// No description provided for @shareErrTooManyDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many devices on this account — disconnect one in Me → Cloud → Devices, then try again.'**
+  String get shareErrTooManyDevices;
+
+  /// No description provided for @shareErrDeviceLookupFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not verify this device right now — retrying shortly.'**
+  String get shareErrDeviceLookupFailed;
+
+  /// No description provided for @shareErrCollectionDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'This collection was deleted by its owner.'**
+  String get shareErrCollectionDeleted;
+
+  /// No description provided for @shareErrCloudRequiredNewOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'The new owner needs an active Plantly Cloud plan before the collection can be transferred.'**
+  String get shareErrCloudRequiredNewOwner;
+
+  /// No description provided for @shareErrNotAMember.
+  ///
+  /// In en, this message translates to:
+  /// **'You are no longer a member of this collection.'**
+  String get shareErrNotAMember;
+
   /// No description provided for @assigneeLabel.
   ///
   /// In en, this message translates to:
@@ -5113,12 +5341,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Assigned to {name}'**
   String assigneeTooltip(String name);
-
-  /// No description provided for @shareErrOwnerLapsed.
-  ///
-  /// In en, this message translates to:
-  /// **'The owner’s plan lapsed — this shared collection is paused until they renew.'**
-  String get shareErrOwnerLapsed;
 
   /// No description provided for @shareMembersActions.
   ///
@@ -5431,90 +5653,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Paused'**
   String get shareV2Paused;
-
-  /// No description provided for @cloudErrRejected.
-  ///
-  /// In en, this message translates to:
-  /// **'{n, plural, =1{1 change could not be synced ({reason})} other{{n} changes could not be synced ({reason})}}'**
-  String cloudErrRejected(int n, String reason);
-
-  /// No description provided for @cloudRejDetailsLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Details'**
-  String get cloudRejDetailsLabel;
-
-  /// No description provided for @cloudRejDetailsValue.
-  ///
-  /// In en, this message translates to:
-  /// **'See which changes the server refused'**
-  String get cloudRejDetailsValue;
-
-  /// No description provided for @cloudRejScreenTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Changes not synced'**
-  String get cloudRejScreenTitle;
-
-  /// No description provided for @cloudRejScreenIntro.
-  ///
-  /// In en, this message translates to:
-  /// **'The server refused these changes. Retry sends them all again; Dismiss keeps them on this device only.'**
-  String get cloudRejScreenIntro;
-
-  /// No description provided for @cloudRejEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'Nothing here — every change has synced.'**
-  String get cloudRejEmpty;
-
-  /// No description provided for @cloudRejRetry.
-  ///
-  /// In en, this message translates to:
-  /// **'Retry all'**
-  String get cloudRejRetry;
-
-  /// No description provided for @cloudRejDismiss.
-  ///
-  /// In en, this message translates to:
-  /// **'Dismiss all'**
-  String get cloudRejDismiss;
-
-  /// No description provided for @cloudRejKindRetrying.
-  ///
-  /// In en, this message translates to:
-  /// **'retrying'**
-  String get cloudRejKindRetrying;
-
-  /// No description provided for @cloudRejKindParked.
-  ///
-  /// In en, this message translates to:
-  /// **'gave up'**
-  String get cloudRejKindParked;
-
-  /// No description provided for @cloudRejRequeued.
-  ///
-  /// In en, this message translates to:
-  /// **'{n, plural, =1{1 change queued again} other{{n} changes queued again}}'**
-  String cloudRejRequeued(int n);
-
-  /// No description provided for @plantlyLoginSubtitleCloud.
-  ///
-  /// In en, this message translates to:
-  /// **'Use your plantly.ro account for cloud backup & sync.'**
-  String get plantlyLoginSubtitleCloud;
-
-  /// No description provided for @cloudRejRetryValue.
-  ///
-  /// In en, this message translates to:
-  /// **'Send every listed change again'**
-  String get cloudRejRetryValue;
-
-  /// No description provided for @cloudRejDismissValue.
-  ///
-  /// In en, this message translates to:
-  /// **'Keep them on this device only'**
-  String get cloudRejDismissValue;
 
   /// No description provided for @devicesTitle.
   ///
