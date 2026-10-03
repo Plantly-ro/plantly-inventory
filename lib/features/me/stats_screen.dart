@@ -8,7 +8,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
-import '../plant_detail/plant_detail_screen.dart';
+import '../../app/navigation.dart';
 
 /// Care-activity dashboard: aggregated counts across the whole
 /// collection. Keeps the aggregations in-memory off the already-streamed
@@ -59,10 +59,8 @@ class StatsScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: surface.bg,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.chevron_left, color: surface.text),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
+        automaticallyImplyLeading: false,
+        leading: adaptiveBackButton(context, surface, fallback: AppRoutes.me),
         title: Text(
           t.statsTitle,
           style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
@@ -300,11 +298,7 @@ class _TopPlantRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: plantId)),
-        );
-      },
+      onTap: () => openPlant(context, plantId),
       child: Container(
         decoration: BoxDecoration(
           border: last ? null : Border(bottom: BorderSide(color: surface.border)),

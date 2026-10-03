@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../cloud/collections.dart';
+import '../collections/read_only_banner.dart';
 import '../../data/database/app_database.dart';
 import '../../data/image_processor.dart';
 import '../../data/mock_plants.dart';
@@ -10,14 +12,17 @@ import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../shared/photo_source_sheet.dart';
 import '../../shared/plant_thumb.dart';
+import '../../shared/remote_photo.dart';
 import '../../shared/stored_photo_image.dart';
 import '../../sync/hlc.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
-import '../plant_detail/plant_detail_screen.dart';
 import 'assign_plants_sheet.dart';
 import 'location_edit_sheet.dart';
 import 'space_kind_label.dart';
+import '../../app/side_sheet.dart';
+import '../../app/navigation.dart';
+import '../../shared/sheet_chrome.dart';
 
 /// Full detail screen for a single location. Shows the metadata (kind,
 /// parent, light/humidity/temp ranges, notes, outdoor flag), every
@@ -39,12 +44,37 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
     final t = AppLocalizations.of(context);
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    // Desktop renders this screen straight from the URL (`/spaces/:id` on a
+    // reload), before the DB has opened; the repositories below require the
+    // bootstrapped context, so gate on it like Home does — including the
+    // error state, so a failed DB open shows copy instead of a spinner.
+    return ref.watch(appContextProvider).when(
+      loading: () => Scaffold(
+        backgroundColor: surface.bg,
+        body: Center(child: CircularProgressIndicator(color: surface.green)),
+      ),
+      error: (e, _) => Scaffold(
+        backgroundColor: surface.bg,
+        body: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(t.spaceLoadOneFailed('$e'), style: TextStyle(color: surface.terra)),
+        ),
+      ),
+      data: (_) => _loaded(context, t, surface),
+    );
+  }
+
+  Widget _loaded(BuildContext context, AppLocalizations t, PlantlySurface surface) {
     final repo = ref.watch(locationRepositoryProvider);
     final locAsync = ref.watch(locationByIdStreamProvider(widget.locationId));
     final plants = ref.watch(plantsByLocationProvider(widget.locationId)).maybeWhen(
           data: (rows) => rows,
           orElse: () => const <PlantRow>[],
         );
+    // Viewer of a shared collection (MULTI-USER-V2 §3): no edit / menu /
+    // pin placement / map or photo adds; the banner says why.
+    final canEdit = ref.watch(canEditActiveCollectionProvider);
+    final editingPins = _editingPins && canEdit;
 
     return Scaffold(
       backgroundColor: surface.bg,
@@ -69,10 +99,7 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                 backgroundColor: surface.bg,
                 elevation: 0,
                 pinned: true,
-                leading: IconButton(
-                  icon: Icon(Icons.chevron_left, color: surface.text),
-                  onPressed: () => Navigator.of(context).maybePop(),
-                ),
+                leading: detailLeading(context, surface, parent: AppRoutes.spaces),
                 title: Text(
                   loc.name,
                   style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
@@ -83,11 +110,12 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                   ),
                 ),
                 actions: [
+                  if (canEdit) ...[
                   IconButton(
                     tooltip: t.commonEdit,
                     onPressed: () {
-                      showModalBottomSheet(
-                        context: context,
+                      showAdaptiveSheet(
+                        context,
                         isScrollControlled: true,
                         backgroundColor: Colors.transparent,
                         builder: (_) => LocationEditSheet(existing: loc),
@@ -100,8 +128,8 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                     onSelected: (v) async {
                       switch (v) {
                         case 'assign':
-                          showModalBottomSheet(
-                            context: context,
+                          showAdaptiveSheet(
+                            context,
                             isScrollControlled: true,
                             backgroundColor: Colors.transparent,
                             builder: (_) => AssignPlantsSheet(location: loc),
@@ -134,7 +162,7 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                           );
                           if (ok == true) {
                             await repo.softDelete(loc.id);
-                            if (context.mounted) Navigator.of(context).maybePop();
+                            if (context.mounted) goBack(context, fallback: AppRoutes.spaces);
                           }
                           break;
                       }
@@ -153,8 +181,10 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                       PopupMenuItem(value: 'delete', child: Text(t.spaceMenuDelete)),
                     ],
                   ),
+                  ],
                 ],
               ),
+              const SliverToBoxAdapter(child: ReadOnlyBanner()),
               SliverList(
                 delegate: SliverChildListDelegate([
                   _Meta(loc: loc, surface: surface),
@@ -165,9 +195,10 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                         children: [
                           Text(t.spaceSectionMap, style: _sectionStyle(surface)),
                           const Spacer(),
+                          if (canEdit)
                           TextButton.icon(
-                            icon: Icon(_editingPins ? Icons.check : Icons.edit_location_outlined, size: 16),
-                            label: Text(_editingPins ? t.spaceDonePlacing : t.spacePlacePins, style: const TextStyle(fontSize: 11.5)),
+                            icon: Icon(editingPins ? Icons.check : Icons.edit_location_outlined, size: 16),
+                            label: Text(editingPins ? t.spaceDonePlacing : t.spacePlacePins, style: const TextStyle(fontSize: 11.5)),
                             onPressed: () => setState(() => _editingPins = !_editingPins),
                           ),
                         ],
@@ -179,10 +210,10 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> {
                         mapPhotoSha: loc.mapPhotoSha!,
                         plants: plants,
                         surface: surface,
-                        editing: _editingPins,
+                        editing: editingPins,
                       ),
                     ),
-                  ] else ...[
+                  ] else if (canEdit) ...[
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
                       child: Text(t.spaceSectionMap, style: _sectionStyle(surface)),
@@ -352,21 +383,19 @@ class _LocationMapView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final photoRepo = ref.watch(photoRepositoryProvider);
-    return FutureBuilder<ImageProvider?>(
-      future: photoRepo.imageFor(mapPhotoSha),
-      builder: (context, snap) {
-        final image = snap.data;
-        if (image == null) {
-          return Container(
-            height: 200,
-            decoration: BoxDecoration(
-              color: surface.surfaceAlt,
-              borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
-            ),
-            child: Center(child: Text(AppLocalizations.of(context).spaceMapMissing)),
-          );
-        }
+    // The map photo may have arrived through cloud sync without bytes yet;
+    // RemotePhoto downloads it on first display and shows the stub meanwhile.
+    return RemotePhoto(
+      sha: mapPhotoSha,
+      placeholder: Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: surface.surfaceAlt,
+          borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
+        ),
+        child: Center(child: Text(AppLocalizations.of(context).spaceMapMissing)),
+      ),
+      builder: (context, image) {
         return AspectRatio(
           aspectRatio: 4 / 3,
           child: LayoutBuilder(
@@ -478,7 +507,9 @@ class _PositionedPin extends StatelessWidget {
       top: y,
       width: size,
       height: size,
-      child: GestureDetector(
+      child: MouseRegion(
+        cursor: editing ? SystemMouseCursors.move : SystemMouseCursors.click,
+        child: GestureDetector(
         onLongPress: onRemove,
         onPanUpdate: onMove == null
             ? null
@@ -490,9 +521,7 @@ class _PositionedPin extends StatelessWidget {
         onTap: editing
             ? null
             : () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: plant.id)),
-                );
+                openPlant(context, plant.id);
               },
         child: Container(
           decoration: BoxDecoration(
@@ -509,6 +538,7 @@ class _PositionedPin extends StatelessWidget {
             size: size,
             fit: BoxFit.cover,
           ),
+        ),
         ),
       ),
     );
@@ -565,9 +595,7 @@ class _Row extends StatelessWidget {
       ),
       child: InkWell(
         onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: plant.id)),
-          );
+          openPlant(context, plant.id);
         },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -617,12 +645,13 @@ class _LocationGallery extends ConsumerWidget {
           data: (rows) => rows,
           orElse: () => const <LocationPhotoRow>[],
         );
+    final canEdit = ref.watch(canEditActiveCollectionProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (photos.isEmpty)
+        if (photos.isEmpty && canEdit)
           _AddTile(surface: surface, onTap: () => _addPhoto(context, ref))
-        else
+        else if (photos.isNotEmpty)
           GridView.count(
             crossAxisCount: 3,
             shrinkWrap: true,
@@ -633,7 +662,7 @@ class _LocationGallery extends ConsumerWidget {
             children: [
               for (final row in photos)
                 _GalleryTile(row: row, surface: surface, onTap: () => _viewPhoto(context, ref, row)),
-              _AddTile(surface: surface, onTap: () => _addPhoto(context, ref)),
+              if (canEdit) _AddTile(surface: surface, onTap: () => _addPhoto(context, ref)),
             ],
           ),
       ],
@@ -651,27 +680,19 @@ class _LocationGallery extends ConsumerWidget {
   }
 
   Future<void> _viewPhoto(BuildContext context, WidgetRef ref, LocationPhotoRow row) async {
+    // The sheet only offers edits (date / caption / remove).
+    if (!ensureCanEdit(context, ref)) return;
     final t = AppLocalizations.of(context);
-    final choice = await showModalBottomSheet<String>(
-      context: context,
+    final choice = await showAdaptiveSheet<String>(
+      context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: BoxDecoration(
-          color: surface.bg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(PlantlyTokens.radius2xl)),
-        ),
+      builder: (ctx) => SheetChrome(
+        surface: surface,
+        title: t.spacePhotoActionsTitle,
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Center(
-              child: Container(
-                height: 4,
-                width: 40,
-                decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 14),
+        handleGap: 14,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
             ListTile(
               leading: Icon(Icons.edit_calendar_outlined, color: surface.green),
               title: Text(t.spacePhotoEditDate),
@@ -688,7 +709,6 @@ class _LocationGallery extends ConsumerWidget {
               onTap: () => Navigator.of(ctx).pop('remove'),
             ),
           ],
-        ),
       ),
     );
     if (choice == 'caption' && context.mounted) {

@@ -179,6 +179,37 @@ void main() {
       expect(s.baseIntervalDays, 14);
     });
   });
+
+  group('CareScheduleRepository.edit — ops only for fields that changed', () {
+    Future<List<SyncOpRow>> fieldOps() async =>
+        (await db.select(db.syncOps).get()).where((o) => o.field != kWholeRowField).toList();
+
+    test('identical re-save → no ops; interval change → base + current only', () async {
+      final p = await plants.create(nickname: 'Monstera');
+      final due = DateTime.utc(2026, 5, 1);
+      final s = await schedules.upsert(plantId: p.id, type: 'water', baseIntervalDays: 7, firstDueAt: due);
+
+      await schedules.edit(s.id, baseIntervalDays: 7, recurrenceMode: 'after_completion', nextDueAt: due);
+      expect(await fieldOps(), isEmpty);
+
+      await schedules.edit(s.id, baseIntervalDays: 10, recurrenceMode: 'after_completion', nextDueAt: due);
+      expect((await fieldOps()).map((o) => o.field), ['base_interval_days', 'current_interval_days']);
+      final after = await schedules.forPlantAndType(p.id, 'water');
+      expect(after!.baseIntervalDays, 10);
+      expect(after.currentIntervalDays, 10);
+    });
+
+    test('a snoozed schedule being edited also emits the window reset it applies', () async {
+      final p = await plants.create(nickname: 'Fern');
+      final due = DateTime.utc(2026, 5, 1);
+      final s = await schedules.upsert(plantId: p.id, type: 'mist', baseIntervalDays: 3, firstDueAt: due);
+      await schedules.snooze(s.id);
+      final before = (await fieldOps()).length; // snooze's own next_due_at op
+      await schedules.edit(s.id, baseIntervalDays: 3, recurrenceMode: 'fixed', nextDueAt: due);
+      final ops = (await fieldOps()).skip(before).map((o) => o.field).toList();
+      expect(ops, unorderedEquals(['recurrence_mode', 'next_due_at', 'snooze_count']));
+    });
+  });
 }
 
 class _ThrowingReminderSync extends ReminderSync {

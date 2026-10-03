@@ -13,8 +13,9 @@ import 'backup_service.dart';
 ///   - `plantly.backup.json` — the same signed JSON blob the plain
 ///     `BackupService` produces.
 ///   - `photos/<first-2>/<sha>.{ext}` — the content-addressed bytes for
-///     every photo currently stored on the device. Because photos are
-///     already value-addressed, no filename conflicts are possible.
+///     every photo in the JSON document's scope (the active tenant's, see
+///     `BackupService.photosInScope`). Because photos are already
+///     value-addressed, no filename conflicts are possible.
 ///
 /// Import verifies the signed JSON against [secret] and optionally rehydrates
 /// photo bytes from the archive into the photo store.
@@ -36,9 +37,7 @@ class ZipBackupService {
     Future<Uint8List?> Function(PhotoRow photo)? photoBytesFor,
   }) async {
     final jsonBlob = await backup.export(secret: secret);
-    final photoRows = await (db.select(db.photos)
-          ..where((p) => p.deletedAt.isNull()))
-        .get();
+    final photoRows = await backup.photosInScope();
 
     final archive = Archive()
       ..addFile(ArchiveFile.bytes(

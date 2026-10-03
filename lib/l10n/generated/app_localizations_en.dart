@@ -692,6 +692,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get spacePhotoRemove => 'Remove from this space';
 
   @override
+  String get spacePhotoActionsTitle => 'Photo';
+
+  @override
   String get spaceCaptionTitle => 'Caption';
 
   @override
@@ -2311,4 +2314,1133 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get spacePickerChooseTitle => 'Choose a space';
+
+  @override
+  String get cloudSectionTitle => 'Cloud';
+
+  @override
+  String get cloudScreenTitle => 'Cloud';
+
+  @override
+  String get cloudScreenIntro =>
+      'Your plants, photos and care history are backed up to your plantly.ro account and kept in sync on every device you sign in on. Nothing leaves this device until you link it.';
+
+  @override
+  String get cloudSignInLabel => 'Sign in to plantly.ro';
+
+  @override
+  String get cloudSignInPitch =>
+      'Back up your plants and sync them across devices';
+
+  @override
+  String get cloudNotIncludedLabel => 'Cloud backup & sync';
+
+  @override
+  String get cloudNotIncludedValue =>
+      'Included with Plantly Pro or Plantly Inventory Cloud';
+
+  @override
+  String get cloudChecking => 'Checking your subscription…';
+
+  @override
+  String get cloudSubscribeLabel => 'Subscribe on plantly.ro';
+
+  @override
+  String get cloudSubscribeValue =>
+      'Opens your plantly.ro account in the browser';
+
+  @override
+  String get cloudRefreshStatusLabel => 'Refresh status';
+
+  @override
+  String get cloudRefreshStatusValue => 'Check your subscription again';
+
+  @override
+  String get cloudStatusLabel => 'Cloud sync';
+
+  @override
+  String get cloudSettingUp => 'Setting up your cloud collection…';
+
+  @override
+  String get cloudSetupFailed => 'Couldn\'t set up cloud sync. Tap to retry.';
+
+  @override
+  String get cloudSyncing => 'Syncing…';
+
+  @override
+  String get cloudLastSyncNever => 'Not synced yet';
+
+  @override
+  String get cloudLastSyncJustNow => 'Synced just now';
+
+  @override
+  String cloudLastSyncMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Synced $count min ago',
+      one: 'Synced 1 min ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cloudLastSyncHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Synced $count hours ago',
+      one: 'Synced 1 hour ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cloudLastSyncDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Synced $count days ago',
+      one: 'Synced 1 day ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cloudPendingOps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count changes waiting',
+      one: '1 change waiting',
+      zero: 'all changes uploaded',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cloudStorageUsed(String used, String quota) {
+    return '$used of $quota used';
+  }
+
+  @override
+  String get cloudSyncNowLabel => 'Sync now';
+
+  @override
+  String get cloudSyncNowValue => 'Upload pending changes and fetch updates';
+
+  @override
+  String get cloudPlanLabel => 'Plan';
+
+  @override
+  String get cloudEntitlementSourcePro => 'Included with Plantly Pro';
+
+  @override
+  String get cloudEntitlementSourceCloud => 'Plantly Inventory Cloud';
+
+  @override
+  String cloudRenewsOn(String date) {
+    return 'renews $date';
+  }
+
+  @override
+  String get cloudPlayPlansTitle => 'Subscribe in Google Play';
+
+  @override
+  String get cloudPlayPlanMonthly => 'Monthly';
+
+  @override
+  String get cloudPlayPlanYearly => 'Yearly';
+
+  @override
+  String cloudPlayPerMonth(String price) {
+    return '$price / month';
+  }
+
+  @override
+  String cloudPlayPerYear(String price) {
+    return '$price / year';
+  }
+
+  @override
+  String get cloudPlayLoadingPlans => 'Loading prices from Google Play…';
+
+  @override
+  String get cloudPlayUnavailable =>
+      'Google Play billing isn\'t available on this device right now.';
+
+  @override
+  String get cloudPlayRetry => 'Retry';
+
+  @override
+  String get cloudPlayActivating => 'Activating…';
+
+  @override
+  String get cloudPlayManageLabel => 'Manage subscription in Google Play';
+
+  @override
+  String get cloudPlayManageValue =>
+      'Cancel, pause or change your plan in Google Play';
+
+  @override
+  String get cloudEntitlementViaPlay => 'via Google Play';
+
+  @override
+  String get cloudPlayAlreadyEntitledTitle =>
+      'You already have Inventory Cloud';
+
+  @override
+  String get cloudPlayAlreadyEntitledBody =>
+      'You already have Inventory Cloud (included with Plantly Pro / your web subscription). The Google Play purchase was not activated and will be refunded automatically by Google within 3 days.';
+
+  @override
+  String get cloudPlayPending =>
+      'Your payment is pending. Inventory Cloud activates once Google Play confirms it.';
+
+  @override
+  String get cloudPlayVerified => 'Inventory Cloud is active.';
+
+  @override
+  String get cloudPlayVerifyFailed =>
+      'Couldn\'t confirm your purchase with plantly.ro.';
+
+  @override
+  String get cloudPlayPurchaseFailed =>
+      'Google Play couldn\'t complete the purchase.';
+
+  @override
+  String get cloudPlayTokenOwnedByOther =>
+      'This Google Play subscription belongs to another plantly.ro account.';
+
+  @override
+  String get cloudCollectionLabel => 'Collection';
+
+  @override
+  String get cloudLastErrorLabel => 'Last error';
+
+  @override
+  String get cloudAccountLabel => 'Account';
+
+  @override
+  String cloudAccountValue(String username) {
+    return 'Signed in as $username · tap to sign out';
+  }
+
+  @override
+  String get cloudSignOutTitle => 'Sign out of plantly.ro?';
+
+  @override
+  String cloudSignOutBody(String username) {
+    return 'Cloud sync pauses until $username signs in again. Your plants stay on this device.';
+  }
+
+  @override
+  String get cloudSignOut => 'Sign out';
+
+  @override
+  String get cloudUnlinkLabel => 'Unlink this device';
+
+  @override
+  String get cloudUnlinkValue =>
+      'Stop syncing here; keeps local and server data';
+
+  @override
+  String get cloudUnlinkTitle => 'Unlink this device?';
+
+  @override
+  String get cloudUnlinkBody =>
+      'Sync stops on this device. Nothing is deleted: your plants stay here and your data stays in your plantly.ro account. Sign in again any time to relink.';
+
+  @override
+  String get cloudUnlink => 'Unlink';
+
+  @override
+  String get cloudUnlinked => 'Device unlinked';
+
+  @override
+  String get cloudLoginGoogle => 'Continue with Google';
+
+  @override
+  String get cloudLoginFacebook => 'Continue with Facebook';
+
+  @override
+  String get cloudLoginOr => 'or';
+
+  @override
+  String get cloudLoginOauthWaiting =>
+      'Finish signing in in your browser — we\'ll pick it up here.';
+
+  @override
+  String get cloudSyncOffHere =>
+      'Sync is off on this device — tap to turn it on';
+
+  @override
+  String cloudHeldByOther(String username) {
+    return 'This device holds plants synced by $username.';
+  }
+
+  @override
+  String cloudMoveToMeLabel(String username) {
+    return 'Move this device\'s plants to $username\'s cloud';
+  }
+
+  @override
+  String cloudMoveToMeValue(String username) {
+    return 'They leave $username\'s collection and sync to yours';
+  }
+
+  @override
+  String get cloudMoveConfirmTitle => 'Move plants to your cloud?';
+
+  @override
+  String cloudMoveConfirmBody(String from, String to) {
+    return 'Everything on this device leaves $from\'s collection and is uploaded to $to\'s. $from keeps what was already synced from other devices.';
+  }
+
+  @override
+  String get cloudMove => 'Move';
+
+  @override
+  String cloudStartEmptyLabel(String username) {
+    return 'Start empty for $username';
+  }
+
+  @override
+  String cloudStartEmptyValue(String username) {
+    return '$username\'s plants stay hidden on this device; sign $username in again to see them';
+  }
+
+  @override
+  String get cloudErrCollectionUnavailable =>
+      'This collection is no longer available — unlink this device and link it again';
+
+  @override
+  String get cloudErrQuotaExceeded =>
+      'Cloud storage is full — new photos stay on this device until space frees up';
+
+  @override
+  String get cloudErrOpTooLarge =>
+      'One change is too large to upload and was skipped';
+
+  @override
+  String cloudErrOpTooLargeDetail(String detail) {
+    return 'One change is too large to upload and was skipped ($detail)';
+  }
+
+  @override
+  String get cloudErrRetrying => 'Server busy — retrying shortly';
+
+  @override
+  String get cloudErrOffline => 'Offline — will sync when you are back online';
+
+  @override
+  String get cloudErrGeneric => 'Sync failed — will retry';
+
+  @override
+  String get shellSelectPlant => 'Select a plant to see its care history';
+
+  @override
+  String get shellSelectSpace => 'Select a space to see what grows there';
+
+  @override
+  String get shellSelectSection => 'Choose a section on the left';
+
+  @override
+  String get historyColDate => 'Date';
+
+  @override
+  String get historyColCare => 'Care';
+
+  @override
+  String get historyColDetails => 'Details';
+
+  @override
+  String get homeCustomise => 'Customise';
+
+  @override
+  String get homeSearchHint => 'Search plants…';
+
+  @override
+  String get detailPrevPlant => 'Previous plant';
+
+  @override
+  String get detailNextPlant => 'Next plant';
+
+  @override
+  String get detailMoreCareActions => 'More care actions';
+
+  @override
+  String get detailColCare => 'Care';
+
+  @override
+  String get detailColEvery => 'Every';
+
+  @override
+  String get detailColNextDue => 'Next due';
+
+  @override
+  String get detailFactSpace => 'Space';
+
+  @override
+  String get detailFactAcquired => 'Acquired';
+
+  @override
+  String get detailFactPotSize => 'Pot size';
+
+  @override
+  String get detailFactTags => 'Tags';
+
+  @override
+  String get detailFactNotes => 'Notes';
+
+  @override
+  String detailEveryNDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n days',
+      one: '1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spaceCardPlantCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n plants',
+      one: '1 plant',
+      zero: 'No plants',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeNoPlantsBodyDesktop =>
+      'Add one with the button in the side bar. You can set up reminders once it lands.';
+
+  @override
+  String get shareSwitcherTitle => 'Collections';
+
+  @override
+  String get shareSwitcherTooltip => 'Switch collection';
+
+  @override
+  String get shareMineSection => 'My collections';
+
+  @override
+  String get shareSharedWithMe => 'Shared with me';
+
+  @override
+  String get shareRoleOwner => 'Owner';
+
+  @override
+  String get shareRoleEditor => 'Editor';
+
+  @override
+  String get shareJoinWithCode => 'Join with code…';
+
+  @override
+  String get shareJoinTitle => 'Join a shared collection';
+
+  @override
+  String get shareJoinBody =>
+      'Enter the 8-character code from the invite you received.';
+
+  @override
+  String get shareJoinCodeLabel => 'Invite code';
+
+  @override
+  String get shareJoinCodeInvalid =>
+      'Codes are 8 letters or digits (no I, O, 0 or 1).';
+
+  @override
+  String get shareJoinButton => 'Join';
+
+  @override
+  String get shareJoinSignInFirst =>
+      'You will be asked to sign in to plantly.ro first.';
+
+  @override
+  String get shareJoinPaywallNote =>
+      'You can use this shared collection — it runs on the owner’s plan. Your own plants stay local until you subscribe.';
+
+  @override
+  String shareJoined(String name) {
+    return 'Joined $name';
+  }
+
+  @override
+  String get shareJoinErrInvalid =>
+      'This invite code is not valid — it may have expired or already been used.';
+
+  @override
+  String get shareJoinErrAlreadyMember =>
+      'You are already a member of this collection.';
+
+  @override
+  String get shareSectionTitle => 'Sharing';
+
+  @override
+  String get shareSectionIntro =>
+      'Invite family or a plant-sitter to log care in this collection with you.';
+
+  @override
+  String get shareActiveLabel => 'Active collection';
+
+  @override
+  String shareActiveValue(String name, String role) {
+    return '$name · $role';
+  }
+
+  @override
+  String shareMembersCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n members',
+      one: '1 member',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shareInviteLabel => 'Invite someone';
+
+  @override
+  String get shareInviteValue => 'Create a code they can enter in their app';
+
+  @override
+  String shareInviteTitle(String name) {
+    return 'Invite to $name';
+  }
+
+  @override
+  String get shareInviteCodeHint =>
+      'Share this code or link. It works once and expires in 7 days.';
+
+  @override
+  String get shareInviteCopy => 'Copy';
+
+  @override
+  String get shareInviteCopied => 'Copied';
+
+  @override
+  String get shareInviteShare => 'Share';
+
+  @override
+  String shareInviteMessage(String name, String url, String code) {
+    return 'Join my plant collection “$name” in Plantly Inventory: $url (code $code)';
+  }
+
+  @override
+  String get shareInviteCreating => 'Creating invite…';
+
+  @override
+  String get shareMembersLabel => 'Members';
+
+  @override
+  String get shareMembersValue => 'See who has access';
+
+  @override
+  String shareMembersTitle(String name) {
+    return 'Members of $name';
+  }
+
+  @override
+  String shareMemberJoined(String date) {
+    return 'Joined $date';
+  }
+
+  @override
+  String get shareMemberYou => 'you';
+
+  @override
+  String get shareRemoveMember => 'Remove';
+
+  @override
+  String shareRemoveMemberTitle(String username) {
+    return 'Remove $username?';
+  }
+
+  @override
+  String get shareRemoveMemberBody =>
+      'They lose access to this collection. What they logged stays.';
+
+  @override
+  String shareRemoved(String username) {
+    return '$username removed';
+  }
+
+  @override
+  String get shareLeaveLabel => 'Leave collection';
+
+  @override
+  String shareLeaveValue(String name) {
+    return 'Stop seeing $name on this device';
+  }
+
+  @override
+  String shareLeaveTitle(String name) {
+    return 'Leave $name?';
+  }
+
+  @override
+  String get shareLeaveBody => 'You can rejoin later with a new invite.';
+
+  @override
+  String get shareLeave => 'Leave';
+
+  @override
+  String shareLeft(String name) {
+    return 'You left $name';
+  }
+
+  @override
+  String shareRemovedFromCollection(String name) {
+    return 'You were removed from $name';
+  }
+
+  @override
+  String shareByActor(String name) {
+    return 'by $name';
+  }
+
+  @override
+  String get shareByOtherMember => 'by another member';
+
+  @override
+  String shareSwitched(String name) {
+    return 'Switched to $name';
+  }
+
+  @override
+  String get shareSwitchUnavailable =>
+      'Switching needs cloud sync to be on for this account.';
+
+  @override
+  String shareMeRowValue(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n collections',
+      one: '1 collection',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shareNoMembers => 'No members yet';
+
+  @override
+  String get shareMembersError => 'Could not load members';
+
+  @override
+  String shareErrTooManyInvites(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'You already have $n active invites — wait for one to be used or to expire.',
+      one:
+          'You already have 1 active invite — wait for it to be used or to expire.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shareErrOwnerOnly => 'Only the owner can invite people.';
+
+  @override
+  String get shareErrOwnerCannotLeave =>
+      'The owner can’t leave their own collection.';
+
+  @override
+  String get shareErrMemberNotFound => 'That person is no longer a member.';
+
+  @override
+  String get shareErrOwnerLapsed =>
+      'The owner’s plan lapsed — this shared collection is paused until they renew.';
+
+  @override
+  String cloudErrRejected(int n, String reason) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n changes could not be synced ($reason)',
+      one: '1 change could not be synced ($reason)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cloudRejDetailsLabel => 'Details';
+
+  @override
+  String get cloudRejDetailsValue => 'See which changes the server refused';
+
+  @override
+  String get cloudRejScreenTitle => 'Changes not synced';
+
+  @override
+  String get cloudRejScreenIntro =>
+      'The server refused these changes. Retry sends them all again; Dismiss keeps them on this device only.';
+
+  @override
+  String get cloudRejEmpty => 'Nothing here — every change has synced.';
+
+  @override
+  String get cloudRejRetry => 'Retry all';
+
+  @override
+  String get cloudRejDismiss => 'Dismiss all';
+
+  @override
+  String get cloudRejKindRetrying => 'retrying';
+
+  @override
+  String get cloudRejKindParked => 'gave up';
+
+  @override
+  String cloudRejRequeued(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n changes queued again',
+      one: '1 change queued again',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get plantlyLoginSubtitleCloud =>
+      'Use your plantly.ro account for cloud backup & sync.';
+
+  @override
+  String get cloudRejRetryValue => 'Send every listed change again';
+
+  @override
+  String get cloudRejDismissValue => 'Keep them on this device only';
+
+  @override
+  String get gateHeadline => 'Your collection, in sync everywhere';
+
+  @override
+  String get gateValueProp =>
+      'The web version of Plantly Inventory is part of Inventory Cloud: your plants, care history and photos, saved in your plantly.ro account and kept in sync between phone and browser.';
+
+  @override
+  String get gateSignIn => 'Sign in';
+
+  @override
+  String get gateAndroidTitle => 'Prefer your phone?';
+
+  @override
+  String get gateAndroidBody => 'The Android app is free and works offline.';
+
+  @override
+  String get gateAndroidCloudLine =>
+      'Subscribe to Inventory Cloud and everything syncs between phone and web.';
+
+  @override
+  String get gatePlayBadgeLabel => 'Get it on Google Play';
+
+  @override
+  String gateHello(String username) {
+    return 'Hi, $username. The web version is included in Inventory Cloud.';
+  }
+
+  @override
+  String gatePlanMonthly(String price) {
+    return '$price/month';
+  }
+
+  @override
+  String gatePlanYearly(String price) {
+    return '$price/year';
+  }
+
+  @override
+  String get gatePlansOr => 'or';
+
+  @override
+  String get gatePlansFallback => '€1.99/month or €17.99/year';
+
+  @override
+  String get gatePlansLoading => 'Loading prices…';
+
+  @override
+  String get gateSubscribe => 'Subscribe on plantly.ro';
+
+  @override
+  String get gateRetry => 'I already subscribed — check again';
+
+  @override
+  String get gateIncludedInPro => 'Included in Plantly Pro.';
+
+  @override
+  String get gateDataKept =>
+      'Plants saved in this browser stay here; sync resumes as soon as you subscribe.';
+
+  @override
+  String get gateSignOutLink => 'Not you? Sign out';
+
+  @override
+  String get gateUnreachableTitle => 'We can\'t verify your subscription';
+
+  @override
+  String get gateUnreachableBody =>
+      'plantly.ro can\'t be reached right now. Check your connection and try again.';
+
+  @override
+  String get gateTryAgain => 'Try again';
+
+  @override
+  String get gateChecking => 'Checking your subscription…';
+
+  @override
+  String get gateOfflineBanner =>
+      'Offline — changes will sync when you\'re back online';
+
+  @override
+  String get shareRoleViewer => 'Viewer';
+
+  @override
+  String get shareErrReadOnly => 'View only — ask the owner for edit rights.';
+
+  @override
+  String get shareReadOnlyBanner => 'View only — ask the owner for edit rights';
+
+  @override
+  String get shareErrDeviceRevoked =>
+      'Device disconnected — this device was signed out of cloud sync. Sign in again to reconnect.';
+
+  @override
+  String get shareErrTooManyDevices =>
+      'Too many devices on this account — disconnect one in Me → Cloud → Devices, then try again.';
+
+  @override
+  String get shareErrDeviceLookupFailed =>
+      'Could not verify this device right now — retrying shortly.';
+
+  @override
+  String get shareErrCollectionDeleted =>
+      'This collection was deleted by its owner.';
+
+  @override
+  String get shareErrCloudRequiredNewOwner =>
+      'The new owner needs an active Plantly Cloud plan before the collection can be transferred.';
+
+  @override
+  String get shareErrNotAMember =>
+      'You are no longer a member of this collection.';
+
+  @override
+  String get assigneeLabel => 'Assignee';
+
+  @override
+  String get assigneeEveryone => 'Everyone';
+
+  @override
+  String get assigneeYouSuffix => '(you)';
+
+  @override
+  String get assigneeUnknown => 'Former member';
+
+  @override
+  String get assigneeHint =>
+      'Reminders for this task only reach the assignee’s devices.';
+
+  @override
+  String assigneeTooltip(String name) {
+    return 'Assigned to $name';
+  }
+
+  @override
+  String get shareMembersActions => 'Member actions';
+
+  @override
+  String get shareMembersMakeEditor => 'Make editor';
+
+  @override
+  String get shareMembersMakeViewer => 'Make viewer';
+
+  @override
+  String shareMembersRoleChanged(String username, String role) {
+    return '$username is now $role';
+  }
+
+  @override
+  String get shareTransferAction => 'Transfer ownership';
+
+  @override
+  String shareTransferTitle(String name, String username) {
+    return 'Transfer $name to $username?';
+  }
+
+  @override
+  String shareTransferBody(String username) {
+    return '$username becomes the owner of this collection. Their Plantly Cloud plan and storage quota apply from now on. You stay in it as an editor.';
+  }
+
+  @override
+  String get shareTransferConfirm => 'Transfer';
+
+  @override
+  String shareTransferDone(String username, String name) {
+    return '$username now owns $name';
+  }
+
+  @override
+  String get shareInvitesSection => 'Invites';
+
+  @override
+  String get shareInviteNew => 'New invite';
+
+  @override
+  String get shareInviteDefaultLabel => 'Invite';
+
+  @override
+  String get shareInvitesEmpty =>
+      'No active invites. Create one to let someone join.';
+
+  @override
+  String get shareInvitesError => 'Could not load invites';
+
+  @override
+  String shareInviteUses(int used, int max) {
+    return '$used/$max used';
+  }
+
+  @override
+  String shareInviteExpiresDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'expires in $n days',
+      one: 'expires in 1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String shareInviteExpiresHours(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'expires in $n hours',
+      one: 'expires in 1 hour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shareInviteExpiresSoon => 'expires soon';
+
+  @override
+  String get shareInviteExpired => 'expired';
+
+  @override
+  String get shareInviteRevoke => 'Revoke';
+
+  @override
+  String get shareInviteRevokeTitle => 'Revoke this invite?';
+
+  @override
+  String get shareInviteRevokeBody =>
+      'Anyone who still has the code won’t be able to join with it.';
+
+  @override
+  String get shareInviteRevoked => 'Invite revoked';
+
+  @override
+  String get shareInviteFormHint =>
+      'Choose what the invite allows, then share the code.';
+
+  @override
+  String get shareInviteRoleLabel => 'Role';
+
+  @override
+  String get shareInviteRoleHint =>
+      'Editors add plants and log care. Viewers only look.';
+
+  @override
+  String get shareInvitePresetSingle => 'Single use · 7 days';
+
+  @override
+  String get shareInvitePresetFamily => 'Family';
+
+  @override
+  String get shareInvitePresetCustom => 'Custom';
+
+  @override
+  String get shareInviteMaxUses => 'Max uses';
+
+  @override
+  String get shareInviteTtlDays => 'Valid for (days)';
+
+  @override
+  String get shareInviteLabelField => 'Label (optional)';
+
+  @override
+  String get shareInviteLabelHint => 'e.g. Grandma, plant-sitter';
+
+  @override
+  String get shareInviteCreate => 'Create invite';
+
+  @override
+  String shareInviteSummary(String role, int uses, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      uses,
+      locale: localeName,
+      other: '$uses uses',
+      one: 'single use',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days',
+      one: '1 day',
+    );
+    return '$role · $_temp0 · $_temp1';
+  }
+
+  @override
+  String shareInviteMaxUsesLabel(int uses) {
+    String _temp0 = intl.Intl.pluralLogic(
+      uses,
+      locale: localeName,
+      other: '$uses uses',
+      one: 'single use',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String stepperDecrease(String what) {
+    return 'Decrease $what';
+  }
+
+  @override
+  String stepperIncrease(String what) {
+    return 'Increase $what';
+  }
+
+  @override
+  String get shareInviteCodeShownOnce =>
+      'Share this code or link now — it won’t be shown again.';
+
+  @override
+  String get collectionActions => 'Collection actions';
+
+  @override
+  String get collectionRenameAction => 'Rename';
+
+  @override
+  String get collectionRenameTitle => 'Rename collection';
+
+  @override
+  String get collectionRenameField => 'Name';
+
+  @override
+  String get collectionRenameInvalid => 'Use 1 to 60 characters.';
+
+  @override
+  String get collectionRenameSave => 'Save';
+
+  @override
+  String collectionRenamed(String name) {
+    return 'Renamed to $name';
+  }
+
+  @override
+  String get collectionDeleteAction => 'Delete collection';
+
+  @override
+  String collectionDeleteTitle(String name) {
+    return 'Delete $name?';
+  }
+
+  @override
+  String get collectionDeleteBody =>
+      'Members lose access and the shared data on the server is deleted. The copy on this device stays.';
+
+  @override
+  String get collectionDeleteConfirm => 'Delete';
+
+  @override
+  String collectionDeleted(String name) {
+    return '$name deleted';
+  }
+
+  @override
+  String get shareV2Paused => 'Paused';
+
+  @override
+  String get devicesTitle => 'Devices';
+
+  @override
+  String get devicesIntro =>
+      'Every device signed in to cloud sync with this account. Disconnect one you no longer use — it stops syncing and has to sign in again.';
+
+  @override
+  String get devicesRowLabel => 'Devices';
+
+  @override
+  String get devicesRowValue => 'Manage which devices sync this account';
+
+  @override
+  String get devicesThisDevice => 'This device';
+
+  @override
+  String get devicesRevoke => 'Disconnect';
+
+  @override
+  String get devicesRevokeConfirmTitle => 'Disconnect this device?';
+
+  @override
+  String devicesRevokeConfirmBody(String name) {
+    return '$name will stop syncing and must sign in again to reconnect. Its plants stay on that device.';
+  }
+
+  @override
+  String get devicesRevoked => 'Device disconnected';
+
+  @override
+  String get devicesRevokeFailed =>
+      'Could not disconnect the device. Try again.';
+
+  @override
+  String get devicesEmpty => 'Only this device';
+
+  @override
+  String get devicesError => 'Could not load your devices.';
+
+  @override
+  String get devicesRetry => 'Retry';
+
+  @override
+  String get devicesSignedOut =>
+      'Sign in to plantly.ro to manage your devices.';
+
+  @override
+  String devicesLastSeen(String when) {
+    return 'last seen $when';
+  }
+
+  @override
+  String get devicesPlatformAndroid => 'Android';
+
+  @override
+  String get devicesPlatformIos => 'iPhone / iPad';
+
+  @override
+  String get devicesPlatformWeb => 'Web';
+
+  @override
+  String get devicesPlatformDesktop => 'Desktop';
+
+  @override
+  String get devicesPlatformUnknown => 'Device';
 }

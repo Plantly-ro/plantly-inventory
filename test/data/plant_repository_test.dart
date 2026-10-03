@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
 import 'package:plantly_inventory/data/repositories/care_event_repository.dart';
+import 'package:plantly_inventory/data/repositories/photo_repository.dart';
 import 'package:plantly_inventory/data/repositories/plant_repository.dart';
 import 'package:plantly_inventory/data/repositories/species_repository.dart';
 import 'package:plantly_inventory/sync/hlc.dart';
@@ -50,6 +51,23 @@ void main() {
 
   tearDown(() async {
     await db.close();
+  });
+
+  group('PlantRepository.softDelete cascade', () {
+    test('detaches the plant\'s photos with ops keyed like PlantPhotoRepository.detach', () async {
+      final plant = await plants.create(nickname: 'With photo');
+      final sha = 'ab' * 32;
+      await PlantPhotoRepository(db: db, opLog: opLog).attach(plant.id, sha);
+      final join = (await db.select(db.plantPhotos).get()).single;
+
+      await plants.softDelete(plant.id);
+
+      final removes = (await db.select(db.syncOps).get()).where((o) => o.field == 'removed_hlc').toList();
+      expect(removes, hasLength(1));
+      expect(removes.single.entity, 'plant_photos');
+      expect(removes.single.entityId, join.id, reason: 'CLOUD-SYNC-CONTRACT §2.3: OR-Set removes address the add-row');
+      expect((await db.select(db.plantPhotos).get()).single.removedHlc, isNotNull);
+    });
   });
 
   group('PlantRepository.create', () {
@@ -204,6 +222,58 @@ void main() {
       await synced.duplicate(p.id, nicknameOverride: 'Copy');
       expect(sync.calls, 1);
       expect(sync.fake.calls, hasLength(2));
+    });
+  });
+
+  group('PlantRepository.edit — ops only for fields that changed', () {
+    Future<List<SyncOpRow>> fieldOps() async =>
+        (await db.select(db.syncOps).get()).where((o) => o.field != kWholeRowField).toList();
+
+    test('nickname-only edit → exactly one field op', () async {
+      final plant = await plants.create(nickname: 'Bob', notes: 'shady corner', speciesId: 'Monstera');
+      await plants.edit(plant.id, nickname: 'Bobby', notes: 'shady corner', locationId: null, speciesId: 'Monstera');
+      final ops = await fieldOps();
+      expect(ops, hasLength(1));
+      expect(ops.single.field, 'nickname');
+      expect(json.decode(ops.single.valueJson!), 'Bobby');
+      final after = await plants.byId(plant.id);
+      expect(after!.nickname, 'Bobby');
+      expect(Hlc.parse(after.updatedHlc) > Hlc.parse(plant.updatedHlc), isTrue);
+    });
+
+    test('no-op edit → no ops and the row HLC is untouched', () async {
+      final plant = await plants.create(nickname: 'Bob', notes: null, speciesId: null);
+      await plants.edit(plant.id, nickname: 'Bob', notes: null, locationId: null, speciesId: null);
+      expect(await fieldOps(), isEmpty);
+      expect((await plants.byId(plant.id))!.updatedHlc, plant.updatedHlc);
+    });
+
+    test('two changed fields → two ops, in field order', () async {
+      final plant = await plants.create(nickname: 'Bob');
+      await plants.edit(plant.id, nickname: 'Bob', notes: 'new', locationId: 'loc-1', speciesId: null);
+      expect((await fieldOps()).map((o) => o.field), ['notes', 'location_id']);
+    });
+
+    test('setPin: unchanged coordinates → no ops; a move → two ops', () async {
+      final plant = await plants.create(nickname: 'Pinned');
+      await plants.setPin(plant.id, null, null);
+      expect(await fieldOps(), isEmpty);
+      await plants.setPin(plant.id, 0.25, 0.5);
+      expect((await fieldOps()).map((o) => o.field), ['pin_x', 'pin_y']);
+    });
+  });
+
+  group('CareEventRepository.edit — ops only for fields that changed', () {
+    test('dose-only edit → exactly one field op', () async {
+      final plant = await plants.create(nickname: 'Fiddle');
+      final event = await careEvents.record(plantId: plant.id, type: 'water', doneAt: 1000, dose: '200ml', product: 'p');
+      await careEvents.edit(event.id, type: 'water', doneAt: 1000, notes: null, dose: '250ml', product: 'p');
+      final ops = (await db.select(db.syncOps).get()).where((o) => o.field != kWholeRowField).toList();
+      expect(ops, hasLength(1));
+      expect(ops.single.field, 'dose');
+      expect(json.decode(ops.single.valueJson!), '250ml');
+      await careEvents.edit(event.id, type: 'water', doneAt: 1000, notes: null, dose: '250ml', product: 'p');
+      expect((await db.select(db.syncOps).get()).where((o) => o.field != kWholeRowField), hasLength(1));
     });
   });
 }

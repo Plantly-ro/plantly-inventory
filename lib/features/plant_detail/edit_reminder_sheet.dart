@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,6 +9,9 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
+import '../../app/breakpoints.dart';
+import '../../shared/sheet_chrome.dart';
+import 'assignee_picker.dart';
 
 enum _Unit { minutes, hours, days, months }
 
@@ -50,6 +54,7 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
   late _Unit _unit;
   late String _recurrenceMode;
   late DateTime _firstDue;
+  String? _assigneeUserId;
   bool _saving = false;
   String? _error;
 
@@ -60,6 +65,7 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
     _unit = conv.unit;
     _interval = TextEditingController(text: _format(conv.count));
     _recurrenceMode = widget.schedule.recurrenceMode;
+    _assigneeUserId = widget.schedule.assigneeUserId;
     _firstDue = widget.schedule.nextDueAt != null
         ? DateTime.fromMillisecondsSinceEpoch(widget.schedule.nextDueAt!, isUtc: true).toLocal()
         : DateTime.now().add(const Duration(days: 1));
@@ -92,6 +98,7 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
             baseIntervalDays: _unit.toDays(count),
             recurrenceMode: _recurrenceMode,
             nextDueAt: _firstDue.toUtc(),
+            assigneeUserId: Value(_assigneeUserId),
           );
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -150,25 +157,15 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: surface.bg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(PlantlyTokens.radius2xl)),
-        ),
+      child: SheetChrome(
+        surface: surface,
+        title: t.editReminderTitle(careTypeLabel(t, ct).toLowerCase()),
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  height: 4,
-                  width: 40,
-                  decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              const SizedBox(height: 14),
+        handleGap: 14,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        scrollable: true,
+        children: [
+              if (!context.isDesktop) ...[
               Row(
                 children: [
                   Icon(ct.icon, color: surface.green),
@@ -180,6 +177,7 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
                 ],
               ),
               const SizedBox(height: 14),
+              ],
               _label(t.addReminderEvery, surface),
               const SizedBox(height: 8),
               Row(
@@ -244,6 +242,14 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
                   ),
                 ),
               ),
+              if (ref.watch(assigneePickerVisibleProvider)) ...[
+                const SizedBox(height: 14),
+                AssigneePicker(
+                  value: _assigneeUserId,
+                  surface: surface,
+                  onChanged: (v) => setState(() => _assigneeUserId = v),
+                ),
+              ],
               if (_error != null) ...[
                 const SizedBox(height: 10),
                 Text(_error!, style: TextStyle(color: surface.terra, fontSize: 12)),
@@ -283,8 +289,6 @@ class _EditReminderSheetState extends ConsumerState<EditReminderSheet> {
                 ],
               ),
             ],
-          ),
-        ),
       ),
     );
   }

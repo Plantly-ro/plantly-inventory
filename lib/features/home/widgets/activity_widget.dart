@@ -8,6 +8,7 @@ import '../../../theme/tokens.dart';
 import '../../activity/activity_screen.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../data/care_types.dart';
+import '../../../shared/actor_label.dart';
 import '../../../shared/care_type_labels.dart';
 import 'widget_shell.dart';
 
@@ -18,6 +19,7 @@ class ActivityWidget extends ConsumerWidget {
     super.key,
     required this.surface,
     this.editing = false,
+    this.padInner = true,
     this.onMoveUp,
     this.onMoveDown,
     this.onRemove,
@@ -25,6 +27,7 @@ class ActivityWidget extends ConsumerWidget {
 
   final PlantlySurface surface;
   final bool editing;
+  final bool padInner;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
   final VoidCallback? onRemove;
@@ -46,6 +49,7 @@ class ActivityWidget extends ConsumerWidget {
     return WidgetShell(
       surface: surface,
       editing: editing,
+      padInner: padInner,
       onMoveUp: onMoveUp,
       onMoveDown: onMoveDown,
       onRemove: onRemove,
@@ -86,7 +90,7 @@ class ActivityWidget extends ConsumerWidget {
             child: Column(
               children: [
                 for (var i = 0; i < recent.length; i++)
-                  _row(t, locale, types, recent[i], plantsById, i == recent.length - 1),
+                  _row(ref, t, locale, types, recent[i], plantsById, i == recent.length - 1),
               ],
             ),
           );
@@ -96,6 +100,7 @@ class ActivityWidget extends ConsumerWidget {
   }
 
   Widget _row(
+    WidgetRef ref,
     AppLocalizations t,
     String locale,
     List<CareType> types,
@@ -105,7 +110,7 @@ class ActivityWidget extends ConsumerWidget {
   ) {
     final plant = plantsById[event.plantId];
     final title = plant?.nickname ?? event.plantId;
-    final subtitle = _describe(t, types, event);
+    final subtitle = withActor(_describe(t, types, event), careEventActorLabel(ref, t, event));
     final when = _formatRelative(
       t,
       locale,

@@ -5603,6 +5603,17 @@ class $CareEventsTable extends CareEvents
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _actorUserIdMeta = const VerificationMeta(
+    'actorUserId',
+  );
+  @override
+  late final GeneratedColumn<String> actorUserId = GeneratedColumn<String>(
+    'actor_user_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5617,6 +5628,7 @@ class $CareEventsTable extends CareEvents
     updatedHlc,
     deletedAt,
     deviceId,
+    actorUserId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5713,6 +5725,15 @@ class $CareEventsTable extends CareEvents
     } else if (isInserting) {
       context.missing(_deviceIdMeta);
     }
+    if (data.containsKey('actor_user_id')) {
+      context.handle(
+        _actorUserIdMeta,
+        actorUserId.isAcceptableOrUnknown(
+          data['actor_user_id']!,
+          _actorUserIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -5770,6 +5791,10 @@ class $CareEventsTable extends CareEvents
         DriftSqlType.string,
         data['${effectivePrefix}device_id'],
       )!,
+      actorUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}actor_user_id'],
+      ),
     );
   }
 
@@ -5792,6 +5817,13 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
   final String updatedHlc;
   final int? deletedAt;
   final String deviceId;
+
+  /// plantly.ro user id of whoever logged the event (shared collections,
+  /// CLOUD-SYNC-CONTRACT §3 "who watered"). Device-local: set from the
+  /// pulled op's `user_id` for remote rows and from the signed-in session
+  /// for local ones; NOT on the wire (`entity_codecs.dart` excludes it —
+  /// the server stamps `user_id` from the bearer token).
+  final String? actorUserId;
   const CareEventRow({
     required this.id,
     required this.tenantId,
@@ -5805,6 +5837,7 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
     required this.updatedHlc,
     this.deletedAt,
     required this.deviceId,
+    this.actorUserId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5831,6 +5864,9 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
       map['deleted_at'] = Variable<int>(deletedAt);
     }
     map['device_id'] = Variable<String>(deviceId);
+    if (!nullToAbsent || actorUserId != null) {
+      map['actor_user_id'] = Variable<String>(actorUserId);
+    }
     return map;
   }
 
@@ -5856,6 +5892,9 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
           ? const Value.absent()
           : Value(deletedAt),
       deviceId: Value(deviceId),
+      actorUserId: actorUserId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(actorUserId),
     );
   }
 
@@ -5877,6 +5916,7 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
       updatedHlc: serializer.fromJson<String>(json['updatedHlc']),
       deletedAt: serializer.fromJson<int?>(json['deletedAt']),
       deviceId: serializer.fromJson<String>(json['deviceId']),
+      actorUserId: serializer.fromJson<String?>(json['actorUserId']),
     );
   }
   @override
@@ -5895,6 +5935,7 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
       'updatedHlc': serializer.toJson<String>(updatedHlc),
       'deletedAt': serializer.toJson<int?>(deletedAt),
       'deviceId': serializer.toJson<String>(deviceId),
+      'actorUserId': serializer.toJson<String?>(actorUserId),
     };
   }
 
@@ -5911,6 +5952,7 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
     String? updatedHlc,
     Value<int?> deletedAt = const Value.absent(),
     String? deviceId,
+    Value<String?> actorUserId = const Value.absent(),
   }) => CareEventRow(
     id: id ?? this.id,
     tenantId: tenantId ?? this.tenantId,
@@ -5924,6 +5966,7 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
     updatedHlc: updatedHlc ?? this.updatedHlc,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
     deviceId: deviceId ?? this.deviceId,
+    actorUserId: actorUserId.present ? actorUserId.value : this.actorUserId,
   );
   CareEventRow copyWithCompanion(CareEventsCompanion data) {
     return CareEventRow(
@@ -5941,6 +5984,9 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
           : this.updatedHlc,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
+      actorUserId: data.actorUserId.present
+          ? data.actorUserId.value
+          : this.actorUserId,
     );
   }
 
@@ -5958,7 +6004,8 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
           ..write('photoSha: $photoSha, ')
           ..write('updatedHlc: $updatedHlc, ')
           ..write('deletedAt: $deletedAt, ')
-          ..write('deviceId: $deviceId')
+          ..write('deviceId: $deviceId, ')
+          ..write('actorUserId: $actorUserId')
           ..write(')'))
         .toString();
   }
@@ -5977,6 +6024,7 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
     updatedHlc,
     deletedAt,
     deviceId,
+    actorUserId,
   );
   @override
   bool operator ==(Object other) =>
@@ -5993,7 +6041,8 @@ class CareEventRow extends DataClass implements Insertable<CareEventRow> {
           other.photoSha == this.photoSha &&
           other.updatedHlc == this.updatedHlc &&
           other.deletedAt == this.deletedAt &&
-          other.deviceId == this.deviceId);
+          other.deviceId == this.deviceId &&
+          other.actorUserId == this.actorUserId);
 }
 
 class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
@@ -6009,6 +6058,7 @@ class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
   final Value<String> updatedHlc;
   final Value<int?> deletedAt;
   final Value<String> deviceId;
+  final Value<String?> actorUserId;
   final Value<int> rowid;
   const CareEventsCompanion({
     this.id = const Value.absent(),
@@ -6023,6 +6073,7 @@ class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
     this.updatedHlc = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.deviceId = const Value.absent(),
+    this.actorUserId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CareEventsCompanion.insert({
@@ -6038,6 +6089,7 @@ class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
     required String updatedHlc,
     this.deletedAt = const Value.absent(),
     required String deviceId,
+    this.actorUserId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        tenantId = Value(tenantId),
@@ -6059,6 +6111,7 @@ class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
     Expression<String>? updatedHlc,
     Expression<int>? deletedAt,
     Expression<String>? deviceId,
+    Expression<String>? actorUserId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -6074,6 +6127,7 @@ class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
       if (updatedHlc != null) 'updated_hlc': updatedHlc,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (deviceId != null) 'device_id': deviceId,
+      if (actorUserId != null) 'actor_user_id': actorUserId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -6091,6 +6145,7 @@ class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
     Value<String>? updatedHlc,
     Value<int?>? deletedAt,
     Value<String>? deviceId,
+    Value<String?>? actorUserId,
     Value<int>? rowid,
   }) {
     return CareEventsCompanion(
@@ -6106,6 +6161,7 @@ class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
       updatedHlc: updatedHlc ?? this.updatedHlc,
       deletedAt: deletedAt ?? this.deletedAt,
       deviceId: deviceId ?? this.deviceId,
+      actorUserId: actorUserId ?? this.actorUserId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -6149,6 +6205,9 @@ class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
     if (deviceId.present) {
       map['device_id'] = Variable<String>(deviceId.value);
     }
+    if (actorUserId.present) {
+      map['actor_user_id'] = Variable<String>(actorUserId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -6170,6 +6229,7 @@ class CareEventsCompanion extends UpdateCompanion<CareEventRow> {
           ..write('updatedHlc: $updatedHlc, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('deviceId: $deviceId, ')
+          ..write('actorUserId: $actorUserId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6331,6 +6391,17 @@ class $CareSchedulesTable extends CareSchedules
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _assigneeUserIdMeta = const VerificationMeta(
+    'assigneeUserId',
+  );
+  @override
+  late final GeneratedColumn<String> assigneeUserId = GeneratedColumn<String>(
+    'assignee_user_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _updatedHlcMeta = const VerificationMeta(
     'updatedHlc',
   );
@@ -6379,6 +6450,7 @@ class $CareSchedulesTable extends CareSchedules
     enabled,
     recurrenceMode,
     notificationsMuted,
+    assigneeUserId,
     updatedHlc,
     deletedAt,
     deviceId,
@@ -6503,6 +6575,15 @@ class $CareSchedulesTable extends CareSchedules
         ),
       );
     }
+    if (data.containsKey('assignee_user_id')) {
+      context.handle(
+        _assigneeUserIdMeta,
+        assigneeUserId.isAcceptableOrUnknown(
+          data['assignee_user_id']!,
+          _assigneeUserIdMeta,
+        ),
+      );
+    }
     if (data.containsKey('updated_hlc')) {
       context.handle(
         _updatedHlcMeta,
@@ -6586,6 +6667,10 @@ class $CareSchedulesTable extends CareSchedules
         DriftSqlType.bool,
         data['${effectivePrefix}notifications_muted'],
       )!,
+      assigneeUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}assignee_user_id'],
+      ),
       updatedHlc: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}updated_hlc'],
@@ -6631,6 +6716,13 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
   /// weekly fertilize reminder but keep the daily mist reminder firing).
   /// The schedule still shows up on Home / Calendar / Upcoming Care.
   final bool notificationsMuted;
+
+  /// Shared collections (MULTI-USER-V2 §0): member user id responsible for
+  /// this schedule. Synced (codec field `assignee_user_id`). Null = everyone:
+  /// reminders fire on every member's devices; set = only on the assignee's.
+  /// The server never validates it; the client offers current members and
+  /// clears it when the assignee is no longer a member.
+  final String? assigneeUserId;
   final String updatedHlc;
   final int? deletedAt;
   final String deviceId;
@@ -6648,6 +6740,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     required this.enabled,
     required this.recurrenceMode,
     required this.notificationsMuted,
+    this.assigneeUserId,
     required this.updatedHlc,
     this.deletedAt,
     required this.deviceId,
@@ -6672,6 +6765,9 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     map['enabled'] = Variable<bool>(enabled);
     map['recurrence_mode'] = Variable<String>(recurrenceMode);
     map['notifications_muted'] = Variable<bool>(notificationsMuted);
+    if (!nullToAbsent || assigneeUserId != null) {
+      map['assignee_user_id'] = Variable<String>(assigneeUserId);
+    }
     map['updated_hlc'] = Variable<String>(updatedHlc);
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<int>(deletedAt);
@@ -6699,6 +6795,9 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
       enabled: Value(enabled),
       recurrenceMode: Value(recurrenceMode),
       notificationsMuted: Value(notificationsMuted),
+      assigneeUserId: assigneeUserId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(assigneeUserId),
       updatedHlc: Value(updatedHlc),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
@@ -6728,6 +6827,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
       enabled: serializer.fromJson<bool>(json['enabled']),
       recurrenceMode: serializer.fromJson<String>(json['recurrenceMode']),
       notificationsMuted: serializer.fromJson<bool>(json['notificationsMuted']),
+      assigneeUserId: serializer.fromJson<String?>(json['assigneeUserId']),
       updatedHlc: serializer.fromJson<String>(json['updatedHlc']),
       deletedAt: serializer.fromJson<int?>(json['deletedAt']),
       deviceId: serializer.fromJson<String>(json['deviceId']),
@@ -6750,6 +6850,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
       'enabled': serializer.toJson<bool>(enabled),
       'recurrenceMode': serializer.toJson<String>(recurrenceMode),
       'notificationsMuted': serializer.toJson<bool>(notificationsMuted),
+      'assigneeUserId': serializer.toJson<String?>(assigneeUserId),
       'updatedHlc': serializer.toJson<String>(updatedHlc),
       'deletedAt': serializer.toJson<int?>(deletedAt),
       'deviceId': serializer.toJson<String>(deviceId),
@@ -6770,6 +6871,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     bool? enabled,
     String? recurrenceMode,
     bool? notificationsMuted,
+    Value<String?> assigneeUserId = const Value.absent(),
     String? updatedHlc,
     Value<int?> deletedAt = const Value.absent(),
     String? deviceId,
@@ -6787,6 +6889,9 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     enabled: enabled ?? this.enabled,
     recurrenceMode: recurrenceMode ?? this.recurrenceMode,
     notificationsMuted: notificationsMuted ?? this.notificationsMuted,
+    assigneeUserId: assigneeUserId.present
+        ? assigneeUserId.value
+        : this.assigneeUserId,
     updatedHlc: updatedHlc ?? this.updatedHlc,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
     deviceId: deviceId ?? this.deviceId,
@@ -6820,6 +6925,9 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
       notificationsMuted: data.notificationsMuted.present
           ? data.notificationsMuted.value
           : this.notificationsMuted,
+      assigneeUserId: data.assigneeUserId.present
+          ? data.assigneeUserId.value
+          : this.assigneeUserId,
       updatedHlc: data.updatedHlc.present
           ? data.updatedHlc.value
           : this.updatedHlc,
@@ -6844,6 +6952,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
           ..write('enabled: $enabled, ')
           ..write('recurrenceMode: $recurrenceMode, ')
           ..write('notificationsMuted: $notificationsMuted, ')
+          ..write('assigneeUserId: $assigneeUserId, ')
           ..write('updatedHlc: $updatedHlc, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('deviceId: $deviceId')
@@ -6866,6 +6975,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
     enabled,
     recurrenceMode,
     notificationsMuted,
+    assigneeUserId,
     updatedHlc,
     deletedAt,
     deviceId,
@@ -6887,6 +6997,7 @@ class CareScheduleRow extends DataClass implements Insertable<CareScheduleRow> {
           other.enabled == this.enabled &&
           other.recurrenceMode == this.recurrenceMode &&
           other.notificationsMuted == this.notificationsMuted &&
+          other.assigneeUserId == this.assigneeUserId &&
           other.updatedHlc == this.updatedHlc &&
           other.deletedAt == this.deletedAt &&
           other.deviceId == this.deviceId);
@@ -6906,6 +7017,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
   final Value<bool> enabled;
   final Value<String> recurrenceMode;
   final Value<bool> notificationsMuted;
+  final Value<String?> assigneeUserId;
   final Value<String> updatedHlc;
   final Value<int?> deletedAt;
   final Value<String> deviceId;
@@ -6924,6 +7036,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     this.enabled = const Value.absent(),
     this.recurrenceMode = const Value.absent(),
     this.notificationsMuted = const Value.absent(),
+    this.assigneeUserId = const Value.absent(),
     this.updatedHlc = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.deviceId = const Value.absent(),
@@ -6943,6 +7056,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     this.enabled = const Value.absent(),
     this.recurrenceMode = const Value.absent(),
     this.notificationsMuted = const Value.absent(),
+    this.assigneeUserId = const Value.absent(),
     required String updatedHlc,
     this.deletedAt = const Value.absent(),
     required String deviceId,
@@ -6969,6 +7083,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     Expression<bool>? enabled,
     Expression<String>? recurrenceMode,
     Expression<bool>? notificationsMuted,
+    Expression<String>? assigneeUserId,
     Expression<String>? updatedHlc,
     Expression<int>? deletedAt,
     Expression<String>? deviceId,
@@ -6989,6 +7104,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
       if (enabled != null) 'enabled': enabled,
       if (recurrenceMode != null) 'recurrence_mode': recurrenceMode,
       if (notificationsMuted != null) 'notifications_muted': notificationsMuted,
+      if (assigneeUserId != null) 'assignee_user_id': assigneeUserId,
       if (updatedHlc != null) 'updated_hlc': updatedHlc,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (deviceId != null) 'device_id': deviceId,
@@ -7010,6 +7126,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     Value<bool>? enabled,
     Value<String>? recurrenceMode,
     Value<bool>? notificationsMuted,
+    Value<String?>? assigneeUserId,
     Value<String>? updatedHlc,
     Value<int?>? deletedAt,
     Value<String>? deviceId,
@@ -7029,6 +7146,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
       enabled: enabled ?? this.enabled,
       recurrenceMode: recurrenceMode ?? this.recurrenceMode,
       notificationsMuted: notificationsMuted ?? this.notificationsMuted,
+      assigneeUserId: assigneeUserId ?? this.assigneeUserId,
       updatedHlc: updatedHlc ?? this.updatedHlc,
       deletedAt: deletedAt ?? this.deletedAt,
       deviceId: deviceId ?? this.deviceId,
@@ -7080,6 +7198,9 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
     if (notificationsMuted.present) {
       map['notifications_muted'] = Variable<bool>(notificationsMuted.value);
     }
+    if (assigneeUserId.present) {
+      map['assignee_user_id'] = Variable<String>(assigneeUserId.value);
+    }
     if (updatedHlc.present) {
       map['updated_hlc'] = Variable<String>(updatedHlc.value);
     }
@@ -7111,6 +7232,7 @@ class CareSchedulesCompanion extends UpdateCompanion<CareScheduleRow> {
           ..write('enabled: $enabled, ')
           ..write('recurrenceMode: $recurrenceMode, ')
           ..write('notificationsMuted: $notificationsMuted, ')
+          ..write('assigneeUserId: $assigneeUserId, ')
           ..write('updatedHlc: $updatedHlc, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('deviceId: $deviceId, ')
@@ -8050,6 +8172,15 @@ class $SyncOpsTable extends SyncOps with TableInfo<$SyncOpsTable, SyncOpRow> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     seq,
@@ -8061,6 +8192,7 @@ class $SyncOpsTable extends SyncOps with TableInfo<$SyncOpsTable, SyncOpRow> {
     hlc,
     deviceId,
     pushedAt,
+    userId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -8140,6 +8272,12 @@ class $SyncOpsTable extends SyncOps with TableInfo<$SyncOpsTable, SyncOpRow> {
         pushedAt.isAcceptableOrUnknown(data['pushed_at']!, _pushedAtMeta),
       );
     }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    }
     return context;
   }
 
@@ -8185,6 +8323,10 @@ class $SyncOpsTable extends SyncOps with TableInfo<$SyncOpsTable, SyncOpRow> {
         DriftSqlType.int,
         data['${effectivePrefix}pushed_at'],
       ),
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      ),
     );
   }
 
@@ -8204,6 +8346,13 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
   final String hlc;
   final String deviceId;
   final int? pushedAt;
+
+  /// plantly.ro user id of the session that recorded a LOCAL op (null for
+  /// ops recorded while signed out, for remote ops and for rows written
+  /// before schema 11). The engine pushes only ops whose `user_id` is null
+  /// or equals the signed-in user, so an account switch never uploads the
+  /// previous account's pending changes under the new bearer token.
+  final String? userId;
   const SyncOpRow({
     required this.seq,
     required this.tenantId,
@@ -8214,6 +8363,7 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
     required this.hlc,
     required this.deviceId,
     this.pushedAt,
+    this.userId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -8230,6 +8380,9 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
     map['device_id'] = Variable<String>(deviceId);
     if (!nullToAbsent || pushedAt != null) {
       map['pushed_at'] = Variable<int>(pushedAt);
+    }
+    if (!nullToAbsent || userId != null) {
+      map['user_id'] = Variable<String>(userId);
     }
     return map;
   }
@@ -8249,6 +8402,9 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
       pushedAt: pushedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(pushedAt),
+      userId: userId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userId),
     );
   }
 
@@ -8267,6 +8423,7 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
       hlc: serializer.fromJson<String>(json['hlc']),
       deviceId: serializer.fromJson<String>(json['deviceId']),
       pushedAt: serializer.fromJson<int?>(json['pushedAt']),
+      userId: serializer.fromJson<String?>(json['userId']),
     );
   }
   @override
@@ -8282,6 +8439,7 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
       'hlc': serializer.toJson<String>(hlc),
       'deviceId': serializer.toJson<String>(deviceId),
       'pushedAt': serializer.toJson<int?>(pushedAt),
+      'userId': serializer.toJson<String?>(userId),
     };
   }
 
@@ -8295,6 +8453,7 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
     String? hlc,
     String? deviceId,
     Value<int?> pushedAt = const Value.absent(),
+    Value<String?> userId = const Value.absent(),
   }) => SyncOpRow(
     seq: seq ?? this.seq,
     tenantId: tenantId ?? this.tenantId,
@@ -8305,6 +8464,7 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
     hlc: hlc ?? this.hlc,
     deviceId: deviceId ?? this.deviceId,
     pushedAt: pushedAt.present ? pushedAt.value : this.pushedAt,
+    userId: userId.present ? userId.value : this.userId,
   );
   SyncOpRow copyWithCompanion(SyncOpsCompanion data) {
     return SyncOpRow(
@@ -8317,6 +8477,7 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
       hlc: data.hlc.present ? data.hlc.value : this.hlc,
       deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
       pushedAt: data.pushedAt.present ? data.pushedAt.value : this.pushedAt,
+      userId: data.userId.present ? data.userId.value : this.userId,
     );
   }
 
@@ -8331,7 +8492,8 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
           ..write('valueJson: $valueJson, ')
           ..write('hlc: $hlc, ')
           ..write('deviceId: $deviceId, ')
-          ..write('pushedAt: $pushedAt')
+          ..write('pushedAt: $pushedAt, ')
+          ..write('userId: $userId')
           ..write(')'))
         .toString();
   }
@@ -8347,6 +8509,7 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
     hlc,
     deviceId,
     pushedAt,
+    userId,
   );
   @override
   bool operator ==(Object other) =>
@@ -8360,7 +8523,8 @@ class SyncOpRow extends DataClass implements Insertable<SyncOpRow> {
           other.valueJson == this.valueJson &&
           other.hlc == this.hlc &&
           other.deviceId == this.deviceId &&
-          other.pushedAt == this.pushedAt);
+          other.pushedAt == this.pushedAt &&
+          other.userId == this.userId);
 }
 
 class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
@@ -8373,6 +8537,7 @@ class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
   final Value<String> hlc;
   final Value<String> deviceId;
   final Value<int?> pushedAt;
+  final Value<String?> userId;
   const SyncOpsCompanion({
     this.seq = const Value.absent(),
     this.tenantId = const Value.absent(),
@@ -8383,6 +8548,7 @@ class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
     this.hlc = const Value.absent(),
     this.deviceId = const Value.absent(),
     this.pushedAt = const Value.absent(),
+    this.userId = const Value.absent(),
   });
   SyncOpsCompanion.insert({
     this.seq = const Value.absent(),
@@ -8394,6 +8560,7 @@ class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
     required String hlc,
     required String deviceId,
     this.pushedAt = const Value.absent(),
+    this.userId = const Value.absent(),
   }) : tenantId = Value(tenantId),
        entity = Value(entity),
        entityId = Value(entityId),
@@ -8410,6 +8577,7 @@ class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
     Expression<String>? hlc,
     Expression<String>? deviceId,
     Expression<int>? pushedAt,
+    Expression<String>? userId,
   }) {
     return RawValuesInsertable({
       if (seq != null) 'seq': seq,
@@ -8421,6 +8589,7 @@ class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
       if (hlc != null) 'hlc': hlc,
       if (deviceId != null) 'device_id': deviceId,
       if (pushedAt != null) 'pushed_at': pushedAt,
+      if (userId != null) 'user_id': userId,
     });
   }
 
@@ -8434,6 +8603,7 @@ class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
     Value<String>? hlc,
     Value<String>? deviceId,
     Value<int?>? pushedAt,
+    Value<String?>? userId,
   }) {
     return SyncOpsCompanion(
       seq: seq ?? this.seq,
@@ -8445,6 +8615,7 @@ class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
       hlc: hlc ?? this.hlc,
       deviceId: deviceId ?? this.deviceId,
       pushedAt: pushedAt ?? this.pushedAt,
+      userId: userId ?? this.userId,
     );
   }
 
@@ -8478,6 +8649,9 @@ class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
     if (pushedAt.present) {
       map['pushed_at'] = Variable<int>(pushedAt.value);
     }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
     return map;
   }
 
@@ -8492,7 +8666,544 @@ class SyncOpsCompanion extends UpdateCompanion<SyncOpRow> {
           ..write('valueJson: $valueJson, ')
           ..write('hlc: $hlc, ')
           ..write('deviceId: $deviceId, ')
-          ..write('pushedAt: $pushedAt')
+          ..write('pushedAt: $pushedAt, ')
+          ..write('userId: $userId')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SyncRejectionsTable extends SyncRejections
+    with TableInfo<$SyncRejectionsTable, SyncRejectionRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncRejectionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _opSeqMeta = const VerificationMeta('opSeq');
+  @override
+  late final GeneratedColumn<int> opSeq = GeneratedColumn<int>(
+    'op_seq',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _tenantIdMeta = const VerificationMeta(
+    'tenantId',
+  );
+  @override
+  late final GeneratedColumn<String> tenantId = GeneratedColumn<String>(
+    'tenant_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _entityMeta = const VerificationMeta('entity');
+  @override
+  late final GeneratedColumn<String> entity = GeneratedColumn<String>(
+    'entity',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _entityIdMeta = const VerificationMeta(
+    'entityId',
+  );
+  @override
+  late final GeneratedColumn<String> entityId = GeneratedColumn<String>(
+    'entity_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fieldMeta = const VerificationMeta('field');
+  @override
+  late final GeneratedColumn<String> field = GeneratedColumn<String>(
+    'field',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _hlcMeta = const VerificationMeta('hlc');
+  @override
+  late final GeneratedColumn<String> hlc = GeneratedColumn<String>(
+    'hlc',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _atMeta = const VerificationMeta('at');
+  @override
+  late final GeneratedColumn<int> at = GeneratedColumn<int>(
+    'at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _parkedMeta = const VerificationMeta('parked');
+  @override
+  late final GeneratedColumn<bool> parked = GeneratedColumn<bool>(
+    'parked',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("parked" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    opSeq,
+    tenantId,
+    entity,
+    entityId,
+    field,
+    reason,
+    hlc,
+    at,
+    parked,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_rejections';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncRejectionRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('op_seq')) {
+      context.handle(
+        _opSeqMeta,
+        opSeq.isAcceptableOrUnknown(data['op_seq']!, _opSeqMeta),
+      );
+    }
+    if (data.containsKey('tenant_id')) {
+      context.handle(
+        _tenantIdMeta,
+        tenantId.isAcceptableOrUnknown(data['tenant_id']!, _tenantIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tenantIdMeta);
+    }
+    if (data.containsKey('entity')) {
+      context.handle(
+        _entityMeta,
+        entity.isAcceptableOrUnknown(data['entity']!, _entityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityMeta);
+    }
+    if (data.containsKey('entity_id')) {
+      context.handle(
+        _entityIdMeta,
+        entityId.isAcceptableOrUnknown(data['entity_id']!, _entityIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityIdMeta);
+    }
+    if (data.containsKey('field')) {
+      context.handle(
+        _fieldMeta,
+        field.isAcceptableOrUnknown(data['field']!, _fieldMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fieldMeta);
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reasonMeta);
+    }
+    if (data.containsKey('hlc')) {
+      context.handle(
+        _hlcMeta,
+        hlc.isAcceptableOrUnknown(data['hlc']!, _hlcMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_hlcMeta);
+    }
+    if (data.containsKey('at')) {
+      context.handle(_atMeta, at.isAcceptableOrUnknown(data['at']!, _atMeta));
+    } else if (isInserting) {
+      context.missing(_atMeta);
+    }
+    if (data.containsKey('parked')) {
+      context.handle(
+        _parkedMeta,
+        parked.isAcceptableOrUnknown(data['parked']!, _parkedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {opSeq};
+  @override
+  SyncRejectionRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncRejectionRow(
+      opSeq: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}op_seq'],
+      )!,
+      tenantId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tenant_id'],
+      )!,
+      entity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity'],
+      )!,
+      entityId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_id'],
+      )!,
+      field: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}field'],
+      )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      )!,
+      hlc: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}hlc'],
+      )!,
+      at: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}at'],
+      )!,
+      parked: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}parked'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncRejectionsTable createAlias(String alias) {
+    return $SyncRejectionsTable(attachedDatabase, alias);
+  }
+}
+
+class SyncRejectionRow extends DataClass
+    implements Insertable<SyncRejectionRow> {
+  final int opSeq;
+  final String tenantId;
+  final String entity;
+  final String entityId;
+  final String field;
+  final String reason;
+  final String hlc;
+  final int at;
+  final bool parked;
+  const SyncRejectionRow({
+    required this.opSeq,
+    required this.tenantId,
+    required this.entity,
+    required this.entityId,
+    required this.field,
+    required this.reason,
+    required this.hlc,
+    required this.at,
+    required this.parked,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['op_seq'] = Variable<int>(opSeq);
+    map['tenant_id'] = Variable<String>(tenantId);
+    map['entity'] = Variable<String>(entity);
+    map['entity_id'] = Variable<String>(entityId);
+    map['field'] = Variable<String>(field);
+    map['reason'] = Variable<String>(reason);
+    map['hlc'] = Variable<String>(hlc);
+    map['at'] = Variable<int>(at);
+    map['parked'] = Variable<bool>(parked);
+    return map;
+  }
+
+  SyncRejectionsCompanion toCompanion(bool nullToAbsent) {
+    return SyncRejectionsCompanion(
+      opSeq: Value(opSeq),
+      tenantId: Value(tenantId),
+      entity: Value(entity),
+      entityId: Value(entityId),
+      field: Value(field),
+      reason: Value(reason),
+      hlc: Value(hlc),
+      at: Value(at),
+      parked: Value(parked),
+    );
+  }
+
+  factory SyncRejectionRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncRejectionRow(
+      opSeq: serializer.fromJson<int>(json['opSeq']),
+      tenantId: serializer.fromJson<String>(json['tenantId']),
+      entity: serializer.fromJson<String>(json['entity']),
+      entityId: serializer.fromJson<String>(json['entityId']),
+      field: serializer.fromJson<String>(json['field']),
+      reason: serializer.fromJson<String>(json['reason']),
+      hlc: serializer.fromJson<String>(json['hlc']),
+      at: serializer.fromJson<int>(json['at']),
+      parked: serializer.fromJson<bool>(json['parked']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'opSeq': serializer.toJson<int>(opSeq),
+      'tenantId': serializer.toJson<String>(tenantId),
+      'entity': serializer.toJson<String>(entity),
+      'entityId': serializer.toJson<String>(entityId),
+      'field': serializer.toJson<String>(field),
+      'reason': serializer.toJson<String>(reason),
+      'hlc': serializer.toJson<String>(hlc),
+      'at': serializer.toJson<int>(at),
+      'parked': serializer.toJson<bool>(parked),
+    };
+  }
+
+  SyncRejectionRow copyWith({
+    int? opSeq,
+    String? tenantId,
+    String? entity,
+    String? entityId,
+    String? field,
+    String? reason,
+    String? hlc,
+    int? at,
+    bool? parked,
+  }) => SyncRejectionRow(
+    opSeq: opSeq ?? this.opSeq,
+    tenantId: tenantId ?? this.tenantId,
+    entity: entity ?? this.entity,
+    entityId: entityId ?? this.entityId,
+    field: field ?? this.field,
+    reason: reason ?? this.reason,
+    hlc: hlc ?? this.hlc,
+    at: at ?? this.at,
+    parked: parked ?? this.parked,
+  );
+  SyncRejectionRow copyWithCompanion(SyncRejectionsCompanion data) {
+    return SyncRejectionRow(
+      opSeq: data.opSeq.present ? data.opSeq.value : this.opSeq,
+      tenantId: data.tenantId.present ? data.tenantId.value : this.tenantId,
+      entity: data.entity.present ? data.entity.value : this.entity,
+      entityId: data.entityId.present ? data.entityId.value : this.entityId,
+      field: data.field.present ? data.field.value : this.field,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      hlc: data.hlc.present ? data.hlc.value : this.hlc,
+      at: data.at.present ? data.at.value : this.at,
+      parked: data.parked.present ? data.parked.value : this.parked,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncRejectionRow(')
+          ..write('opSeq: $opSeq, ')
+          ..write('tenantId: $tenantId, ')
+          ..write('entity: $entity, ')
+          ..write('entityId: $entityId, ')
+          ..write('field: $field, ')
+          ..write('reason: $reason, ')
+          ..write('hlc: $hlc, ')
+          ..write('at: $at, ')
+          ..write('parked: $parked')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    opSeq,
+    tenantId,
+    entity,
+    entityId,
+    field,
+    reason,
+    hlc,
+    at,
+    parked,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncRejectionRow &&
+          other.opSeq == this.opSeq &&
+          other.tenantId == this.tenantId &&
+          other.entity == this.entity &&
+          other.entityId == this.entityId &&
+          other.field == this.field &&
+          other.reason == this.reason &&
+          other.hlc == this.hlc &&
+          other.at == this.at &&
+          other.parked == this.parked);
+}
+
+class SyncRejectionsCompanion extends UpdateCompanion<SyncRejectionRow> {
+  final Value<int> opSeq;
+  final Value<String> tenantId;
+  final Value<String> entity;
+  final Value<String> entityId;
+  final Value<String> field;
+  final Value<String> reason;
+  final Value<String> hlc;
+  final Value<int> at;
+  final Value<bool> parked;
+  const SyncRejectionsCompanion({
+    this.opSeq = const Value.absent(),
+    this.tenantId = const Value.absent(),
+    this.entity = const Value.absent(),
+    this.entityId = const Value.absent(),
+    this.field = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.hlc = const Value.absent(),
+    this.at = const Value.absent(),
+    this.parked = const Value.absent(),
+  });
+  SyncRejectionsCompanion.insert({
+    this.opSeq = const Value.absent(),
+    required String tenantId,
+    required String entity,
+    required String entityId,
+    required String field,
+    required String reason,
+    required String hlc,
+    required int at,
+    this.parked = const Value.absent(),
+  }) : tenantId = Value(tenantId),
+       entity = Value(entity),
+       entityId = Value(entityId),
+       field = Value(field),
+       reason = Value(reason),
+       hlc = Value(hlc),
+       at = Value(at);
+  static Insertable<SyncRejectionRow> custom({
+    Expression<int>? opSeq,
+    Expression<String>? tenantId,
+    Expression<String>? entity,
+    Expression<String>? entityId,
+    Expression<String>? field,
+    Expression<String>? reason,
+    Expression<String>? hlc,
+    Expression<int>? at,
+    Expression<bool>? parked,
+  }) {
+    return RawValuesInsertable({
+      if (opSeq != null) 'op_seq': opSeq,
+      if (tenantId != null) 'tenant_id': tenantId,
+      if (entity != null) 'entity': entity,
+      if (entityId != null) 'entity_id': entityId,
+      if (field != null) 'field': field,
+      if (reason != null) 'reason': reason,
+      if (hlc != null) 'hlc': hlc,
+      if (at != null) 'at': at,
+      if (parked != null) 'parked': parked,
+    });
+  }
+
+  SyncRejectionsCompanion copyWith({
+    Value<int>? opSeq,
+    Value<String>? tenantId,
+    Value<String>? entity,
+    Value<String>? entityId,
+    Value<String>? field,
+    Value<String>? reason,
+    Value<String>? hlc,
+    Value<int>? at,
+    Value<bool>? parked,
+  }) {
+    return SyncRejectionsCompanion(
+      opSeq: opSeq ?? this.opSeq,
+      tenantId: tenantId ?? this.tenantId,
+      entity: entity ?? this.entity,
+      entityId: entityId ?? this.entityId,
+      field: field ?? this.field,
+      reason: reason ?? this.reason,
+      hlc: hlc ?? this.hlc,
+      at: at ?? this.at,
+      parked: parked ?? this.parked,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (opSeq.present) {
+      map['op_seq'] = Variable<int>(opSeq.value);
+    }
+    if (tenantId.present) {
+      map['tenant_id'] = Variable<String>(tenantId.value);
+    }
+    if (entity.present) {
+      map['entity'] = Variable<String>(entity.value);
+    }
+    if (entityId.present) {
+      map['entity_id'] = Variable<String>(entityId.value);
+    }
+    if (field.present) {
+      map['field'] = Variable<String>(field.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (hlc.present) {
+      map['hlc'] = Variable<String>(hlc.value);
+    }
+    if (at.present) {
+      map['at'] = Variable<int>(at.value);
+    }
+    if (parked.present) {
+      map['parked'] = Variable<bool>(parked.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncRejectionsCompanion(')
+          ..write('opSeq: $opSeq, ')
+          ..write('tenantId: $tenantId, ')
+          ..write('entity: $entity, ')
+          ..write('entityId: $entityId, ')
+          ..write('field: $field, ')
+          ..write('reason: $reason, ')
+          ..write('hlc: $hlc, ')
+          ..write('at: $at, ')
+          ..write('parked: $parked')
           ..write(')'))
         .toString();
   }
@@ -8514,6 +9225,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $InventoryTransactionsTable inventoryTransactions =
       $InventoryTransactionsTable(this);
   late final $SyncOpsTable syncOps = $SyncOpsTable(this);
+  late final $SyncRejectionsTable syncRejections = $SyncRejectionsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8531,6 +9243,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     careSchedules,
     inventoryTransactions,
     syncOps,
+    syncRejections,
   ];
 }
 
@@ -11148,6 +11861,7 @@ typedef $$CareEventsTableCreateCompanionBuilder =
       required String updatedHlc,
       Value<int?> deletedAt,
       required String deviceId,
+      Value<String?> actorUserId,
       Value<int> rowid,
     });
 typedef $$CareEventsTableUpdateCompanionBuilder =
@@ -11164,6 +11878,7 @@ typedef $$CareEventsTableUpdateCompanionBuilder =
       Value<String> updatedHlc,
       Value<int?> deletedAt,
       Value<String> deviceId,
+      Value<String?> actorUserId,
       Value<int> rowid,
     });
 
@@ -11233,6 +11948,11 @@ class $$CareEventsTableFilterComposer
 
   ColumnFilters<String> get deviceId => $composableBuilder(
     column: $table.deviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -11305,6 +12025,11 @@ class $$CareEventsTableOrderingComposer
     column: $table.deviceId,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CareEventsTableAnnotationComposer
@@ -11353,6 +12078,11 @@ class $$CareEventsTableAnnotationComposer
 
   GeneratedColumn<String> get deviceId =>
       $composableBuilder(column: $table.deviceId, builder: (column) => column);
+
+  GeneratedColumn<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => column,
+  );
 }
 
 class $$CareEventsTableTableManager
@@ -11398,6 +12128,7 @@ class $$CareEventsTableTableManager
                 Value<String> updatedHlc = const Value.absent(),
                 Value<int?> deletedAt = const Value.absent(),
                 Value<String> deviceId = const Value.absent(),
+                Value<String?> actorUserId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CareEventsCompanion(
                 id: id,
@@ -11412,6 +12143,7 @@ class $$CareEventsTableTableManager
                 updatedHlc: updatedHlc,
                 deletedAt: deletedAt,
                 deviceId: deviceId,
+                actorUserId: actorUserId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -11428,6 +12160,7 @@ class $$CareEventsTableTableManager
                 required String updatedHlc,
                 Value<int?> deletedAt = const Value.absent(),
                 required String deviceId,
+                Value<String?> actorUserId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CareEventsCompanion.insert(
                 id: id,
@@ -11442,6 +12175,7 @@ class $$CareEventsTableTableManager
                 updatedHlc: updatedHlc,
                 deletedAt: deletedAt,
                 deviceId: deviceId,
+                actorUserId: actorUserId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -11484,6 +12218,7 @@ typedef $$CareSchedulesTableCreateCompanionBuilder =
       Value<bool> enabled,
       Value<String> recurrenceMode,
       Value<bool> notificationsMuted,
+      Value<String?> assigneeUserId,
       required String updatedHlc,
       Value<int?> deletedAt,
       required String deviceId,
@@ -11504,6 +12239,7 @@ typedef $$CareSchedulesTableUpdateCompanionBuilder =
       Value<bool> enabled,
       Value<String> recurrenceMode,
       Value<bool> notificationsMuted,
+      Value<String?> assigneeUserId,
       Value<String> updatedHlc,
       Value<int?> deletedAt,
       Value<String> deviceId,
@@ -11581,6 +12317,11 @@ class $$CareSchedulesTableFilterComposer
 
   ColumnFilters<bool> get notificationsMuted => $composableBuilder(
     column: $table.notificationsMuted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get assigneeUserId => $composableBuilder(
+    column: $table.assigneeUserId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11674,6 +12415,11 @@ class $$CareSchedulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get assigneeUserId => $composableBuilder(
+    column: $table.assigneeUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get updatedHlc => $composableBuilder(
     column: $table.updatedHlc,
     builder: (column) => ColumnOrderings(column),
@@ -11752,6 +12498,11 @@ class $$CareSchedulesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get assigneeUserId => $composableBuilder(
+    column: $table.assigneeUserId,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get updatedHlc => $composableBuilder(
     column: $table.updatedHlc,
     builder: (column) => column,
@@ -11808,6 +12559,7 @@ class $$CareSchedulesTableTableManager
                 Value<bool> enabled = const Value.absent(),
                 Value<String> recurrenceMode = const Value.absent(),
                 Value<bool> notificationsMuted = const Value.absent(),
+                Value<String?> assigneeUserId = const Value.absent(),
                 Value<String> updatedHlc = const Value.absent(),
                 Value<int?> deletedAt = const Value.absent(),
                 Value<String> deviceId = const Value.absent(),
@@ -11826,6 +12578,7 @@ class $$CareSchedulesTableTableManager
                 enabled: enabled,
                 recurrenceMode: recurrenceMode,
                 notificationsMuted: notificationsMuted,
+                assigneeUserId: assigneeUserId,
                 updatedHlc: updatedHlc,
                 deletedAt: deletedAt,
                 deviceId: deviceId,
@@ -11846,6 +12599,7 @@ class $$CareSchedulesTableTableManager
                 Value<bool> enabled = const Value.absent(),
                 Value<String> recurrenceMode = const Value.absent(),
                 Value<bool> notificationsMuted = const Value.absent(),
+                Value<String?> assigneeUserId = const Value.absent(),
                 required String updatedHlc,
                 Value<int?> deletedAt = const Value.absent(),
                 required String deviceId,
@@ -11864,6 +12618,7 @@ class $$CareSchedulesTableTableManager
                 enabled: enabled,
                 recurrenceMode: recurrenceMode,
                 notificationsMuted: notificationsMuted,
+                assigneeUserId: assigneeUserId,
                 updatedHlc: updatedHlc,
                 deletedAt: deletedAt,
                 deviceId: deviceId,
@@ -12305,6 +13060,7 @@ typedef $$SyncOpsTableCreateCompanionBuilder =
       required String hlc,
       required String deviceId,
       Value<int?> pushedAt,
+      Value<String?> userId,
     });
 typedef $$SyncOpsTableUpdateCompanionBuilder =
     SyncOpsCompanion Function({
@@ -12317,6 +13073,7 @@ typedef $$SyncOpsTableUpdateCompanionBuilder =
       Value<String> hlc,
       Value<String> deviceId,
       Value<int?> pushedAt,
+      Value<String?> userId,
     });
 
 class $$SyncOpsTableFilterComposer
@@ -12370,6 +13127,11 @@ class $$SyncOpsTableFilterComposer
 
   ColumnFilters<int> get pushedAt => $composableBuilder(
     column: $table.pushedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -12427,6 +13189,11 @@ class $$SyncOpsTableOrderingComposer
     column: $table.pushedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SyncOpsTableAnnotationComposer
@@ -12464,6 +13231,9 @@ class $$SyncOpsTableAnnotationComposer
 
   GeneratedColumn<int> get pushedAt =>
       $composableBuilder(column: $table.pushedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
 }
 
 class $$SyncOpsTableTableManager
@@ -12503,6 +13273,7 @@ class $$SyncOpsTableTableManager
                 Value<String> hlc = const Value.absent(),
                 Value<String> deviceId = const Value.absent(),
                 Value<int?> pushedAt = const Value.absent(),
+                Value<String?> userId = const Value.absent(),
               }) => SyncOpsCompanion(
                 seq: seq,
                 tenantId: tenantId,
@@ -12513,6 +13284,7 @@ class $$SyncOpsTableTableManager
                 hlc: hlc,
                 deviceId: deviceId,
                 pushedAt: pushedAt,
+                userId: userId,
               ),
           createCompanionCallback:
               ({
@@ -12525,6 +13297,7 @@ class $$SyncOpsTableTableManager
                 required String hlc,
                 required String deviceId,
                 Value<int?> pushedAt = const Value.absent(),
+                Value<String?> userId = const Value.absent(),
               }) => SyncOpsCompanion.insert(
                 seq: seq,
                 tenantId: tenantId,
@@ -12535,6 +13308,7 @@ class $$SyncOpsTableTableManager
                 hlc: hlc,
                 deviceId: deviceId,
                 pushedAt: pushedAt,
+                userId: userId,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -12556,6 +13330,282 @@ typedef $$SyncOpsTableProcessedTableManager =
       $$SyncOpsTableUpdateCompanionBuilder,
       (SyncOpRow, BaseReferences<_$AppDatabase, $SyncOpsTable, SyncOpRow>),
       SyncOpRow,
+      PrefetchHooks Function()
+    >;
+typedef $$SyncRejectionsTableCreateCompanionBuilder =
+    SyncRejectionsCompanion Function({
+      Value<int> opSeq,
+      required String tenantId,
+      required String entity,
+      required String entityId,
+      required String field,
+      required String reason,
+      required String hlc,
+      required int at,
+      Value<bool> parked,
+    });
+typedef $$SyncRejectionsTableUpdateCompanionBuilder =
+    SyncRejectionsCompanion Function({
+      Value<int> opSeq,
+      Value<String> tenantId,
+      Value<String> entity,
+      Value<String> entityId,
+      Value<String> field,
+      Value<String> reason,
+      Value<String> hlc,
+      Value<int> at,
+      Value<bool> parked,
+    });
+
+class $$SyncRejectionsTableFilterComposer
+    extends Composer<_$AppDatabase, $SyncRejectionsTable> {
+  $$SyncRejectionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get opSeq => $composableBuilder(
+    column: $table.opSeq,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tenantId => $composableBuilder(
+    column: $table.tenantId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entity => $composableBuilder(
+    column: $table.entity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get field => $composableBuilder(
+    column: $table.field,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get hlc => $composableBuilder(
+    column: $table.hlc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get at => $composableBuilder(
+    column: $table.at,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get parked => $composableBuilder(
+    column: $table.parked,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncRejectionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SyncRejectionsTable> {
+  $$SyncRejectionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get opSeq => $composableBuilder(
+    column: $table.opSeq,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tenantId => $composableBuilder(
+    column: $table.tenantId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entity => $composableBuilder(
+    column: $table.entity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get field => $composableBuilder(
+    column: $table.field,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get hlc => $composableBuilder(
+    column: $table.hlc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get at => $composableBuilder(
+    column: $table.at,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get parked => $composableBuilder(
+    column: $table.parked,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncRejectionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SyncRejectionsTable> {
+  $$SyncRejectionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get opSeq =>
+      $composableBuilder(column: $table.opSeq, builder: (column) => column);
+
+  GeneratedColumn<String> get tenantId =>
+      $composableBuilder(column: $table.tenantId, builder: (column) => column);
+
+  GeneratedColumn<String> get entity =>
+      $composableBuilder(column: $table.entity, builder: (column) => column);
+
+  GeneratedColumn<String> get entityId =>
+      $composableBuilder(column: $table.entityId, builder: (column) => column);
+
+  GeneratedColumn<String> get field =>
+      $composableBuilder(column: $table.field, builder: (column) => column);
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<String> get hlc =>
+      $composableBuilder(column: $table.hlc, builder: (column) => column);
+
+  GeneratedColumn<int> get at =>
+      $composableBuilder(column: $table.at, builder: (column) => column);
+
+  GeneratedColumn<bool> get parked =>
+      $composableBuilder(column: $table.parked, builder: (column) => column);
+}
+
+class $$SyncRejectionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SyncRejectionsTable,
+          SyncRejectionRow,
+          $$SyncRejectionsTableFilterComposer,
+          $$SyncRejectionsTableOrderingComposer,
+          $$SyncRejectionsTableAnnotationComposer,
+          $$SyncRejectionsTableCreateCompanionBuilder,
+          $$SyncRejectionsTableUpdateCompanionBuilder,
+          (
+            SyncRejectionRow,
+            BaseReferences<
+              _$AppDatabase,
+              $SyncRejectionsTable,
+              SyncRejectionRow
+            >,
+          ),
+          SyncRejectionRow,
+          PrefetchHooks Function()
+        > {
+  $$SyncRejectionsTableTableManager(
+    _$AppDatabase db,
+    $SyncRejectionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncRejectionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncRejectionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncRejectionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> opSeq = const Value.absent(),
+                Value<String> tenantId = const Value.absent(),
+                Value<String> entity = const Value.absent(),
+                Value<String> entityId = const Value.absent(),
+                Value<String> field = const Value.absent(),
+                Value<String> reason = const Value.absent(),
+                Value<String> hlc = const Value.absent(),
+                Value<int> at = const Value.absent(),
+                Value<bool> parked = const Value.absent(),
+              }) => SyncRejectionsCompanion(
+                opSeq: opSeq,
+                tenantId: tenantId,
+                entity: entity,
+                entityId: entityId,
+                field: field,
+                reason: reason,
+                hlc: hlc,
+                at: at,
+                parked: parked,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> opSeq = const Value.absent(),
+                required String tenantId,
+                required String entity,
+                required String entityId,
+                required String field,
+                required String reason,
+                required String hlc,
+                required int at,
+                Value<bool> parked = const Value.absent(),
+              }) => SyncRejectionsCompanion.insert(
+                opSeq: opSeq,
+                tenantId: tenantId,
+                entity: entity,
+                entityId: entityId,
+                field: field,
+                reason: reason,
+                hlc: hlc,
+                at: at,
+                parked: parked,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncRejectionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SyncRejectionsTable,
+      SyncRejectionRow,
+      $$SyncRejectionsTableFilterComposer,
+      $$SyncRejectionsTableOrderingComposer,
+      $$SyncRejectionsTableAnnotationComposer,
+      $$SyncRejectionsTableCreateCompanionBuilder,
+      $$SyncRejectionsTableUpdateCompanionBuilder,
+      (
+        SyncRejectionRow,
+        BaseReferences<_$AppDatabase, $SyncRejectionsTable, SyncRejectionRow>,
+      ),
+      SyncRejectionRow,
       PrefetchHooks Function()
     >;
 
@@ -12585,4 +13635,6 @@ class $AppDatabaseManager {
       $$InventoryTransactionsTableTableManager(_db, _db.inventoryTransactions);
   $$SyncOpsTableTableManager get syncOps =>
       $$SyncOpsTableTableManager(_db, _db.syncOps);
+  $$SyncRejectionsTableTableManager get syncRejections =>
+      $$SyncRejectionsTableTableManager(_db, _db.syncRejections);
 }

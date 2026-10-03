@@ -96,6 +96,14 @@ class ThemeModeController extends StateNotifier<ThemeMode> {
   }
 }
 
+/// Focus node of the desktop dashboard's inline search field, so the `/`
+/// shortcut can focus it from the shell without a widget handle.
+final homeSearchFocusProvider = Provider<FocusNode>((ref) {
+  final node = FocusNode(debugLabel: 'home-search');
+  ref.onDispose(node.dispose);
+  return node;
+});
+
 final themeModeProvider =
     StateNotifierProvider<ThemeModeController, ThemeMode>((ref) {
   return ThemeModeController(ref.watch(sharedPreferencesProvider.future));

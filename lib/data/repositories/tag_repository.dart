@@ -92,24 +92,30 @@ class PlantTagRepository {
 
   Future<void> detach(String plantId, String tagId) async {
     return db.transaction(() async {
-      final hlc = await opLog.recordFieldUpdate(
-        entity: 'plant_tags',
-        entityId: '$plantId/$tagId',
-        field: 'removed_hlc',
-        value: null,
-      );
-      await (db.update(db.plantTags)
+      // One `removed_hlc` field op per live add-row, keyed by the row id
+      // (CLOUD-SYNC-CONTRACT §2.3: OR-Set removes are regular field ops);
+      // a null value means "removed at the op's own HLC".
+      final live = await (db.select(db.plantTags)
             ..where((r) =>
                 r.tenantId.equals(opLog.tenantId) &
                 r.plantId.equals(plantId) &
                 r.tagId.equals(tagId) &
                 r.removedHlc.isNull()))
-          .write(
-        PlantTagsCompanion(
-          removedHlc: Value(hlc.encode()),
-          deviceId: Value(opLog.clock.deviceId),
-        ),
-      );
+          .get();
+      for (final row in live) {
+        final hlc = await opLog.recordFieldUpdate(
+          entity: 'plant_tags',
+          entityId: row.id,
+          field: 'removed_hlc',
+          value: null,
+        );
+        await (db.update(db.plantTags)..where((r) => r.id.equals(row.id))).write(
+          PlantTagsCompanion(
+            removedHlc: Value(hlc.encode()),
+            deviceId: Value(opLog.clock.deviceId),
+          ),
+        );
+      }
     });
   }
 

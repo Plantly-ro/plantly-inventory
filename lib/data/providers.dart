@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,6 +12,7 @@ import '../domain/services/zip_backup_service.dart';
 import '../notifications/dnd_settings.dart';
 import '../notifications/notification_service.dart';
 import '../notifications/platform_notification_service.dart';
+import '../marketplace/plantly_auth.dart';
 import '../notifications/reminder_sync.dart';
 import '../sync/device_id.dart';
 import '../sync/hlc.dart';
@@ -29,6 +31,7 @@ import 'repositories/search_repository.dart';
 import 'repositories/species_repository.dart';
 import 'repositories/tag_repository.dart';
 import 'seed.dart';
+import 'seed_rekey.dart';
 
 /// App-wide dependencies. Everything downstream of [appBootstrapProvider]
 /// waits for the async bootstrap to finish so widgets can consume the
@@ -44,10 +47,38 @@ final sharedPreferencesProvider = FutureProvider<SharedPreferences>((_) {
   return SharedPreferences.getInstance();
 });
 
-/// Default tenant for the single-user Phase 1 app. PLAN.md reserves
-/// tenant_id for Phase 4 household sharing; every synced row needs a value
-/// now so the schema doesn't rewrite later.
+/// Tenant every row is born under until the device links a cloud
+/// collection (CLOUD-SYNC-CONTRACT §2.4). Linking rewrites `tenant_id` to
+/// the collection id in one transaction and flips [currentTenantIdProvider].
 const String kDefaultTenantId = 'local';
+
+/// SharedPreferences key holding the active tenant id. Survives an unlink:
+/// data keeps the collection id as its tenant, only the link is forgotten.
+const String kTenantIdPrefKey = 'plantly_tenant_id';
+
+/// Set when the user explicitly chose "Start empty" on an account switch:
+/// from then on a tenant with no rows is left empty instead of getting the
+/// demo plants (they asked for empty, not for a fresh install).
+const String kSkipSeedPrefKey = 'plantly_skip_seed';
+
+/// The tenant every repository / query scopes to. Seeded from prefs (else
+/// [kDefaultTenantId]); `CollectionLinkService.link()` sets it after the
+/// tenant migration commits. [appContextProvider] watches it, so a flip
+/// rebuilds the [OpLogWriter] and every repository provider downstream —
+/// callers must `ref.read(...RepositoryProvider)` at call time rather than
+/// hold a repository across the flip.
+final currentTenantIdProvider = StateProvider<String>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider).asData?.value;
+  return prefs?.getString(kTenantIdPrefKey) ?? kDefaultTenantId;
+});
+
+/// Device id + HLC clock, independent of the tenant so a link/unlink never
+/// resets the clock's monotonic state.
+final hlcClockProvider = FutureProvider<HlcClock>((ref) async {
+  final prefs = await ref.watch(sharedPreferencesProvider.future);
+  final deviceId = await DeviceId.load(prefs);
+  return HlcClock(deviceId: deviceId);
+});
 
 class AppContext {
   const AppContext({
@@ -60,15 +91,39 @@ class AppContext {
   final HlcClock clock;
   final OpLogWriter opLog;
   final String deviceId;
+
+  /// The tenant this context (and its [opLog]) writes under.
+  String get tenantId => opLog.tenantId;
 }
 
 final appContextProvider = FutureProvider<AppContext>((ref) async {
   final db = ref.watch(databaseProvider);
+  // Prefs first: `currentTenantIdProvider` reads them synchronously, so by
+  // the time we watch it the persisted tenant is in — never bootstrap (and
+  // seed) against a stale `'local'` when the data already moved.
   final prefs = await ref.watch(sharedPreferencesProvider.future);
-  final deviceId = await DeviceId.load(prefs);
-  final clock = HlcClock(deviceId: deviceId);
-  final opLog = OpLogWriter(db: db, clock: clock, tenantId: kDefaultTenantId);
-  await seedIfEmpty(db: db, opLog: opLog);
+  final clock = await ref.watch(hlcClockProvider.future);
+  final deviceId = clock.deviceId;
+  // One-time re-key of legacy literal seed ids (QA2 BUG-2), across every
+  // tenant in the DB and before the seed. Must never brick startup: the
+  // done-pref is only written on success, so a failure retries next boot.
+  try {
+    await rekeyLegacySeedIds(db: db, clock: clock, prefs: prefs);
+  } catch (e, st) {
+    debugPrint('seed_rekey: failed, will retry on next start: $e\n$st');
+  }
+  final tenantId = ref.watch(currentTenantIdProvider);
+  // Account read at write time (not watched): a sign-in must not rebuild
+  // the context; the stamp tells the engine whose pending ops these are.
+  final opLog = OpLogWriter(
+    db: db,
+    clock: clock,
+    tenantId: tenantId,
+    currentUserId: () => ref.read(plantlyAuthProvider).valueOrNull?.userId,
+  );
+  if (!(prefs.getBool(kSkipSeedPrefKey) ?? false)) {
+    await seedIfEmpty(db: db, opLog: opLog);
+  }
   // Startup only *reads* the permission state — it must never prompt. The
   // system dialog used to pop over the first onboarding page (and again
   // ahead of the onboarding "Reminders" step, which has its own Allow
@@ -111,14 +166,14 @@ final notificationPermissionProvider = StateProvider<bool?>((ref) => null);
 
 final backupServiceProvider = Provider<BackupService>((ref) {
   final ctx = ref.watch(appContextProvider).requireValue;
-  return BackupService(db: ctx.db);
+  return BackupService(db: ctx.db, tenantId: ctx.tenantId);
 });
 
 final zipBackupServiceProvider = Provider<ZipBackupService>((ref) {
   final ctx = ref.watch(appContextProvider).requireValue;
   return ZipBackupService(
     db: ctx.db,
-    backup: BackupService(db: ctx.db),
+    backup: ref.watch(backupServiceProvider),
     photos: ref.watch(photoBlobStoreProvider),
   );
 });
@@ -153,13 +208,24 @@ final iCalFutureProvider = FutureProvider.autoDispose<String>((ref) async {
 
 final reminderSyncProvider = Provider<ReminderSync>((ref) {
   final ctx = ref.watch(appContextProvider).requireValue;
-  return ReminderSync(
+  final sync = ReminderSync(
     db: ctx.db,
     notifications: ref.watch(notificationServiceProvider),
     tenantId: ctx.opLog.tenantId,
     mutedTypesSnapshot: () => ref.read(mutedCareTypesProvider),
     typeLabel: (type) => careKeyVerb(appLocalizationsForPlatform(), ref.read(careTypesProvider), type),
+    // Read at call time (not watched): a sign-in must not rebuild the sync.
+    currentUserId: () => ref.read(plantlyAuthProvider).valueOrNull?.userId,
   );
+  // Assigned schedules (MULTI-USER-V2 §0) are filtered per signed-in user,
+  // so a sign-in / sign-out / account switch re-derives the OS reminders.
+  ref.listen<String?>(
+    plantlyAuthProvider.select((s) => s.valueOrNull?.userId),
+    (prev, next) {
+      if (prev != next) unawaited(sync.syncFromDatabase());
+    },
+  );
+  return sync;
 });
 
 final careScheduleRepositoryProvider = Provider<CareScheduleRepository>((ref) {
@@ -178,6 +244,8 @@ final careEventRepositoryProvider = Provider<CareEventRepository>((ref) {
     opLog: ctx.opLog,
     schedules: ref.watch(careScheduleRepositoryProvider),
     reminderSync: ref.watch(reminderSyncProvider),
+    // Read at call time (not watched): a sign-in must not rebuild the repo.
+    currentUserId: () => ref.read(plantlyAuthProvider).valueOrNull?.userId,
   );
 });
 

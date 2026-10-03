@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../cloud/collections.dart';
 import '../../../data/database/app_database.dart' as db;
 import '../../../data/mock_plants.dart';
 import '../../../data/providers.dart';
@@ -8,6 +9,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/tokens.dart';
 import '../../../data/care_types.dart';
 import '../../../shared/care_feedback.dart';
+import '../../../shared/assignee_initial.dart';
 import '../../../shared/care_type_labels.dart';
 import 'plant_row.dart';
 import 'swipe_row.dart';
@@ -20,6 +22,7 @@ class OverdueWidget extends ConsumerWidget {
     this.onPlantTap,
     this.onLogCare,
     this.editing = false,
+    this.padInner = true,
     this.onMoveUp,
     this.onMoveDown,
     this.onRemove,
@@ -31,6 +34,7 @@ class OverdueWidget extends ConsumerWidget {
   /// Called after a care event is recorded, with a localized toast message.
   final void Function(String message)? onLogCare;
   final bool editing;
+  final bool padInner;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
   final VoidCallback? onRemove;
@@ -63,6 +67,7 @@ class OverdueWidget extends ConsumerWidget {
     return WidgetShell(
       surface: surface,
       editing: editing,
+      padInner: padInner,
       onMoveUp: onMoveUp,
       onMoveDown: onMoveDown,
       onRemove: onRemove,
@@ -145,9 +150,17 @@ class OverdueWidget extends ConsumerWidget {
             first: false,
             last: last,
             onTap: () => onPlantTap?.call(schedule.plantId),
-            trailing: _DoneButton(
-              surface: surface,
-              onPressed: logDone,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AssigneeChip(userId: schedule.assigneeUserId, tenantId: schedule.tenantId, surface: surface, padLeft: 0),
+                if (schedule.assigneeUserId != null && ref.watch(canEditActiveCollectionProvider)) const SizedBox(width: 8),
+                if (ref.watch(canEditActiveCollectionProvider))
+                  _DoneButton(
+                    surface: surface,
+                    onPressed: logDone,
+                  ),
+              ],
             ),
           ),
         );

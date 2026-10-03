@@ -56,6 +56,24 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="plantlyinventory" android:host="import"/>
             </intent-filter>
+            <!-- OAuth sign-in return (CLOUD-SYNC-CONTRACT §2.4): the marketplace
+                 finishes Google/Facebook and redirects to
+                 plantlyinventory://auth/callback#token=<jwt>. The token is in the
+                 fragment, so it never appears in any server log. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="plantlyinventory" android:host="auth" android:path="/callback"/>
+            </intent-filter>
+            <!-- Shared-collection invite (CLOUD-SYNC-CONTRACT §3):
+                 plantlyinventory://join#c=<code>. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="plantlyinventory" android:host="join"/>
+            </intent-filter>
             <!-- 2) App Link for the marketplace's universal import page — bare and
                  locale-prefixed (/ro, /en) paths. autoVerify passes once
                  plantly.ro/.well-known/assetlinks.json lists this package's signing
@@ -72,6 +90,10 @@
                 <data android:path="/app/inventory/import"/>
                 <data android:path="/ro/app/inventory/import"/>
                 <data android:path="/en/app/inventory/import"/>
+                <!-- Invite landing page (§3): the invite `url`. -->
+                <data android:path="/app/inventory/join"/>
+                <data android:path="/ro/app/inventory/join"/>
+                <data android:path="/en/app/inventory/join"/>
             </intent-filter>
         </activity>
         <!-- flutter_local_notifications receivers. Without these the plugin

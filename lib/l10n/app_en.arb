@@ -19,7 +19,13 @@
   "navSpaces": "Spaces",
   "navMe": "Me",
   "homeDbOpenFailed": "Failed to open local database.\n{error}",
-  "@homeDbOpenFailed": { "placeholders": { "error": { "type": "String" } } },
+  "@homeDbOpenFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "homeSearchTooltip": "Search plants",
   "homeEditHint": "Long-press to customise your home",
   "homeAddWidget": "ADD WIDGET",
@@ -62,23 +68,65 @@
   "homeCareDoneRotate": "Rotated",
   "homeCareDoneGeneric": "Logged",
   "homeOverdueLate": "{days} d late · {action}",
-  "@homeOverdueLate": { "placeholders": { "days": { "type": "int" }, "action": { "type": "String" } } },
+  "@homeOverdueLate": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "action": {
+        "type": "String"
+      }
+    }
+  },
   "homeDueNow": "{action} now",
-  "@homeDueNow": { "placeholders": { "action": { "type": "String" } } },
+  "@homeDueNow": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
   "homeToastLoggedCare": "Logged care for {name}",
-  "@homeToastLoggedCare": { "placeholders": { "name": { "type": "String" } } },
+  "@homeToastLoggedCare": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "homeToastActionLogged": "{action} logged for {name}",
-  "@homeToastActionLogged": { "placeholders": { "action": { "type": "String" }, "name": { "type": "String" } } },
+  "@homeToastActionLogged": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "homeViewAll": "View all",
   "homeActivityEmpty": "Nothing logged yet — tap \"Done\" on a reminder.",
   "homeYesterday": "Yesterday",
   "homeDaysAgo": "{days} d ago",
-  "@homeDaysAgo": { "placeholders": { "days": { "type": "int" } } },
+  "@homeDaysAgo": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "homeSearchAction": "Search",
   "homeGridEmptyAll": "No plants yet — tap the + button to add one.",
   "homeGridEmptyDueToday": "Nothing due today — all caught up.",
   "homeLoadPlantsFailed": "Could not load plants.\n{error}",
-  "@homeLoadPlantsFailed": { "placeholders": { "error": { "type": "String" } } },
+  "@homeLoadPlantsFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "homeSortTooltip": "Sort plants",
   "homeSortNameAZ": "Name A–Z",
   "homeSortNameZA": "Name Z–A",
@@ -87,33 +135,93 @@
   "homeSortOldest": "Oldest added",
   "homeSortBySpace": "By space",
   "homeDueLateDays": "{days} d late",
-  "@homeDueLateDays": { "placeholders": { "days": { "type": "int" } } },
+  "@homeDueLateDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "homeDueLateHours": "{hours} h late",
-  "@homeDueLateHours": { "placeholders": { "hours": { "type": "int" } } },
+  "@homeDueLateHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
   "homeDueNowShort": "now",
   "homeDueUnderHour": "< 1h",
   "homeDueInHours": "in {hours} h",
-  "@homeDueInHours": { "placeholders": { "hours": { "type": "int" } } },
+  "@homeDueInHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
   "homeDueTomorrow": "tomorrow",
   "homeDueInDays": "in {days} d",
-  "@homeDueInDays": { "placeholders": { "days": { "type": "int" } } },
+  "@homeDueInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "homeBulkSelected": "{count} selected",
-  "@homeBulkSelected": { "placeholders": { "count": { "type": "int" } } },
+  "@homeBulkSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "homeBulkMove": "Move",
   "homeBulkMute": "Mute",
   "homeBulkUnmute": "Unmute",
   "homeBulkRemovedFromSpace": "{count, plural, =1{Removed 1 plant from any space} other{Removed {count} plants from any space}}",
-  "@homeBulkRemovedFromSpace": { "placeholders": { "count": { "type": "int" } } },
+  "@homeBulkRemovedFromSpace": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "homeBulkMoved": "{count, plural, =1{Moved 1 plant} other{Moved {count} plants}}",
-  "@homeBulkMoved": { "placeholders": { "count": { "type": "int" } } },
+  "@homeBulkMoved": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "homeBulkDeleteTitle": "{count, plural, =1{Delete 1 plant?} other{Delete {count} plants?}}",
-  "@homeBulkDeleteTitle": { "placeholders": { "count": { "type": "int" } } },
+  "@homeBulkDeleteTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "homeBulkDeleteBody": "Use Gave away / Sold / Marked dead from a single plant if you want a ledger entry instead.",
   "homeBulkDeleted": "{count, plural, =1{Deleted 1 plant} other{Deleted {count} plants}}",
-  "@homeBulkDeleted": { "placeholders": { "count": { "type": "int" } } },
+  "@homeBulkDeleted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "homeBulkUndo": "Undo",
   "homeQuickLogWhich": "{action} which plant?",
-  "@homeQuickLogWhich": { "placeholders": { "action": { "type": "String" } } },
+  "@homeQuickLogWhich": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
   "homeQuickLogRecordsNow": "Records a care event immediately.",
   "homeQuickLogEmpty": "No plants yet — add one from Home.",
   "addPlantNicknameLabel": "NICKNAME",
@@ -147,14 +255,32 @@
   "spaceKindShelf": "Shelf",
   "spaceKindOutdoorBed": "Outdoor bed",
   "spaceLoadFailed": "Could not load locations.\n{error}",
-  "@spaceLoadFailed": { "placeholders": { "error": { "type": "String" } } },
+  "@spaceLoadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "spacePlantCount": "{count, plural, =1{1 plant} other{{count} plants}}",
-  "@spacePlantCount": { "placeholders": { "count": { "type": "int" } } },
+  "@spacePlantCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "spaceAddPlants": "Add plants",
   "spaceManage": "Manage",
   "spaceNameRequired": "Name is required",
   "spaceEditTitle": "Edit \"{name}\"",
-  "@spaceEditTitle": { "placeholders": { "name": { "type": "String" } } },
+  "@spaceEditTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "spaceNameLabel": "NAME",
   "spaceNameHint": "e.g. Living room",
   "spaceKindUpper": "KIND",
@@ -175,7 +301,13 @@
   "spaceTempLabel": "TEMPERATURE RANGE (°C — optional)",
   "spaceNotesLabel": "NOTES",
   "spaceAssignTitle": "Plants in \"{name}\"",
-  "@spaceAssignTitle": { "placeholders": { "name": { "type": "String" } } },
+  "@spaceAssignTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "spaceAssignSub": "Toggle to add or remove from this space.",
   "spaceAssignEmpty": "No plants to assign yet.",
   "spaceInThisSpace": "In this space",
@@ -184,11 +316,23 @@
   "spacePickerTitle": "Move to space",
   "spacePickerEmpty": "No spaces yet — add one from the Spaces tab.",
   "spaceLoadOneFailed": "Failed to load location.\n{error}",
-  "@spaceLoadOneFailed": { "placeholders": { "error": { "type": "String" } } },
+  "@spaceLoadOneFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "spaceGone": "Location no longer exists.",
   "spaceDeleteTitle": "Delete space?",
   "spaceDeleteBody": "Removes \"{name}\". Plants keep their existing position in other spaces.",
-  "@spaceDeleteBody": { "placeholders": { "name": { "type": "String" } } },
+  "@spaceDeleteBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "spaceMenuAssign": "Assign plants…",
   "spaceMenuMute": "Mute notifications",
   "spaceMenuUnmute": "Unmute notifications",
@@ -200,14 +344,38 @@
   "spacePlacePins": "Place pins",
   "spaceSectionGallery": "GALLERY",
   "spaceSectionPlants": "PLANTS ({count})",
-  "@spaceSectionPlants": { "placeholders": { "count": { "type": "int" } } },
+  "@spaceSectionPlants": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "spaceChipOutdoor": "outdoor",
   "spaceChipLight": "light: {light}",
-  "@spaceChipLight": { "placeholders": { "light": { "type": "String" } } },
+  "@spaceChipLight": {
+    "placeholders": {
+      "light": {
+        "type": "String"
+      }
+    }
+  },
   "spaceChipHumidity": "humidity {range}%",
-  "@spaceChipHumidity": { "placeholders": { "range": { "type": "String" } } },
+  "@spaceChipHumidity": {
+    "placeholders": {
+      "range": {
+        "type": "String"
+      }
+    }
+  },
   "spaceChipTemp": "temp {range}°C",
-  "@spaceChipTemp": { "placeholders": { "range": { "type": "String" } } },
+  "@spaceChipTemp": {
+    "placeholders": {
+      "range": {
+        "type": "String"
+      }
+    }
+  },
   "spaceChipMuted": "muted",
   "spaceAddLayoutTitle": "Add a layout image",
   "spaceAddLayoutBody": "Room photo or a rough sketch — drop plant pins on top.",
@@ -215,11 +383,18 @@
   "spacePinHintPlace": "Tap to place • drag to move • long-press to remove",
   "spacePinHintDrag": "Drag pins to move • long-press to remove",
   "spacePlaced": "Placed {name}",
-  "@spacePlaced": { "placeholders": { "name": { "type": "String" } } },
+  "@spacePlaced": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "spaceNoPlantsHere": "No plants here yet.",
   "spacePhotoEditDate": "Edit date",
   "spacePhotoEditCaption": "Edit caption",
   "spacePhotoRemove": "Remove from this space",
+  "spacePhotoActionsTitle": "Photo",
   "spaceCaptionTitle": "Caption",
   "spaceCaptionHint": "e.g. morning light corner",
   "appTitle": "PlantlyInventory",
@@ -230,7 +405,10 @@
   "@goodMorning": {
     "description": "Greeting on the home screen",
     "placeholders": {
-      "name": { "type": "String", "example": "Ana" }
+      "name": {
+        "type": "String",
+        "example": "Ana"
+      }
     }
   },
   "statOverdue": "Overdue",
@@ -254,7 +432,13 @@
   "search": "Search plants, notes…",
   "searchEmptyStart": "Type to search your plants by nickname or notes.",
   "searchNoMatch": "No plants match \"{query}\".",
-  "@searchNoMatch": { "placeholders": { "query": { "type": "String" } } },
+  "@searchNoMatch": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "spaces": "Spaces",
   "thisWeek": "This week",
   "rainExpected": "Rain expected",
@@ -275,7 +459,6 @@
   "topLevel": "— top level —",
   "cancel": "Cancel",
   "addBtn": "Add",
-
   "commonSave": "Save",
   "commonDelete": "Delete",
   "commonRemove": "Remove",
@@ -285,7 +468,6 @@
   "commonOk": "OK",
   "commonTodayLabel": "Today",
   "commonNextLabel": "Next",
-
   "plantDetailEdit": "Edit plant",
   "plantDetailAddPhotos": "Add photos",
   "plantDetailMoveToSpace": "Move to space…",
@@ -313,7 +495,6 @@
   "plantDetailCaptionHint": "e.g. yellow leaf spotted",
   "plantDetailRemovePhotoTitle": "Remove photo?",
   "plantDetailRemovePhotoBody": "The file stays on disk (other plants may use it) — it just detaches from this plant.",
-
   "logEventTitle": "Log event",
   "logEventWhat": "WHAT",
   "logEventWhen": "WHEN",
@@ -324,11 +505,9 @@
   "logEventNotes": "NOTES (OPTIONAL)",
   "logEventNotesHint": "e.g. new leaf unfurling",
   "logEventEnterName": "Enter a name for the event",
-
   "editEventTitle": "Edit event",
   "editEventDose": "DOSE (OPTIONAL)",
   "editEventDoseHint": "e.g. 100 ml",
-
   "addReminderTitle": "Add reminder",
   "addReminderType": "TYPE",
   "addReminderCustom": "Custom",
@@ -348,20 +527,30 @@
   "addReminderNameCustom": "Name the custom reminder",
   "addReminderFiresOnce": "FIRES ONCE",
   "addReminderNextReminders": "NEXT {count, plural, =1{REMINDER} other{{count} REMINDERS}}",
-  "@addReminderNextReminders": { "placeholders": { "count": { "type": "int" } } },
+  "@addReminderNextReminders": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "addReminderPresetDaily": "Daily",
   "addReminderPresetEveryOtherDay": "Every other day",
   "addReminderPresetWeekly": "Weekly",
   "addReminderPresetMondays": "Mondays 09:00",
   "addReminderPresetBiweekly": "Bi-weekly",
   "addReminderPresetMonthly": "Monthly",
-
   "editReminderTitle": "Edit {type} reminder",
-  "@editReminderTitle": { "placeholders": { "type": { "type": "String" } } },
+  "@editReminderTitle": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
   "editReminderNextDue": "NEXT DUE",
   "editReminderDeleteTitle": "Delete reminder?",
   "editReminderDeleteBody": "Removes this schedule. Past events stay in the timeline.",
-
   "meSectionYou": "YOU",
   "meSectionAppearance": "APPEARANCE",
   "meSectionLists": "LISTS",
@@ -388,7 +577,6 @@
   "meYourName": "Your name",
   "meYourNameEmpty": "Add one for the greeting.",
   "meYourNameHint": "e.g. Ana",
-
   "calendarToday": "Today",
   "calendarNext": "Next",
   "calendarWeek": "Week",
@@ -398,29 +586,22 @@
   "calendarDayScheduled": "SCHEDULED",
   "calendarDayDone": "DONE",
   "calendarDayEmpty": "Nothing scheduled or logged on this day.",
-
   "searchTitle": "Search",
-
   "careTypesTitle": "Care types",
   "careTypesReset": "Reset to defaults",
   "careTypesResetTitle": "Reset to defaults?",
   "careTypesResetBody": "Restores the built-in 6 types + drops any custom ones. Existing schedules and events keep their keys.",
-
   "statsTitle": "Stats",
   "statsActivityHeader": "30-DAY ACTIVITY BY TYPE",
   "statsTopPlants": "TOP PLANTS — 30 DAYS",
-
   "activityTitle": "Activity",
   "activityEmpty": "No activity yet.\nLog your first care event on any plant.",
-
   "quickLogTitle": "Quick log",
   "quickLogWater": "Water",
   "quickLogFertilize": "Fertilize",
   "quickLogMist": "Mist",
   "quickLogRotate": "Rotate",
-
   "tipOfTheDay": "TIP OF THE DAY",
-
   "exportTitleField": "TITLE",
   "exportDescriptionField": "DESCRIPTION",
   "exportPriceField": "PRICE",
@@ -429,18 +610,29 @@
   "exportCategoryDefault": "Indoor plant",
   "exportLocationField": "LOCATION",
   "exportPhotosField": "PHOTOS ({count}/6)",
-  "@exportPhotosField": { "placeholders": { "count": { "type": "int" } } },
+  "@exportPhotosField": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "exportNoPhotos": "No photos attached. Add some on the plant detail screen first.",
   "exportDraftSaved": "Draft saved",
   "exportPostOnPlantlyRoCta": "Post on plantly.ro",
   "exportSavedLocally": "Saved locally — plantly.ro sync lands in Phase 2",
-
   "tagAdd": "Add a tag",
   "tagHint": "e.g. variegated",
   "tagPickExisting": "OR PICK EXISTING",
   "tagAddTitle": "Add tag",
   "exportPostTitle": "Post \"{name}\"",
-  "@exportPostTitle": { "placeholders": { "name": { "type": "String" } } },
+  "@exportPostTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "exportCategorySearchHint": "Search a category (e.g. Monstera)",
   "exportCategoryChangeHint": "Search to change category",
   "exportCategoryNoResults": "No matching category — try another word",
@@ -455,10 +647,22 @@
   "exportPosting": "Posting to plantly.ro…",
   "exportPosted": "Posted on plantly.ro",
   "exportPostedWithWarnings": "Posted on plantly.ro — {warnings}",
-  "@exportPostedWithWarnings": { "placeholders": { "warnings": { "type": "String" } } },
+  "@exportPostedWithWarnings": {
+    "placeholders": {
+      "warnings": {
+        "type": "String"
+      }
+    }
+  },
   "exportOpenListing": "Open",
   "exportFailedServer": "Could not post: {message}",
-  "@exportFailedServer": { "placeholders": { "message": { "type": "String" } } },
+  "@exportFailedServer": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "exportIssueTitleRequired": "Title is required",
   "exportIssueTitleTooLong": "Title is too long (max 64 characters)",
   "exportIssueDescriptionTooLong": "Description is too long (max 2000 characters)",
@@ -466,7 +670,6 @@
   "exportIssueCategoryRequired": "Pick a category",
   "exportIssuePhotosRequired": "Select at least one photo",
   "exportIssuePhotosTooMany": "At most 6 photos",
-
   "plantlyLoginTitle": "Sign in to plantly.ro",
   "plantlyLoginSubtitle": "Use your plantly.ro account to post listings.",
   "plantlyLoginEmail": "Email",
@@ -482,7 +685,6 @@
   "plantlyErrorNetwork": "No connection to plantly.ro — check your internet and try again",
   "plantlyErrorRateLimited": "Too many attempts — wait a minute and try again",
   "plantlyErrorSignInAgain": "Your plantly.ro session expired — sign in again",
-
   "listedOnPlantly": "Listed on plantly.ro",
   "listedStatusActive": "ACTIVE",
   "listedStatusSold": "SOLD",
@@ -492,17 +694,27 @@
   "listedMarkSoldBody": "The listing on plantly.ro will be closed. This can't be undone from the app.",
   "listedMarkedSold": "Marked as sold on plantly.ro",
   "listedCancel": "Cancel",
-
   "meSectionPlantlyAccount": "PLANTLY ACCOUNT",
   "mePlantlyAccountLabel": "plantly.ro",
   "mePlantlySignedInAs": "Signed in as {username}",
-  "@mePlantlySignedInAs": { "placeholders": { "username": { "type": "String" } } },
+  "@mePlantlySignedInAs": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
   "mePlantlySignedOut": "Sign in",
   "mePlantlySignOutTitle": "Sign out?",
   "mePlantlySignOutBody": "You'll be signed out of plantly.ro ({username}) on this device.",
-  "@mePlantlySignOutBody": { "placeholders": { "username": { "type": "String" } } },
+  "@mePlantlySignOutBody": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
   "mePlantlySignOut": "Sign out",
-
   "importTitle": "Add to your plants",
   "importSourceAssistant": "FROM PLANTLY ASSISTANT",
   "importSourceMarketplace": "FROM PLANTLY.RO",
@@ -513,7 +725,13 @@
   "importConfirm": "Add plant",
   "importConfirmAgain": "Add again",
   "importHealthLine": "Health: {status}",
-  "@importHealthLine": { "placeholders": { "status": { "type": "String" } } },
+  "@importHealthLine": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
   "importHealthHealthy": "healthy",
   "importHealthStressed": "stressed",
   "importHealthDiseased": "diseased",
@@ -525,15 +743,39 @@
   "importObsPests": "pests",
   "importObsOther": "other",
   "importNotesIdentified": "Identified with Plantly Assistant on {date}.",
-  "@importNotesIdentified": { "placeholders": { "date": { "type": "String" } } },
+  "@importNotesIdentified": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "importNotesIdentifiedNoDate": "Identified with Plantly Assistant.",
   "importNotesBought": "Bought on plantly.ro on {date}.",
-  "@importNotesBought": { "placeholders": { "date": { "type": "String" } } },
+  "@importNotesBought": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "importNotesBoughtNoDate": "Bought on plantly.ro.",
   "importNotesHealth": "Health: {status}.",
-  "@importNotesHealth": { "placeholders": { "status": { "type": "String" } } },
+  "@importNotesHealth": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
   "importNotesObservations": "Observations: {items}.",
-  "@importNotesObservations": { "placeholders": { "items": { "type": "String" } } },
+  "@importNotesObservations": {
+    "placeholders": {
+      "items": {
+        "type": "String"
+      }
+    }
+  },
   "importErrorTitle": "Couldn't read that plant",
   "importErrorMalformed": "The link is damaged or incomplete. Try exporting it again from the other app.",
   "importErrorTooLarge": "The link is too large to open. Try exporting it again without the photo.",
@@ -543,11 +785,16 @@
   "exportDraftCta": "Prepare listing draft",
   "exportDraftEyebrow": "LISTING DRAFT",
   "exportDraftTitle": "Draft \"{name}\"",
-  "@exportDraftTitle": { "placeholders": { "name": { "type": "String" } } },
+  "@exportDraftTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "exportCategoryPlaceholder": "Select category",
   "exportCategoryTitle": "Category",
   "importErrorDismiss": "OK",
-
   "meTitle": "Me",
   "meStatCardPlants": "PLANTS",
   "meStatCardSpaces": "SPACES",
@@ -570,35 +817,95 @@
   "meBackupPassphrase": "Backup passphrase",
   "meBackupPassphraseHint": "Pick anything — needed to import again",
   "meBackupSaved": "Backup saved: {where}",
-  "@meBackupSaved": { "placeholders": { "where": { "type": "String" } } },
+  "@meBackupSaved": {
+    "placeholders": {
+      "where": {
+        "type": "String"
+      }
+    }
+  },
   "meExportFailed": "Export failed: {error}",
-  "@meExportFailed": { "placeholders": { "error": { "type": "String" } } },
+  "@meExportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "meImportLabel": "Import backup",
   "meImportValue": "Pick a .json or .zip from this device.",
   "meImportFileType": "Plantly backup",
   "meImportWrongPassphrase": "Wrong passphrase for this backup.",
   "meImportInvalidBackup": "Invalid backup: {message}",
-  "@meImportInvalidBackup": { "placeholders": { "message": { "type": "String" } } },
+  "@meImportInvalidBackup": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "meImportInvalidZip": "Invalid ZIP: {message}",
-  "@meImportInvalidZip": { "placeholders": { "message": { "type": "String" } } },
+  "@meImportInvalidZip": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "meImportFailed": "Import failed: {error}",
-  "@meImportFailed": { "placeholders": { "error": { "type": "String" } } },
+  "@meImportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "meImportedRows": "{count, plural, =1{Imported 1 row} other{Imported {count} rows}}",
-  "@meImportedRows": { "placeholders": { "count": { "type": "int" } } },
+  "@meImportedRows": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "meImportedPhotos": "{count, plural, =1{1 photo} other{{count} photos}}",
-  "@meImportedPhotos": { "placeholders": { "count": { "type": "int" } } },
+  "@meImportedPhotos": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "meIcsLabel": "Download .ics",
   "meIcsValue": "Open the next 30 days of reminders in any calendar app.",
   "meIcsShareText": "PlantlyInventory reminders",
   "meIcsSaved": ".ics saved: {where}",
-  "@meIcsSaved": { "placeholders": { "where": { "type": "String" } } },
+  "@meIcsSaved": {
+    "placeholders": {
+      "where": {
+        "type": "String"
+      }
+    }
+  },
   "meCsvLabel": "Export CSV",
   "meCsvValue": "Plants + care events as a spreadsheet-friendly dump.",
   "meCsvShareText": "PlantlyInventory CSV",
   "meCsvSaved": "CSV saved: {where}",
-  "@meCsvSaved": { "placeholders": { "where": { "type": "String" } } },
+  "@meCsvSaved": {
+    "placeholders": {
+      "where": {
+        "type": "String"
+      }
+    }
+  },
   "meCsvFailed": "CSV export failed: {error}",
-  "@meCsvFailed": { "placeholders": { "error": { "type": "String" } } },
+  "@meCsvFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "mePrivacyTitle": "Privacy & data",
   "mePrivacyWhatLeaves": "What leaves your device",
   "mePrivacyBulletLocal": "Nothing by default. Plants, photos, care events, and schedules live in a local SQLite database on your phone.",
@@ -614,7 +921,13 @@
   "mePrivacyLicenseValue": "AGPL-3.0-or-later · source: github.com/URunDEAD/PlantlyInventory",
   "meCareTypeNew": "New care type",
   "meCareTypeEdit": "Edit \"{label}\"",
-  "@meCareTypeEdit": { "placeholders": { "label": { "type": "String" } } },
+  "@meCareTypeEdit": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
   "meCareTypeLabelField": "LABEL",
   "meCareTypeLabelHint": "e.g. Neem spray",
   "meCareTypeIntervalField": "DEFAULT INTERVAL (DAYS)",
@@ -622,15 +935,42 @@
   "meCareTypeColourField": "COLOUR",
   "meCareTypeColourDefault": "Default",
   "meCareTypeDefaultEvery": "Default: every {days} {count, plural, =1{day} other{days}}",
-  "@meCareTypeDefaultEvery": { "placeholders": { "days": { "type": "String" }, "count": { "type": "int" } } },
+  "@meCareTypeDefaultEvery": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "meCareTypeMuteTooltip": "Mute this care type everywhere",
   "meCareTypeUnmuteTooltip": "Unmute this care type everywhere",
   "meMutedPlantsHeader": "MUTED PLANTS ({count})",
-  "@meMutedPlantsHeader": { "placeholders": { "count": { "type": "int" } } },
+  "@meMutedPlantsHeader": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "meMutedRemindersHeader": "MUTED REMINDERS ({count})",
-  "@meMutedRemindersHeader": { "placeholders": { "count": { "type": "int" } } },
+  "@meMutedRemindersHeader": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "meMutedSpacesHeader": "MUTED SPACES ({count})",
-  "@meMutedSpacesHeader": { "placeholders": { "count": { "type": "int" } } },
+  "@meMutedSpacesHeader": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "meMutedPlantBody": "Every reminder for this plant is silenced.",
   "meMutedReminderBody": "Single schedule muted — other reminders for this plant still fire.",
   "meMutedSpaceBody": "Every plant in this space is silenced.",
@@ -639,7 +979,16 @@
   "meUnmute": "Unmute",
   "meDndTitle": "Do not disturb",
   "meDndActive": "Quiet between {start} and {end} (reminders delayed)",
-  "@meDndActive": { "placeholders": { "start": { "type": "String" }, "end": { "type": "String" } } },
+  "@meDndActive": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
   "meDndInactive": "Fire reminders whenever they're due",
   "meDndStart": "Start",
   "meDndEnd": "End",
@@ -651,36 +1000,102 @@
   "statsCellLast30": "LAST 30d",
   "statsEmpty": "No care events yet. Log your first reminder to see stats here.",
   "statsCardLast": "LAST {type}",
-  "@statsCardLast": { "placeholders": { "type": { "type": "String" } } },
+  "@statsCardLast": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
   "statsCardAvg": "AVG {type}",
-  "@statsCardAvg": { "placeholders": { "type": { "type": "String" } } },
+  "@statsCardAvg": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
   "statsCardToday": "today",
   "statsCardDaysShort": "{count}d",
-  "@statsCardDaysShort": { "placeholders": { "count": { "type": "int" } } },
+  "@statsCardDaysShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "statsCardAvgDaysShort": "~{value}d",
-  "@statsCardAvgDaysShort": { "placeholders": { "value": { "type": "String" } } },
+  "@statsCardAvgDaysShort": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "activityToday": "TODAY",
   "activityYesterday": "YESTERDAY",
   "detailLoadFailed": "Failed to load plant.\n{error}",
-  "@detailLoadFailed": { "placeholders": { "error": { "type": "String" } } },
+  "@detailLoadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "detailNoLocation": "No location set",
   "detailLoadingLocation": "Loading location…",
   "detailFabNow": "{action} now",
-  "@detailFabNow": { "placeholders": { "action": { "type": "String" } } },
+  "@detailFabNow": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
   "detailFabTooltip": "Long-press to change",
   "detailDeleteTitle": "Delete plant?",
   "detailDeleteBody": "Removes \"{name}\" from your collection. Use Gave away / Sold / Marked dead if you want a ledger entry.",
-  "@detailDeleteBody": { "placeholders": { "name": { "type": "String" } } },
+  "@detailDeleteBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "detailDeletedToast": "Deleted \"{name}\"",
-  "@detailDeletedToast": { "placeholders": { "name": { "type": "String" } } },
+  "@detailDeletedToast": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "detailUndo": "Undo",
   "detailAddedOn": "Added {date}",
-  "@detailAddedOn": { "placeholders": { "date": { "type": "String" } } },
+  "@detailAddedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "detailAcquiredOn": "Acquired {date}",
-  "@detailAcquiredOn": { "placeholders": { "date": { "type": "String" } } },
+  "@detailAcquiredOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "detailRemovedFromSpace": "Removed from any space",
   "detailMovedTo": "Moved to {space}",
-  "@detailMovedTo": { "placeholders": { "space": { "type": "String" } } },
+  "@detailMovedTo": {
+    "placeholders": {
+      "space": {
+        "type": "String"
+      }
+    }
+  },
   "detailThatSpace": "that space",
   "detailReorderTooltip": "Reorder",
   "detailEditDateTooltip": "Edit date",
@@ -691,11 +1106,23 @@
   "detailNoDueDate": "No due date",
   "detailOverdue": "overdue",
   "detailOverdueDays": "{count, plural, =1{1 day overdue} other{{count} days overdue}}",
-  "@detailOverdueDays": { "placeholders": { "count": { "type": "int" } } },
+  "@detailOverdueDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "detailDueToday": "today",
   "detailDueTomorrow": "tomorrow",
   "detailDueInDays": "{count, plural, =1{in 1 day} other{in {count} days}}",
-  "@detailDueInDays": { "placeholders": { "count": { "type": "int" } } },
+  "@detailDueInDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "detailVerbRepot": "Repot",
   "detailVerbPrune": "Prune",
   "detailPastWater": "Watered",
@@ -706,19 +1133,43 @@
   "detailPastRotate": "Rotated",
   "detailDeleteEventTitle": "Delete this event?",
   "detailDeleteEventBody": "Removes this \"{text}\" record from the timeline.",
-  "@detailDeleteEventBody": { "placeholders": { "text": { "type": "String" } } },
+  "@detailDeleteEventBody": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
   "detailLedgerPropagatedOut": "Propagated off this plant",
   "detailLedgerPropagatedIn": "Propagated from a parent",
   "detailLedgerGaveTo": "Gave to {who}",
-  "@detailLedgerGaveTo": { "placeholders": { "who": { "type": "String" } } },
+  "@detailLedgerGaveTo": {
+    "placeholders": {
+      "who": {
+        "type": "String"
+      }
+    }
+  },
   "detailLedgerSomeone": "someone",
   "detailLedgerSold": "Sold",
   "detailLedgerSoldTo": "Sold to {buyer}",
-  "@detailLedgerSoldTo": { "placeholders": { "buyer": { "type": "String" } } },
+  "@detailLedgerSoldTo": {
+    "placeholders": {
+      "buyer": {
+        "type": "String"
+      }
+    }
+  },
   "detailLedgerMarkedDead": "Marked dead",
   "detailReorderPhotosTitle": "Reorder photos",
   "detailPhotoN": "Photo {n}",
-  "@detailPhotoN": { "placeholders": { "n": { "type": "int" } } },
+  "@detailPhotoN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "sheetNicknameRequired": "Nickname is required",
   "sheetFieldSpace": "SPACE",
   "sheetFieldSpecies": "SPECIES",
@@ -732,15 +1183,33 @@
   "sheetSoldHint": "Buyer (optional)",
   "sheetMarkedDeadTitle": "Marked dead",
   "sheetInventoryRemoveBody": "This will remove \"{name}\" from your active collection.",
-  "@sheetInventoryRemoveBody": { "placeholders": { "name": { "type": "String" } } },
+  "@sheetInventoryRemoveBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "sheetPriceHint": "Price (optional)",
   "sheetNotesOptionalHint": "Notes (optional)",
   "sheetPropagateTitle": "Propagate {name}",
-  "@sheetPropagateTitle": { "placeholders": { "name": { "type": "String" } } },
+  "@sheetPropagateTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "sheetChildNickname": "Child nickname",
   "sheetPropagateNotesHint": "e.g. cut from node 3; rooting in water",
   "sheetPropagateDefaultName": "{name} · propagation",
-  "@sheetPropagateDefaultName": { "placeholders": { "name": { "type": "String" } } },
+  "@sheetPropagateDefaultName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "sheetPropagateAction": "Propagate",
   "careTypeWater": "Water",
   "careTypeFertilize": "Fertilize",
@@ -764,18 +1233,770 @@
   "calPrevious": "Previous",
   "calDayFree": "Clear",
   "calOverdueMinutes": "{count, plural, =1{1 min overdue} other{{count} min overdue}}",
-  "@calOverdueMinutes": { "placeholders": { "count": { "type": "int" } } },
+  "@calOverdueMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "calOverdueHours": "{count, plural, =1{1 hour overdue} other{{count} hours overdue}}",
-  "@calOverdueHours": { "placeholders": { "count": { "type": "int" } } },
+  "@calOverdueHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "calInMinutes": "{count, plural, =1{in 1 min} other{in {count} min}}",
-  "@calInMinutes": { "placeholders": { "count": { "type": "int" } } },
+  "@calInMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "calInHours": "{count, plural, =1{in 1 hour} other{in {count} hours}}",
-  "@calInHours": { "placeholders": { "count": { "type": "int" } } },
+  "@calInHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "photoSrcTakePhoto": "Take photo",
   "photoSrcTakePhotoSub": "Open the camera",
   "photoSrcGalleryMulti": "Choose from gallery",
   "photoSrcGalleryMultiSub": "Select multiple images",
   "photoSrcGalleryOne": "Choose one from gallery",
   "photoSrcGalleryOneSub": "Pick a single image",
-  "spacePickerChooseTitle": "Choose a space"
+  "spacePickerChooseTitle": "Choose a space",
+  "cloudSectionTitle": "Cloud",
+  "cloudScreenTitle": "Cloud",
+  "cloudScreenIntro": "Your plants, photos and care history are backed up to your plantly.ro account and kept in sync on every device you sign in on. Nothing leaves this device until you link it.",
+  "cloudSignInLabel": "Sign in to plantly.ro",
+  "cloudSignInPitch": "Back up your plants and sync them across devices",
+  "cloudNotIncludedLabel": "Cloud backup & sync",
+  "cloudNotIncludedValue": "Included with Plantly Pro or Plantly Inventory Cloud",
+  "cloudChecking": "Checking your subscription…",
+  "cloudSubscribeLabel": "Subscribe on plantly.ro",
+  "cloudSubscribeValue": "Opens your plantly.ro account in the browser",
+  "cloudRefreshStatusLabel": "Refresh status",
+  "cloudRefreshStatusValue": "Check your subscription again",
+  "cloudStatusLabel": "Cloud sync",
+  "cloudSettingUp": "Setting up your cloud collection…",
+  "cloudSetupFailed": "Couldn't set up cloud sync. Tap to retry.",
+  "cloudSyncing": "Syncing…",
+  "cloudLastSyncNever": "Not synced yet",
+  "cloudLastSyncJustNow": "Synced just now",
+  "cloudLastSyncMinutes": "{count, plural, =1{Synced 1 min ago} other{Synced {count} min ago}}",
+  "@cloudLastSyncMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cloudLastSyncHours": "{count, plural, =1{Synced 1 hour ago} other{Synced {count} hours ago}}",
+  "@cloudLastSyncHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cloudLastSyncDays": "{count, plural, =1{Synced 1 day ago} other{Synced {count} days ago}}",
+  "@cloudLastSyncDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cloudPendingOps": "{count, plural, =0{all changes uploaded} =1{1 change waiting} other{{count} changes waiting}}",
+  "@cloudPendingOps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cloudStorageUsed": "{used} of {quota} used",
+  "@cloudStorageUsed": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "quota": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudSyncNowLabel": "Sync now",
+  "cloudSyncNowValue": "Upload pending changes and fetch updates",
+  "cloudPlanLabel": "Plan",
+  "cloudEntitlementSourcePro": "Included with Plantly Pro",
+  "cloudEntitlementSourceCloud": "Plantly Inventory Cloud",
+  "cloudRenewsOn": "renews {date}",
+  "@cloudRenewsOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudPlayPlansTitle": "Subscribe in Google Play",
+  "cloudPlayPlanMonthly": "Monthly",
+  "cloudPlayPlanYearly": "Yearly",
+  "cloudPlayPerMonth": "{price} / month",
+  "@cloudPlayPerMonth": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudPlayPerYear": "{price} / year",
+  "@cloudPlayPerYear": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudPlayLoadingPlans": "Loading prices from Google Play…",
+  "cloudPlayUnavailable": "Google Play billing isn't available on this device right now.",
+  "cloudPlayRetry": "Retry",
+  "cloudPlayActivating": "Activating…",
+  "cloudPlayManageLabel": "Manage subscription in Google Play",
+  "cloudPlayManageValue": "Cancel, pause or change your plan in Google Play",
+  "cloudEntitlementViaPlay": "via Google Play",
+  "cloudPlayAlreadyEntitledTitle": "You already have Inventory Cloud",
+  "cloudPlayAlreadyEntitledBody": "You already have Inventory Cloud (included with Plantly Pro / your web subscription). The Google Play purchase was not activated and will be refunded automatically by Google within 3 days.",
+  "cloudPlayPending": "Your payment is pending. Inventory Cloud activates once Google Play confirms it.",
+  "cloudPlayVerified": "Inventory Cloud is active.",
+  "cloudPlayVerifyFailed": "Couldn't confirm your purchase with plantly.ro.",
+  "cloudPlayPurchaseFailed": "Google Play couldn't complete the purchase.",
+  "cloudPlayTokenOwnedByOther": "This Google Play subscription belongs to another plantly.ro account.",
+  "cloudCollectionLabel": "Collection",
+  "cloudLastErrorLabel": "Last error",
+  "cloudAccountLabel": "Account",
+  "cloudAccountValue": "Signed in as {username} · tap to sign out",
+  "@cloudAccountValue": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudSignOutTitle": "Sign out of plantly.ro?",
+  "cloudSignOutBody": "Cloud sync pauses until {username} signs in again. Your plants stay on this device.",
+  "@cloudSignOutBody": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudSignOut": "Sign out",
+  "cloudUnlinkLabel": "Unlink this device",
+  "cloudUnlinkValue": "Stop syncing here; keeps local and server data",
+  "cloudUnlinkTitle": "Unlink this device?",
+  "cloudUnlinkBody": "Sync stops on this device. Nothing is deleted: your plants stay here and your data stays in your plantly.ro account. Sign in again any time to relink.",
+  "cloudUnlink": "Unlink",
+  "cloudUnlinked": "Device unlinked",
+  "cloudLoginGoogle": "Continue with Google",
+  "cloudLoginFacebook": "Continue with Facebook",
+  "cloudLoginOr": "or",
+  "cloudLoginOauthWaiting": "Finish signing in in your browser — we'll pick it up here.",
+  "cloudSyncOffHere": "Sync is off on this device — tap to turn it on",
+  "cloudHeldByOther": "This device holds plants synced by {username}.",
+  "@cloudHeldByOther": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudMoveToMeLabel": "Move this device's plants to {username}'s cloud",
+  "@cloudMoveToMeLabel": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudMoveToMeValue": "They leave {username}'s collection and sync to yours",
+  "@cloudMoveToMeValue": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudMoveConfirmTitle": "Move plants to your cloud?",
+  "cloudMoveConfirmBody": "Everything on this device leaves {from}'s collection and is uploaded to {to}'s. {from} keeps what was already synced from other devices.",
+  "@cloudMoveConfirmBody": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudMove": "Move",
+  "cloudStartEmptyLabel": "Start empty for {username}",
+  "@cloudStartEmptyLabel": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudStartEmptyValue": "{username}'s plants stay hidden on this device; sign {username} in again to see them",
+  "@cloudStartEmptyValue": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudErrCollectionUnavailable": "This collection is no longer available — unlink this device and link it again",
+  "cloudErrQuotaExceeded": "Cloud storage is full — new photos stay on this device until space frees up",
+  "cloudErrOpTooLarge": "One change is too large to upload and was skipped",
+  "cloudErrOpTooLargeDetail": "One change is too large to upload and was skipped ({detail})",
+  "@cloudErrOpTooLargeDetail": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudErrRetrying": "Server busy — retrying shortly",
+  "cloudErrOffline": "Offline — will sync when you are back online",
+  "cloudErrGeneric": "Sync failed — will retry",
+  "shellSelectPlant": "Select a plant to see its care history",
+  "shellSelectSpace": "Select a space to see what grows there",
+  "shellSelectSection": "Choose a section on the left",
+  "historyColDate": "Date",
+  "historyColCare": "Care",
+  "historyColDetails": "Details",
+  "homeCustomise": "Customise",
+  "homeSearchHint": "Search plants…",
+  "detailPrevPlant": "Previous plant",
+  "detailNextPlant": "Next plant",
+  "detailMoreCareActions": "More care actions",
+  "detailColCare": "Care",
+  "detailColEvery": "Every",
+  "detailColNextDue": "Next due",
+  "detailFactSpace": "Space",
+  "detailFactAcquired": "Acquired",
+  "detailFactPotSize": "Pot size",
+  "detailFactTags": "Tags",
+  "detailFactNotes": "Notes",
+  "detailEveryNDays": "{n, plural, =1{1 day} other{{n} days}}",
+  "@detailEveryNDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "spaceCardPlantCount": "{n, plural, =0{No plants} =1{1 plant} other{{n} plants}}",
+  "@spaceCardPlantCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "homeNoPlantsBodyDesktop": "Add one with the button in the side bar. You can set up reminders once it lands.",
+  "shareSwitcherTitle": "Collections",
+  "shareSwitcherTooltip": "Switch collection",
+  "shareMineSection": "My collections",
+  "shareSharedWithMe": "Shared with me",
+  "shareRoleOwner": "Owner",
+  "shareRoleEditor": "Editor",
+  "shareJoinWithCode": "Join with code…",
+  "shareJoinTitle": "Join a shared collection",
+  "shareJoinBody": "Enter the 8-character code from the invite you received.",
+  "shareJoinCodeLabel": "Invite code",
+  "shareJoinCodeInvalid": "Codes are 8 letters or digits (no I, O, 0 or 1).",
+  "shareJoinButton": "Join",
+  "shareJoinSignInFirst": "You will be asked to sign in to plantly.ro first.",
+  "shareJoinPaywallNote": "You can use this shared collection — it runs on the owner’s plan. Your own plants stay local until you subscribe.",
+  "shareJoined": "Joined {name}",
+  "@shareJoined": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shareJoinErrInvalid": "This invite code is not valid — it may have expired or already been used.",
+  "shareJoinErrAlreadyMember": "You are already a member of this collection.",
+  "shareSectionTitle": "Sharing",
+  "shareSectionIntro": "Invite family or a plant-sitter to log care in this collection with you.",
+  "shareActiveLabel": "Active collection",
+  "shareActiveValue": "{name} · {role}",
+  "@shareActiveValue": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "shareMembersCount": "{n, plural, =1{1 member} other{{n} members}}",
+  "@shareMembersCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "shareInviteLabel": "Invite someone",
+  "shareInviteValue": "Create a code they can enter in their app",
+  "shareInviteTitle": "Invite to {name}",
+  "@shareInviteTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shareInviteCodeHint": "Share this code or link. It works once and expires in 7 days.",
+  "shareInviteCopy": "Copy",
+  "shareInviteCopied": "Copied",
+  "shareInviteShare": "Share",
+  "shareInviteMessage": "Join my plant collection “{name}” in Plantly Inventory: {url} (code {code})",
+  "@shareInviteMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "url": {
+        "type": "String"
+      },
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "shareInviteCreating": "Creating invite…",
+  "shareMembersLabel": "Members",
+  "shareMembersValue": "See who has access",
+  "shareMembersTitle": "Members of {name}",
+  "@shareMembersTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shareMemberJoined": "Joined {date}",
+  "@shareMemberJoined": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "shareMemberYou": "you",
+  "shareRemoveMember": "Remove",
+  "shareRemoveMemberTitle": "Remove {username}?",
+  "@shareRemoveMemberTitle": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "shareRemoveMemberBody": "They lose access to this collection. What they logged stays.",
+  "shareRemoved": "{username} removed",
+  "@shareRemoved": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "shareLeaveLabel": "Leave collection",
+  "shareLeaveValue": "Stop seeing {name} on this device",
+  "@shareLeaveValue": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shareLeaveTitle": "Leave {name}?",
+  "@shareLeaveTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shareLeaveBody": "You can rejoin later with a new invite.",
+  "shareLeave": "Leave",
+  "shareLeft": "You left {name}",
+  "@shareLeft": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shareRemovedFromCollection": "You were removed from {name}",
+  "@shareRemovedFromCollection": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shareByActor": "by {name}",
+  "@shareByActor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shareByOtherMember": "by another member",
+  "shareSwitched": "Switched to {name}",
+  "@shareSwitched": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shareSwitchUnavailable": "Switching needs cloud sync to be on for this account.",
+  "shareMeRowValue": "{n, plural, =1{1 collection} other{{n} collections}}",
+  "@shareMeRowValue": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "shareNoMembers": "No members yet",
+  "shareMembersError": "Could not load members",
+  "shareErrTooManyInvites": "{n, plural, =1{You already have 1 active invite — wait for it to be used or to expire.} other{You already have {n} active invites — wait for one to be used or to expire.}}",
+  "@shareErrTooManyInvites": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "shareErrOwnerOnly": "Only the owner can invite people.",
+  "shareErrOwnerCannotLeave": "The owner can’t leave their own collection.",
+  "shareErrMemberNotFound": "That person is no longer a member.",
+  "shareErrOwnerLapsed": "The owner’s plan lapsed — this shared collection is paused until they renew.",
+  "cloudErrRejected": "{n, plural, =1{1 change could not be synced ({reason})} other{{n} changes could not be synced ({reason})}}",
+  "@cloudErrRejected": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudRejDetailsLabel": "Details",
+  "cloudRejDetailsValue": "See which changes the server refused",
+  "cloudRejScreenTitle": "Changes not synced",
+  "cloudRejScreenIntro": "The server refused these changes. Retry sends them all again; Dismiss keeps them on this device only.",
+  "cloudRejEmpty": "Nothing here — every change has synced.",
+  "cloudRejRetry": "Retry all",
+  "cloudRejDismiss": "Dismiss all",
+  "cloudRejKindRetrying": "retrying",
+  "cloudRejKindParked": "gave up",
+  "cloudRejRequeued": "{n, plural, =1{1 change queued again} other{{n} changes queued again}}",
+  "@cloudRejRequeued": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "plantlyLoginSubtitleCloud": "Use your plantly.ro account for cloud backup & sync.",
+  "cloudRejRetryValue": "Send every listed change again",
+  "cloudRejDismissValue": "Keep them on this device only",
+  "gateHeadline": "Your collection, in sync everywhere",
+  "gateValueProp": "The web version of Plantly Inventory is part of Inventory Cloud: your plants, care history and photos, saved in your plantly.ro account and kept in sync between phone and browser.",
+  "gateSignIn": "Sign in",
+  "gateAndroidTitle": "Prefer your phone?",
+  "gateAndroidBody": "The Android app is free and works offline.",
+  "gateAndroidCloudLine": "Subscribe to Inventory Cloud and everything syncs between phone and web.",
+  "gatePlayBadgeLabel": "Get it on Google Play",
+  "gateHello": "Hi, {username}. The web version is included in Inventory Cloud.",
+  "@gateHello": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "gatePlanMonthly": "{price}/month",
+  "@gatePlanMonthly": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "gatePlanYearly": "{price}/year",
+  "@gatePlanYearly": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "gatePlansOr": "or",
+  "gatePlansFallback": "€1.99/month or €17.99/year",
+  "gatePlansLoading": "Loading prices…",
+  "gateSubscribe": "Subscribe on plantly.ro",
+  "gateRetry": "I already subscribed — check again",
+  "gateIncludedInPro": "Included in Plantly Pro.",
+  "gateDataKept": "Plants saved in this browser stay here; sync resumes as soon as you subscribe.",
+  "gateSignOutLink": "Not you? Sign out",
+  "gateUnreachableTitle": "We can't verify your subscription",
+  "gateUnreachableBody": "plantly.ro can't be reached right now. Check your connection and try again.",
+  "gateTryAgain": "Try again",
+  "gateChecking": "Checking your subscription…",
+  "gateOfflineBanner": "Offline — changes will sync when you're back online",
+  "shareRoleViewer": "Viewer",
+  "shareErrReadOnly": "View only — ask the owner for edit rights.",
+  "shareReadOnlyBanner": "View only — ask the owner for edit rights",
+  "shareErrDeviceRevoked": "Device disconnected — this device was signed out of cloud sync. Sign in again to reconnect.",
+  "shareErrTooManyDevices": "Too many devices on this account — disconnect one in Me → Cloud → Devices, then try again.",
+  "shareErrDeviceLookupFailed": "Could not verify this device right now — retrying shortly.",
+  "shareErrCollectionDeleted": "This collection was deleted by its owner.",
+  "shareErrCloudRequiredNewOwner": "The new owner needs an active Plantly Cloud plan before the collection can be transferred.",
+  "shareErrNotAMember": "You are no longer a member of this collection.",
+  "assigneeLabel": "Assignee",
+  "assigneeEveryone": "Everyone",
+  "assigneeYouSuffix": "(you)",
+  "assigneeUnknown": "Former member",
+  "assigneeHint": "Reminders for this task only reach the assignee’s devices.",
+  "assigneeTooltip": "Assigned to {name}",
+  "@assigneeTooltip": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shareMembersActions": "Member actions",
+  "shareMembersMakeEditor": "Make editor",
+  "shareMembersMakeViewer": "Make viewer",
+  "shareMembersRoleChanged": "{username} is now {role}",
+  "@shareMembersRoleChanged": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      },
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "shareTransferAction": "Transfer ownership",
+  "shareTransferTitle": "Transfer {name} to {username}?",
+  "@shareTransferTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "shareTransferBody": "{username} becomes the owner of this collection. Their Plantly Cloud plan and storage quota apply from now on. You stay in it as an editor.",
+  "@shareTransferBody": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "shareTransferConfirm": "Transfer",
+  "shareTransferDone": "{username} now owns {name}",
+  "@shareTransferDone": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shareInvitesSection": "Invites",
+  "shareInviteNew": "New invite",
+  "shareInviteDefaultLabel": "Invite",
+  "shareInvitesEmpty": "No active invites. Create one to let someone join.",
+  "shareInvitesError": "Could not load invites",
+  "shareInviteUses": "{used}/{max} used",
+  "@shareInviteUses": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "shareInviteExpiresDays": "{n, plural, =1{expires in 1 day} other{expires in {n} days}}",
+  "@shareInviteExpiresDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "shareInviteExpiresHours": "{n, plural, =1{expires in 1 hour} other{expires in {n} hours}}",
+  "@shareInviteExpiresHours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "shareInviteExpiresSoon": "expires soon",
+  "shareInviteExpired": "expired",
+  "shareInviteRevoke": "Revoke",
+  "shareInviteRevokeTitle": "Revoke this invite?",
+  "shareInviteRevokeBody": "Anyone who still has the code won’t be able to join with it.",
+  "shareInviteRevoked": "Invite revoked",
+  "shareInviteFormHint": "Choose what the invite allows, then share the code.",
+  "shareInviteRoleLabel": "Role",
+  "shareInviteRoleHint": "Editors add plants and log care. Viewers only look.",
+  "shareInvitePresetSingle": "Single use · 7 days",
+  "shareInvitePresetFamily": "Family",
+  "shareInvitePresetCustom": "Custom",
+  "shareInviteMaxUses": "Max uses",
+  "shareInviteTtlDays": "Valid for (days)",
+  "shareInviteLabelField": "Label (optional)",
+  "shareInviteLabelHint": "e.g. Grandma, plant-sitter",
+  "shareInviteCreate": "Create invite",
+  "shareInviteSummary": "{role} · {uses, plural, =1{single use} other{{uses} uses}} · {days, plural, =1{1 day} other{{days} days}}",
+  "@shareInviteSummary": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      },
+      "uses": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "shareInviteMaxUsesLabel": "{uses, plural, =1{single use} other{{uses} uses}}",
+  "@shareInviteMaxUsesLabel": {
+    "placeholders": {
+      "uses": {
+        "type": "int"
+      }
+    }
+  },
+  "stepperDecrease": "Decrease {what}",
+  "@stepperDecrease": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      }
+    }
+  },
+  "stepperIncrease": "Increase {what}",
+  "@stepperIncrease": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      }
+    }
+  },
+  "shareInviteCodeShownOnce": "Share this code or link now — it won’t be shown again.",
+  "collectionActions": "Collection actions",
+  "collectionRenameAction": "Rename",
+  "collectionRenameTitle": "Rename collection",
+  "collectionRenameField": "Name",
+  "collectionRenameInvalid": "Use 1 to 60 characters.",
+  "collectionRenameSave": "Save",
+  "collectionRenamed": "Renamed to {name}",
+  "@collectionRenamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "collectionDeleteAction": "Delete collection",
+  "collectionDeleteTitle": "Delete {name}?",
+  "@collectionDeleteTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "collectionDeleteBody": "Members lose access and the shared data on the server is deleted. The copy on this device stays.",
+  "collectionDeleteConfirm": "Delete",
+  "collectionDeleted": "{name} deleted",
+  "@collectionDeleted": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shareV2Paused": "Paused",
+  "devicesTitle": "Devices",
+  "devicesIntro": "Every device signed in to cloud sync with this account. Disconnect one you no longer use — it stops syncing and has to sign in again.",
+  "devicesRowLabel": "Devices",
+  "devicesRowValue": "Manage which devices sync this account",
+  "devicesThisDevice": "This device",
+  "devicesRevoke": "Disconnect",
+  "devicesRevokeConfirmTitle": "Disconnect this device?",
+  "devicesRevokeConfirmBody": "{name} will stop syncing and must sign in again to reconnect. Its plants stay on that device.",
+  "@devicesRevokeConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "devicesRevoked": "Device disconnected",
+  "devicesRevokeFailed": "Could not disconnect the device. Try again.",
+  "devicesEmpty": "Only this device",
+  "devicesError": "Could not load your devices.",
+  "devicesRetry": "Retry",
+  "devicesSignedOut": "Sign in to plantly.ro to manage your devices.",
+  "devicesLastSeen": "last seen {when}",
+  "@devicesLastSeen": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "devicesPlatformAndroid": "Android",
+  "devicesPlatformIos": "iPhone / iPad",
+  "devicesPlatformWeb": "Web",
+  "devicesPlatformDesktop": "Desktop",
+  "devicesPlatformUnknown": "Device"
 }

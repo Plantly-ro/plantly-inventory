@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../data/photo_picker.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../theme/tokens.dart';
+import '../app/side_sheet.dart';
+import 'sheet_chrome.dart';
 
 enum PhotoSourceChoice { cameraOne, galleryMulti, galleryOne }
 
@@ -13,28 +15,18 @@ Future<PhotoSourceChoice?> showPhotoSourceSheet(
   required PlantlySurface surface,
   bool multi = true,
 }) async {
-  return showModalBottomSheet<PhotoSourceChoice>(
-    context: context,
+  return showAdaptiveSheet<PhotoSourceChoice>(
+    context,
     backgroundColor: Colors.transparent,
     builder: (ctx) {
       final t = AppLocalizations.of(ctx);
-      return Container(
-        decoration: BoxDecoration(
-          color: surface.bg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(PlantlyTokens.radius2xl)),
-        ),
+      return SheetChrome(
+        surface: surface,
+        title: t.plantDetailAddPhotos,
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Center(
-              child: Container(
-                height: 4,
-                width: 40,
-                decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 16),
+        handleGap: 16,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
             _Option(
               surface: surface,
               icon: Icons.camera_alt_outlined,
@@ -53,7 +45,6 @@ Future<PhotoSourceChoice?> showPhotoSourceSheet(
               ),
             ),
           ],
-        ),
       );
     },
   );

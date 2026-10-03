@@ -10,22 +10,35 @@ import '../../sync/op_log.dart';
 
 /// JSON backup / import with HMAC signature.
 ///
-/// Every row from every synced table is serialised into a single JSON
-/// document; the document (sans the `signature` field) is signed with
-/// HMAC-SHA256 under a user-supplied secret, and the base64 mac is stored
-/// alongside. Import refuses to apply any backup whose mac doesn't verify.
+/// Every non-deleted row of the active tenant (collection) from every
+/// synced table is serialised into a single JSON document; the document
+/// (sans the `signature` field) is signed with HMAC-SHA256 under a
+/// user-supplied secret, and the base64 mac is stored alongside. Import
+/// refuses to apply any backup whose mac doesn't verify.
 ///
-/// Photos are intentionally out of scope for this format — the ZIP-with-
-/// photos export lands with the content-addressed photo store.
+/// Tenant scope (format v1, unchanged on the wire): a device may hold
+/// several tenants — one per collection the account can see, plus rows
+/// parked by a previous account. A backup covers exactly one: the
+/// [tenantId] this service was built for. The `tenant_id` column is still
+/// written into the file, but it is **informational only**: [import] stamps
+/// every restored row (and the op it emits) with the importing device's
+/// active tenant, so a backup made under one account/collection lands in
+/// the collection the user is looking at, never in a parked one.
+///
+/// Photo bytes are out of scope for this format — see `ZipBackupService`;
+/// the `photos` metadata rows are included ([photosInScope]).
 class BackupService {
-  BackupService({required this.db});
+  BackupService({required this.db, required this.tenantId});
   final AppDatabase db;
+
+  /// The tenant (collection id) exported from and imported into.
+  final String tenantId;
 
   static const int currentFormatVersion = 1;
 
-  /// Serialize the entire database (non-deleted rows only) to a signed
-  /// JSON blob. [secret] is the passphrase the user will also need to
-  /// import this file — we never persist it.
+  /// Serialize the active tenant's data (non-deleted rows only) to a
+  /// signed JSON blob. [secret] is the passphrase the user will also need
+  /// to import this file — we never persist it.
   Future<String> export({required String secret}) async {
     // Pull user preferences that live outside Drift so the round-trip is
     // complete: custom care types, home-widget layout, theme mode.
@@ -41,7 +54,7 @@ class BackupService {
       'plants': await _rows(db.plants),
       'locations': await _rows(db.locations),
       'species': await _rows(db.species),
-      'photos': await _rows(db.photos),
+      'photos': [for (final r in await _photoQueryRows()) Map<String, dynamic>.from(r.data)],
       'plant_photos': await _rows(db.plantPhotos),
       'tags': await _rows(db.tags),
       'plant_tags': await _rows(db.plantTags),
@@ -61,15 +74,22 @@ class BackupService {
 
   /// Import a previously exported blob. Throws [BackupSignatureError] if
   /// the HMAC doesn't verify with [secret], or [BackupFormatError] on
-  /// shape mismatches. On success, the import replaces the contents of
-  /// the target tables (DELETE + re-insert) transactionally and emits a
-  /// single op-log `__tombstone__`-then-`*` sequence per row so peers
-  /// can converge.
+  /// shape mismatches. On success, the import upserts every row into
+  /// [tenantId] transactionally (the file's own `tenant_id` values are
+  /// ignored) and emits a whole-row op per row so peers can converge.
+  /// [opLog] must write under the same tenant.
   Future<BackupImportResult> import({
     required String blob,
     required String secret,
     required OpLogWriter opLog,
   }) async {
+    if (opLog.tenantId != tenantId) {
+      throw ArgumentError.value(
+        opLog.tenantId,
+        'opLog',
+        'op log writes under a different tenant than this service ($tenantId)',
+      );
+    }
     final Map<String, dynamic> envelope;
     try {
       envelope = json.decode(blob) as Map<String, dynamic>;
@@ -144,21 +164,52 @@ class BackupService {
   }
 
   Future<List<Map<String, dynamic>>> _rows(TableInfo<Table, dynamic> table) async {
+    assert(table.$columns.any((c) => c.name == 'tenant_id'), '${table.actualTableName} is not tenant-scoped');
     // OR-Set join tables (plant_photos, plant_tags) use added_hlc/removed_hlc
     // instead of a `deleted_at` tombstone, so we only apply the filter when
     // the column actually exists on this table.
     final hasDeletedAt = table.$columns.any((c) => c.name == 'deleted_at');
-    final sql = hasDeletedAt
-        ? 'SELECT * FROM ${table.actualTableName} WHERE deleted_at IS NULL'
-        : 'SELECT * FROM ${table.actualTableName}';
-    final rows = await db.customSelect(sql, readsFrom: {table}).get();
+    final sql = 'SELECT * FROM ${table.actualTableName} WHERE tenant_id = ?'
+        '${hasDeletedAt ? ' AND deleted_at IS NULL' : ''}';
+    final rows = await db.customSelect(sql, variables: [Variable<String>(tenantId)], readsFrom: {table}).get();
     return rows.map((r) => Map<String, dynamic>.from(r.data)).toList(growable: false);
+  }
+
+  /// `photos` is content-addressed (PK = sha) and shared across the tenants
+  /// on a device: a row keeps the stamp of whichever tenant stored it first,
+  /// while other collections may attach the same sha. In scope for this
+  /// tenant's backup: rows stamped [tenantId], plus rows still referenced
+  /// by one of its live join rows (plant / location galleries) or care
+  /// events. Nothing else — a parked account's photos never leave the device.
+  static const String _photosInScopeSql = '''
+SELECT * FROM photos
+WHERE deleted_at IS NULL AND (
+  tenant_id = ?
+  OR sha256 IN (SELECT photo_sha FROM plant_photos WHERE tenant_id = ? AND removed_hlc IS NULL)
+  OR sha256 IN (SELECT photo_sha FROM location_photos WHERE tenant_id = ? AND removed_hlc IS NULL)
+  OR sha256 IN (SELECT photo_sha FROM care_events WHERE tenant_id = ? AND deleted_at IS NULL AND photo_sha IS NOT NULL)
+)
+ORDER BY sha256''';
+
+  Future<List<QueryRow>> _photoQueryRows() => db.customSelect(
+        _photosInScopeSql,
+        variables: [for (var i = 0; i < 4; i++) Variable<String>(tenantId)],
+        readsFrom: {db.photos, db.plantPhotos, db.locationPhotos, db.careEvents},
+      ).get();
+
+  /// The photo rows [export] includes — the ZIP exporter bundles exactly
+  /// these bytes, so the two formats agree on scope.
+  Future<List<PhotoRow>> photosInScope() async {
+    final rows = await _photoQueryRows();
+    return [for (final r in rows) db.photos.map(r.data)];
   }
 
   /// Insert-or-replace semantics keyed on the primary key. Because each
   /// synced entity already carries `id`/`updated_hlc`/`device_id`, the
-  /// restore just re-seats them as-is. Uses `INSERT OR REPLACE` so a
-  /// second import of the same blob is idempotent.
+  /// restore re-seats them as-is — except `tenant_id`, which is forced to
+  /// [tenantId] (the file's value is informational, see the class doc).
+  /// Uses `INSERT OR REPLACE` so a second import of the same blob is
+  /// idempotent.
   Future<int> _restore(
     TableInfo<Table, dynamic> table,
     Object? data,
@@ -167,9 +218,11 @@ class BackupService {
   ) async {
     if (data is! List) return 0;
     final cols = table.$columns;
+    final tenantScoped = cols.any((c) => c.name == 'tenant_id');
     var count = 0;
-    for (final item in data) {
-      if (item is! Map<String, dynamic>) continue;
+    for (final raw in data) {
+      if (raw is! Map<String, dynamic>) continue;
+      final item = tenantScoped ? <String, dynamic>{...raw, 'tenant_id': tenantId} : raw;
       final columnsList = <String>[];
       final placeholders = <String>[];
       final values = <Object?>[];

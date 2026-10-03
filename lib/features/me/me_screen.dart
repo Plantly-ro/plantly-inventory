@@ -5,6 +5,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../cloud/collections.dart';
 import '../../data/providers.dart';
 import '../../data/user_prefs.dart';
 import '../../domain/services/backup_service.dart';
@@ -17,11 +18,11 @@ import '../../plugins/plugin_registry.dart';
 import '../../services/file_export.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
+import '../../app/navigation.dart';
 import 'backup_actions.dart';
-import 'care_types_screen.dart';
-import 'notifications_screen.dart';
-import 'privacy_screen.dart';
-import 'stats_screen.dart';
+import '../collections/read_only_banner.dart';
+import 'cloud_section.dart';
+import 'me_rows.dart';
 
 /// "Me" tab — settings + Phase-1 user-facing actions (backup / iCal /
 /// notification permission). Split into ApplianceRows grouped under
@@ -49,10 +50,8 @@ class MeScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: surface.bg,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.chevron_left, color: surface.text),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
+        automaticallyImplyLeading: false,
+        leading: adaptiveBackButton(context, surface),
         title: Text(
           t.meTitle,
           style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
@@ -73,11 +72,7 @@ class MeScreen extends ConsumerWidget {
             value: t.meStatsValue,
             icon: Icons.insert_chart_outlined,
             surface: surface,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const StatsScreen()),
-              );
-            },
+            onTap: () => openMeSection(context, 'stats'),
           ),
           const SizedBox(height: 20),
           _SectionLabel(text: t.meSectionYou, surface: surface),
@@ -89,11 +84,7 @@ class MeScreen extends ConsumerWidget {
             value: t.mePrivacyValue,
             icon: Icons.shield_outlined,
             surface: surface,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const PrivacyScreen()),
-              );
-            },
+            onTap: () => openMeSection(context, 'privacy'),
           ),
           if (ref.watch(sellEnabledProvider)) ...[
             const SizedBox(height: 20),
@@ -113,11 +104,7 @@ class MeScreen extends ConsumerWidget {
             value: t.meCareTypesValue,
             icon: Icons.category_outlined,
             surface: surface,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CareTypesScreen()),
-              );
-            },
+            onTap: () => openMeSection(context, 'care-types'),
           ),
           const SizedBox(height: 20),
           _SectionLabel(text: t.meSectionNotifications, surface: surface),
@@ -129,12 +116,9 @@ class MeScreen extends ConsumerWidget {
             value: t.meMutedValue,
             icon: Icons.notifications_off_outlined,
             surface: surface,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-              );
-            },
+            onTap: () => openMeSection(context, 'notifications'),
           ),
+          CloudSection(surface: surface),
           const SizedBox(height: 20),
           _SectionLabel(text: t.meSectionBackup, surface: surface),
           const SizedBox(height: 8),
@@ -497,6 +481,8 @@ class _ImportRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = AppLocalizations.of(context);
+    // Restore writes into the active collection — hidden for a viewer.
+    if (!ref.watch(canEditActiveCollectionProvider)) return const SizedBox.shrink();
     return _ActionRow(
       label: t.meImportLabel,
       value: t.meImportValue,
@@ -507,6 +493,7 @@ class _ImportRow extends ConsumerWidget {
   }
 
   Future<void> _run(BuildContext context, WidgetRef ref) async {
+    if (!ensureCanEdit(context, ref)) return;
     // Same as _BackupRow: the file picker + passphrase dialog can both
     // unmount this row, so resolve the controller before any await (#14).
     final t = AppLocalizations.of(context);
@@ -529,6 +516,10 @@ class _ImportRow extends ConsumerWidget {
       messenger
         ..clearSnackBars()
         ..showSnackBar(SnackBar(content: Text(msg)));
+    } on ReadOnlyCollectionError {
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(t.shareErrReadOnly)));
     } on BackupSignatureError {
       messenger
         ..clearSnackBars()
@@ -645,84 +636,7 @@ void _toast(BuildContext context, String msg) {
     ..showSnackBar(SnackBar(content: Text(msg)));
 }
 
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel({required this.text, required this.surface});
-  final String text;
-  final PlantlySurface surface;
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: surface.green,
-          letterSpacing: 0.1 * 11,
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionRow extends StatelessWidget {
-  const _ActionRow({
-    super.key,
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.surface,
-    this.valueColor,
-    this.onTap,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-  final PlantlySurface surface;
-  final Color? valueColor;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: surface.surface,
-      borderRadius: BorderRadius.circular(PlantlyTokens.radius),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(PlantlyTokens.radius),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            border: Border.all(color: surface.border),
-            borderRadius: BorderRadius.circular(PlantlyTokens.radius),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 18, color: surface.green),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text)),
-                    Text(
-                      value,
-                      style: TextStyle(fontSize: 12, color: valueColor ?? surface.muted),
-                    ),
-                  ],
-                ),
-              ),
-              if (onTap != null) Icon(Icons.chevron_right, color: surface.muted),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _ReadOnlyRow extends StatelessWidget {
   const _ReadOnlyRow({
@@ -844,3 +758,8 @@ class _CsvExportRow extends ConsumerWidget {
     );
   }
 }
+
+// Row primitives moved to me_rows.dart so the Cloud section can share them;
+// the aliases keep this file's call sites unchanged.
+typedef _SectionLabel = MeSectionLabel;
+typedef _ActionRow = MeActionRow;

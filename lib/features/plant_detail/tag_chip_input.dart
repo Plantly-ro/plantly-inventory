@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../cloud/collections.dart';
 import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
@@ -23,6 +24,8 @@ class TagChipInput extends ConsumerWidget {
     final byId = {for (final t in allTags) t.id: t.name};
 
     final attached = attachedAsync.maybeWhen(data: (ids) => ids, orElse: () => const <String>[]);
+    // Read-only collection: chips are labels only (no ×, no "+ tag").
+    final canEdit = ref.watch(canEditActiveCollectionProvider);
 
     return Wrap(
       spacing: 6,
@@ -32,12 +35,13 @@ class TagChipInput extends ConsumerWidget {
           _Chip(
             label: byId[tagId] ?? '…',
             surface: surface,
-            onRemove: () => ref.read(plantTagRepositoryProvider).detach(plantId, tagId),
+            onRemove: canEdit ? () => ref.read(plantTagRepositoryProvider).detach(plantId, tagId) : null,
           ),
-        _AddChip(
-          surface: surface,
-          onTap: () => _openDialog(context, ref, attached),
-        ),
+        if (canEdit)
+          _AddChip(
+            surface: surface,
+            onTap: () => _openDialog(context, ref, attached),
+          ),
       ],
     );
   }
@@ -145,7 +149,7 @@ class _Chip extends StatelessWidget {
   const _Chip({required this.label, required this.surface, required this.onRemove});
   final String label;
   final PlantlySurface surface;
-  final VoidCallback onRemove;
+  final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -161,12 +165,14 @@ class _Chip extends StatelessWidget {
               '#$label',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: surface.green),
             ),
-            const SizedBox(width: 4),
-            InkWell(
-              onTap: onRemove,
-              customBorder: const CircleBorder(),
-              child: Icon(Icons.close, size: 12, color: surface.green),
-            ),
+            if (onRemove != null) ...[
+              const SizedBox(width: 4),
+              InkWell(
+                onTap: onRemove,
+                customBorder: const CircleBorder(),
+                child: Icon(Icons.close, size: 12, color: surface.green),
+              ),
+            ],
           ],
         ),
       ),

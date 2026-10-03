@@ -2,19 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../app/clock.dart';
 import '../../data/care_types.dart';
 import '../../data/database/app_database.dart' as db;
 import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../shared/care_type_labels.dart';
+import '../../shared/assignee_initial.dart';
 import '../../theme/tokens.dart';
+import '../collections/read_only_banner.dart';
 import '../home/home_providers.dart';
-import '../plant_detail/plant_detail_screen.dart';
 import 'day_detail_sheet.dart';
+import '../../app/side_sheet.dart';
+import '../../app/navigation.dart';
 
 void showDayDetail(BuildContext context, DateTime day) {
-  showModalBottomSheet(
-    context: context,
+  showAdaptiveSheet(
+    context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) => DayDetailSheet(day: day),
@@ -89,7 +93,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   @override
   void initState() {
     super.initState();
-    _anchor = DateTime.now();
+    _anchor = ref.read(clockProvider)();
   }
 
   @override
@@ -115,7 +119,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final events = eventsAsync.maybeWhen(data: (r) => r, orElse: () => const <db.CareEventRow>[]);
 
     // "Upcoming" list — next 10 schedules globally, regardless of view.
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final now = ref.watch(clockProvider)();
+    final nowMs = now.millisecondsSinceEpoch;
     final upcoming = [
       for (final s in schedules)
         if (s.nextDueAt != null && (!plantsLoaded || plantsById.containsKey(s.plantId))) s,
@@ -128,10 +133,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       appBar: AppBar(
         backgroundColor: surface.bg,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.chevron_left, color: surface.text),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
+        automaticallyImplyLeading: false,
+        leading: adaptiveBackButton(context, surface),
         title: Text(
           _titleFor(context, _view, _anchor),
           style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
@@ -149,7 +152,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           ),
           IconButton(
             tooltip: t.calendarToday,
-            onPressed: () => setState(() => _anchor = DateTime.now()),
+            onPressed: () => setState(() => _anchor = ref.read(clockProvider)()),
             icon: Icon(Icons.today_outlined, color: surface.text),
           ),
           IconButton(
@@ -161,6 +164,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       ),
       body: Column(
         children: [
+          const ReadOnlyBanner(),
           // View toggle row.
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
@@ -193,6 +197,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       children: [
                         for (var i = 0; i < upcomingNext10.length; i++)
                           _UpcomingScheduleRow(
+                            now: now,
                             schedule: upcomingNext10[i],
                             plantName: plantsById[upcomingNext10[i].plantId]?.nickname ?? upcomingNext10[i].plantId,
                             surface: surface,
@@ -206,6 +211,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 ],
                 if (_view == CalendarView.week)
                   _WeekView(
+                    now: now,
                     anchor: _anchor,
                     schedules: schedules,
                     events: events,
@@ -216,6 +222,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   )
                 else if (_view == CalendarView.month)
                   _MonthView(
+                    now: now,
                     anchor: _anchor,
                     schedules: schedules,
                     events: events,
@@ -285,6 +292,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
 class _WeekView extends StatelessWidget {
   const _WeekView({
+    required this.now,
     required this.anchor,
     required this.schedules,
     required this.events,
@@ -293,6 +301,7 @@ class _WeekView extends StatelessWidget {
     required this.surface,
     required this.types,
   });
+  final DateTime now;
   final DateTime anchor;
   final List<db.CareScheduleRow> schedules;
   final List<db.CareEventRow> events;
@@ -322,7 +331,7 @@ class _WeekView extends StatelessWidget {
       days[day.difference(weekStart).inDays].done.add(e);
     }
 
-    final today = DateTime.now();
+    final today = now;
     final todayStripped = DateTime(today.year, today.month, today.day);
     return Container(
       decoration: BoxDecoration(
@@ -350,6 +359,7 @@ class _WeekView extends StatelessWidget {
 
 class _MonthView extends StatelessWidget {
   const _MonthView({
+    required this.now,
     required this.anchor,
     required this.schedules,
     required this.events,
@@ -357,6 +367,7 @@ class _MonthView extends StatelessWidget {
     required this.plantsLoaded,
     required this.surface,
   });
+  final DateTime now;
   final DateTime anchor;
   final List<db.CareScheduleRow> schedules;
   final List<db.CareEventRow> events;
@@ -389,7 +400,7 @@ class _MonthView extends StatelessWidget {
       done[d.day - 1]++;
     }
 
-    final today = DateTime.now();
+    final today = now;
     // intl's narrow weekday symbols are Sunday-first; rotate to firstWeekday.
     final narrow = DateFormat.E(_localeOf(context)).dateSymbols.NARROWWEEKDAYS;
     final dayLabels = [for (var i = 0; i < 7; i++) narrow[(firstWeekday + i) % 7]];
@@ -471,8 +482,8 @@ class _MonthCell extends StatelessWidget {
       aspectRatio: 1,
       child: InkWell(
         onTap: () {
-          showModalBottomSheet(
-            context: context,
+          showAdaptiveSheet(
+            context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
             builder: (_) => DayDetailSheet(day: DateTime(anchor.year, anchor.month, day)),
@@ -611,12 +622,14 @@ class _YearView extends StatelessWidget {
 
 class _UpcomingScheduleRow extends StatelessWidget {
   const _UpcomingScheduleRow({
+    required this.now,
     required this.schedule,
     required this.plantName,
     required this.surface,
     required this.types,
     required this.last,
   });
+  final DateTime now;
   final db.CareScheduleRow schedule;
   final String plantName;
   final PlantlySurface surface;
@@ -628,14 +641,11 @@ class _UpcomingScheduleRow extends StatelessWidget {
     final t = AppLocalizations.of(context);
     final ct = resolveCareType(types, schedule.type);
     final due = DateTime.fromMillisecondsSinceEpoch(schedule.nextDueAt!, isUtc: true).toLocal();
-    final now = DateTime.now();
     final delta = due.difference(now);
     final (whenLabel, urgent) = upcomingDueLabel(t, delta);
     return InkWell(
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: schedule.plantId)),
-        );
+        openPlant(context, schedule.plantId);
       },
       child: Container(
         decoration: BoxDecoration(
@@ -663,6 +673,8 @@ class _UpcomingScheduleRow extends StatelessWidget {
                 ],
               ),
             ),
+            AssigneeChip(userId: schedule.assigneeUserId, tenantId: schedule.tenantId, surface: surface, size: 18, padLeft: 0),
+            if (schedule.assigneeUserId != null) const SizedBox(width: 6),
             Text(
               DateFormat.MMMd(_localeOf(context)).format(due),
               style: TextStyle(fontSize: 11, color: surface.muted, fontWeight: FontWeight.w500),
@@ -807,9 +819,7 @@ class _ScheduleChip extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(PlantlyTokens.radius),
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: plantId)),
-        );
+        openPlant(context, plantId);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -856,9 +866,7 @@ class _DoneChip extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(PlantlyTokens.radius),
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => PlantDetailScreen(plantId: plantId)),
-        );
+        openPlant(context, plantId);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

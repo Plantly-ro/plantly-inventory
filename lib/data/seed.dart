@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:ulid/ulid.dart';
 
 import '../l10n/generated/app_localizations.dart';
 import '../shared/care_type_labels.dart';
@@ -66,11 +67,19 @@ Future<void> seedIfEmpty({
   DateTime daysAgo(int n) => now.subtract(Duration(days: n));
   DateTime daysFromNow(int n) => now.add(Duration(days: n));
 
+  // Row ids are fresh ULIDs, never the fixture's literal id (`bob`, `snake`,
+  // …): every Drift primary key is `{id}` without a tenant component, so a
+  // literal id seeded on two installs collides the moment one of them pulls
+  // the other's rows through a shared collection (QA2 BUG-2). The fixture
+  // id is only used to look up the localized name and the decorative swatch.
+  final ids = {for (final mock in MockPlants.all) mock.id: Ulid().toString()};
+
   for (final mock in MockPlants.all) {
     final nickname = seedPlantName(t, mock);
+    final id = ids[mock.id]!;
     await db.transaction(() async {
       final value = {
-        'id': mock.id,
+        'id': id,
         'tenant_id': opLog.tenantId,
         'nickname': nickname,
         'status': 'alive',
@@ -78,12 +87,12 @@ Future<void> seedIfEmpty({
       };
       final hlc = await opLog.recordCreate(
         entity: 'plants',
-        entityId: mock.id,
+        entityId: id,
         value: value,
       );
       await db.into(db.plants).insert(
             PlantsCompanion.insert(
-              id: mock.id,
+              id: id,
               tenantId: opLog.tenantId,
               nickname: nickname,
               status: 'alive',
@@ -98,49 +107,49 @@ Future<void> seedIfEmpty({
   // Snake/Calathea/Fiddle, grid's remaining plants ok (not due yet).
   const waterIntervalDays = 7.0;
   await schedules.upsert(
-    plantId: 'bob',
+    plantId: ids['bob']!,
     type: 'water',
     baseIntervalDays: waterIntervalDays,
     firstDueAt: daysAgo(2),
   );
   await schedules.upsert(
-    plantId: 'green',
+    plantId: ids['green']!,
     type: 'fertilize',
     baseIntervalDays: 30,
     firstDueAt: daysAgo(1),
   );
   await schedules.upsert(
-    plantId: 'snake',
+    plantId: ids['snake']!,
     type: 'water',
     baseIntervalDays: 14,
     firstDueAt: now,
   );
   await schedules.upsert(
-    plantId: 'cala',
+    plantId: ids['cala']!,
     type: 'mist',
     baseIntervalDays: 3,
     firstDueAt: now,
   );
   await schedules.upsert(
-    plantId: 'fid',
+    plantId: ids['fid']!,
     type: 'rotate',
     baseIntervalDays: 7,
     firstDueAt: now,
   );
   await schedules.upsert(
-    plantId: 'fern',
+    plantId: ids['fern']!,
     type: 'water',
     baseIntervalDays: 3,
     firstDueAt: daysFromNow(2),
   );
   await schedules.upsert(
-    plantId: 'suc',
+    plantId: ids['suc']!,
     type: 'water',
     baseIntervalDays: 14,
     firstDueAt: daysFromNow(10),
   );
   await schedules.upsert(
-    plantId: 'pete',
+    plantId: ids['pete']!,
     type: 'water',
     baseIntervalDays: 14,
     firstDueAt: daysFromNow(9),

@@ -1,8 +1,8 @@
 # .gitlab-ci.yml — PlantlyInventory
 #
-# Four stages; the first three run on every push and MR:
+# Five stages; the first three run on every push and MR:
 #   analyze → test (flutter test + lint-tools) → build (build-web + build-android)
-#   → publish (Play tracks + store listing)
+#   → publish (Play tracks + store listing) → deploy (web build → inventory.plantly.ro, main only)
 #
 # Flutter image: ghcr.io/cirruslabs/flutter, pinned by exact tag via FLUTTER_IMAGE
 # (see the note next to the variable).
@@ -29,6 +29,7 @@ stages:
   - test
   - build
   - publish
+  - deploy
 
 variables:
   # Pinned to an exact, existing tag so a `:stable` re-point can't silently
@@ -88,10 +89,25 @@ lint-tools:
     - python3 -m unittest discover -s tool/tests -v
     - python3 tool/play_listing.py --package "$PLAY_PACKAGE" --metadata-dir "$PLAY_METADATA_DIR" --dry-run
 
+# Web build. Stamps PLANTLY_APP_VERSION from pubspec (User-Agent / X-Plantly-Client
+# — see lib/config/plantly_hosts.dart) on every branch so the artifact is the
+# same shape everywhere; on `main` this artifact is what deploy-web-prod ships
+# to https://inventory.plantly.ro. Extra compile-time flags come from the
+# optional project CI variable INVENTORY_WEB_DART_DEFINES (space-separated
+# `--dart-define=K=V` flags, e.g. `--dart-define=PLANTLY_CLOUD_ENABLED=true`);
+# unset = feature defaults (cloud OFF, sell OFF). Deliberately NOT declared as a
+# job variable: a job-level default would shadow the project-level one.
 build-web:
   stage: build
   script:
-    - flutter build web --release --no-web-resources-cdn
+    - |
+      APP_VERSION=$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' pubspec.yaml)
+      if [ -z "$APP_VERSION" ]; then echo "build-web - could not read version: from pubspec.yaml"; exit 1; fi
+      echo "build-web - PLANTLY_APP_VERSION=$APP_VERSION extra defines: ${INVENTORY_WEB_DART_DEFINES:-<none>}"
+      # shellcheck disable=SC2086  # INVENTORY_WEB_DART_DEFINES is intentionally word-split
+      flutter build web --release --no-web-resources-cdn \
+        --dart-define=PLANTLY_APP_VERSION="$APP_VERSION" ${INVENTORY_WEB_DART_DEFINES:-}
+    - cat build/web/version.json; echo
   artifacts:
     paths:
       - build/web/
@@ -222,6 +238,10 @@ publish-internal:
 # builds, uploads with release notes and rolls out to 100 % — set
 # PLAY_UPLOAD_EXTRA_ARGS="--user-fraction 0.2" in the Run-job form for a
 # staged rollout instead.
+# Until the app is published Play only accepts draft releases: on "Only releases
+# with status draft may be created on draft app" play_upload.py re-stages the
+# release as a draft in the same edit and commits again (no rebuild needed);
+# then click "Send for review" in Play Console.
 # `allow_failure: true` keeps a pending manual job from leaving main "blocked".
 publish-production:
   extends: .play-publish
@@ -253,3 +273,40 @@ publish-listing:
     - if: '$CI_COMMIT_BRANCH == "development"'
       when: manual
       allow_failure: true
+
+# ─── Web delivery ───────────────────────────────────────────────────────────
+# main → https://inventory.plantly.ro (static files on the plantly-prod host,
+# served by its Caddy; see ci/prod/deploy-web.sh and the quadlets repo
+# plantly-prod/README.md § Inventory web). Automatic on main like the
+# marketplace frontend's deploy-prod — no click gate — but only materialises
+# when the protected ssh variables exist, so a repo without them (fork, or
+# before first-time setup) simply has no deploy job. Needs only build-web;
+# build-web has no `needs:` of its own, so stage order still makes it (and
+# therefore this job) wait for analyze + test.
+#
+# Requires these PROTECTED CI/CD variables (same values as plantly.ro/web/frontend):
+#   PROD_DEPLOY_SSH_KEY  (file)  ssh key for $PROD_SSH_USER@$PROD_SSH_HOST (sudo on the host)
+#   PROD_SSH_HOST        (var)   plantly-prod LAN address
+#   PROD_SSH_USER        (var)   deploy user
+#   DEPLOY_LEDGER_TOKEN  (var)   GitLab PAT (api, quadlets project 34) for the DEPLOYED.md ledger
+# Optional: INVENTORY_WEB_VERIFY_URL (public base URL to probe; "skip" disables).
+deploy-web-prod:
+  stage: deploy
+  needs: ["build-web"]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $PROD_SSH_HOST && $PROD_SSH_USER'
+  resource_group: prod-deploy
+  environment:
+    name: production-inventory-web
+    url: https://inventory.plantly.ro
+  timeout: 15m
+  image: alpine:3.20
+  before_script:
+    - apk add --no-cache bash openssh-client curl python3 tar
+  cache: []
+  script:
+    - |
+      if [ ! -s "$PROD_DEPLOY_SSH_KEY" ]; then
+        echo "deploy-web-prod - PROD_DEPLOY_SSH_KEY missing (is this a protected branch?)"; exit 1
+      fi
+    - bash ci/prod/deploy-web.sh

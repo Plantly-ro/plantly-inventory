@@ -7,6 +7,8 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import 'space_kind_label.dart';
+import '../../app/breakpoints.dart';
+import '../../shared/sheet_chrome.dart';
 
 /// Edit every user-visible field on a location in one sheet — kind,
 /// parent, outdoor flag, light level, humidity/temp ranges, notes.
@@ -148,30 +150,21 @@ class _LocationEditSheetState extends ConsumerState<LocationEditSheet> {
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: surface.bg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(PlantlyTokens.radius2xl)),
-        ),
+      child: SheetChrome(
+        surface: surface,
+        title: widget.existing == null ? t.addSpace : t.spaceEditTitle(widget.existing!.name),
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  height: 4,
-                  width: 40,
-                  decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              const SizedBox(height: 14),
+        handleGap: 14,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        scrollable: true,
+        children: [
+              if (!context.isDesktop) ...[
               Text(
                 widget.existing == null ? t.addSpace : t.spaceEditTitle(widget.existing!.name),
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text),
               ),
               const SizedBox(height: 14),
+              ],
               _label(t.spaceNameLabel, surface),
               const SizedBox(height: 6),
               TextField(
@@ -295,8 +288,6 @@ class _LocationEditSheetState extends ConsumerState<LocationEditSheet> {
                 ],
               ),
             ],
-          ),
-        ),
       ),
     );
   }

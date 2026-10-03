@@ -18,6 +18,11 @@ Play publisher service-account JSON.
 `--user-fraction 0.2` makes the release a staged rollout (`status: inProgress`,
 20 % of users) instead of the default `completed` (100 %); finish it later from
 Play Console or by re-running with the same versionCode and no fraction.
+`--status draft` stages the release without rolling it out. An app that has never
+been published ("draft app") only accepts draft releases: if Play rejects the
+commit with "Only releases with status draft may be created on draft app", the
+script re-stages the same versionCode (and release notes) as `draft`, commits
+once more and tells you on stderr — then send it for review from Play Console.
 
 Release builds are R8-minified, so the script also attaches deobfuscation files
 to the uploaded versionCode (before the edit is committed) — without them Play
@@ -151,6 +156,58 @@ def build_release(version_code, status: str, user_fraction=None, release_notes=N
     return release
 
 
+# `edits.commit` on an app that has never been published (a "draft app") fails with
+# HTTP 400 "Only releases with status draft may be created on draft app." for any
+# release status other than `draft`. Matched case-insensitively on both fragments
+# so minor rewordings still trigger the fallback.
+DRAFT_APP_MARKERS = ("status draft", "draft app")
+DRAFT = "draft"
+
+
+def is_draft_app_refusal(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    return all(marker in text for marker in DRAFT_APP_MARKERS)
+
+
+def as_draft(release: dict) -> dict:
+    """The same release (versionCodes, releaseNotes) with `status: draft` and no rollout fraction."""
+    draft = {key: value for key, value in release.items() if key != "userFraction"}
+    draft["status"] = DRAFT
+    return draft
+
+
+def update_track(edits, package, edit_id, track, release) -> None:
+    edits.tracks().update(
+        packageName=package,
+        editId=edit_id,
+        track=track,
+        body={"releases": [release]},
+    ).execute(num_retries=play_api.RETRIES)
+
+
+def commit_release(edits, package, edit_id, track, release, changes_not_sent_for_review=False) -> dict:
+    """Commit the edit; on Play's draft-app refusal re-stage the release as a draft and commit once more.
+
+    Returns the release that was actually committed (the draft one after a fallback).
+    Any other failure — including one from the single fallback commit — propagates
+    unchanged so the caller discards the edit as usual.
+    """
+    try:
+        play_api.commit_edit(edits, package, edit_id, changes_not_sent_for_review)
+        return release
+    except Exception as exc:
+        if release.get("status") == DRAFT or not is_draft_app_refusal(exc):
+            raise
+        print(
+            "app is unpublished — committing the release as a draft; send it for review in Play Console",
+            file=sys.stderr,
+        )
+        draft = as_draft(release)
+        update_track(edits, package, edit_id, track, draft)
+        play_api.commit_edit(edits, package, edit_id, changes_not_sent_for_review)
+        return draft
+
+
 def run(service, args, media_factory=play_api.file_media, root: str = REPO_ROOT) -> int:
     # Resolve (and fail on explicit-but-missing files) before any edit exists.
     mapping = resolve_optional_file(args.mapping, [DEFAULT_MAPPING], "R8 mapping", root)
@@ -182,14 +239,11 @@ def run(service, args, media_factory=play_api.file_media, root: str = REPO_ROOT)
             print(f"release notes: {', '.join(n['language'] for n in release_notes) or 'none found'}")
 
         release = build_release(version_code, args.status, args.user_fraction, release_notes)
-        edits.tracks().update(
-            packageName=args.package,
-            editId=edit_id,
-            track=args.track,
-            body={"releases": [release]},
-        ).execute(num_retries=play_api.RETRIES)
+        update_track(edits, args.package, edit_id, args.track, release)
 
-        play_api.commit_edit(edits, args.package, edit_id, args.changes_not_sent_for_review)
+        release = commit_release(
+            edits, args.package, edit_id, args.track, release, args.changes_not_sent_for_review
+        )
     except Exception:
         play_api.discard_edit(edits, args.package, edit_id)
         raise
@@ -213,7 +267,13 @@ def parse_args(argv=None):
     ap.add_argument("--aab", required=True, help="path to the signed .aab")
     ap.add_argument("--credentials", required=True, help="path to the SA JSON")
     ap.add_argument("--track", default="internal", help="internal|alpha|beta|production")
-    ap.add_argument("--status", default="completed", help="release status (ignored with --user-fraction)")
+    ap.add_argument(
+        "--status",
+        default="completed",
+        help="release status: completed (default) | draft (stage only; the only status an unpublished "
+        "app accepts — auto-applied if Play refuses the commit for that reason) | halted; "
+        "ignored with --user-fraction",
+    )
     ap.add_argument(
         "--release-notes-dir",
         help="fastlane metadata dir; attaches <locale>/changelogs/<versionCode>.txt or default.txt",

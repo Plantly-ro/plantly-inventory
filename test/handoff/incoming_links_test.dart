@@ -22,6 +22,17 @@ void main() {
       expect(extractImportParamFromHash('/import?d=$d'), d);
     });
 
+    test('4. canonical path route /import?d= (path-URL web build)', () {
+      expect(extractImportParam(Uri.parse('https://inventory.plantly.ro/import?d=$d')), d);
+      expect(extractImportParam(Uri.parse('http://127.0.0.1:8099/import?d=$d&x=1')), d);
+      expect(extractImportParam(Uri.parse('https://host/inventory/import/?d=$d')), d);
+      expect(extractImportParam(Uri.parse('https://inventory.plantly.ro/import')), isNull);
+      expect(isImportPath('/import'), isTrue);
+      expect(isImportPath('/import/'), isTrue);
+      expect(isImportPath('/plants/import-notes'), isFalse);
+      expect(isImportPath('/'), isFalse);
+    });
+
     test('non-import links → null', () {
       expect(extractImportParam(Uri.parse('https://plantly.ro/posts/abc')), isNull);
       expect(extractImportParam(Uri.parse('http://127.0.0.1:8099/#/plants/1')), isNull);
