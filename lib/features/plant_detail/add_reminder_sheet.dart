@@ -10,6 +10,7 @@ import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../../app/breakpoints.dart';
 import '../../shared/sheet_chrome.dart';
+import 'assignee_picker.dart';
 
 /// Bottom sheet to create a new CareSchedule for a plant. Reads the
 /// available types from the user-editable registry in `careTypesProvider`
@@ -61,6 +62,7 @@ class _AddReminderSheetState extends ConsumerState<AddReminderSheet> {
   _Unit _unit = _Unit.days;
   String _recurrenceMode = 'after_completion';
   DateTime _firstDue = DateTime.now().add(const Duration(days: 1));
+  String? _assigneeUserId;
   bool _saving = false;
   String? _error;
 
@@ -126,6 +128,7 @@ class _AddReminderSheetState extends ConsumerState<AddReminderSheet> {
             baseIntervalDays: _unit.toDays(count),
             firstDueAt: _firstDue.toUtc(),
             recurrenceMode: _recurrenceMode,
+            assigneeUserId: _assigneeUserId,
           );
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -300,6 +303,14 @@ class _AddReminderSheetState extends ConsumerState<AddReminderSheet> {
                   ),
                 ),
               ),
+              if (ref.watch(assigneePickerVisibleProvider)) ...[
+                const SizedBox(height: 14),
+                AssigneePicker(
+                  value: _assigneeUserId,
+                  surface: surface,
+                  onChanged: (v) => setState(() => _assigneeUserId = v),
+                ),
+              ],
               const SizedBox(height: 12),
               _Preview(
                 unit: _unit,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../cloud/collections.dart';
 import '../../../data/database/app_database.dart';
 import '../../../data/mock_plants.dart';
 import '../../../data/providers.dart';
@@ -35,6 +36,8 @@ class QuickLogWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Every tile here writes a care event — nothing to offer a viewer.
+    if (!ref.watch(canEditActiveCollectionProvider)) return const SizedBox.shrink();
     final t = AppLocalizations.of(context);
     final actions = <_Action>[
       _Action(t.quickLogWater, 'water', Icons.water_drop_outlined, surface.green, surface.greenSoft),

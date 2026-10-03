@@ -140,12 +140,40 @@ python3 -m http.server 8099 --bind 127.0.0.1 --directory build/web
 - **Backup / iCal / CSV export** — browser download instead of the OS share sheet. Import uses the browser file picker.
 - **Not available on web** — scheduled OS notifications (the Me screen and onboarding say so; in-app reminders and the calendar still work) and image re-compression (the picker already downsizes to 1600px).
 
+### Web access gate (subscription-only web)
+
+The browser build is the **Inventory Cloud surface** (`WEB-ACCESS-POLICY`, apps-integration repo):
+using it needs a plantly.ro account with an active `inventory_cloud` entitlement (own plan or
+included in Plantly Pro). Android stays free and local-first; only web is gated.
+
+- `PlantlyFeatures.cloudEnabled` is **forced on when `kIsWeb`** — the `PLANTLY_CLOUD_ENABLED`
+  define is ignored on web (still honoured on Android/iOS/desktop).
+- `lib/cloud/web_access.dart` derives `webAccessProvider` (`checking` / `closedSignedOut` /
+  `closedNotEntitled` / `closedUnreachable` / `open`) from the existing session + entitlement
+  providers; the router (`lib/app/router.dart`, top-level `redirect`) sends every route to
+  `/gate` (`lib/features/gate/web_access_gate.dart`) while closed — except `/auth/callback`,
+  `/join` and `/import`, whose payloads `HandoffListener` parks — and resumes the parked URL
+  once it opens. Off web the provider is always `open`.
+- Re-checks: on sign-in, every 15 min, on tab focus / visibility (if the last check is > 1 min
+  old) and via the gate's "I already subscribed — check again". A lapse returns to the gate
+  **without touching local data**.
+- Offline: an entitled check cached ≤ 24 h keeps the app usable with a "no connection" banner;
+  older / none → the gate with a retry. 401/403 never open it.
+- The subscribe CTA points at `<PLANTLY_HOST>/account/subscription?product=inventory_cloud`
+  (same tab); prices come from `GET /api/v1/subscriptions/plans?product=inventory_cloud`
+  (fixed EUR copy when that fails). The Android card uses the official Play badges bundled in
+  `assets/badges/` (RO + EN, unmodified).
+- `web/index.html` carries `<meta name="robots" content="noindex">`: the app is not a landing
+  page (that is `plantly.ro/app/inventory`).
+
 ### Marketplace integration flags (all targets)
 
 | dart-define | Default | Effect |
 |---|---|---|
 | `PLANTLY_HOST` | `https://plantly.ro` | Marketplace API + web origin (`/api/v1`). Point at a preview, e.g. `https://development.agent-khepri.urundead.win`. |
 | `PLANTLY_SELL_ENABLED` | `false` | **"Sell on plantly.ro"** (`plantly_ro` export plugin, marketplace category search, Me → Plantly account). Off = the local draft dialog only, no network from the export path. The Assistant/marketplace **import** link handling (`/#/import?d=…`, `plantlyinventory://import`) is always on. |
+| `PLANTLY_CLOUD_ENABLED` | `false` (**always `true` on web**) | Cloud backup & sync (Me → Cloud, collection link, sync runner). Ignored on web — see *Web access gate*. |
+| `PLANTLY_PLAY_BILLING_ENABLED` | `false` | Google Play in-app purchase of Inventory Cloud (Android only; irrelevant on web). |
 
 ```bash
 # selling ON against the dev preview

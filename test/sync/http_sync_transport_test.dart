@@ -17,6 +17,7 @@ void main() {
     Future<http.Response> Function(http.Request) handler, {
     List<http.Request>? log,
     String? token = 'tok',
+    SyncDeviceMeta? deviceMeta,
   }) {
     return HttpSyncTransport(
       client: MockClient((req) {
@@ -27,6 +28,7 @@ void main() {
       token: () async => token,
       host: host,
       sendUserAgent: true,
+      deviceMeta: deviceMeta,
     );
   }
 
@@ -120,6 +122,90 @@ void main() {
     });
   });
 
+  group('device meta (MULTI-USER-V2 §2.12)', () {
+    const meta = SyncDeviceMeta(deviceId: 'dev-a', deviceName: 'Pixel 8', appVersion: '1.2.3', platform: 'android');
+    const metaHeaders = ['X-Plantly-Device-Name', 'X-Plantly-App-Version', 'X-Plantly-Platform'];
+    final emptyPush = jsonRes({'accepted': 0, 'rejected': [], 'cursor': '0', 'fresh_ops': [], 'has_more': false});
+    final emptyPull = jsonRes({'ops': [], 'cursor': '0', 'has_more': false});
+
+    test('push sends the three headers', () async {
+      final log = <http.Request>[];
+      final t = transport(log: log, deviceMeta: meta, (_) async => emptyPush);
+      await t.push(const PushRequest(deviceId: 'dev-a', since: '0', ops: []));
+      final h = log.single.headers;
+      expect(h['X-Plantly-Device-Name'], 'Pixel 8');
+      expect(h['X-Plantly-App-Version'], '1.2.3');
+      expect(h['X-Plantly-Platform'], 'android');
+    });
+
+    test('pull sends the three headers + ?device_id= when meta.deviceId is set', () async {
+      final log = <http.Request>[];
+      final t = transport(log: log, deviceMeta: meta, (_) async => emptyPull);
+      await t.pull(const PullRequest(since: '0'));
+      final req = log.single;
+      expect(req.headers['X-Plantly-Device-Name'], 'Pixel 8');
+      expect(req.headers['X-Plantly-App-Version'], '1.2.3');
+      expect(req.headers['X-Plantly-Platform'], 'android');
+      expect(req.url.queryParameters['device_id'], 'dev-a');
+      expect(req.url.queryParameters['since'], '0');
+    });
+
+    test('pull without meta.deviceId carries no device_id query', () async {
+      final log = <http.Request>[];
+      const noId = SyncDeviceMeta(deviceName: 'Pixel 8', appVersion: '1.2.3', platform: 'android');
+      final t = transport(log: log, deviceMeta: noId, (_) async => emptyPull);
+      await t.pull(const PullRequest(since: '0'));
+      expect(log.single.url.queryParameters.containsKey('device_id'), isFalse);
+      expect(log.single.headers['X-Plantly-Platform'], 'android');
+    });
+
+    test('/usage and photo routes do NOT carry the device headers', () async {
+      final log = <http.Request>[];
+      final t = transport(log: log, deviceMeta: meta, (req) async {
+        if (req.url.path.endsWith('/usage')) return jsonRes({'bytes_stored': 1, 'bytes_quota': 2});
+        if (req.url.path.endsWith('/photos/upload-url')) {
+          return jsonRes({'url': '$host/put', 'headers': {}, 'already_stored': false});
+        }
+        return jsonRes({}, 200);
+      });
+      await t.usage();
+      await t.requestUpload(sha256: 'a', bytes: 1, mime: 'image/jpeg');
+      await t.completeUpload('a');
+      expect(log, hasLength(3));
+      for (final req in log) {
+        for (final name in metaHeaders) {
+          expect(req.headers.containsKey(name), isFalse, reason: '$name on ${req.url.path}');
+        }
+        expect(req.url.queryParameters.containsKey('device_id'), isFalse);
+      }
+    });
+
+    test('without deviceMeta none of the headers go out', () async {
+      final log = <http.Request>[];
+      final t = transport(log: log, (req) async => req.method == 'POST' ? emptyPush : emptyPull);
+      await t.push(const PushRequest(deviceId: 'dev-a', since: '0', ops: []));
+      await t.pull(const PullRequest(since: '0'));
+      for (final req in log) {
+        for (final name in metaHeaders) {
+          expect(req.headers.containsKey(name), isFalse, reason: '$name on ${req.url.path}');
+        }
+        expect(req.url.queryParameters.containsKey('device_id'), isFalse);
+      }
+    });
+
+    test('headerSafe: diacritics fold, other non-ASCII → ?, whitespace collapsed, capped at 80', () {
+      expect(SyncDeviceMeta.headerSafe('Pixel — Mária'), 'Pixel ? Maria');
+      expect(SyncDeviceMeta.headerSafe('Șerban Țicu ăâî ÄÖÜ ß'), 'Serban Ticu aai AOU ss');
+      expect(SyncDeviceMeta.headerSafe('Galaxy 日本'), 'Galaxy ??');
+      expect(SyncDeviceMeta.headerSafe('  a \t\n b   c '), 'a b c');
+      expect(SyncDeviceMeta.headerSafe('x' * 200), hasLength(80));
+      expect(SyncDeviceMeta.headerSafe('x' * 200), 'x' * 80);
+      // Headers skip empty values.
+      expect(const SyncDeviceMeta(deviceName: '', appVersion: '1', platform: 'web').headers.keys,
+          ['X-Plantly-App-Version', 'X-Plantly-Platform']);
+    });
+  });
+
   group('error mapping', () {
     Future<void> expectError(int status, Matcher matcher, {Map<String, String>? headers, Object body = const {'error': 'x'}}) async {
       final t = transport((_) async => jsonRes(body, status, headers));
@@ -133,11 +219,25 @@ void main() {
     test('403 → SyncCollectionError(403)', () =>
         expectError(403, isA<SyncCollectionError>().having((e) => e.status, 'status', 403).having((e) => e.message, 'message', 'not_a_member'), body: {'error': 'not_a_member'}));
     test('404 → SyncCollectionError(404)', () => expectError(404, isA<SyncCollectionError>().having((e) => e.status, 'status', 404)));
+    test('403 device_revoked → SyncCollectionError with that message', () => expectError(
+        403, isA<SyncCollectionError>().having((e) => e.status, 'status', 403).having((e) => e.message, 'message', 'device_revoked'),
+        body: {'error': 'device_revoked'}));
+    test('410 collection_deleted → SyncCollectionError(410)', () => expectError(
+        410, isA<SyncCollectionError>().having((e) => e.status, 'status', 410).having((e) => e.message, 'message', 'collection_deleted'),
+        body: {'error': 'collection_deleted'}));
     test('429 → SyncRetryableError with Retry-After', () => expectError(
         429, isA<SyncRetryableError>().having((e) => e.retryAfter, 'retryAfter', const Duration(seconds: 7)).having((e) => e.status, 'status', 429),
         headers: {'retry-after': '7'}));
     test('503 → SyncRetryableError', () => expectError(503, isA<SyncRetryableError>().having((e) => e.status, 'status', 503)));
     test('400 → SyncProtocolError', () => expectError(400, isA<SyncProtocolError>()));
+    test('400 too_many_devices → SyncCollectionError(400) (halt, not a retry)', () => expectError(
+        400, isA<SyncCollectionError>().having((e) => e.status, 'status', 400).having((e) => e.message, 'message', 'too_many_devices'),
+        body: {'error': 'too_many_devices'}));
+    test('400 with another code stays a SyncProtocolError', () =>
+        expectError(400, isA<SyncProtocolError>(), body: {'error': 'bad_request'}));
+    test('503 device_lookup_failed → SyncRetryableError carrying the code', () => expectError(
+        503, isA<SyncRetryableError>().having((e) => e.status, 'status', 503).having((e) => e.message, 'message', 'device_lookup_failed'),
+        body: {'error': 'device_lookup_failed'}));
     test('413 on /sync/push → SyncBatchTooLargeError (not quota)', () async {
       final t = transport((_) async => jsonRes({'error': 'too_large'}, 413));
       await expectLater(

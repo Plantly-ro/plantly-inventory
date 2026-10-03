@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../cloud/collections.dart';
 import '../features/home/add_plant_sheet.dart';
 import '../features/home/home_providers.dart';
 import '../features/search/search_screen.dart';
@@ -48,6 +49,8 @@ class AppShortcuts extends ConsumerWidget {
             );
           }),
           NewPlantIntent: _GuardedAction<NewPlantIntent>(() {
+            // Read-only collection: the add action is hidden, so the key is a no-op.
+            if (!ref.read(canEditActiveCollectionProvider)) return;
             showAdaptiveSheet<void>(
               context,
               isScrollControlled: true,

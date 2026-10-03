@@ -29,6 +29,14 @@ class _CloudNoticesState extends ConsumerState<CloudNotices> {
         ..showSnackBar(SnackBar(key: const Key('cloud-notice-removed'), content: Text(t.shareRemovedFromCollection(name))));
       ref.read(collectionRemovedNoticeProvider.notifier).state = null;
     });
+    ref.listenManual<bool>(deviceRevokedNoticeProvider, (_, revoked) {
+      if (!revoked || !mounted) return;
+      final t = AppLocalizations.of(context);
+      ScaffoldMessenger.maybeOf(context)
+        ?..clearSnackBars()
+        ..showSnackBar(SnackBar(key: const Key('cloud-notice-device-revoked'), content: Text(t.shareErrDeviceRevoked)));
+      ref.read(deviceRevokedNoticeProvider.notifier).state = false;
+    });
   }
 
   @override

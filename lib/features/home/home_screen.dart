@@ -16,6 +16,8 @@ import 'selection.dart';
 import 'widget_registry.dart';
 import '../../app/side_sheet.dart';
 import '../collections/collection_switcher.dart';
+import '../../cloud/collections.dart';
+import '../collections/read_only_banner.dart';
 
 /// Port of `CustomHome` in `web/prototype/components/screens.jsx`.
 class HomeScreen extends ConsumerStatefulWidget {
@@ -43,10 +45,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with FirstRunOnboarding
     // and the primary "Add plant" action, so the phone chrome steps aside.
     final phoneChrome = !context.isWide;
     final hasSelection = ref.watch(plantSelectionProvider).isNotEmpty;
+    final canEdit = ref.watch(canEditActiveCollectionProvider);
 
     return Scaffold(
       backgroundColor: surface.bg,
-      floatingActionButton: bootstrap.hasValue && phoneChrome
+      floatingActionButton: bootstrap.hasValue && phoneChrome && canEdit
           ? FloatingActionButton(
               backgroundColor: surface.green,
               foregroundColor: Colors.white,
@@ -67,7 +70,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with FirstRunOnboarding
           ? Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (hasSelection) BulkActionBar(surface: surface),
+                if (hasSelection && canEdit) BulkActionBar(surface: surface),
                 if (phoneChrome)
                   _TabBar(
                     surface: surface,
@@ -91,6 +94,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with FirstRunOnboarding
                   surface: surface,
                   onDone: () => setState(() => _editing = false),
                 ),
+                const ReadOnlyBanner(),
                 if (permDenied) NotificationPermissionBanner(surface: surface),
                 Expanded(
                   child: GestureDetector(

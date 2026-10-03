@@ -546,4 +546,40 @@ void main() {
       expect(SyncOpDto(entity: 'a', entityId: 'b', field: '*', value: null, hlc: 'h', userId: 'u').toJson().containsKey('user_id'), isFalse);
     });
   });
+
+  group('task assignment (MULTI-USER-V2 §0)', () {
+    Future<CareScheduleRow> schedule(String id) => (db.select(db.careSchedules)..where((s) => s.id.equals(id))).getSingle();
+
+    test('pulled care_schedules/<id>/assignee_user_id field op lands on the row; null clears; older op loses', () async {
+      final h = await opLog.recordCreate(entity: 'care_schedules', entityId: 'cs1', value: {'plant_id': 'p1', 'type': 'water', 'base_interval_days': 7, 'current_interval_days': 7});
+      await db.into(db.careSchedules).insert(CareSchedulesCompanion.insert(
+          id: 'cs1', tenantId: tenant, plantId: 'p1', type: 'water', baseIntervalDays: 7, currentIntervalDays: 7, updatedHlc: h.encode(), deviceId: 'dev-a'));
+
+      var r = await applier.applyBatch([op('care_schedules', 'cs1', 'assignee_user_id', 'u-bob', hlcAt(5000))]);
+      expect(r.applied, 1);
+      expect((await schedule('cs1')).assigneeUserId, 'u-bob');
+      expect((await schedule('cs1')).updatedHlc, hlcAt(5000));
+
+      // Older than what we hold → ignored.
+      r = await applier.applyBatch([op('care_schedules', 'cs1', 'assignee_user_id', 'u-old', hlcAt(4000))]);
+      expect(r.applied, 0);
+      expect((await schedule('cs1')).assigneeUserId, 'u-bob');
+
+      // Newer null = back to everyone (the stale-member sweep on another device).
+      r = await applier.applyBatch([op('care_schedules', 'cs1', 'assignee_user_id', null, hlcAt(6000))]);
+      expect(r.applied, 1);
+      expect((await schedule('cs1')).assigneeUserId, isNull);
+      expect(await opLog.pendingCount(), 1, reason: 'remote ops never enter the pending queue');
+    });
+
+    test('`*` payload carries assignee_user_id on insert', () async {
+      await applier.applyBatch([
+        op('care_schedules', 'cs2', '*', {
+          'id': 'cs2', 'plant_id': 'p1', 'type': 'mist', 'base_interval_days': 2, 'current_interval_days': 2,
+          'enabled': true, 'recurrence_mode': 'fixed', 'assignee_user_id': 'u-carol', 'updated_hlc': hlcAt(5000), 'device_id': 'dev-b',
+        }, hlcAt(5000)),
+      ]);
+      expect((await schedule('cs2')).assigneeUserId, 'u-carol');
+    });
+  });
 }

@@ -219,12 +219,19 @@ void main() {
       ]);
       await tester.tap(find.byKey(const Key('share-invite')));
       await tester.pumpAndSettle();
+      expect(log, isEmpty, reason: 'v2 shows the form first; nothing is minted until Create');
+      await tester.tap(find.byKey(const Key('invite-create')));
+      await tester.pumpAndSettle();
       expect(log.single.method, 'POST');
+      expect(json.decode(log.single.body), {'role': 'editor', 'max_uses': 1, 'ttl_days': 7});
       expect(log.single.url.path, '/api/v1/inventory/collections/col-1/invites');
       expect(find.text('Invite to My plants'), findsWidgets);
       expect(find.text('BCDF-GHJK'), findsOneWidget);
       expect(find.byKey(const Key('invite-url')), findsOneWidget);
-      expect(find.textContaining('7 days'), findsOneWidget);
+      // The result line is role · uses; the TTL is shown as the expiry date.
+      expect(find.text('Editor · single use'), findsOneWidget);
+      expect(find.textContaining('7 days'), findsNothing);
+      expect(find.textContaining('2026'), findsOneWidget, reason: 'expires_at rendered as a date');
       await tester.tap(find.byKey(const Key('invite-share')));
       await tester.pumpAndSettle();
       expect(shared.single, contains('https://plantly.ro/app/inventory/join#c=BCDFGHJK'));
@@ -249,6 +256,7 @@ void main() {
                   if (req.url.path.endsWith('/inventory/collections')) {
                     return http.Response(json.encode({'collections': []}), 200);
                   }
+                  if (req.url.path.endsWith('/invites')) return http.Response(json.encode({'invites': []}), 200);
                   return http.Response(
                     json.encode({
                       'members': [
@@ -267,9 +275,12 @@ void main() {
       expect(find.text('Members of My plants'), findsWidgets);
       expect(find.text('alice (you)'), findsOneWidget);
       expect(find.text('bob'), findsOneWidget);
-      expect(find.byKey(const Key('member-remove-u-1')), findsNothing, reason: 'never remove self');
-      expect(find.byKey(const Key('member-remove-u-2')), findsOneWidget);
+      expect(find.byKey(const Key('member-menu-u-1')), findsNothing, reason: 'no actions on self');
+      expect(find.byKey(const Key('member-menu-u-2')), findsOneWidget);
       expect(find.byKey(const Key('member-leave')), findsNothing);
+      await tester.tap(find.byKey(const Key('member-menu-u-2')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('member-remove-u-2')), findsOneWidget);
       await tester.tap(find.byKey(const Key('member-remove-u-2')));
       await tester.pumpAndSettle();
       expect(find.text('Remove bob?'), findsOneWidget);
@@ -282,7 +293,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('bob'), findsOneWidget);
       expect(find.text('alice (you)'), findsOneWidget);
-      expect(find.byKey(const Key('member-remove-u-2')), findsNothing, reason: 'editors remove nobody');
+      expect(find.byKey(const Key('member-menu-u-2')), findsNothing, reason: 'editors remove nobody');
       expect(find.byKey(const Key('member-leave')), findsOneWidget);
     });
   });

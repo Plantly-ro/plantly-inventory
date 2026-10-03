@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../cloud/oauth_handshake.dart';
 import '../cloud/sign_in_events.dart';
+import '../cloud/web_access.dart';
 import '../data/providers.dart';
 import '../features/collections/join_collection_sheet.dart';
 import '../marketplace/plantly_auth.dart';
@@ -19,6 +20,11 @@ import 'plantly_export.dart';
 /// are adopted straight into [PlantlyAuth] and announced on
 /// [signInEventsProvider] — no UI of their own. Shared-collection invite
 /// links (`join#c=<code>`, §3) open the join sheet with the code filled in.
+///
+/// Web access gate (WEB-ACCESS-POLICY §0): while the gate is closed an
+/// import / join link is *parked* ([WebGateParking], prefs — it must survive
+/// the OAuth page reload) instead of opening a sheet over the gate, and
+/// replayed the moment the gate opens.
 class HandoffListener extends ConsumerStatefulWidget {
   const HandoffListener({super.key, required this.navigatorKey, required this.child});
   final GlobalKey<NavigatorState> navigatorKey;
@@ -52,7 +58,7 @@ class _HandoffListenerState extends ConsumerState<HandoffListener> {
 
   String? _lastToken;
 
-  void _enqueue(Uri uri) {
+  void _enqueue(Uri uri, {bool replay = false}) {
     final callback = extractAuthCallback(uri);
     if (callback != null) {
       if (callback.token == _lastToken) return;
@@ -66,7 +72,11 @@ class _HandoffListenerState extends ConsumerState<HandoffListener> {
       final key = 'join:$code';
       if (key == _lastHandled) return;
       _lastHandled = key;
-      ref.read(incomingLinksProvider).consume();
+      if (!replay) ref.read(incomingLinksProvider).consume();
+      if (_parkWhileGated(uri)) {
+        _lastHandled = null;
+        return;
+      }
       _pending.add(_PendingLink.join(code));
       _drain();
       return;
@@ -77,9 +87,26 @@ class _HandoffListenerState extends ConsumerState<HandoffListener> {
     // can be opened again deliberately.
     if (d == null || d == _lastHandled) return;
     _lastHandled = d;
-    ref.read(incomingLinksProvider).consume();
+    if (!replay) ref.read(incomingLinksProvider).consume();
+    if (_parkWhileGated(uri)) {
+      _lastHandled = null;
+      return;
+    }
     _pending.add(_PendingLink.import(d));
     _drain();
+  }
+
+  /// True when the web gate is closed: the link went to the parking lot and
+  /// [_replayParked] will bring it back once the gate opens.
+  bool _parkWhileGated(Uri uri) {
+    if (ref.read(webAccessProvider).isOpen) return false;
+    ref.read(webGateParkingProvider).parkLink(uri);
+    return true;
+  }
+
+  void _replayParked() {
+    final uri = ref.read(webGateParkingProvider).takeLink();
+    if (uri != null) _enqueue(uri, replay: true);
   }
 
   /// Adopt only callbacks that answer a sign-in this device started (nonce +
@@ -143,6 +170,9 @@ class _HandoffListenerState extends ConsumerState<HandoffListener> {
         _ready = true;
         _drain();
       }
+    });
+    ref.listen<WebAccess>(webAccessProvider, (prev, next) {
+      if (next.isOpen && !(prev?.isOpen ?? false)) _replayParked();
     });
     // `ref.listen` only fires on change; cover the already-ready case.
     if (!_ready && ref.read(appContextProvider).hasValue) {

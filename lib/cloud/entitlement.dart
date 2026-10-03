@@ -82,6 +82,13 @@ class CloudEntitlement {
   final String? provider;
   final DateTime? currentPeriodEnd;
 
+  /// Compatibility scalars over [sharedAccess] (the gate and older call
+  /// sites read these; the model of record is [sharedAccess]).
+  bool get sharedAccessActive => sharedAccess.active;
+
+  /// How many shared collections grant that access (0 when none / absent).
+  int get sharedAccessCollections => sharedAccess.collections;
+
   /// The entitling row is a Google Play subscription: managed (cancel /
   /// pause / change plan) in Play, not on plantly.ro.
   bool get managedByPlay => active && provider == 'play';
@@ -151,6 +158,30 @@ class CloudEntitlement {
       'CloudEntitlement(active=$active, source=$source, provider=$provider, until=$currentPeriodEnd, shared=$sharedAccess)';
 }
 
+/// How the value currently held by [cloudEntitlementProvider] was obtained.
+/// Read (not watched) by the web access gate's offline rule
+/// (WEB-ACCESS-POLICY §0): only a value the server confirmed — now, or
+/// recently enough to be served from the fresh cache — opens the gate
+/// without a banner; a stale-cache fallback opens it read-only for ≤ 24 h.
+enum EntitlementSource {
+  /// Nothing fetched yet / signed out.
+  none,
+
+  /// The server answered this session (or the fresh cache, < [CloudEntitlementNotifier.maxAge]).
+  server,
+
+  /// The server could not be reached (network / 5xx / 429); the value is
+  /// the last one it gave us — see [CloudEntitlementNotifier.lastVerifiedAt].
+  staleCache,
+
+  /// The server answered 401: the session is gone.
+  unauthorized,
+
+  /// The server answered 403 (account suspended / refused): the value is the
+  /// cache, kept for the Me screen, but it must not open anything.
+  forbidden,
+}
+
 /// Prefs-cached entitlement for the signed-in user. `null` = signed out.
 ///
 /// Refresh policy: a cached value younger than [maxAge] is served as-is;
@@ -166,8 +197,22 @@ class CloudEntitlementNotifier extends AsyncNotifier<CloudEntitlement?> with Wid
   /// Overridable clock for tests.
   DateTime Function() now = () => DateTime.now().toUtc();
 
+  /// Provenance of the current value (set right before `build` returns, so
+  /// a listener reacting to the new state reads the matching source).
+  EntitlementSource source = EntitlementSource.none;
+
+  /// When the server last confirmed the current value (the cache's write
+  /// time); null until a fetch succeeded for this user.
+  DateTime? lastVerifiedAt;
+
   bool _forceNext = false;
   bool _observing = false;
+
+  /// The user the current [source] / [lastVerifiedAt] describe. Sentinel
+  /// (not null) before the first build so a signed-out start also counts as
+  /// a change.
+  Object? _sourceUserId = _noUser;
+  static const Object _noUser = Object();
   Timer? _timer;
   StreamSubscription<Object?>? _signIns;
 
@@ -178,30 +223,63 @@ class CloudEntitlementNotifier extends AsyncNotifier<CloudEntitlement?> with Wid
     // in a loop.
     final userId = ref.watch(plantlyAuthProvider.select((s) => s.valueOrNull?.userId));
     _installHooks(signedIn: userId != null);
+    if (userId != _sourceUserId) {
+      // A different account (or none): whatever provenance we held belongs
+      // to the previous user. Reset *before* the first await so a reader
+      // that sees the loading state cannot pair it with the old user's
+      // `server` source and keep their verdict (WEB-ACCESS-POLICY §0).
+      _sourceUserId = userId;
+      source = EntitlementSource.none;
+      lastVerifiedAt = null;
+    }
     if (userId == null) return null;
     final prefs = await ref.watch(sharedPreferencesProvider.future);
     final force = _forceNext;
     _forceNext = false;
 
     final cached = _readCache(prefs, userId);
-    if (!force && cached != null && now().difference(cached.at) < maxAge) return cached.entitlement;
+    lastVerifiedAt = cached?.at;
+    if (!force && cached != null && now().difference(cached.at) < maxAge) {
+      source = EntitlementSource.server;
+      return cached.entitlement;
+    }
 
     final auth = ref.read(plantlyAuthProvider.notifier);
     final api = ref.read(plantlyApiProvider);
     try {
       final live = await auth.current();
-      if (live == null) return null;
+      if (live == null) {
+        source = EntitlementSource.unauthorized;
+        return null;
+      }
       final body = await api.getMySubscription(live.token);
       final entitlement = CloudEntitlement.fromSubscriptionJson(body);
       await _writeCache(prefs, userId, entitlement);
+      source = EntitlementSource.server;
+      lastVerifiedAt = now();
       return entitlement;
     } on PlantlyNetworkException {
+      source = EntitlementSource.staleCache;
       if (cached != null) return cached.entitlement;
       rethrow;
     } on PlantlyApiException catch (e) {
       // 401: the session is gone (auth.current() already cleared it when it
       // could tell). Anything else with a cache: keep showing the cache.
-      if (e.isUnauthorized) return null;
+      if (e.isUnauthorized) {
+        source = EntitlementSource.unauthorized;
+        return null;
+      }
+      if (e.status == 403) {
+        // A refusal is a verdict about the account, not an outage: the
+        // cached value may stay (Me screen) but it must never again be
+        // served through the ≤ maxAge fast path as if the server confirmed
+        // it — drop the timestamp so the next build asks the server.
+        source = EntitlementSource.forbidden;
+        await prefs.remove(cacheAtKey);
+        lastVerifiedAt = null;
+      } else {
+        source = EntitlementSource.staleCache;
+      }
       if (cached != null) return cached.entitlement;
       rethrow;
     }
@@ -214,11 +292,14 @@ class CloudEntitlementNotifier extends AsyncNotifier<CloudEntitlement?> with Wid
     await future;
   }
 
-  /// Re-fetch only when the cache is older than [maxAge] (resume, timer).
-  Future<void> refreshIfStale() async {
+  /// Re-fetch only when the cache is older than [olderThan] (default
+  /// [maxAge]: resume, timer; the web gate passes a shorter window on
+  /// window focus / visibility).
+  Future<void> refreshIfStale({Duration? olderThan}) async {
     final prefs = await ref.read(sharedPreferencesProvider.future);
     final at = prefs.getInt(cacheAtKey);
-    if (at == null || now().difference(DateTime.fromMillisecondsSinceEpoch(at, isUtc: true)) >= maxAge) {
+    if (at == null || now().difference(DateTime.fromMillisecondsSinceEpoch(at, isUtc: true)) >= (olderThan ?? maxAge)) {
+      _forceNext = true;
       ref.invalidateSelf();
     }
   }

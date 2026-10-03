@@ -57,7 +57,95 @@ class SyncEntitlementError extends SyncError {
   const SyncEntitlementError([super.message = 'cloud_required']);
 }
 
-/// 403 `not_a_member` / 404 `collection_not_found`.
+/// What a device says about itself on push/pull (MULTI-USER-V2 §2.12).
+/// Values are ASCII-sanitised: HTTP headers cannot carry arbitrary Unicode,
+/// and a device name like "Pixel 8 (Maria)" must not break the request.
+class SyncDeviceMeta {
+  const SyncDeviceMeta({
+    required this.deviceName,
+    required this.appVersion,
+    required this.platform,
+    this.deviceId = '',
+  });
+
+  /// This install's id (`DeviceId`); sent as `?device_id=` on pull so the
+  /// server registers/validates the device there too (push carries it in
+  /// the body). Empty = not sent.
+  final String deviceId;
+  final String deviceName;
+  final String appVersion;
+
+  /// `android` | `ios` | `web` | `linux` | `macos` | `windows` | `unknown`.
+  final String platform;
+
+  static const String deviceNameHeader = 'X-Plantly-Device-Name';
+  static const String appVersionHeader = 'X-Plantly-App-Version';
+  static const String platformHeader = 'X-Plantly-Platform';
+
+  Map<String, String> get headers => {
+        if (deviceName.isNotEmpty) deviceNameHeader: headerSafe(deviceName),
+        if (appVersion.isNotEmpty) appVersionHeader: headerSafe(appVersion),
+        if (platform.isNotEmpty) platformHeader: headerSafe(platform),
+      };
+
+  /// Printable ASCII only, collapsed whitespace, ≤ 80 chars. Latin
+  /// letters with diacritics fold to their base letter first ("Mária" →
+  /// "Maria", "Șerban" → "Serban") so a device name stays readable in
+  /// Me → Cloud → Devices; anything else non-ASCII becomes `?`.
+  static String headerSafe(String v) {
+    // Collapse whitespace first so tabs/newlines become a space, not `?`.
+    final collapsed = v.replaceAll(RegExp(r'\s+'), ' ').trim();
+    final b = StringBuffer();
+    for (final r in collapsed.runes) {
+      if (r >= 0x20 && r <= 0x7E) {
+        b.writeCharCode(r);
+        continue;
+      }
+      b.write(_foldDiacritic(r) ?? '?');
+    }
+    final out = b.toString();
+    return out.length > 80 ? out.substring(0, 80) : out;
+  }
+
+  /// Base letter for a Latin-1 Supplement / Latin Extended-A letter with a
+  /// diacritic (plus the Romanian comma-below pair), null for anything
+  /// else. `dart:core` has no Unicode normalisation; a table of the
+  /// letters European device names actually use beats a dependency.
+  static String? _foldDiacritic(int rune) {
+    final c = String.fromCharCode(rune);
+    for (final entry in _diacriticGroups.entries) {
+      if (entry.key.contains(c)) return entry.value;
+    }
+    return null;
+  }
+
+  // Each key lists every precomposed form that folds to the value.
+  static const Map<String, String> _diacriticGroups = {
+    'ÀÁÂÃÄÅĀĂĄ': 'A', 'àáâãäåāăą': 'a',
+    'ÇĆĈĊČ': 'C', 'çćĉċč': 'c',
+    'ĎĐ': 'D', 'ďđ': 'd',
+    'ÈÉÊËĒĔĖĘĚ': 'E', 'èéêëēĕėęě': 'e',
+    'ĜĞĠĢ': 'G', 'ĝğġģ': 'g',
+    'ĤĦ': 'H', 'ĥħ': 'h',
+    'ÌÍÎÏĨĪĬĮİ': 'I', 'ìíîïĩīĭįı': 'i',
+    'Ĵ': 'J', 'ĵ': 'j',
+    'Ķ': 'K', 'ķ': 'k',
+    'ĹĻĽĿŁ': 'L', 'ĺļľŀł': 'l',
+    'ÑŃŅŇ': 'N', 'ñńņň': 'n',
+    'ÒÓÔÕÖØŌŎŐ': 'O', 'òóôõöøōŏő': 'o',
+    'ŔŖŘ': 'R', 'ŕŗř': 'r',
+    'ŚŜŞŠȘ': 'S', 'śŝşšș': 's',
+    'ŢŤŦȚ': 'T', 'ţťŧț': 't',
+    'ÙÚÛÜŨŪŬŮŰŲ': 'U', 'ùúûüũūŭůűų': 'u',
+    'Ŵ': 'W', 'ŵ': 'w',
+    'ÝŶŸ': 'Y', 'ýÿŷ': 'y',
+    'ŹŻŽ': 'Z', 'źżž': 'z',
+    'Æ': 'AE', 'æ': 'ae', 'Œ': 'OE', 'œ': 'oe', 'ß': 'ss',
+  };
+}
+
+/// 403 `not_a_member` / `read_only` / `device_revoked`, 404
+/// `collection_not_found`, 410 `collection_deleted`.
 class SyncCollectionError extends SyncError {
   const SyncCollectionError(super.message, {required this.status});
   final int status;

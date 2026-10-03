@@ -42,6 +42,30 @@ void main() {
     expect(find.text('You were removed from Family greenhouse'), findsNothing, reason: 'previous SnackBar cleared');
   });
 
+  testWidgets('device-revoked notice → SnackBar, provider reset to false (en + ro)', (tester) async {
+    final c = await pump(tester);
+    expect(find.byKey(const Key('cloud-notice-device-revoked')), findsNothing);
+    c.read(deviceRevokedNoticeProvider.notifier).state = true;
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('cloud-notice-device-revoked')), findsOneWidget);
+    expect(find.textContaining('Device disconnected'), findsOneWidget);
+    expect(c.read(deviceRevokedNoticeProvider), isFalse, reason: 'one-shot');
+
+    // Shows again on the next revoke (the reset makes `true` a change).
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    c.read(deviceRevokedNoticeProvider.notifier).state = true;
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('cloud-notice-device-revoked')), findsOneWidget);
+  });
+
+  testWidgets('device-revoked notice (ro)', (tester) async {
+    final c = await pump(tester, locale: const Locale('ro'));
+    c.read(deviceRevokedNoticeProvider.notifier).state = true;
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Dispozitiv deconectat'), findsOneWidget);
+  });
+
   testWidgets('ro copy', (tester) async {
     final c = await pump(tester, locale: const Locale('ro'));
     c.read(collectionRemovedNoticeProvider.notifier).state = 'Sera familiei';

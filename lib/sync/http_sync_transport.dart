@@ -34,6 +34,7 @@ class HttpSyncTransport implements SyncTransport, CollectionUsageSource, PhotoTr
     this.timeout = const Duration(seconds: 30),
     this.blobTimeout = const Duration(seconds: 120),
     bool? sendUserAgent,
+    this.deviceMeta,
   })  : _client = client,
         _token = token,
         host = host ?? PlantlyHosts.host,
@@ -47,13 +48,19 @@ class HttpSyncTransport implements SyncTransport, CollectionUsageSource, PhotoTr
   final Duration blobTimeout;
   final bool _sendUserAgent;
 
+  /// Device descriptor sent on push/pull (`X-Plantly-Device-Name`,
+  /// `X-Plantly-App-Version`, `X-Plantly-Platform`; MULTI-USER-V2 §2.12).
+  /// Null = headers omitted (server records "unknown").
+  final SyncDeviceMeta? deviceMeta;
+
   Uri _uri(String path, [Map<String, String>? query]) => Uri.parse(
         '${PlantlyHosts.apiBase(host)}/inventory/collections/$collectionId$path',
       ).replace(queryParameters: query);
 
-  Future<Map<String, String>> _headers({bool json = false}) async {
+  Future<Map<String, String>> _headers({bool json = false, bool device = false}) async {
     final token = await _token();
     if (token == null || token.isEmpty) throw const SyncAuthError('no session');
+    final meta = deviceMeta;
     return {
       if (_sendUserAgent) 'User-Agent': PlantlyHosts.userAgent,
       'Accept': 'application/json',
@@ -61,6 +68,9 @@ class HttpSyncTransport implements SyncTransport, CollectionUsageSource, PhotoTr
       'Authorization': 'Bearer $token',
       // Same value as PlantlyApi's cloud routes (§2.2).
       'X-Plantly-Client': PlantlyHosts.clientHeader,
+      // Only on push/pull (§2.12): the server upserts `inventory_devices`
+      // from these at most once per hour per device.
+      if (device && meta != null) ...meta.headers,
     };
   }
 
@@ -71,7 +81,7 @@ class HttpSyncTransport implements SyncTransport, CollectionUsageSource, PhotoTr
     final res = await _send(
       () async => _client.post(
         _uri('/sync/push'),
-        headers: await _headers(json: true),
+        headers: await _headers(json: true, device: true),
         body: json.encode(request.toJson()),
       ),
       tooLargeIsBatch: true,
@@ -85,8 +95,11 @@ class HttpSyncTransport implements SyncTransport, CollectionUsageSource, PhotoTr
           _uri('/sync/pull', {
             'since': request.since.isEmpty ? '0' : request.since,
             'limit': '${request.limit}',
+            // §2.12: the server registers/validates the device on pull only
+            // when it knows which device is asking.
+            if ((deviceMeta?.deviceId ?? '').isNotEmpty) 'device_id': deviceMeta!.deviceId,
           }),
-          headers: await _headers(),
+          headers: await _headers(device: true),
         ));
     return PullResponse.fromJson(_object(res));
   }
@@ -239,6 +252,11 @@ class HttpSyncTransport implements SyncTransport, CollectionUsageSource, PhotoTr
     } catch (_) {
       // non-JSON error body — keep the HTTP status as the message
     }
+    // 400 `too_many_devices` (§2.12) is a halt, not a protocol slip: the
+    // account's device cap is full and only the user can free a slot
+    // (Me → Cloud → Devices). Raised as a collection error so the runner
+    // stops instead of backing off forever.
+    if (s == 400 && code == 'too_many_devices') throw SyncCollectionError(code, status: s);
     switch (s) {
       case 401:
         throw SyncAuthError(code);
@@ -246,6 +264,9 @@ class HttpSyncTransport implements SyncTransport, CollectionUsageSource, PhotoTr
         throw SyncEntitlementError(code);
       case 403:
       case 404:
+      case 410:
+        // 403 `not_a_member` / `read_only` / `device_revoked`, 404
+        // `collection_not_found`, 410 `collection_deleted` (MULTI-USER-V2).
         throw SyncCollectionError(code, status: s);
       case 413:
         if (tooLargeIsBatch) throw SyncBatchTooLargeError(code);

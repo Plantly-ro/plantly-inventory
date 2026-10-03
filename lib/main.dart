@@ -10,6 +10,8 @@ import 'cloud/cloud_notices.dart';
 import 'cloud/cloud_sync.dart';
 import 'cloud/play_billing_notices.dart';
 import 'cloud/play_billing_providers.dart';
+import 'cloud/web_access.dart';
+import 'features/gate/web_offline_banner.dart';
 import 'features/home/home_providers.dart';
 import 'handoff/handoff_listener.dart';
 import 'l10n/generated/app_localizations.dart';
@@ -68,6 +70,8 @@ class _PlantlyAppState extends ConsumerState<PlantlyApp> {
   late final GoRouter _router = buildAppRouter(
     navigatorKey: _navKey,
     initialLocation: widget.initialLocation,
+    // Re-runs the web access redirect on every verdict change (inert off web).
+    refreshListenable: ref.read(webAccessListenableProvider),
   );
 
   @override
@@ -83,6 +87,10 @@ class _PlantlyAppState extends ConsumerState<PlantlyApp> {
     ref.watch(cloudSyncCoordinatorProvider);
     // Play Billing restore/resume glue (inert off Android or with the flags off).
     ref.watch(playBillingCoordinatorProvider);
+    // Web access gate: keeps the verdict → router bridge alive and re-checks
+    // the entitlement on tab focus (inert off web).
+    ref.watch(webAccessListenableProvider);
+    ref.watch(webAccessWatcherProvider);
     return MaterialApp.router(
       title: 'PlantlyInventory',
       debugShowCheckedModeBanner: false,
@@ -99,7 +107,10 @@ class _PlantlyAppState extends ConsumerState<PlantlyApp> {
         child: HandoffListener(
           navigatorKey: _navKey,
           child: CloudNotices(
-            child: PlayBillingNotices(navigatorKey: _navKey, child: child ?? const SizedBox.shrink()),
+            child: PlayBillingNotices(
+              navigatorKey: _navKey,
+              child: WebOfflineBanner(child: child ?? const SizedBox.shrink()),
+            ),
           ),
         ),
       ),

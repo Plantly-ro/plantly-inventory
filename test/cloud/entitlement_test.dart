@@ -16,6 +16,43 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('CloudEntitlement.fromSubscriptionJson (§1.2)', () {
+    test('shared_access (MULTI-USER-V2 §0, additive): parsed, cached, compared; absent → false/0', () {
+      final shared = CloudEntitlement.fromSubscriptionJson({
+        'entitlements': {
+          'inventory_cloud': {
+            'active': false,
+            'source': null,
+            'shared_access': {'active': true, 'collections': 2},
+          },
+        },
+      });
+      expect(shared.active, isFalse, reason: 'shared access does not change the own verdict (yet)');
+      expect(shared.sharedAccessActive, isTrue);
+      expect(shared.sharedAccessCollections, 2);
+      expect(CloudEntitlement.fromJson(json.decode(json.encode(shared.toJson())) as Map<String, dynamic>), shared);
+      expect(shared, isNot(CloudEntitlement.fromJson({'active': false})));
+
+      final plain = CloudEntitlement.fromSubscriptionJson({
+        'entitlements': {
+          'inventory_cloud': {'active': true, 'source': 'pro'},
+        },
+      });
+      expect(plain.sharedAccessActive, isFalse);
+      expect(plain.sharedAccessCollections, 0);
+      // Older cache rows (no shared keys) still decode.
+      final legacyCache = CloudEntitlement.fromJson({'active': true, 'source': 'pro', 'provider': null});
+      expect(legacyCache.sharedAccessActive, isFalse);
+      expect(legacyCache.sharedAccessCollections, 0);
+      // Malformed shapes degrade to the defaults instead of throwing.
+      final odd = CloudEntitlement.fromSubscriptionJson({
+        'entitlements': {
+          'inventory_cloud': {'active': true, 'shared_access': 'yes'},
+        },
+      });
+      expect(odd.sharedAccessActive, isFalse);
+      expect(odd.sharedAccessCollections, 0);
+    });
+
     test('reads entitlements.inventory_cloud when present', () {
       final e = CloudEntitlement.fromSubscriptionJson({
         'is_pro': false,

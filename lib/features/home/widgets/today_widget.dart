@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../cloud/collections.dart';
 import '../../../data/database/app_database.dart' as db;
 import '../../../data/mock_plants.dart';
 import '../../../data/providers.dart';
@@ -8,6 +9,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/tokens.dart';
 import '../../../data/care_types.dart';
 import '../../../shared/care_feedback.dart';
+import '../../../shared/assignee_initial.dart';
 import '../../../shared/care_type_labels.dart';
 import 'plant_row.dart';
 import 'swipe_row.dart';
@@ -140,9 +142,17 @@ class TodayWidget extends ConsumerWidget {
             first: false,
             last: last,
             onTap: () => onPlantTap?.call(schedule.plantId),
-            trailing: _CheckButton(
-              surface: surface,
-              onPressed: logDone,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AssigneeChip(userId: schedule.assigneeUserId, tenantId: schedule.tenantId, surface: surface, padLeft: 0),
+                if (schedule.assigneeUserId != null && ref.watch(canEditActiveCollectionProvider)) const SizedBox(width: 8),
+                if (ref.watch(canEditActiveCollectionProvider))
+                  _CheckButton(
+                    surface: surface,
+                    onPressed: logDone,
+                  ),
+              ],
             ),
           ),
         );
