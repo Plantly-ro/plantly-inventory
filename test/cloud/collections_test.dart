@@ -59,6 +59,7 @@ void main() {
   late AppDatabase db;
   late bool entitled;
   late List<Map<String, dynamic>> serverCollections; // what GET /inventory/collections returns
+  bool? callerEntitled; // top-level `caller_entitled` of GET /inventory/collections (null = omitted, older server)
   late List<http.Request> requests;
   late Map<String, ScriptedTransport> fakes;
   late ProviderContainer container;
@@ -77,6 +78,7 @@ void main() {
     requests = [];
     fakes = {};
     holdCollections = null;
+    callerEntitled = null;
     serverCollections = [
       col('col-1', 'My plants'),
       col('col-2', 'Family greenhouse', role: 'editor', owner: 'u-2', members: 3),
@@ -119,7 +121,7 @@ void main() {
             }
             if (req.method == 'GET' && path.endsWith('/inventory/collections')) {
               if (holdCollections != null) await holdCollections!.future;
-              return jsonRes({'collections': serverCollections});
+              return jsonRes({'collections': serverCollections, 'caller_entitled': ?callerEntitled});
             }
             if (req.method == 'POST' && path.endsWith('/inventory/collections/join')) {
               final code = (json.decode(req.body) as Map)['code'];
@@ -274,7 +276,8 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 100));
   });
 
-  test('editor with NO entitlement of their own: signs in, links, syncs the shared collection and pushes', () async {
+  test('editor with NO entitlement of their own (§8, client verdict, older server without the flag): links, pulls the shared collection read-only, never pushes; pushes once the plan is active',
+      () async {
     entitled = false;
     container.read(cloudSyncCoordinatorProvider);
     await container.read(appContextProvider.future);
@@ -286,30 +289,52 @@ void main() {
     expect(container.read(cloudStateProvider).canSync, isFalse);
     await waitFor(() => container.read(collectionsProvider).items.length == 2);
     expect(container.read(syncRunnerProvider), isA<NoopSyncRunner>(), reason: 'own default: paywall applies');
+    expect(container.read(collectionsProvider).callerEntitled, isTrue, reason: 'no flag from this server');
+    expect(container.read(sharedNeedsCloudProvider), isTrue, reason: 'the client\'s own verdict is enough');
 
     await container.read(collectionsProvider.notifier).switchCollection('col-2');
     await waitFor(() => container.read(syncRunnerProvider) is HttpSyncRunner &&
         (container.read(syncRunnerProvider) as HttpSyncRunner).collectionId == 'col-2');
+    expect(container.read(activeCollectionReadOnlyReasonProvider), ReadOnlyReason.cloudRequired);
     final runner = container.read(syncRunnerProvider) as HttpSyncRunner;
+    expect(runner.readOnly, isTrue);
     await runner.syncNow();
     expect(runner.current.lastError, isNull);
+    expect(fakes['col-2']!.pulls, isNotEmpty, reason: 'read grace: pulls');
     await waitFor(() => container.read(appContextProvider).requireValue.tenantId == 'col-2');
     final cactus = await container.read(plantRepositoryProvider).create(nickname: 'Shared cactus');
-    await waitFor(() => fakes['col-2']!.pushes.any((p) => p.ops.any((o) => o.entityId == cactus.id)),
-        timeout: config.debounce * 20, reason: 'editor write pushed on the owner\'s plan');
+    await Future<void>.delayed(config.debounce * 4);
+    expect(fakes['col-2']!.pushes, isEmpty, reason: 'no push without our own plan');
     expect(fakes.containsKey('col-1'), isFalse, reason: 'own collection never synced');
+
+    entitled = true;
+    await container.read(cloudEntitlementProvider.notifier).refresh();
+    await waitFor(() => container.read(activeCollectionReadOnlyReasonProvider) == ReadOnlyReason.none);
+    await waitFor(() => container.read(syncRunnerProvider) is HttpSyncRunner &&
+        !(container.read(syncRunnerProvider) as HttpSyncRunner).readOnly);
+    await (container.read(syncRunnerProvider) as HttpSyncRunner).syncNow();
+    expect(fakes['col-2']!.pushes.any((p) => p.ops.any((o) => o.entityId == cactus.id)), isTrue,
+        reason: 'kept rows push once the plan is active');
   });
 
-  test('402 on a shared collection = the OWNER\'s plan lapsed: cloud_required + owner_plan_lapsed detail, no paywall refresh', () async {
+  Future<HttpSyncRunner> sharedRunnerWithoutPlan() async {
     entitled = false;
     await signInAlice().catchError((_) {}); // canSync never turns true without a plan
     await waitFor(() => container.read(cloudStateProvider).linked);
     await waitFor(() => container.read(collectionsProvider).items.length == 2);
-    final subscriptionHitsBefore = requests.where((r) => r.url.path.endsWith('/subscriptions/me')).length;
     await container.read(collectionsProvider.notifier).switchCollection('col-2');
     await waitFor(() => container.read(syncRunnerProvider) is HttpSyncRunner);
-    final runner = container.read(syncRunnerProvider) as HttpSyncRunner;
-    fakes['col-2']!.failures.add(const SyncEntitlementError());
+    return container.read(syncRunnerProvider) as HttpSyncRunner;
+  }
+
+  int hits(String suffix) => requests.where((r) => r.url.path.endsWith(suffix)).length;
+
+  test('402 cloud_required_owner on a shared collection = the OWNER\'s plan: owner detail, list refreshed, NO entitlement refresh (§8)',
+      () async {
+    final runner = await sharedRunnerWithoutPlan();
+    final subsBefore = hits('/subscriptions/me');
+    final listBefore = hits('/inventory/collections');
+    fakes['col-2']!.failures.add(const SyncEntitlementError(kCloudRequiredOwnerCode));
     await runner.syncNow();
     expect(runner.current.lastError, 'cloud_required');
     expect(runner.current.lastErrorDetail, kOwnerPlanLapsedDetail);
@@ -318,10 +343,74 @@ void main() {
         contains('owner’s plan lapsed'));
     expect(describeSyncError(lookupAppLocalizations(const Locale('ro')), 'cloud_required', detail: kOwnerPlanLapsedDetail),
         contains('proprietarului'));
-    expect(describeSyncError(t, 'cloud_required'), t.cloudNotIncludedValue, reason: 'own collection keeps the paywall copy');
+    await waitFor(() => hits('/inventory/collections') > listBefore, reason: 'list refetched for the paused marker');
     await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(requests.where((r) => r.url.path.endsWith('/subscriptions/me')).length, subscriptionHitsBefore,
-        reason: 'no entitlement refresh — it is not our plan');
+    expect(hits('/subscriptions/me'), subsBefore, reason: 'no entitlement refresh — it is not our plan');
+  });
+
+  test('402 cloud_required on a shared collection = OUR plan lapsed: member detail + copy, entitlement AND list refreshed (§8)',
+      () async {
+    final runner = await sharedRunnerWithoutPlan();
+    final subsBefore = hits('/subscriptions/me');
+    final listBefore = hits('/inventory/collections');
+    fakes['col-2']!.failures.add(const SyncEntitlementError());
+    await runner.syncNow();
+    expect(runner.current.lastError, 'cloud_required');
+    expect(runner.current.lastErrorDetail, kMemberPlanLapsedDetail);
+    final t = lookupAppLocalizations(const Locale('en'));
+    expect(describeSyncError(t, 'cloud_required', detail: kMemberPlanLapsedDetail),
+        'Your Inventory Cloud subscription expired — reactivate it to sync shared collections.');
+    expect(describeSyncError(lookupAppLocalizations(const Locale('ro')), 'cloud_required', detail: kMemberPlanLapsedDetail),
+        'Abonamentul tău Inventory Cloud a expirat — reactivează-l ca să sincronizezi colecțiile partajate.');
+    expect(describeSyncError(t, 'cloud_required'), t.cloudNotIncludedValue, reason: 'own collection keeps the paywall copy');
+    await waitFor(() => hits('/subscriptions/me') > subsBefore, reason: 'our plan: re-checked');
+    await waitFor(() => hits('/inventory/collections') > listBefore, reason: 'list refetched for caller_entitled');
+  });
+
+  test('caller_entitled=false (§8): shared collections read-only (cloudRequired), runner pull-only, local rows kept; flag absent → entitled',
+      () async {
+    callerEntitled = false;
+    final runner = await sharedRunnerWithoutPlan();
+    final state = container.read(collectionsProvider);
+    expect(state.callerEntitled, isFalse);
+    expect(container.read(activeCollectionReadOnlyReasonProvider), ReadOnlyReason.cloudRequired);
+    expect(container.read(canEditActiveCollectionProvider), isFalse);
+    expect(container.read(sharedCollectionsNeedCloudProvider), isTrue);
+    expect(runner.readOnly, isTrue);
+    expect(runner.entitlementIsOwners, isTrue);
+    // Cached with the flag, so the next boot starts read-only too.
+    final prefs = await SharedPreferences.getInstance();
+    expect(json.decode(prefs.getString(kCollectionsCachePrefKey)!)['caller_entitled'], isFalse);
+
+    await runner.syncNow();
+    expect(fakes['col-2']!.pulls, isNotEmpty, reason: 'read grace: still pulls');
+    expect(fakes['col-2']!.pushes, isEmpty);
+    await waitFor(() => container.read(appContextProvider).requireValue.tenantId == 'col-2');
+    // A row that slips in locally (the UI gates writes) is kept, never pushed.
+    final cactus = await container.read(plantRepositoryProvider).create(nickname: 'Kept locally');
+    await Future<void>.delayed(config.debounce * 4);
+    expect(fakes['col-2']!.pushes, isEmpty, reason: 'no push without our own plan');
+    expect(await plantsIn('col-2'), greaterThanOrEqualTo(1));
+    expect(cactus.id, isNotEmpty);
+
+    // The plan comes back (server flag flips; our own entitlement too).
+    callerEntitled = true;
+    entitled = true;
+    await container.read(cloudEntitlementProvider.notifier).refresh();
+    await container.read(collectionsProvider.notifier).refresh();
+    await waitFor(() => container.read(activeCollectionReadOnlyReasonProvider) == ReadOnlyReason.none);
+    expect(container.read(canEditActiveCollectionProvider), isTrue);
+    await waitFor(() => container.read(syncRunnerProvider) is HttpSyncRunner &&
+        !(container.read(syncRunnerProvider) as HttpSyncRunner).readOnly);
+    await (container.read(syncRunnerProvider) as HttpSyncRunner).syncNow();
+    expect(fakes['col-2']!.pushes.any((p) => p.ops.any((o) => o.entityId == cactus.id)), isTrue,
+        reason: 'kept rows push once the plan is active again');
+    expect(await plantsIn('col-2'), greaterThanOrEqualTo(1), reason: 'local data never deleted');
+
+    // Older server: no flag at all → treated as entitled (no false markers).
+    callerEntitled = null;
+    await container.read(collectionsProvider.notifier).refresh();
+    expect(container.read(collectionsProvider).callerEntitled, isTrue);
   });
 
   test('join: POST {code} → collection added, switched to, synced against; bad code → stable error', () async {

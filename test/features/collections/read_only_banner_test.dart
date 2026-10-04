@@ -14,9 +14,12 @@ import '../../helpers/test_app.dart';
 const _bannerKey = Key('read-only-banner');
 const _snackKey = Key('read-only-snack');
 
-Widget _app(Widget home, {required bool canEdit, Locale locale = const Locale('en')}) {
+Widget _app(Widget home, {required bool canEdit, Locale locale = const Locale('en'), ReadOnlyReason? reason}) {
   return buildTestApp(
-    overrides: [canEditActiveCollectionProvider.overrideWithValue(canEdit)],
+    overrides: [
+      canEditActiveCollectionProvider.overrideWithValue(canEdit),
+      if (reason != null) activeCollectionReadOnlyReasonProvider.overrideWithValue(reason),
+    ],
     child: MaterialApp(
       locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -83,6 +86,22 @@ void main() {
       expect(find.text('Doar vizualizare — cere proprietarului drepturi de editare'), findsOneWidget);
     });
 
+    testWidgets('§8 cloudRequired → banner with the plan copy (EN + RO), premium icon', (tester) async {
+      await _drain(tester);
+      await tester.pumpWidget(_app(const _GuardProbe(), canEdit: false, reason: ReadOnlyReason.cloudRequired));
+      await tester.pumpAndSettle();
+      expect(find.byKey(_bannerKey), findsOneWidget);
+      expect(find.byKey(const Key('read-only-banner-cloud')), findsOneWidget);
+      expect(find.text('View only — Inventory Cloud is required to edit shared collections'), findsOneWidget);
+      expect(find.byIcon(Icons.workspace_premium_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.lock_outline), findsNothing);
+
+      await tester.pumpWidget(
+          _app(const _GuardProbe(), canEdit: false, reason: ReadOnlyReason.cloudRequired, locale: const Locale('ro')));
+      await tester.pumpAndSettle();
+      expect(find.text('Doar vizualizare — Inventory Cloud este necesar pentru a edita colecțiile partajate'), findsOneWidget);
+    });
+
     testWidgets('editable → no banner, takes no space', (tester) async {
       await _drain(tester);
       await tester.pumpWidget(_app(const _GuardProbe(), canEdit: true));
@@ -101,6 +120,18 @@ void main() {
       await tester.pump();
       expect(find.byKey(_snackKey), findsOneWidget);
       expect(find.text('View only — ask the owner for edit rights.'), findsOneWidget);
+      expect(find.byKey(const Key('probe-mutated')), findsNothing);
+    });
+
+    testWidgets('§8 cloudRequired → snackbar with the lapsed-plan copy, callback does not proceed', (tester) async {
+      await _drain(tester);
+      await tester.pumpWidget(_app(const _GuardProbe(), canEdit: false, reason: ReadOnlyReason.cloudRequired));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('probe-mutate')));
+      await tester.pump();
+      expect(find.byKey(_snackKey), findsOneWidget);
+      expect(find.text('Your Inventory Cloud subscription expired — reactivate it to sync shared collections.'),
+          findsOneWidget);
       expect(find.byKey(const Key('probe-mutated')), findsNothing);
     });
 

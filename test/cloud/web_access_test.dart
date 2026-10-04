@@ -413,64 +413,49 @@ void main() {
     );
   });
 
-  group('shared access (WEB-ACCESS-POLICY shared-access amendment)', () {
-    test('own inactive + shared_access.active → open', () async {
+  group('shared access is informational (MULTI-USER-V2 §8: own plan only)', () {
+    test('own inactive + shared_access.active → state 2 (not entitled)', () async {
       active = false;
       shared = true;
       final c = make();
       final v = await verdict(c);
-      expect(v, WebAccess.open);
-      expect((v as WebAccessOpen).offline, isFalse);
+      expect(v, WebAccess.closedNotEntitled('alice'));
+      expect(v.isClosed, isTrue);
       final e = c.read(cloudEntitlementProvider).valueOrNull!;
       expect(e.active, isFalse);
-      expect(e.hasCloudAccess, isTrue);
-      expect(e.sharedAccessOnly, isTrue);
-      expect(e.sharedAccessActive, isTrue);
-      expect(e.sharedAccessCollections, 1);
+      expect(e.sharedAccess.active, isTrue, reason: 'still parsed, for display only');
+      expect(e.sharedAccess.collections, 1);
     });
 
-    test('shared access lost (owner lapsed) → state 2', () async {
+    test('own plan arrives → open; it lapses again → state 2 (shared access changes nothing)', () async {
       active = false;
       shared = true;
       final c = make();
-      expect(await verdict(c), WebAccess.open);
-      shared = false;
+      expect(await verdict(c), WebAccess.closedNotEntitled('alice'));
+      active = true;
+      await c.read(cloudEntitlementProvider.notifier).refresh();
+      await Future<void>.delayed(Duration.zero);
+      expect(c.read(webAccessProvider), WebAccess.open);
+      active = false;
       await c.read(cloudEntitlementProvider.notifier).refresh();
       await Future<void>.delayed(Duration.zero);
       expect(c.read(webAccessProvider), WebAccess.closedNotEntitled('alice'));
     });
 
-    test(
-      'offline with a cached shared-only verdict ≤ 24 h old → open offline',
-      () async {
-        await seedCache(
-          entitled: false,
-          sharedOnly: true,
-          age: const Duration(hours: 23),
-        );
-        offline = true;
-        final c = make();
-        expect(await verdict(c), const WebAccessOpen(offline: true));
-        expect(
-          c.read(cloudEntitlementProvider).valueOrNull?.sharedAccess,
-          const SharedAccess(active: true, collections: 1),
-        );
-      },
-    );
-
-    test(
-      'offline with a cached shared-only verdict > 24 h old → closed, retry',
-      () async {
-        await seedCache(
-          entitled: false,
-          sharedOnly: true,
-          age: const Duration(hours: 25),
-        );
-        offline = true;
-        final c = make();
-        expect(await verdict(c), WebAccess.closedUnreachable('alice'));
-      },
-    );
+    test('offline with a cached shared-only verdict ≤ 24 h old → still state 2 (never opens)', () async {
+      await seedCache(
+        entitled: false,
+        sharedOnly: true,
+        age: const Duration(hours: 1),
+      );
+      offline = true;
+      final c = make();
+      expect(await verdict(c), WebAccess.closedNotEntitled('alice'));
+      expect(
+        c.read(cloudEntitlementProvider).valueOrNull?.sharedAccess,
+        const SharedAccess(active: true, collections: 1),
+      );
+    });
 
     test('403 never opens, even with a recent shared-only cache', () async {
       await seedCache(

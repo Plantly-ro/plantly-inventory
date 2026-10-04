@@ -33,9 +33,12 @@ const _shared = CloudCollection(id: 'col-2', name: 'Family greenhouse', role: 'e
 
 const _ready = CloudState(phase: CloudPhase.ready, account: 'alice', collectionId: 'col-1', collectionName: 'My plants');
 
-List<Override> _collections(List<CloudCollection> items, {CloudCollection? active, bool cloud = true}) => [
+List<Override> _collections(List<CloudCollection> items,
+        {CloudCollection? active, bool cloud = true, bool callerEntitled = true}) =>
+    [
       cloudEnabledProvider.overrideWithValue(cloud),
-      collectionsProvider.overrideWith((ref) => CollectionsNotifier(ref, autoStart: false, initial: items)),
+      collectionsProvider.overrideWith(
+          (ref) => CollectionsNotifier(ref, autoStart: false, initial: items, callerEntitled: callerEntitled)),
       activeCollectionProvider.overrideWithValue(active ?? (items.isEmpty ? null : items.first)),
       activeCollectionIdProvider.overrideWithValue((active ?? (items.isEmpty ? null : items.first))?.id),
       syncRunnerProvider.overrideWithValue(const NoopSyncRunner()),
@@ -129,6 +132,47 @@ void main() {
       await tester.tap(find.byKey(const Key('collection-join-with-code')));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('join-collection-title')), findsOneWidget);
+    });
+
+    testWidgets('§8: caller_entitled=false → "Needs Inventory Cloud" marker on shared collections only (sheet + dropdown)',
+        (tester) async {
+      await pumpApp(tester, phone, _collections([_mine, _shared], callerEntitled: false));
+      await tester.tap(find.byKey(const Key('collection-switcher-chip')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('collection-needs-cloud-col-2')), findsOneWidget);
+      expect(find.byKey(const Key('collection-needs-cloud-col-1')), findsNothing, reason: 'own collection: no marker');
+      expect(find.text('Needs Inventory Cloud'), findsOneWidget);
+      expect(find.byKey(const Key('collection-paused-col-2')), findsNothing, reason: 'owner is fine');
+      // Still switchable (read-only there).
+      await tester.tap(find.byKey(const Key('collection-tile-col-2')));
+      await tester.pumpAndSettle();
+
+      await pumpApp(tester, desktop, _collections([_mine, _shared], callerEntitled: false));
+      await tester.tap(find.byKey(const Key('collection-switcher-dropdown')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('collection-needs-cloud-col-2')), findsWidgets);
+      expect(find.byKey(const Key('collection-needs-cloud-col-1')), findsNothing);
+    });
+
+    testWidgets('§8: client verdict alone (notEntitled, flag absent) → marker on shared collections', (tester) async {
+      const notEntitled = CloudState(phase: CloudPhase.notEntitled, account: 'alice', collectionId: 'col-1');
+      await pumpApp(tester, phone, [
+        ..._collections([_mine, _shared]),
+        cloudStateProvider.overrideWithValue(notEntitled),
+      ]);
+      await tester.tap(find.byKey(const Key('collection-switcher-chip')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('collection-needs-cloud-col-2')), findsOneWidget);
+      expect(find.byKey(const Key('collection-needs-cloud-col-1')), findsNothing);
+    });
+
+    testWidgets('§8: entitled (or an older server without the flag) → no "Needs Inventory Cloud" marker', (tester) async {
+      await pumpApp(tester, phone, _collections([_mine, _shared]));
+      await tester.tap(find.byKey(const Key('collection-switcher-chip')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('collection-tile-col-2')), findsOneWidget);
+      expect(find.byKey(const Key('collection-needs-cloud-col-2')), findsNothing);
+      expect(find.text('Needs Inventory Cloud'), findsNothing);
     });
 
     testWidgets('desktop with 2: dropdown under the logo + active name in the Home toolbar', (tester) async {

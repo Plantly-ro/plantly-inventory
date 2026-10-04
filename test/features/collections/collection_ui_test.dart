@@ -40,7 +40,13 @@ void main() {
 
   test('generic: network, 402, unknown → server message', () {
     expect(describeShareError(en, const PlantlyNetworkException('x')), en.plantlyErrorNetwork);
-    expect(describeShareError(en, api(402, 'cloud_required')), en.cloudNotIncludedValue);
+    // §8: `cloud_required` = the caller's own plan — the join sheet's
+    // requirement title on a join, the lapsed-member line elsewhere; a
+    // bare 402 keeps the generic "not included" copy.
+    expect(describeShareError(en, api(402, 'cloud_required')), en.shareJoinCloudRequiredTitle);
+    expect(describeShareError(en, api(402, 'cloud_required'), action: ShareAction.member), en.shareErrMemberLapsed);
+    expect(describeShareError(en, api(402, 'cloud_required_owner')), en.shareErrOwnerLapsed);
+    expect(describeShareError(en, api(402, null), action: ShareAction.member), en.cloudNotIncludedValue);
     expect(describeShareError(en, api(500, 'boom')), 'server says');
     expect(describeShareError(en, StateError('x')), contains('Bad state'));
   });

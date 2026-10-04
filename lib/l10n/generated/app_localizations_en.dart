@@ -2763,10 +2763,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'You will be asked to sign in to plantly.ro first.';
 
   @override
-  String get shareJoinPaywallNote =>
-      'You can use this shared collection — it runs on the owner’s plan. Your own plants stay local until you subscribe.';
-
-  @override
   String shareJoined(String name) {
     return 'Joined $name';
   }
@@ -2964,6 +2960,50 @@ class AppLocalizationsEn extends AppLocalizations {
       'The owner’s plan lapsed — this shared collection is paused until they renew.';
 
   @override
+  String get shareErrMemberLapsed =>
+      'Your Inventory Cloud subscription expired — reactivate it to sync shared collections.';
+
+  @override
+  String get shareNeedsCloud => 'Needs Inventory Cloud';
+
+  @override
+  String get shareReadOnlyCloudBanner =>
+      'View only — Inventory Cloud is required to edit shared collections';
+
+  @override
+  String get shareJoinCloudRequiredTitle =>
+      'Inventory Cloud is required for shared collections';
+
+  @override
+  String get shareJoinCloudRequiredBody =>
+      'Every member of a shared collection needs their own Inventory Cloud plan. Your invite stays valid — once your plan is active, come back and we’ll finish joining.';
+
+  @override
+  String shareJoinParkedHint(String code) {
+    return 'Invite $code is kept on this device for 7 days.';
+  }
+
+  @override
+  String get shareJoinRetry => 'Try again';
+
+  @override
+  String get shareJoinDismiss => 'Not now';
+
+  @override
+  String get shareJoinStillRequired => 'Your plan is not active yet.';
+
+  @override
+  String get cloudSharedRequiresLabel => 'Shared collections';
+
+  @override
+  String get cloudSharedRequiresValue =>
+      'Inventory Cloud is required for shared collections — included in Plantly Pro.';
+
+  @override
+  String get cloudSharedRequiresValueLink =>
+      'Inventory Cloud is required for shared collections — included in Plantly Pro. Subscribe on plantly.ro';
+
+  @override
   String cloudErrRejected(int n, String reason) {
     String _temp0 = intl.Intl.pluralLogic(
       n,
@@ -3129,13 +3169,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String activityLastEditedByNoTime(String name) {
     return 'Last edited by $name';
   }
-
-  @override
-  String get cloudSharedAccessLabel => 'Access via a shared collection';
-
-  @override
-  String get cloudSharedAccessValue =>
-      'You have access through a shared collection. Your own collection stays on this device only.';
 
   @override
   String get gateHeadline => 'Your collection, in sync everywhere';

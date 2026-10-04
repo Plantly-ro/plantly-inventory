@@ -265,6 +265,29 @@ class CloudCollection {
   String toString() => 'CloudCollection($id, $name, role=$role, members=$memberCount)';
 }
 
+/// Reply of `GET /inventory/collections` (MULTI-USER-V2 §8): the list plus
+/// `caller_entitled` — whether the CALLER holds an active `inventory_cloud`
+/// entitlement as the server sees it. Older servers (bare array / no flag)
+/// → [callerEntitled] true.
+class CollectionsListing {
+  const CollectionsListing({required this.items, this.callerEntitled = true});
+  final List<CloudCollection> items;
+  final bool callerEntitled;
+
+  factory CollectionsListing.fromJson(Object? decoded) {
+    final list = decoded is Map<String, dynamic> ? decoded['collections'] : decoded;
+    final flag = decoded is Map<String, dynamic> ? decoded['caller_entitled'] : null;
+    return CollectionsListing(
+      items: [
+        if (list is List)
+          for (final e in list)
+            if (e is Map<String, dynamic> && (e['id'] as String? ?? '').isNotEmpty) CloudCollection.fromJson(e),
+      ],
+      callerEntitled: flag is bool ? flag : true,
+    );
+  }
+}
+
 /// Options for `POST /inventory/collections/{id}/invites` (MULTI-USER-V2
 /// §0/§2.4). Server defaults: role editor, 1 use, 7 days, no label.
 class InviteOptions {
@@ -630,18 +653,18 @@ class PlantlyApi {
 
   /// `GET /inventory/collections` (§3) — every collection the caller can
   /// see: their own default plus the ones shared with them.
-  Future<List<CloudCollection>> listCollections(String token) async {
+  Future<List<CloudCollection>> listCollections(String token) async => (await fetchCollections(token)).items;
+
+  /// `GET /inventory/collections` with the MULTI-USER-V2 §8 envelope: the
+  /// items plus the top-level `caller_entitled` flag (absent on older
+  /// servers → true, so no "needs Inventory Cloud" marker shows up where
+  /// the server never said so).
+  Future<CollectionsListing> fetchCollections(String token) async {
     final res = await _send(() => _client.get(
           _uri('/inventory/collections'),
           headers: _headers(token: token, inventoryClient: true),
         ));
-    final decoded = _decode(res);
-    final list = decoded is Map<String, dynamic> ? decoded['collections'] : decoded;
-    if (list is! List) return const [];
-    return [
-      for (final e in list)
-        if (e is Map<String, dynamic> && (e['id'] as String? ?? '').isNotEmpty) CloudCollection.fromJson(e),
-    ];
+    return CollectionsListing.fromJson(_decode(res));
   }
 
   /// `POST /inventory/collections/{id}/invites` (§3, MULTI-USER-V2 §2.4,

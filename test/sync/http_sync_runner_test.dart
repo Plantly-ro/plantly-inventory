@@ -124,6 +124,7 @@ void main() {
     int batchSize = 500,
     DateTime Function()? now,
     SyncRejectionStore? rejections,
+    bool entitlementIsOwners = false,
   }) {
     return runner = HttpSyncRunner(
       db: db,
@@ -144,6 +145,7 @@ void main() {
       observeLifecycle: false,
       batchSize: batchSize,
       now: now,
+      entitlementIsOwners: entitlementIsOwners,
     );
   }
 
@@ -280,6 +282,34 @@ void main() {
     await settle(const Duration(milliseconds: 70));
     expect(transport.pushes, hasLength(2));
     expect(r.current.lastError, isNull);
+  });
+
+  test('402 detail (MULTI-USER-V2 §8): shared + plain code = our plan, shared + cloud_required_owner = the owner\'s, own = none',
+      () async {
+    await localPlant('a');
+
+    transport.failures.add(const SyncEntitlementError());
+    final member = make(entitlementIsOwners: true);
+    member.start();
+    await member.syncNow();
+    expect(member.current.lastError, 'cloud_required');
+    expect(member.current.lastErrorDetail, kMemberPlanLapsedDetail);
+    await member.dispose();
+
+    transport.failures.add(const SyncEntitlementError(kCloudRequiredOwnerCode));
+    final owner = make(entitlementIsOwners: true);
+    owner.start();
+    await owner.syncNow();
+    expect(owner.current.lastError, 'cloud_required');
+    expect(owner.current.lastErrorDetail, kOwnerPlanLapsedDetail);
+    await owner.dispose();
+
+    transport.failures.add(const SyncEntitlementError());
+    final own = make();
+    own.start();
+    await own.syncNow();
+    expect(own.current.lastError, 'cloud_required');
+    expect(own.current.lastErrorDetail, isNull, reason: 'personal collection: the plain paywall');
   });
 
   test('402 halts with cloud_required; debounce triggers are ignored until syncNow', () async {
