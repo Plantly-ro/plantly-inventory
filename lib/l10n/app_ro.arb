@@ -790,7 +790,6 @@
   "shareJoinCodeInvalid": "Codurile au 8 litere sau cifre (fără I, O, 0 sau 1).",
   "shareJoinButton": "Alătură-te",
   "shareJoinSignInFirst": "Mai întâi ți se va cere să te autentifici pe plantly.ro.",
-  "shareJoinPaywallNote": "Poți folosi această colecție partajată — funcționează pe planul proprietarului. Plantele tale rămân locale până te abonezi.",
   "shareJoined": "Te-ai alăturat colecției {name}",
   "@shareJoined": {
     "placeholders": {
@@ -964,6 +963,18 @@
   "shareErrOwnerCannotLeave": "Proprietarul nu își poate părăsi propria colecție.",
   "shareErrMemberNotFound": "Persoana respectivă nu mai este membru.",
   "shareErrOwnerLapsed": "Planul proprietarului a expirat — această colecție partajată este în pauză până îl reînnoiește.",
+  "shareErrMemberLapsed": "Abonamentul tău Inventory Cloud a expirat — reactivează-l ca să sincronizezi colecțiile partajate.",
+  "shareNeedsCloud": "Necesită Inventory Cloud",
+  "shareReadOnlyCloudBanner": "Doar vizualizare — Inventory Cloud este necesar pentru a edita colecțiile partajate",
+  "shareJoinCloudRequiredTitle": "Inventory Cloud este necesar pentru colecțiile partajate",
+  "shareJoinCloudRequiredBody": "Fiecare membru al unei colecții partajate are nevoie de propriul plan Inventory Cloud. Invitația rămâne valabilă — după ce planul e activ, revino și finalizăm alăturarea.",
+  "shareJoinParkedHint": "Invitația {code} e păstrată pe acest dispozitiv 7 zile.",
+  "shareJoinRetry": "Reîncearcă",
+  "shareJoinDismiss": "Renunță",
+  "shareJoinStillRequired": "Planul tău nu este activ încă.",
+  "cloudSharedRequiresLabel": "Colecții partajate",
+  "cloudSharedRequiresValue": "Inventory Cloud este necesar pentru colecțiile partajate — inclus în Plantly Pro.",
+  "cloudSharedRequiresValueLink": "Inventory Cloud este necesar pentru colecțiile partajate — inclus în Plantly Pro. Abonează-te pe plantly.ro",
   "cloudErrRejected": "{n, plural, =1{1 modificare nu a putut fi sincronizată ({reason})} few{{n} modificări nu au putut fi sincronizate ({reason})} other{{n} de modificări nu au putut fi sincronizate ({reason})}}",
   "@cloudErrRejected": {
     "placeholders": {
@@ -1022,8 +1033,6 @@
   "activityHoursAgo": "acum {n} h",
   "activityLastEditedBy": "Ultima modificare de {name} · {when}",
   "activityLastEditedByNoTime": "Ultima modificare de {name}",
-  "cloudSharedAccessLabel": "Acces prin colecția partajată",
-  "cloudSharedAccessValue": "Ai acces prin colecția partajată. Colecția ta personală rămâne doar pe acest dispozitiv.",
   "gateHeadline": "Colecția ta, sincronizată peste tot",
   "gateValueProp": "Versiunea web a Plantly Inventory face parte din Inventory Cloud: plantele, istoricul de îngrijire și fotografiile tale, salvate în contul plantly.ro și sincronizate între telefon și browser.",
   "gateSignIn": "Intră în cont",

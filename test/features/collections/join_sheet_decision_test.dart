@@ -86,16 +86,17 @@ void main() {
       overrides: [
         cloudEnabledProvider.overrideWithValue(true),
         databaseProvider.overrideWithValue(db),
-        // User 3 (carol, no plan) signed in — the join deep link's login step already happened.
+        // User 3 (carol, with her own plan — §8: every member needs one) signed
+        // in — the join deep link's login step already happened.
         sessionStoreProvider.overrideWith((_) => InMemorySessionStore(carolToken)),
-        cloudEntitlementProvider.overrideWith(() => FixedEntitlement(CloudEntitlement.none)),
+        cloudEntitlementProvider.overrideWith(() => FixedEntitlement(const CloudEntitlement(active: true, source: 'pro'))),
         collectionsRefreshIntervalProvider.overrideWithValue(Duration.zero),
         syncRunnerProvider.overrideWithValue(const NoopSyncRunner()),
         httpClientProvider.overrideWith((_) => MockClient((req) async {
               requests.add(req);
               final path = req.url.path;
               if (req.method == 'GET' && path.endsWith('/subscriptions/me')) {
-                return jsonRes({'is_pro': false, 'entitlements': {}});
+                return jsonRes({'entitlements': {'inventory_cloud': {'active': true, 'source': 'pro'}}});
               }
               if (req.method == 'POST' && path.endsWith('/inventory/collections/default')) {
                 expect(req.headers['Authorization'], 'Bearer $carolToken');
@@ -142,14 +143,14 @@ void main() {
     await tester.tap(find.byKey(const Key('open')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('join-collection-title')), findsOneWidget);
-    expect(find.byKey(const Key('join-paywall-note')), findsOneWidget, reason: 'no plan: the §3 note stays');
+    expect(find.byKey(const Key('join-cloud-required-note')), findsNothing, reason: 'carol has a plan');
     return container;
   }
 
   testWidgets('Join → decision dialog first (no /join yet); Start empty → link for carol, then join, switched to it', (tester) async {
     final c = await pumpSheet(tester);
     final before = c.read(cloudStateProvider);
-    expect(before.phase, CloudPhase.notEntitled);
+    expect(before.phase, CloudPhase.ready);
     expect(before.linked, isFalse, reason: 'alice\'s link is not ours');
     expect(before.heldByOther, 'alice');
     expect(c.read(activeCollectionIdProvider), isNull);

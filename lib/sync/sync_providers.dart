@@ -127,7 +127,9 @@ final syncRejectionsProvider = StreamProvider<List<SyncRejectionRow>>((ref) {
 ///
 /// A 402 halt (`cloud_required`) triggers one cache-bypassing entitlement
 /// refresh so the Me section flips to "not included" instead of showing a
-/// stale green light. A 403 `not_a_member` / 410 / 404 halt on any
+/// stale green light — except for `cloud_required_owner` on a shared
+/// collection (the owner's plan, MULTI-USER-V2 §8), where only the list is
+/// refetched for the "paused" marker. A 403 `not_a_member` / 410 / 404 halt on any
 /// collection that is not the linked home hands over to
 /// `CollectionsNotifier.removedByServer`; a 403 `read_only` halt refetches
 /// the list so the role flip rebuilds this runner pull-only.
@@ -146,8 +148,9 @@ final httpSyncRunnerProvider = Provider<SyncRunner>((ref) {
   // The linked default ("home") is the one collection a 410/404 never
   // removes locally — it is re-created by the link flow, not by the list.
   final homeId = ref.watch(cloudStateProvider.select((s) => s.collectionId));
-  // Viewer (MULTI-USER-V2 §0): pull only. Watched so a role change
-  // (editor ↔ viewer) rebuilds the runner.
+  // Viewer (MULTI-USER-V2 §0) or a shared collection without our own plan
+  // (§8, `caller_entitled == false`): pull only. Watched so a role change
+  // (editor ↔ viewer) or a plan change rebuilds the runner.
   final readOnly = !ref.watch(canEditActiveCollectionProvider);
   // Watched: an account change rebuilds the runner so it only ever pushes
   // (and counts) the signed-in account's pending ops.
@@ -224,9 +227,16 @@ final httpSyncRunnerProvider = Provider<SyncRunner>((ref) {
       refreshedForHalt = false;
       return;
     }
-    // A 402 on a shared collection is the OWNER's plan, not ours (§3).
-    if (refreshedForHalt || shared) return;
+    if (refreshedForHalt) return;
     refreshedForHalt = true;
+    if (shared) {
+      // §8: the list carries the verdicts (`caller_entitled`,
+      // `owner_entitled`) that flip the switcher markers and — for our own
+      // lapse — rebuild this runner read-only.
+      unawaited(ref.read(collectionsProvider.notifier).refresh());
+      // The OWNER's plan is not ours to re-check.
+      if (s.lastErrorDetail == kOwnerPlanLapsedDetail) return;
+    }
     unawaited(ref.read(cloudEntitlementProvider.notifier).refresh().catchError((_) {}));
   });
   ref.onDispose(() {

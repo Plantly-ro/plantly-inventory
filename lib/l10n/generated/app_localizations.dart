@@ -4754,12 +4754,6 @@ abstract class AppLocalizations {
   /// **'You will be asked to sign in to plantly.ro first.'**
   String get shareJoinSignInFirst;
 
-  /// No description provided for @shareJoinPaywallNote.
-  ///
-  /// In en, this message translates to:
-  /// **'You can use this shared collection — it runs on the owner’s plan. Your own plants stay local until you subscribe.'**
-  String get shareJoinPaywallNote;
-
   /// No description provided for @shareJoined.
   ///
   /// In en, this message translates to:
@@ -5030,6 +5024,78 @@ abstract class AppLocalizations {
   /// **'The owner’s plan lapsed — this shared collection is paused until they renew.'**
   String get shareErrOwnerLapsed;
 
+  /// No description provided for @shareErrMemberLapsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Inventory Cloud subscription expired — reactivate it to sync shared collections.'**
+  String get shareErrMemberLapsed;
+
+  /// No description provided for @shareNeedsCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs Inventory Cloud'**
+  String get shareNeedsCloud;
+
+  /// No description provided for @shareReadOnlyCloudBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'View only — Inventory Cloud is required to edit shared collections'**
+  String get shareReadOnlyCloudBanner;
+
+  /// No description provided for @shareJoinCloudRequiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Inventory Cloud is required for shared collections'**
+  String get shareJoinCloudRequiredTitle;
+
+  /// No description provided for @shareJoinCloudRequiredBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Every member of a shared collection needs their own Inventory Cloud plan. Your invite stays valid — once your plan is active, come back and we’ll finish joining.'**
+  String get shareJoinCloudRequiredBody;
+
+  /// No description provided for @shareJoinParkedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite {code} is kept on this device for 7 days.'**
+  String shareJoinParkedHint(String code);
+
+  /// No description provided for @shareJoinRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get shareJoinRetry;
+
+  /// No description provided for @shareJoinDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get shareJoinDismiss;
+
+  /// No description provided for @shareJoinStillRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Your plan is not active yet.'**
+  String get shareJoinStillRequired;
+
+  /// No description provided for @cloudSharedRequiresLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared collections'**
+  String get cloudSharedRequiresLabel;
+
+  /// No description provided for @cloudSharedRequiresValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Inventory Cloud is required for shared collections — included in Plantly Pro.'**
+  String get cloudSharedRequiresValue;
+
+  /// No description provided for @cloudSharedRequiresValueLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Inventory Cloud is required for shared collections — included in Plantly Pro. Subscribe on plantly.ro'**
+  String get cloudSharedRequiresValueLink;
+
   /// No description provided for @cloudErrRejected.
   ///
   /// In en, this message translates to:
@@ -5275,18 +5341,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Last edited by {name}'**
   String activityLastEditedByNoTime(String name);
-
-  /// No description provided for @cloudSharedAccessLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Access via a shared collection'**
-  String get cloudSharedAccessLabel;
-
-  /// No description provided for @cloudSharedAccessValue.
-  ///
-  /// In en, this message translates to:
-  /// **'You have access through a shared collection. Your own collection stays on this device only.'**
-  String get cloudSharedAccessValue;
 
   /// No description provided for @gateHeadline.
   ///

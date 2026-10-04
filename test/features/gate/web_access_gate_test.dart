@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:plantly_inventory/cloud/entitlement.dart';
 import 'package:plantly_inventory/cloud/web_access.dart';
 import 'package:plantly_inventory/config/plantly_features.dart';
 import 'package:plantly_inventory/features/gate/web_access_gate.dart';
@@ -19,6 +20,7 @@ import 'package:plantly_inventory/marketplace/session_store.dart';
 import 'package:plantly_inventory/plugins/plantly_ro/login_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../cloud/cloud_state_test.dart' show FixedEntitlement;
 import '../../helpers/test_app.dart';
 import '../../marketplace/plantly_session_test.dart' show fakeJwt;
 
@@ -139,6 +141,43 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(PlantlyLoginSheet), findsOneWidget);
       expect(tester.widget<PlantlyLoginSheet>(find.byType(PlantlyLoginSheet)).purpose, LoginPurpose.cloud);
+    });
+  });
+
+  group('state 2 via the real verdict (MULTI-USER-V2 §8)', () {
+    testWidgets('own inactive + shared_access.active → state 2 with prices, Pro note, subscribe', (tester) async {
+      tester.view.physicalSize = const Size(480, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(buildTestApp(
+        overrides: [
+          webPlatformProvider.overrideWithValue(true),
+          httpClientProvider.overrideWith((_) => client()),
+          sessionStoreProvider.overrideWith((_) => InMemorySessionStore(token)),
+          cloudEntitlementProvider.overrideWith(() => FixedEntitlement(
+              const CloudEntitlement(active: false, sharedAccess: SharedAccess(active: true, collections: 2)))),
+        ],
+        child: MaterialApp(
+          locale: const Locale('ro'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const WebAccessGate(),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      final container = ProviderScope.containerOf(tester.element(find.byType(WebAccessGate)));
+      await tester.runAsync(() => container.read(plantlyAuthProvider.notifier).current());
+      await tester.pumpAndSettle();
+      expect(container.read(webAccessProvider), WebAccess.closedNotEntitled('alice'));
+      expect(find.byKey(const Key('gate-not-entitled')), findsOneWidget);
+      expect(find.byKey(const Key('gate-signed-out')), findsNothing);
+      final plans = tester.widget<Text>(find.byKey(const Key('gate-plans'))).data!;
+      expect(plans, contains('/lună'));
+      expect(plans, contains('RON'));
+      expect(find.text('Inclus în Plantly Pro.'), findsOneWidget);
+      expect(find.byKey(const Key('gate-subscribe')), findsOneWidget);
+      expect(find.textContaining('colecția partajată'), findsNothing, reason: 'no shared-access copy anywhere');
     });
   });
 

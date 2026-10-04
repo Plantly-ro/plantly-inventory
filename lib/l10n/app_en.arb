@@ -1526,7 +1526,6 @@
   "shareJoinCodeInvalid": "Codes are 8 letters or digits (no I, O, 0 or 1).",
   "shareJoinButton": "Join",
   "shareJoinSignInFirst": "You will be asked to sign in to plantly.ro first.",
-  "shareJoinPaywallNote": "You can use this shared collection — it runs on the owner’s plan. Your own plants stay local until you subscribe.",
   "shareJoined": "Joined {name}",
   "@shareJoined": {
     "placeholders": {
@@ -1700,6 +1699,19 @@
   "shareErrOwnerCannotLeave": "The owner can’t leave their own collection.",
   "shareErrMemberNotFound": "That person is no longer a member.",
   "shareErrOwnerLapsed": "The owner’s plan lapsed — this shared collection is paused until they renew.",
+  "shareErrMemberLapsed": "Your Inventory Cloud subscription expired — reactivate it to sync shared collections.",
+  "shareNeedsCloud": "Needs Inventory Cloud",
+  "shareReadOnlyCloudBanner": "View only — Inventory Cloud is required to edit shared collections",
+  "shareJoinCloudRequiredTitle": "Inventory Cloud is required for shared collections",
+  "shareJoinCloudRequiredBody": "Every member of a shared collection needs their own Inventory Cloud plan. Your invite stays valid — once your plan is active, come back and we’ll finish joining.",
+  "shareJoinParkedHint": "Invite {code} is kept on this device for 7 days.",
+  "@shareJoinParkedHint": {"placeholders": {"code": {"type": "String"}}},
+  "shareJoinRetry": "Try again",
+  "shareJoinDismiss": "Not now",
+  "shareJoinStillRequired": "Your plan is not active yet.",
+  "cloudSharedRequiresLabel": "Shared collections",
+  "cloudSharedRequiresValue": "Inventory Cloud is required for shared collections — included in Plantly Pro.",
+  "cloudSharedRequiresValueLink": "Inventory Cloud is required for shared collections — included in Plantly Pro. Subscribe on plantly.ro",
   "cloudErrRejected": "{n, plural, =1{1 change could not be synced ({reason})} other{{n} changes could not be synced ({reason})}}",
   "@cloudErrRejected": {
     "placeholders": {
@@ -1770,8 +1782,6 @@
   "@activityLastEditedBy": {"placeholders": {"name": {"type": "String"}, "when": {"type": "String"}}},
   "activityLastEditedByNoTime": "Last edited by {name}",
   "@activityLastEditedByNoTime": {"placeholders": {"name": {"type": "String"}}},
-  "cloudSharedAccessLabel": "Access via a shared collection",
-  "cloudSharedAccessValue": "You have access through a shared collection. Your own collection stays on this device only.",
   "gateHeadline": "Your collection, in sync everywhere",
   "gateValueProp": "The web version of Plantly Inventory is part of Inventory Cloud: your plants, care history and photos, saved in your plantly.ro account and kept in sync between phone and browser.",
   "gateSignIn": "Sign in",

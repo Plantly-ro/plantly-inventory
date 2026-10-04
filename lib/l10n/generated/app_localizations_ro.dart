@@ -2808,10 +2808,6 @@ class AppLocalizationsRo extends AppLocalizations {
       'Mai întâi ți se va cere să te autentifici pe plantly.ro.';
 
   @override
-  String get shareJoinPaywallNote =>
-      'Poți folosi această colecție partajată — funcționează pe planul proprietarului. Plantele tale rămân locale până te abonezi.';
-
-  @override
   String shareJoined(String name) {
     return 'Te-ai alăturat colecției $name';
   }
@@ -3015,6 +3011,50 @@ class AppLocalizationsRo extends AppLocalizations {
       'Planul proprietarului a expirat — această colecție partajată este în pauză până îl reînnoiește.';
 
   @override
+  String get shareErrMemberLapsed =>
+      'Abonamentul tău Inventory Cloud a expirat — reactivează-l ca să sincronizezi colecțiile partajate.';
+
+  @override
+  String get shareNeedsCloud => 'Necesită Inventory Cloud';
+
+  @override
+  String get shareReadOnlyCloudBanner =>
+      'Doar vizualizare — Inventory Cloud este necesar pentru a edita colecțiile partajate';
+
+  @override
+  String get shareJoinCloudRequiredTitle =>
+      'Inventory Cloud este necesar pentru colecțiile partajate';
+
+  @override
+  String get shareJoinCloudRequiredBody =>
+      'Fiecare membru al unei colecții partajate are nevoie de propriul plan Inventory Cloud. Invitația rămâne valabilă — după ce planul e activ, revino și finalizăm alăturarea.';
+
+  @override
+  String shareJoinParkedHint(String code) {
+    return 'Invitația $code e păstrată pe acest dispozitiv 7 zile.';
+  }
+
+  @override
+  String get shareJoinRetry => 'Reîncearcă';
+
+  @override
+  String get shareJoinDismiss => 'Renunță';
+
+  @override
+  String get shareJoinStillRequired => 'Planul tău nu este activ încă.';
+
+  @override
+  String get cloudSharedRequiresLabel => 'Colecții partajate';
+
+  @override
+  String get cloudSharedRequiresValue =>
+      'Inventory Cloud este necesar pentru colecțiile partajate — inclus în Plantly Pro.';
+
+  @override
+  String get cloudSharedRequiresValueLink =>
+      'Inventory Cloud este necesar pentru colecțiile partajate — inclus în Plantly Pro. Abonează-te pe plantly.ro';
+
+  @override
   String cloudErrRejected(int n, String reason) {
     String _temp0 = intl.Intl.pluralLogic(
       n,
@@ -3183,13 +3223,6 @@ class AppLocalizationsRo extends AppLocalizations {
   String activityLastEditedByNoTime(String name) {
     return 'Ultima modificare de $name';
   }
-
-  @override
-  String get cloudSharedAccessLabel => 'Acces prin colecția partajată';
-
-  @override
-  String get cloudSharedAccessValue =>
-      'Ai acces prin colecția partajată. Colecția ta personală rămâne doar pe acest dispozitiv.';
 
   @override
   String get gateHeadline => 'Colecția ta, sincronizată peste tot';

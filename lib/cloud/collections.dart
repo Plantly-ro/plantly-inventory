@@ -84,10 +84,18 @@ class CollectionsState {
     this.loading = false,
     this.error,
     this.fetchedAt,
+    this.callerEntitled = true,
   });
 
   /// Own default first (when known), then the shared ones by name.
   final List<CloudCollection> items;
+
+  /// Top-level `caller_entitled` of the last `GET /inventory/collections`
+  /// (MULTI-USER-V2 §8): the server's verdict on the caller's OWN plan.
+  /// False → every shared collection is read-only locally, never pushed,
+  /// and carries the "needs Inventory Cloud" marker. Absent on older
+  /// servers (and before the first fetch) → true, so no false markers.
+  final bool callerEntitled;
 
   /// The prefs cache has been read (the list may still be empty).
   final bool loaded;
@@ -124,6 +132,7 @@ class CollectionsState {
     bool? loading,
     Object? error = _unset,
     DateTime? fetchedAt,
+    bool? callerEntitled,
   }) =>
       CollectionsState(
         items: items ?? this.items,
@@ -131,12 +140,28 @@ class CollectionsState {
         loading: loading ?? this.loading,
         error: identical(error, _unset) ? this.error : error,
         fetchedAt: fetchedAt ?? this.fetchedAt,
+        callerEntitled: callerEntitled ?? this.callerEntitled,
       );
 
   static const _unset = Object();
 
   @override
-  String toString() => 'CollectionsState(${items.length} items, loaded=$loaded, loading=$loading, error=$error)';
+  String toString() =>
+      'CollectionsState(${items.length} items, loaded=$loaded, loading=$loading, callerEntitled=$callerEntitled, error=$error)';
+}
+
+/// Why the collection on screen cannot be edited (MULTI-USER-V2 §0/§8).
+enum ReadOnlyReason {
+  /// Editable.
+  none,
+
+  /// The account is a `viewer` of this shared collection.
+  viewer,
+
+  /// A shared collection while the caller's own Inventory Cloud plan is
+  /// missing / lapsed (`caller_entitled == false`, §8): local rows stay
+  /// visible, nothing is edited or pushed until the plan is active again.
+  cloudRequired,
 }
 
 /// Thrown by [CollectionsNotifier.switchCollection] when the device is not
@@ -174,7 +199,8 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
     this.refreshInterval = const Duration(minutes: 15),
     bool autoStart = true,
     List<CloudCollection> initial = const [],
-  }) : super(CollectionsState(items: initial, loaded: !autoStart)) {
+    bool callerEntitled = true,
+  }) : super(CollectionsState(items: initial, loaded: !autoStart, callerEntitled: callerEntitled)) {
     if (!autoStart) {
       // Widget tests: a fixed list, no subscriptions, no network.
       _ready = Future.value();
@@ -223,17 +249,19 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
     final session = await _ref.read(plantlyAuthProvider.notifier).current();
     final raw = p.getString(kCollectionsCachePrefKey);
     var items = const <CloudCollection>[];
+    var callerEntitled = true;
     if (raw != null && session != null) {
       try {
         final decoded = json.decode(raw);
         if (decoded is Map<String, dynamic> && decoded['user_id'] == session.userId) {
           items = _decodeList(decoded['items']);
+          callerEntitled = decoded['caller_entitled'] != false;
         }
       } catch (_) {
         // Corrupt cache — ignore, the next fetch rewrites it.
       }
     }
-    if (mounted) state = state.copyWith(items: items, loaded: true);
+    if (mounted) state = state.copyWith(items: items, loaded: true, callerEntitled: callerEntitled);
   }
 
   static List<CloudCollection> _decodeList(Object? list) => [
@@ -242,11 +270,15 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
             if (e is Map<String, dynamic>) CloudCollection.fromJson(e),
       ];
 
-  Future<void> _saveCache(String userId, List<CloudCollection> items) async {
+  Future<void> _saveCache(String userId, List<CloudCollection> items, {bool? callerEntitled}) async {
     final p = await _prefs;
     await p.setString(
       kCollectionsCachePrefKey,
-      json.encode({'user_id': userId, 'items': [for (final c in items) c.toJson()]}),
+      json.encode({
+        'user_id': userId,
+        'items': [for (final c in items) c.toJson()],
+        'caller_entitled': callerEntitled ?? state.callerEntitled,
+      }),
     );
   }
 
@@ -267,11 +299,17 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
     if (mounted) state = state.copyWith(loading: true);
     try {
       fetches++;
-      final fetched = await _ref.read(plantlyApiProvider).listCollections(session.token);
-      final items = _sorted(_withLinkedDefault(fetched));
-      await _saveCache(session.userId, items);
+      final listing = await _ref.read(plantlyApiProvider).fetchCollections(session.token);
+      final items = _sorted(_withLinkedDefault(listing.items));
+      await _saveCache(session.userId, items, callerEntitled: listing.callerEntitled);
       if (!mounted) return;
-      state = state.copyWith(items: items, loading: false, error: null, fetchedAt: DateTime.now().toUtc());
+      state = state.copyWith(
+        items: items,
+        loading: false,
+        error: null,
+        fetchedAt: DateTime.now().toUtc(),
+        callerEntitled: listing.callerEntitled,
+      );
       _reconcileActive();
     } catch (e) {
       if (mounted) state = state.copyWith(loading: false, error: e);
@@ -382,11 +420,11 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
   }
 
   /// `POST /inventory/collections/join`. Adds the collection to the list
-  /// and switches to it (editors sync on the owner's plan, so a caller
-  /// without a plan of their own still gets there — the device only needs
-  /// its link, which is attempted here when missing). Throws `StateError`
-  /// when signed out; API / network errors pass through. Returns the
-  /// joined collection.
+  /// and switches to it (the device only needs its link, which is attempted
+  /// here when missing). Throws `StateError` when signed out; API / network
+  /// errors pass through — including `402 cloud_required` (MULTI-USER-V2
+  /// §8: the caller has no active plan; the invite is NOT consumed, the
+  /// join sheet parks it). Returns the joined collection.
   Future<CloudCollection> join(String code) async {
     await _ready;
     final normalized = InviteCode.normalize(code);
@@ -630,30 +668,60 @@ final activeCollectionIsSharedProvider = Provider<bool>((ref) {
   return ref.watch(collectionsProvider.select((s) => s.byId(id)?.isOwner == false));
 });
 
-/// Whether the signed-in account may mutate rows of the collection on
-/// screen (MULTI-USER-V2 §0/§3): false only for a *viewer* of a shared
-/// collection. Local-only / own collections are always editable —
-/// read-only is a role, not a connectivity state. Every mutating
-/// affordance in the active tenant (FABs, swipe actions, editors, photo
-/// add/delete, import, care actions) watches this and shows the
-/// `ReadOnlyBanner` instead.
+/// Why the collection on screen is read-only, if it is (MULTI-USER-V2
+/// §0/§3/§8): [ReadOnlyReason.viewer] for a *viewer* of a shared
+/// collection, [ReadOnlyReason.cloudRequired] for any shared collection
+/// while the server says the caller's own plan is not active
+/// (`caller_entitled == false`). Local-only / own collections are always
+/// editable — read-only is a role or a plan, never a connectivity state.
 ///
 /// Belt and braces for the signed-out case: `CollectionsNotifier` sends a
 /// device parked on a shared tenant home on session loss; should it still
 /// be sitting on a tenant that is not home (not yet flipped, or a link
 /// that resolves later), that tenant is somebody else's collection and
 /// stays read-only rather than silently turning into local edits.
-final canEditActiveCollectionProvider = Provider<bool>((ref) {
+final activeCollectionReadOnlyReasonProvider = Provider<ReadOnlyReason>((ref) {
   final cloud = ref.watch(cloudStateProvider);
   final tenant = ref.watch(currentTenantIdProvider);
   if (!cloudAccountReady(cloud)) {
-    if (cloud.phase != CloudPhase.signedOut) return true;
+    if (cloud.phase != CloudPhase.signedOut) return ReadOnlyReason.none;
     final home = ref.watch(homeCollectionIdProvider);
-    return home == null || tenant == home;
+    return home == null || tenant == home ? ReadOnlyReason.none : ReadOnlyReason.viewer;
   }
-  if (tenant == cloud.collectionId) return true;
+  if (tenant == cloud.collectionId) return ReadOnlyReason.none;
   final col = ref.watch(collectionsProvider.select((s) => s.byId(tenant)));
-  return col?.canEdit ?? true;
+  if (col == null || col.isOwner) return ReadOnlyReason.none;
+  if (ref.watch(sharedNeedsCloudProvider)) return ReadOnlyReason.cloudRequired;
+  return col.canEdit ? ReadOnlyReason.none : ReadOnlyReason.viewer;
+});
+
+/// §8 verdict for the account's SHARED collections: the server says the
+/// caller is not entitled (`caller_entitled == false`) OR the client's own
+/// check says so (`CloudPhase.notEntitled`, once checked). Either locks
+/// every shared collection down locally (read-only, no push, marker).
+final sharedNeedsCloudProvider = Provider<bool>((ref) {
+  if (!ref.watch(collectionsProvider.select((s) => s.callerEntitled))) return true;
+  final cloud = ref.watch(cloudStateProvider);
+  return cloud.phase == CloudPhase.notEntitled && !cloud.checking;
+});
+
+/// Whether the signed-in account may mutate rows of the collection on
+/// screen — [activeCollectionReadOnlyReasonProvider] is `none`. Every
+/// mutating affordance in the active tenant (FABs, swipe actions, editors,
+/// photo add/delete, import, care actions) watches this and shows the
+/// `ReadOnlyBanner` instead.
+final canEditActiveCollectionProvider = Provider<bool>((ref) {
+  return ref.watch(activeCollectionReadOnlyReasonProvider) == ReadOnlyReason.none;
+});
+
+/// True when the account takes part in shared collections that its own
+/// plan does not cover (§8, [sharedNeedsCloudProvider]): the Cloud screen
+/// shows "Inventory Cloud is required for shared collections".
+final sharedCollectionsNeedCloudProvider = Provider<bool>((ref) {
+  final cloud = ref.watch(cloudStateProvider);
+  if (cloud.phase == CloudPhase.off || cloud.phase == CloudPhase.signedOut) return false;
+  if (ref.watch(collectionsProvider.select((s) => s.sharedWithMe.isEmpty))) return false;
+  return ref.watch(sharedNeedsCloudProvider);
 });
 
 /// Display record for the collection on screen ([shownCollectionProvider]);
