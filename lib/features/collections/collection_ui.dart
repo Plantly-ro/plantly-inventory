@@ -21,7 +21,8 @@ enum ShareAction { join, invite, member, transfer, collection }
 /// (`invite_invalid`, `already_member`, `too_many_invites {max_active}`,
 /// `owner_only`, `owner_cannot_leave`, `member_not_found`, `read_only`,
 /// `device_revoked`, `too_many_devices`, `device_lookup_failed`,
-/// `collection_deleted`, `cloud_required_new_owner`),
+/// `collection_deleted`, `cloud_required_new_owner`, `cloud_required_owner`,
+/// `cloud_required` — MULTI-USER-V2 §8),
 /// then tolerant status-code fallbacks per [action], then generic network /
 /// rate-limit copy, else the server message. Codes are read from `code`
 /// or, failing that, `error` ([PlantlyApiException.errorCode]) — the
@@ -54,6 +55,12 @@ String describeShareError(AppLocalizations t, Object e, {ShareAction action = Sh
         return t.shareErrCollectionDeleted;
       case 'cloud_required_new_owner':
         return t.shareErrCloudRequiredNewOwner;
+      case 'cloud_required_owner':
+        return t.shareErrOwnerLapsed;
+      case 'cloud_required':
+        // §8: the caller's own plan — on a join the sheet shows the
+        // requirement step instead; everywhere else this line.
+        return action == ShareAction.join ? t.shareJoinCloudRequiredTitle : t.shareErrMemberLapsed;
       case 'not_a_member':
         return t.shareErrNotAMember;
     }

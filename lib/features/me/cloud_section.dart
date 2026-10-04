@@ -11,6 +11,7 @@ import '../../cloud/cloud_state.dart';
 import '../../cloud/collection_link.dart';
 import '../../cloud/collections.dart';
 import '../../cloud/entitlement.dart';
+import '../../cloud/join_parking.dart';
 import '../../cloud/play_billing.dart';
 import '../../cloud/play_billing_providers.dart';
 import '../../cloud/sign_in_events.dart';
@@ -177,9 +178,12 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
     // "no purchase CTA when entitled" (§0) must be decided on fresh data.
     final playBilling = ref.watch(playBillingAvailableProvider) && !state.checking;
     final collectionName = ref.watch(activeCollectionProvider)?.displayName;
-    // A shared collection syncs on the owner's plan even here (§3).
+    // A shared collection still pulls under the read grace here (§8), so
+    // its status / last error stay visible.
     final sharedActive = ref.watch(activeCollectionIsSharedProvider);
     final status = ref.watch(syncStatusProvider).valueOrNull ?? SyncStatus.empty;
+    final needsCloudForShared =
+        !state.checking && (ref.watch(sharedCollectionsNeedCloudProvider) || ref.watch(parkedJoinForSessionProvider) != null);
     return [
       if (sharedActive)
         MeActionRow(
@@ -201,25 +205,28 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
           surface: surface,
           valueColor: surface.terra,
         ),
-      // MULTI-USER-V2 §0: a member of an entitled owner's collection has
-      // access through it; their own collection stays local-only. The
-      // subscribe hint below still applies to the personal collection.
-      if (!state.checking && state.entitlement?.sharedAccessOnly == true)
+      MeActionRow(
+        key: const Key('cloud-not-included'),
+        label: t.cloudNotIncludedLabel,
+        value: state.checking ? t.cloudChecking : t.cloudNotIncludedValue,
+        icon: Icons.cloud_off_outlined,
+        surface: surface,
+      ),
+      // MULTI-USER-V2 §8: every member of a shared collection needs their
+      // own plan. With shared collections (or an invite waiting) and no
+      // plan: say so, with the subscribe path where policy allows a link
+      // (web / desktop) and the plain policy copy on Android / iOS.
+      if (needsCloudForShared)
         MeActionRow(
-          key: const Key('cloud-shared-access'),
-          label: t.cloudSharedAccessLabel,
-          value: t.cloudSharedAccessValue,
-          icon: Icons.group_outlined,
+          key: const Key('cloud-shared-requires'),
+          label: t.cloudSharedRequiresLabel,
+          value: purchaseLink ? t.cloudSharedRequiresValueLink : t.cloudSharedRequiresValue,
+          icon: purchaseLink ? Icons.open_in_new : Icons.group_outlined,
           surface: surface,
-          valueColor: surface.green,
-        )
-      else
-        MeActionRow(
-          key: const Key('cloud-not-included'),
-          label: t.cloudNotIncludedLabel,
-          value: state.checking ? t.cloudChecking : t.cloudNotIncludedValue,
-          icon: Icons.cloud_off_outlined,
-          surface: surface,
+          valueColor: surface.terra,
+          onTap: purchaseLink
+              ? () => launchUrl(Uri.parse(PlantlyHosts.subscriptionUrl()), mode: LaunchMode.externalApplication)
+              : null,
         ),
       if (playBilling) PlayPlanPicker(surface: surface),
       if (purchaseLink)
@@ -524,8 +531,10 @@ String describeEntitlement(AppLocalizations t, CloudEntitlement? e) {
 
 /// Engine error codes (`SyncStatus.lastError`) → copy; anything else is
 /// shown as-is. [detail] is `SyncStatus.lastErrorDetail` (the offending
-/// `<entity>/<id>` for `op_too_large`, [kOwnerPlanLapsedDetail] for a 402
-/// on a shared collection, the server code for `collection_unavailable`);
+/// `<entity>/<id>` for `op_too_large`, [kOwnerPlanLapsedDetail] /
+/// [kMemberPlanLapsedDetail] for a 402 on a shared collection — the owner's
+/// plan vs the caller's own, MULTI-USER-V2 §8 — the server code for
+/// `collection_unavailable`);
 /// `rejected` reads the count and server reason from [status] and falls
 /// back to [detail] without it. [collectionName] names the collection for
 /// the `not_a_member` copy ("You were removed from …"). The MULTI-USER-V2
@@ -533,7 +542,11 @@ String describeEntitlement(AppLocalizations t, CloudEntitlement? e) {
 /// `device_lookup_failed` retry each get their own line.
 String describeSyncError(AppLocalizations t, String code, {String? detail, SyncStatus? status, String? collectionName}) =>
     switch (code) {
-      'cloud_required' => detail == kOwnerPlanLapsedDetail ? t.shareErrOwnerLapsed : t.cloudNotIncludedValue,
+      'cloud_required' => switch (detail) {
+          kOwnerPlanLapsedDetail => t.shareErrOwnerLapsed,
+          kMemberPlanLapsedDetail => t.shareErrMemberLapsed,
+          _ => t.cloudNotIncludedValue,
+        },
       'unauthorized' => t.cloudSignInLabel,
       'collection_unavailable' => switch (detail) {
           kNotAMemberDetail when collectionName != null && collectionName.isNotEmpty =>

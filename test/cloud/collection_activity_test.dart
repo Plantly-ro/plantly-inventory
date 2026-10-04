@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:plantly_inventory/cloud/collection_activity.dart';
+import 'package:plantly_inventory/cloud/cloud_state.dart';
 import 'package:plantly_inventory/cloud/entitlement.dart';
 import 'package:plantly_inventory/config/plantly_features.dart';
 import 'package:plantly_inventory/marketplace/plantly_api.dart';
@@ -126,8 +127,8 @@ void main() {
     });
   });
 
-  group('shared_access entitlement (§2.13)', () {
-    test('absent → inactive, hasCloudAccess follows own active', () {
+  group('shared_access entitlement (§2.13, informational since §8)', () {
+    test('absent → inactive; it never adds up to access of its own', () {
       final none = CloudEntitlement.fromSubscriptionJson({
         'entitlements': {
           'inventory_cloud': {'active': false, 'source': null},
@@ -135,23 +136,22 @@ void main() {
       });
       expect(none.sharedAccess, SharedAccess.none);
       expect(none.sharedAccess.active, isFalse);
-      expect(none.hasCloudAccess, isFalse);
-      expect(none.sharedAccessOnly, isFalse);
+      expect(none.active, isFalse);
 
       final own = CloudEntitlement.fromSubscriptionJson({
         'entitlements': {
           'inventory_cloud': {'active': true, 'source': 'pro'},
         },
       });
-      expect(own.hasCloudAccess, isTrue);
-      expect(own.sharedAccessOnly, isFalse);
+      expect(own.active, isTrue);
+      expect(own.sharedAccess.active, isFalse);
 
       // Legacy server (no entitlements block) → none either.
       expect(CloudEntitlement.fromSubscriptionJson({'is_pro': false}).sharedAccess, SharedAccess.none);
-      expect(CloudEntitlement.none.hasCloudAccess, isFalse);
+      expect(CloudEntitlement.none.active, isFalse);
     });
 
-    test('present → parsed; shared-only opens the gate but is not "active"; prefs round-trip', () {
+    test('present → parsed for display; `active` stays the caller\'s own verdict; prefs round-trip', () {
       final e = CloudEntitlement.fromSubscriptionJson({
         'entitlements': {
           'inventory_cloud': {
@@ -161,10 +161,10 @@ void main() {
           },
         },
       });
-      expect(e.active, isFalse);
+      expect(e.active, isFalse, reason: '§8: shared access grants nothing');
       expect(e.sharedAccess, const SharedAccess(active: true, collections: 2));
-      expect(e.hasCloudAccess, isTrue);
-      expect(e.sharedAccessOnly, isTrue);
+      expect(e.sharedAccess.active, isTrue);
+      expect(e.sharedAccess.collections, 2);
 
       final back = CloudEntitlement.fromJson(json.decode(json.encode(e.toJson())) as Map<String, dynamic>);
       expect(back, e);
@@ -176,11 +176,12 @@ void main() {
       expect(SharedAccess.fromJson({'active': 'yes'}).active, isFalse);
     });
 
-    test('hasCloudAccessProvider: own active OR shared_access.active; signed out → false', () async {
-      Future<bool> gate(CloudEntitlement? e, {bool signedIn = true}) async {
+    test('cloud phase: shared_access.active alone is still notEntitled', () async {
+      SharedPreferences.setMockInitialValues({});
+      Future<CloudPhase> phase(CloudEntitlement? e) async {
         final c = ProviderContainer(overrides: [
           cloudEnabledProvider.overrideWithValue(true),
-          sessionStoreProvider.overrideWith((_) => InMemorySessionStore(signedIn ? token : null)),
+          sessionStoreProvider.overrideWith((_) => InMemorySessionStore(token)),
           cloudEntitlementProvider.overrideWith(() => FixedEntitlement(e)),
         ]);
         addTearDown(c.dispose);
@@ -188,14 +189,13 @@ void main() {
         try {
           await c.read(cloudEntitlementProvider.future).timeout(const Duration(milliseconds: 100));
         } catch (_) {}
-        return c.read(hasCloudAccessProvider);
+        return c.read(cloudStateProvider).phase;
       }
 
-      expect(await gate(null, signedIn: false), isFalse);
-      expect(await gate(CloudEntitlement.none), isFalse);
-      expect(await gate(const CloudEntitlement(active: true, source: 'pro')), isTrue);
-      expect(await gate(const CloudEntitlement(active: false, sharedAccess: SharedAccess(active: true, collections: 1))),
-          isTrue);
+      expect(await phase(CloudEntitlement.none), CloudPhase.notEntitled);
+      expect(await phase(const CloudEntitlement(active: true, source: 'pro')), CloudPhase.ready);
+      expect(await phase(const CloudEntitlement(active: false, sharedAccess: SharedAccess(active: true, collections: 1))),
+          CloudPhase.notEntitled);
     });
   });
 

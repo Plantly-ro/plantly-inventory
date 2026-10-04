@@ -191,6 +191,31 @@ void main() {
   });
 
   group('shared collections (CLOUD-SYNC-CONTRACT §3)', () {
+    test('fetchCollections: top-level caller_entitled parsed (MULTI-USER-V2 §8); absent / bare array / non-bool → true', () async {
+      final withFlag = api((_) async => http.Response(
+            json.encode({
+              'collections': [
+                {'id': 'c2', 'name': 'Shared', 'role': 'editor', 'owner_user_id': 'u2', 'member_count': 3},
+              ],
+              'caller_entitled': false,
+            }),
+            200,
+          ));
+      final listing = await withFlag.fetchCollections('tok');
+      expect(listing.callerEntitled, isFalse);
+      expect(listing.items.map((c) => c.id), ['c2']);
+      expect((await withFlag.listCollections('tok')).single.id, 'c2', reason: 'items unchanged');
+
+      final absent = api((_) async => http.Response(json.encode({'collections': []}), 200));
+      expect((await absent.fetchCollections('tok')).callerEntitled, isTrue);
+      final bare = api((_) async => http.Response(json.encode([{'id': 'c3', 'name': 'x'}]), 200));
+      expect((await bare.fetchCollections('tok')).callerEntitled, isTrue);
+      final odd = api((_) async => http.Response(json.encode({'collections': [], 'caller_entitled': 'no'}), 200));
+      expect((await odd.fetchCollections('tok')).callerEntitled, isTrue);
+      final yes = api((_) async => http.Response(json.encode({'collections': [], 'caller_entitled': true}), 200));
+      expect((await yes.fetchCollections('tok')).callerEntitled, isTrue);
+    });
+
     test('listCollections: GET /inventory/collections with client header → id/name/role/owner/member_count', () async {
       final log = <http.Request>[];
       final a = api(log: log, (_) async => http.Response(

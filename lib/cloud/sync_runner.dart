@@ -3,6 +3,16 @@
 /// OWNER's plan lapsed, not the caller's.
 const String kOwnerPlanLapsedDetail = 'owner_plan_lapsed';
 
+/// `SyncStatus.lastErrorDetail` of a `cloud_required` halt on a SHARED
+/// collection when the server's code was the plain `cloud_required`
+/// (MULTI-USER-V2 §8): the CALLER's own plan lapsed — reactivate it to
+/// sync shared collections again. Distinct from [kOwnerPlanLapsedDetail]
+/// (`cloud_required_owner`).
+const String kMemberPlanLapsedDetail = 'member_plan_lapsed';
+
+/// Server code of a 402 on a shared collection whose OWNER lapsed (§8).
+const String kCloudRequiredOwnerCode = 'cloud_required_owner';
+
 /// Snapshot of the cloud sync loop for the status surface (Me → Cloud,
 /// CLOUD-SYNC-CONTRACT §2.4). Emitted by [SyncRunner.status]; every field
 /// is optional so the no-op runner and a half-initialised engine can both

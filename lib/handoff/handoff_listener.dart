@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../cloud/entitlement.dart';
+import '../cloud/join_parking.dart';
 import '../cloud/oauth_handshake.dart';
 import '../cloud/sign_in_events.dart';
 import '../cloud/web_access.dart';
@@ -25,6 +27,12 @@ import 'plantly_export.dart';
 /// import / join link is *parked* ([WebGateParking], prefs — it must survive
 /// the OAuth page reload) instead of opening a sheet over the gate, and
 /// replayed the moment the gate opens.
+///
+/// Parked invites (MULTI-USER-V2 §8): a join the sheet could not complete
+/// for lack of the caller's own plan sits in [JoinParking] (7 days). When
+/// the entitlement turns active — subscribed and came back, app resumed,
+/// cold start — the join sheet is reopened with that code and submits by
+/// itself, unless a join sheet is already on screen (it resumes alone).
 class HandoffListener extends ConsumerStatefulWidget {
   const HandoffListener({super.key, required this.navigatorKey, required this.child});
   final GlobalKey<NavigatorState> navigatorKey;
@@ -74,6 +82,14 @@ class _HandoffListenerState extends ConsumerState<HandoffListener> {
       _lastHandled = key;
       if (!replay) ref.read(incomingLinksProvider).consume();
       if (_parkWhileGated(uri)) {
+        // The web gate's lot lives an hour (sign-in round trip); an invite
+        // behind a missing plan may take days — keep it in the long lot too
+        // (§8), so the join resumes once the plan is active.
+        unawaited(ref.read(joinParkingProvider.notifier).park(
+              code,
+              reason: ParkReason.gated,
+              userId: ref.read(plantlyAuthProvider).valueOrNull?.userId,
+            ));
         _lastHandled = null;
         return;
       }
@@ -107,6 +123,20 @@ class _HandoffListenerState extends ConsumerState<HandoffListener> {
   void _replayParked() {
     final uri = ref.read(webGateParkingProvider).takeLink();
     if (uri != null) _enqueue(uri, replay: true);
+  }
+
+  /// Entitlement just turned active (or the app started with it active):
+  /// reopen the join sheet for a parked `cloudRequired` invite of THIS
+  /// account, if any. Dedupes against a sheet already open for that code
+  /// (`_lastHandled`) and against any join sheet on screen
+  /// ([openJoinSheetsProvider] — it resumes by itself).
+  Future<void> _resumeParkedJoin() async {
+    await ref.read(joinParkingProvider.notifier).ready;
+    if (!mounted) return;
+    final parked = ref.read(parkedJoinForSessionProvider);
+    if (parked == null || parked.reason != ParkReason.cloudRequired) return;
+    if (ref.read(openJoinSheetsProvider) > 0) return;
+    _enqueue(Uri.parse('plantlyinventory://join#c=${parked.code}'), replay: true);
   }
 
   /// Adopt only callbacks that answer a sign-in this device started (nonce +
@@ -146,7 +176,19 @@ class _HandoffListenerState extends ConsumerState<HandoffListener> {
       if (ctx == null || !ctx.mounted) return;
       if (link.joinCode != null) {
         final key = 'join:${link.joinCode}';
-        unawaited(showJoinCollectionSheet(ctx, initialCode: link.joinCode).whenComplete(() => _release(key)));
+        // A code the user already tried (parked behind the plan, §8)
+        // submits by itself once the plan is active — they are coming back
+        // to finish the join. Not entitled (or signed out, e.g. the web
+        // gate replaying a link after sign-in): the sheet just opens with
+        // the code, as always.
+        final parked = ref.read(parkedJoinForSessionProvider);
+        final resume = parked != null &&
+            parked.code == link.joinCode &&
+            parked.reason == ParkReason.cloudRequired &&
+            ref.read(cloudEntitlementProvider).valueOrNull?.active == true;
+        unawaited(
+          showJoinCollectionSheet(ctx, initialCode: link.joinCode, resume: resume).whenComplete(() => _release(key)),
+        );
         return;
       }
       final d = link.importParam!;
@@ -173,6 +215,12 @@ class _HandoffListenerState extends ConsumerState<HandoffListener> {
     });
     ref.listen<WebAccess>(webAccessProvider, (prev, next) {
       if (next.isOpen && !(prev?.isOpen ?? false)) _replayParked();
+    });
+    // §8: the plan turned active → finish a parked join. Also covers the
+    // first value of a cold start (prev == null) when it is already active.
+    ref.listen<AsyncValue<CloudEntitlement?>>(cloudEntitlementProvider, (prev, next) {
+      final was = prev?.valueOrNull?.active ?? false;
+      if (!was && next.valueOrNull?.active == true) unawaited(_resumeParkedJoin());
     });
     // `ref.listen` only fires on change; cover the already-ready case.
     if (!_ready && ref.read(appContextProvider).hasValue) {

@@ -10,10 +10,11 @@ import '../marketplace/plantly_api.dart';
 import '../marketplace/plantly_auth.dart';
 import 'sign_in_events.dart';
 
-/// `entitlements.inventory_cloud.shared_access` (MULTI-USER-V2 §0/§2.13):
-/// the caller is a member (any role) of [collections] ≥ 1 non-deleted
-/// collections whose owner is currently entitled. Absent on older servers
-/// → [none].
+/// `entitlements.inventory_cloud.shared_access` (MULTI-USER-V2 §2.13, made
+/// informational by §8): the caller is a member (any role) of [collections]
+/// ≥ 1 non-deleted collections whose owner is currently entitled. It grants
+/// NOTHING — every participant needs their own plan — and is kept only for
+/// display / diagnostics. Absent on older servers → [none].
 class SharedAccess {
   const SharedAccess({required this.active, this.collections = 0});
 
@@ -55,22 +56,14 @@ class CloudEntitlement {
     this.sharedAccess = SharedAccess.none,
   });
 
-  /// The caller's OWN entitlement. Shared collections do not set this —
-  /// see [sharedAccess] and [hasCloudAccess].
+  /// The caller's OWN entitlement — the one and only cloud predicate
+  /// (MULTI-USER-V2 §8): the web gate, the personal collection AND every
+  /// shared collection the account takes part in all require it.
   final bool active;
 
-  /// Membership in an entitled owner's collection (MULTI-USER-V2 §0):
-  /// opens the web gate and the shared collections, never the personal
-  /// one (push there → 402 as today).
+  /// Informational only (§8): membership in an entitled owner's collection
+  /// grants no access of its own.
   final SharedAccess sharedAccess;
-
-  /// Own plan active OR access through a shared collection — the web-gate
-  /// predicate (§3 "Web gate").
-  bool get hasCloudAccess => active || sharedAccess.active;
-
-  /// Only shared access: the Cloud screen explains that the personal
-  /// collection stays local-only.
-  bool get sharedAccessOnly => !active && sharedAccess.active;
 
   /// `pro` | `inventory_cloud` | null (not entitled, or the server predates
   /// the `entitlements` block and we fell back to `is_pro`).
@@ -81,13 +74,6 @@ class CloudEntitlement {
   /// ([managedByPlay] is false).
   final String? provider;
   final DateTime? currentPeriodEnd;
-
-  /// Compatibility scalars over [sharedAccess] (the gate and older call
-  /// sites read these; the model of record is [sharedAccess]).
-  bool get sharedAccessActive => sharedAccess.active;
-
-  /// How many shared collections grant that access (0 when none / absent).
-  int get sharedAccessCollections => sharedAccess.collections;
 
   /// The entitling row is a Google Play subscription: managed (cancel /
   /// pause / change plan) in Play, not on plantly.ro.
@@ -372,11 +358,3 @@ class CloudEntitlementNotifier extends AsyncNotifier<CloudEntitlement?> with Wid
 
 final cloudEntitlementProvider =
     AsyncNotifierProvider<CloudEntitlementNotifier, CloudEntitlement?>(CloudEntitlementNotifier.new);
-
-/// Web-gate predicate (MULTI-USER-V2 §3): the signed-in account may use the
-/// cloud surfaces when its own entitlement is active OR it has access
-/// through a shared collection. False while signed out / still loading.
-final hasCloudAccessProvider = Provider<bool>((ref) {
-  final e = ref.watch(cloudEntitlementProvider).valueOrNull;
-  return e?.hasCloudAccess ?? false;
-});

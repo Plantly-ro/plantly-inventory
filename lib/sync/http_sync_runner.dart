@@ -123,9 +123,11 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
   final bool observeLifecycle;
   final int batchSize;
 
-  /// The collection is shared with this account (role `editor`, §3): a 402
-  /// means the OWNER's plan lapsed, reported as `cloud_required` with
-  /// detail [kOwnerPlanLapsedDetail] rather than a paywall for the caller.
+  /// The collection is shared with this account (§3 / MULTI-USER-V2 §8): a
+  /// 402 is reported as `cloud_required` with detail
+  /// [kOwnerPlanLapsedDetail] (`cloud_required_owner`: the owner lapsed) or
+  /// [kMemberPlanLapsedDetail] (plain `cloud_required`: the caller's own
+  /// plan lapsed) rather than the personal-collection paywall.
   final bool entitlementIsOwners;
 
   /// Viewer role (MULTI-USER-V2 §0): never push — the server would answer
@@ -330,8 +332,20 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
         }
         _halt('unauthorized');
         return;
-      } on SyncEntitlementError {
-        _halt('cloud_required', detail: entitlementIsOwners ? kOwnerPlanLapsedDetail : null);
+      } on SyncEntitlementError catch (e) {
+        // §8: two codes on a shared collection — `cloud_required_owner`
+        // (the owner lapsed) vs plain `cloud_required` (the caller's own
+        // plan). On the caller's own collection the plain code is the
+        // paywall as before (no detail).
+        final String? detail;
+        if (e.message == kCloudRequiredOwnerCode) {
+          detail = kOwnerPlanLapsedDetail;
+        } else if (entitlementIsOwners) {
+          detail = kMemberPlanLapsedDetail;
+        } else {
+          detail = null;
+        }
+        _halt('cloud_required', detail: detail);
         return;
       } on SyncCollectionError catch (e) {
         // The server code (`not_a_member`, `collection_not_found`,

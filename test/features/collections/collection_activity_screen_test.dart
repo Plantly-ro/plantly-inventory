@@ -390,52 +390,71 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('shared access only (ro): explanatory row replaces "not included", subscribe hint stays', (tester) async {
+    testWidgets('§8 (ro): shared_access alone = "not included" + the shared-collections requirement row with the link (desktop)',
+        (tester) async {
       await pump(
         tester,
         linked: false,
         entitlement: const CloudEntitlement(active: false, sharedAccess: SharedAccess(active: true, collections: 1)),
+        extra: [
+          cloudPurchaseLinkAllowedProvider.overrideWithValue(true),
+          collectionsProvider.overrideWith((ref) => CollectionsNotifier(ref, autoStart: false, initial: const [
+                CloudCollection(id: 'col-2', name: 'Sera', role: 'editor', ownerUserId: 'u-2', memberCount: 2),
+              ])),
+        ],
         child: const Scaffold(body: SingleChildScrollView(child: CloudRows(surface: PlantlySurface.light, detailed: true))),
       );
-      expect(find.byKey(const Key('cloud-shared-access')), findsOneWidget);
-      expect(find.text('Acces prin colecția partajată'), findsOneWidget);
-      expect(find.text('Ai acces prin colecția partajată. Colecția ta personală rămâne doar pe acest dispozitiv.'),
-          findsOneWidget);
-      expect(find.byKey(const Key('cloud-not-included')), findsNothing);
+      expect(find.byKey(const Key('cloud-shared-access')), findsNothing, reason: 'row removed (§8)');
+      expect(find.byKey(const Key('cloud-not-included')), findsOneWidget);
+      expect(find.text('Inclus în Plantly Pro sau Plantly Inventory Cloud'), findsOneWidget);
+      expect(find.byKey(const Key('cloud-shared-requires')), findsOneWidget);
+      expect(find.text('Colecții partajate'), findsOneWidget);
+      expect(find.textContaining('Inventory Cloud este necesar pentru colecțiile partajate'), findsOneWidget);
+      expect(find.textContaining('inclus în Plantly Pro'), findsOneWidget);
+      expect(find.textContaining('Abonează-te pe plantly.ro'), findsNWidgets(2), reason: 'requirement row + subscribe row');
       expect(find.byKey(const Key('cloud-subscribe')), findsOneWidget);
-      expect(find.text('Abonează-te pe plantly.ro'), findsOneWidget);
       expect(find.byKey(const Key('cloud-status')), findsNothing, reason: 'personal collection: no sync here');
     });
 
-    testWidgets('shared access only (en) + no shared access → plain "not included"', (tester) async {
+    testWidgets('§8 (en, Android): requirement row without a link; no shared collections → no row', (tester) async {
       await pump(
         tester,
         linked: false,
         locale: const Locale('en'),
-        entitlement: const CloudEntitlement(active: false, sharedAccess: SharedAccess(active: true, collections: 2)),
+        entitlement: CloudEntitlement.none,
+        extra: [
+          cloudPurchaseLinkAllowedProvider.overrideWithValue(false),
+          collectionsProvider.overrideWith((ref) => CollectionsNotifier(ref, autoStart: false, initial: const [
+                CloudCollection(id: 'col-2', name: 'Greenhouse', role: 'viewer', ownerUserId: 'u-2', memberCount: 2),
+              ])),
+        ],
         child: const Scaffold(body: SingleChildScrollView(child: CloudRows(surface: PlantlySurface.light, detailed: true))),
       );
-      expect(find.text('Access via a shared collection'), findsOneWidget);
-      expect(find.textContaining('Your own collection stays on this device only.'), findsOneWidget);
+      final row = find.byKey(const Key('cloud-shared-requires'));
+      expect(row, findsOneWidget);
+      expect(find.text('Inventory Cloud is required for shared collections — included in Plantly Pro.'), findsOneWidget);
+      expect(find.textContaining('Subscribe on plantly.ro'), findsNothing, reason: 'Play policy: no purchase link');
+      expect(find.byKey(const Key('cloud-subscribe')), findsNothing);
 
       await pump(
         tester,
         linked: false,
         locale: const Locale('en'),
         entitlement: CloudEntitlement.none,
+        extra: [cloudPurchaseLinkAllowedProvider.overrideWithValue(false)],
         child: const Scaffold(body: SingleChildScrollView(child: CloudRows(surface: PlantlySurface.light, detailed: true))),
       );
-      expect(find.byKey(const Key('cloud-shared-access')), findsNothing);
+      expect(find.byKey(const Key('cloud-shared-requires')), findsNothing);
       expect(find.byKey(const Key('cloud-not-included')), findsOneWidget);
     });
 
-    testWidgets('own plan active → no shared-access row even with shared_access.active', (tester) async {
+    testWidgets('own plan active → status rows, no requirement row even with shared_access.active', (tester) async {
       await pump(
         tester,
         entitlement: const CloudEntitlement(active: true, source: 'pro', sharedAccess: SharedAccess(active: true, collections: 1)),
         child: const Scaffold(body: SingleChildScrollView(child: CloudRows(surface: PlantlySurface.light, detailed: true))),
       );
-      expect(find.byKey(const Key('cloud-shared-access')), findsNothing);
+      expect(find.byKey(const Key('cloud-shared-requires')), findsNothing);
       expect(find.byKey(const Key('cloud-status')), findsOneWidget);
     });
 

@@ -141,6 +141,7 @@ class CollectionSwitcherDropdown extends ConsumerWidget {
     if (!ref.watch(collectionSwitcherVisibleProvider)) return const SizedBox.shrink();
     final t = AppLocalizations.of(context);
     final items = ref.watch(collectionsProvider.select((s) => s.items));
+    final needsCloud = ref.watch(sharedNeedsCloudProvider);
     final active = ref.watch(activeCollectionProvider);
     final value = items.any((c) => c.id == active?.id) ? active!.id : null;
     return Padding(
@@ -186,6 +187,15 @@ class CollectionSwitcherDropdown extends ConsumerWidget {
                       Icon(c.isOwner ? Icons.folder_outlined : Icons.group_outlined, size: 16, color: surface.green),
                       const SizedBox(width: 8),
                       Expanded(child: Text(c.displayName, overflow: TextOverflow.ellipsis)),
+                      if (!c.isOwner && needsCloud) ...[
+                        const SizedBox(width: 6),
+                        CollectionMarker(
+                          key: Key('collection-needs-cloud-${c.id}'),
+                          label: t.shareNeedsCloud,
+                          tooltip: t.shareErrMemberLapsed,
+                          surface: surface,
+                        ),
+                      ],
                       const SizedBox(width: 8),
                       RoleBadge(role: c.role, surface: surface),
                     ],
@@ -244,6 +254,9 @@ class CollectionSwitcherSheet extends ConsumerWidget {
     final active = ref.watch(activeCollectionProvider);
     final mine = state.mine;
     final shared = state.sharedWithMe;
+    // §8: our own plan is not active (server or client verdict) → every
+    // shared collection is read-only here and carries the marker.
+    final needsCloud = ref.watch(sharedNeedsCloudProvider);
 
     // ListTile paints ink on the nearest Material; the sheet chrome's
     // decorated box would hide it, so every tile gets a transparent one.
@@ -275,22 +288,22 @@ class CollectionSwitcherSheet extends ConsumerWidget {
               Flexible(
                 child: Text(subtitle, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, color: surface.muted)),
               ),
+              if (!c.isOwner && needsCloud) ...[
+                const SizedBox(width: 6),
+                CollectionMarker(
+                  key: Key('collection-needs-cloud-${c.id}'),
+                  label: t.shareNeedsCloud,
+                  tooltip: t.shareErrMemberLapsed,
+                  surface: surface,
+                ),
+              ],
               if (!c.ownerEntitled) ...[
                 const SizedBox(width: 6),
-                Tooltip(
-                  message: t.shareErrOwnerLapsed,
-                  child: Container(
-                    key: Key('collection-paused-${c.id}'),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: surface.terraSoft,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      t.shareV2Paused,
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: surface.terra),
-                    ),
-                  ),
+                CollectionMarker(
+                  key: Key('collection-paused-${c.id}'),
+                  label: t.shareV2Paused,
+                  tooltip: t.shareErrOwnerLapsed,
+                  surface: surface,
                 ),
               ],
             ],
@@ -425,6 +438,34 @@ class CollectionSwitcherSheet extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Small terra pill with a tooltip: "Paused" (owner lapsed) / "Needs
+/// Inventory Cloud" (caller lapsed, §8) next to a collection's name.
+class CollectionMarker extends StatelessWidget {
+  const CollectionMarker({super.key, required this.label, required this.tooltip, required this.surface});
+  final String label;
+  final String tooltip;
+  final PlantlySurface surface;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+        decoration: BoxDecoration(
+          color: surface.terraSoft,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: surface.terra),
+        ),
+      ),
     );
   }
 }
