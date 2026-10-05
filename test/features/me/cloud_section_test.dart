@@ -149,7 +149,8 @@ void main() {
       await tester.tap(find.byKey(const Key('cloud-sign-in')));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('plantly-login-google')), findsOneWidget);
-      expect(find.byKey(const Key('plantly-login-facebook')), findsOneWidget);
+      // PLANTLY_FACEBOOK_LOGIN_ENABLED defaults to off.
+      expect(find.byKey(const Key('plantly-login-facebook')), findsNothing);
       // Opened from Cloud → the cloud subtitle, not the listing one.
       expect(find.text('Use your plantly.ro account for cloud backup & sync.'), findsOneWidget);
       expect(find.text('Use your plantly.ro account to post listings.'), findsNothing);

@@ -37,6 +37,15 @@ abstract final class PlantlyFeatures {
   /// `--dart-define=PLANTLY_PLAY_BILLING_ENABLED=true`.
   static const bool playBillingEnabled =
       bool.fromEnvironment('PLANTLY_PLAY_BILLING_ENABLED', defaultValue: false);
+
+  /// "Continue with Facebook" on the plantly.ro login sheet. OFF by default
+  /// (Paul, 2026-10-05: the Meta app is unpublished pending business
+  /// verification, so the button only leads to a dead end). Only the entry
+  /// button is gated — the OAuth callback/deep-link handling is provider-
+  /// agnostic, so a session already obtained via Facebook keeps working.
+  /// `--dart-define=PLANTLY_FACEBOOK_LOGIN_ENABLED=true`.
+  static const bool facebookLoginEnabled =
+      bool.fromEnvironment('PLANTLY_FACEBOOK_LOGIN_ENABLED', defaultValue: false);
 }
 
 /// Riverpod view of [PlantlyFeatures.sellEnabled] so tests can exercise both
@@ -48,6 +57,9 @@ final cloudEnabledProvider = Provider<bool>((_) => PlantlyFeatures.cloudEnabled)
 
 /// Riverpod view of [PlantlyFeatures.playBillingEnabled] (overridable in tests).
 final playBillingEnabledProvider = Provider<bool>((_) => PlantlyFeatures.playBillingEnabled);
+
+/// Riverpod view of [PlantlyFeatures.facebookLoginEnabled] (overridable in tests).
+final facebookLoginEnabledProvider = Provider<bool>((_) => PlantlyFeatures.facebookLoginEnabled);
 
 /// `kIsWeb` as a provider so widget tests (which always run on the VM) can
 /// exercise the web-only paths — the access gate, the forced cloud flag.

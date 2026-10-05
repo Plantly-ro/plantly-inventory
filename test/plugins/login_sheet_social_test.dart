@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:plantly_inventory/app/side_sheet.dart';
+import 'package:plantly_inventory/config/plantly_features.dart';
 import 'package:plantly_inventory/config/plantly_hosts.dart';
 import 'package:plantly_inventory/l10n/generated/app_localizations.dart';
 import 'package:plantly_inventory/marketplace/plantly_api.dart';
@@ -23,7 +24,12 @@ void main() {
     expect(PlantlyHosts.subscriptionUrl(), '${PlantlyHosts.host}/account/subscription?product=inventory_cloud');
   });
 
-  Future<void> pump(WidgetTester tester, Locale locale, {LoginPurpose purpose = LoginPurpose.sell}) async {
+  Future<void> pump(
+    WidgetTester tester,
+    Locale locale, {
+    LoginPurpose purpose = LoginPurpose.sell,
+    bool? facebook,
+  }) async {
     tester.view.physicalSize = const Size(420, 1200);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -31,6 +37,7 @@ void main() {
     final api = PlantlyApi(client: MockClient((_) async => http.Response('{}', 503)), host: 'https://dev.example');
     final auth = PlantlyAuth(api: api, store: InMemorySessionStore(), autoLoad: false);
     await tester.pumpWidget(buildTestApp(
+      overrides: [if (facebook != null) facebookLoginEnabledProvider.overrideWithValue(facebook)],
       child: MaterialApp(
         locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -41,12 +48,16 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('renders Google + Facebook buttons above the email form (en)', (tester) async {
+  test('PLANTLY_FACEBOOK_LOGIN_ENABLED defaults to off', () {
+    expect(PlantlyFeatures.facebookLoginEnabled, isFalse);
+  });
+
+  testWidgets('default: renders Google (no Facebook) above the email form (en)', (tester) async {
     await pump(tester, const Locale('en'));
     expect(find.byKey(const Key('plantly-login-google')), findsOneWidget);
-    expect(find.byKey(const Key('plantly-login-facebook')), findsOneWidget);
+    expect(find.byKey(const Key('plantly-login-facebook')), findsNothing);
     expect(find.text('Continue with Google'), findsOneWidget);
-    expect(find.text('Continue with Facebook'), findsOneWidget);
+    expect(find.text('Continue with Facebook'), findsNothing);
     expect(find.text('or'), findsOneWidget);
     // Email + password stay.
     expect(find.byKey(const Key('plantly-login-email')), findsOneWidget);
@@ -56,13 +67,45 @@ void main() {
     final google = tester.getTopLeft(find.byKey(const Key('plantly-login-google')));
     final email = tester.getTopLeft(find.byKey(const Key('plantly-login-email')));
     expect(google.dy, lessThan(email.dy));
+    // With Facebook gone the "or" divider sits right under Google (14px gap),
+    // no orphaned 8px spacer.
+    final googleBottom = tester.getBottomLeft(find.byKey(const Key('plantly-login-google'))).dy;
+    final orTop = tester.getTopLeft(find.text('or')).dy;
+    expect(orTop - googleBottom, lessThan(30));
   });
 
-  testWidgets('ro copy with diacritics', (tester) async {
+  testWidgets('PLANTLY_FACEBOOK_LOGIN_ENABLED on: Google + Facebook, Facebook between Google and the divider',
+      (tester) async {
+    await pump(tester, const Locale('en'), facebook: true);
+    expect(find.byKey(const Key('plantly-login-google')), findsOneWidget);
+    expect(find.byKey(const Key('plantly-login-facebook')), findsOneWidget);
+    expect(find.text('Continue with Google'), findsOneWidget);
+    expect(find.text('Continue with Facebook'), findsOneWidget);
+    expect(find.text('or'), findsOneWidget);
+    final google = tester.getTopLeft(find.byKey(const Key('plantly-login-google')));
+    final facebook = tester.getTopLeft(find.byKey(const Key('plantly-login-facebook')));
+    final email = tester.getTopLeft(find.byKey(const Key('plantly-login-email')));
+    expect(google.dy, lessThan(facebook.dy));
+    expect(facebook.dy, lessThan(email.dy));
+  });
+
+  testWidgets('PLANTLY_FACEBOOK_LOGIN_ENABLED explicitly off: same as default', (tester) async {
+    await pump(tester, const Locale('en'), facebook: false);
+    expect(find.byKey(const Key('plantly-login-google')), findsOneWidget);
+    expect(find.byKey(const Key('plantly-login-facebook')), findsNothing);
+  });
+
+  testWidgets('ro copy with diacritics (default: no Facebook)', (tester) async {
     await pump(tester, const Locale('ro'));
     expect(find.text('Continuă cu Google'), findsOneWidget);
-    expect(find.text('Continuă cu Facebook'), findsOneWidget);
+    expect(find.text('Continuă cu Facebook'), findsNothing);
     expect(find.text('sau'), findsOneWidget);
+  });
+
+  testWidgets('ro copy with diacritics (flag on)', (tester) async {
+    await pump(tester, const Locale('ro'), facebook: true);
+    expect(find.text('Continuă cu Google'), findsOneWidget);
+    expect(find.text('Continuă cu Facebook'), findsOneWidget);
   });
 
   group('subtitle follows the purpose', () {
