@@ -174,6 +174,7 @@ included in Plantly Pro). Android stays free and local-first; only web is gated.
 | `PLANTLY_SELL_ENABLED` | `false` | **"Sell on plantly.ro"** (`plantly_ro` export plugin, marketplace category search, Me → Plantly account). Off = the local draft dialog only, no network from the export path. The Assistant/marketplace **import** link handling (`/#/import?d=…`, `plantlyinventory://import`) is always on. |
 | `PLANTLY_CLOUD_ENABLED` | `false` (**always `true` on web**) | Cloud backup & sync (Me → Cloud, collection link, sync runner). Ignored on web — see *Web access gate*. |
 | `PLANTLY_PLAY_BILLING_ENABLED` | `false` | Google Play in-app purchase of Inventory Cloud (Android only; irrelevant on web). |
+| `PLANTLY_FACEBOOK_LOGIN_ENABLED` | `false` | Shows **"Continue with Facebook"** on the plantly.ro login sheet. Off while the Meta app is unpublished. Only the entry button is gated: Google + email/password stay, and the OAuth callback/deep link is provider-agnostic, so sessions already obtained via Facebook keep working. |
 
 ```bash
 # selling ON against the dev preview

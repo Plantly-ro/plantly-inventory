@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../app/breakpoints.dart';
 import '../../app/side_sheet.dart';
 import '../../cloud/oauth_handshake.dart';
+import '../../config/plantly_features.dart';
 import '../../config/plantly_hosts.dart';
 import '../../features/home/home_providers.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -18,6 +19,9 @@ import '../../theme/tokens.dart';
 /// Sign-in to plantly.ro (CONTRACT §1/§5): Google / Facebook through the
 /// marketplace's OAuth start URL (the callback deep link lands the token in
 /// [PlantlyAuth], which this sheet watches), or email + password inline.
+/// The Facebook button is behind `PLANTLY_FACEBOOK_LOGIN_ENABLED`
+/// ([facebookLoginEnabledProvider], default off); the callback path is
+/// provider-agnostic and stays on regardless.
 /// Registration and password reset are web-only — the links open the
 /// marketplace. Resolves with the session, or null when dismissed.
 ///
@@ -151,6 +155,7 @@ class _PlantlyLoginSheetState extends ConsumerState<PlantlyLoginSheet> {
     });
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final facebook = ref.watch(facebookLoginEnabledProvider);
     final t = AppLocalizations.of(context);
     final subtitle = switch (widget.purpose) {
       LoginPurpose.sell => t.plantlyLoginSubtitle,
@@ -193,14 +198,16 @@ class _PlantlyLoginSheetState extends ConsumerState<PlantlyLoginSheet> {
                 surface: surface,
                 onPressed: _busy ? null : () => _oauth('google'),
               ),
-              const SizedBox(height: 8),
-              _SocialButton(
-                key: const Key('plantly-login-facebook'),
-                label: t.cloudLoginFacebook,
-                icon: Icons.facebook_rounded,
-                surface: surface,
-                onPressed: _busy ? null : () => _oauth('facebook'),
-              ),
+              if (facebook) ...[
+                const SizedBox(height: 8),
+                _SocialButton(
+                  key: const Key('plantly-login-facebook'),
+                  label: t.cloudLoginFacebook,
+                  icon: Icons.facebook_rounded,
+                  surface: surface,
+                  onPressed: _busy ? null : () => _oauth('facebook'),
+                ),
+              ],
               if (_waitingOauth) ...[
                 const SizedBox(height: 8),
                 Text(
