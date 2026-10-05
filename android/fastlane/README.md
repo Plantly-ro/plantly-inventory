@@ -24,7 +24,7 @@ metadata/android/<locale>/
 | Job | Branch | Trigger | Does |
 |---|---|---|---|
 | `lint-tools` | every branch | automatic | unit-tests the scripts + `play_listing.py --dry-run` (validates every file above) |
-| `publish-internal` | `development` | automatic | signed AAB → **internal** track, with release notes from `changelogs/` |
+| `publish-internal` | `development`, `main` | **manual** | signed AAB (cloud + Play Billing flags ON, `versionName 1.1.0-internal.<iid>`) → **internal** track, release notes from `../internal/<locale>/changelogs/` (not this tree); playbook in the top-level README § Internal testing |
 | `publish-listing` | `development` | **manual** | pushes texts + graphics to the (app-wide) store listing, no build |
 | `publish-production` | `main` | **manual** | listing push (fails fast if invalid) → build → AAB → **production**, 100 % rollout with release notes; set `PLAY_UPLOAD_EXTRA_ARGS="--user-fraction 0.2"` in the Run-job form for a staged rollout |
 
@@ -36,8 +36,9 @@ python3 tool/play_listing.py --package ro.plantly.inventory --credentials sa.jso
 python3 -m unittest discover -s tool/tests                                       # script tests
 ```
 
-`versionCode` is the CI pipeline id (`--build-number=$CI_PIPELINE_ID`); `versionName`
-comes from `pubspec.yaml`. Signed with the **upload key** (CI variables
+`versionCode` is the CI pipeline id (`--build-number=$CI_PIPELINE_ID`, one counter for both
+tracks; production 1.0.0 = 2882); `versionName` comes from `pubspec.yaml` (the internal job
+overrides it via `PLAY_BUILD_NAME`). Signed with the **upload key** (CI variables
 `PLAY_UPLOAD_KEYSTORE_B64` / `PLAY_KEYSTORE_PASSWORD` / `PLAY_KEY_PASSWORD`, alias
 `upload`, SHA-256 `EC:0A:25:…:DF`); the Play API key is `PLAY_SA_JSON`. Enrol in
 **Play App Signing** on first upload.
