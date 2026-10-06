@@ -69,6 +69,88 @@ class BuildReleaseTests(unittest.TestCase):
         self.assertEqual(play_upload.build_release(5, "draft", release_notes=notes)["releaseNotes"], notes)
 
 
+class RolloutUpdateTests(unittest.TestCase):
+    """`--rollout-update`: edit the staged release in place, no upload."""
+
+    STAGED = {"versionCodes": ["3001"], "status": "inProgress", "userFraction": 0.2, "releaseNotes": [{"language": "ro", "text": "n"}]}
+    LIVE = {"versionCodes": ["2882"], "status": "completed"}
+
+    def test_widen_keeps_notes_and_other_releases(self):
+        out = play_upload.apply_rollout_update([self.LIVE, self.STAGED], 0.5)
+        self.assertEqual(out[0], self.LIVE)
+        self.assertEqual(out[1], {**self.STAGED, "userFraction": 0.5})
+        self.assertEqual(self.STAGED["userFraction"], 0.2, "input must not be mutated")
+
+    def test_complete_drops_user_fraction_and_the_superseded_completed_release(self):
+        out = play_upload.apply_rollout_update([self.LIVE, self.STAGED], play_upload.COMPLETE)
+        self.assertEqual(out, [{"versionCodes": ["3001"], "status": "completed", "releaseNotes": self.STAGED["releaseNotes"]}])
+
+    def test_no_staged_release_is_an_error(self):
+        with self.assertRaises(ValueError):
+            play_upload.apply_rollout_update([self.LIVE], 0.5)
+
+    def test_version_code_picks_the_release_explicitly(self):
+        other = {"versionCodes": ["3002"], "status": "inProgress", "userFraction": 0.1}
+        with self.assertRaises(ValueError):  # ambiguous without --version-code
+            play_upload.apply_rollout_update([self.STAGED, other], 0.5)
+        out = play_upload.apply_rollout_update([self.STAGED, other], 0.5, version_code=3002)
+        self.assertEqual(out[1]["userFraction"], 0.5)
+        self.assertEqual(out[0], self.STAGED)
+        with self.assertRaises(ValueError):
+            play_upload.apply_rollout_update([self.STAGED], 0.5, version_code=9)
+
+    def test_lowering_the_fraction_is_refused(self):
+        with self.assertRaises(ValueError):
+            play_upload.apply_rollout_update([self.STAGED], 0.1)
+        with self.assertRaises(ValueError):
+            play_upload.apply_rollout_update([self.STAGED], 0.2)
+
+    def _args(self, *extra):
+        return play_upload.parse_args(["--package", "ro.plantly.inventory", "--credentials", "/tmp/sa.json", *extra])
+
+    def test_run_rollout_update_reads_track_updates_it_and_commits(self):
+        svc = FakeService(results={"edits.tracks.get": {"track": "production", "releases": [self.LIVE, dict(self.STAGED)]}})
+        rc = play_upload.run_rollout_update(svc, self._args("--track", "production", "--rollout-update", "0.5"))
+        self.assertEqual(rc, 0)
+        self.assertEqual(svc.names(), ["edits.insert", "edits.tracks.get", "edits.tracks.update", "edits.commit"])
+        (get,) = svc.kwargs("edits.tracks.get")
+        self.assertEqual((get["track"], get["editId"]), ("production", "edit-1"))
+        (update,) = svc.kwargs("edits.tracks.update")
+        self.assertEqual(update["track"], "production")
+        self.assertEqual(update["body"]["releases"][1]["status"], "inProgress")
+        self.assertEqual(update["body"]["releases"][1]["userFraction"], 0.5)
+        self.assertEqual(update["body"]["releases"][0], self.LIVE)
+
+    def test_run_rollout_update_complete(self):
+        svc = FakeService(results={"edits.tracks.get": {"releases": [self.LIVE, dict(self.STAGED)]}})
+        play_upload.run_rollout_update(svc, self._args("--track", "production", "--rollout-update", "complete"))
+        (update,) = svc.kwargs("edits.tracks.update")
+        self.assertEqual(update["body"], {"releases": [{"versionCodes": ["3001"], "status": "completed", "releaseNotes": self.STAGED["releaseNotes"]}]})
+        self.assertEqual(svc.names()[-1], "edits.commit")
+
+    def test_run_rollout_update_without_staged_release_discards_the_edit(self):
+        svc = FakeService(results={"edits.tracks.get": {"releases": [self.LIVE]}})
+        with self.assertRaises(ValueError):
+            play_upload.run_rollout_update(svc, self._args("--track", "production", "--rollout-update", "0.5"))
+        self.assertEqual(svc.names(), ["edits.insert", "edits.tracks.get", "edits.delete"])
+
+    def test_rollout_update_values(self):
+        for text in ("complete", "completed", "1", "1.0", "100%"):
+            self.assertEqual(self._args("--rollout-update", text).rollout_update, play_upload.COMPLETE)
+        self.assertEqual(self._args("--rollout-update", "0.5").rollout_update, 0.5)
+        for bad in ("0", "1.5", "-0.1", "half"):
+            with self.assertRaises(SystemExit):
+                self._args("--rollout-update", bad)
+
+    def test_rollout_update_is_exclusive_with_upload_flags(self):
+        with self.assertRaises(SystemExit):  # --aab required for an upload
+            self._args()
+        with self.assertRaises(SystemExit):
+            self._args("--aab", "a", "--rollout-update", "0.5")
+        with self.assertRaises(SystemExit):
+            self._args("--rollout", "0.2", "--rollout-update", "0.5")
+
+
 class RunTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -130,6 +212,22 @@ class RunTests(unittest.TestCase):
         release = svc.kwargs("edits.tracks.update")[0]["body"]["releases"][0]
         self.assertEqual(release["status"], "inProgress")
         self.assertEqual(release["userFraction"], 0.2)
+
+    def test_rollout_flag_is_the_staged_rollout_body_ci_sends_for_production(self):
+        # publish-production: PLAY_ROLLOUT="0.2" → `--rollout 0.2`
+        svc = self._run("--track", "production", "--release-notes-dir", self.root, "--rollout", "0.2")
+        (release,) = svc.kwargs("edits.tracks.update")[0]["body"]["releases"]
+        self.assertEqual(release["status"], "inProgress")
+        self.assertEqual(release["userFraction"], 0.2)
+        self.assertEqual(release["versionCodes"], ["777"])
+        self.assertEqual([n["language"] for n in release["releaseNotes"]], ["en-US", "ro"])
+
+    def test_empty_rollout_means_completed(self):
+        # PLAY_ROLLOUT="" → the flag is not passed at all → status completed, no userFraction
+        svc = self._run("--track", "production", "--release-notes-dir", self.root)
+        (release,) = svc.kwargs("edits.tracks.update")[0]["body"]["releases"]
+        self.assertEqual(release["status"], "completed")
+        self.assertNotIn("userFraction", release)
 
     def test_failure_after_insert_discards_the_edit_without_commit(self):
         svc = FakeService(results={"edits.bundles.upload": RuntimeError("upload boom")})
@@ -334,11 +432,10 @@ class RunTests(unittest.TestCase):
         self.assertEqual(args.native_symbols, play_upload.AUTO)
 
     def test_user_fraction_must_be_in_open_interval(self):
-        for bad in ("0", "1", "1.5", "-0.1"):
-            with self.assertRaises(SystemExit):
-                play_upload.parse_args(
-                    ["--package", "p", "--aab", "a", "--credentials", "c", "--user-fraction", bad]
-                )
+        for flag in ("--user-fraction", "--rollout"):
+            for bad in ("0", "1", "1.5", "-0.1"):
+                with self.assertRaises(SystemExit):
+                    play_upload.parse_args(["--package", "p", "--aab", "a", "--credentials", "c", flag, bad])
 
 
 if __name__ == "__main__":

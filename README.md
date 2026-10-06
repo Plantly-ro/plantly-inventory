@@ -61,21 +61,66 @@ See `lib/features/me/privacy_screen.dart` for the user-facing statement and `lib
 
 ## Release (Android / Google Play)
 
-Releases are built and published by GitLab CI (`.gitlab-ci.yml`); the only manual step is
-the click on `publish-production`.
+Releases are built and published by GitLab CI (`.gitlab-ci.yml`); every Play job is a
+manual click in the pipeline view (▶ on the job).
 
 | Branch | Job | What ships |
 |---|---|---|
-| `development` | `publish-internal` (automatic) | signed AAB → Play **internal** track, release notes from `android/fastlane/metadata/android/<locale>/changelogs/` |
+| `development`, `main` | `publish-internal` (manual) | signed AAB → Play **internal** track (Inventory Cloud + Play Billing ON, like every Play build since 1.1.0), `versionName 1.1.0-internal.<pipeline iid>`, release notes from `android/fastlane/metadata/internal/<locale>/changelogs/`, 100 % of the testers list. See *Internal testing* below |
 | `development` | `publish-listing` (manual) | store listing texts + graphics only, no build |
-| `main` | `publish-production` (manual) | listing push (validated first, fails fast) → build → AAB → **production**, 100 % rollout; set `PLAY_UPLOAD_EXTRA_ARGS="--user-fraction 0.2"` in the Run-job form for a staged rollout. While the app is still unpublished Play only accepts draft releases — the script falls back to `status: draft` automatically; send it for review in Play Console |
+| `main` | `publish-production` (manual) | listing push (validated first, fails fast) → build (Inventory Cloud + Play Billing ON) → AAB → **production** as a **staged rollout to 20 %** (`PLAY_ROLLOUT: "0.2"`; set it to an empty string in the Run-job form for an immediate 100 %). Widen or finish the rollout later — see *Staged rollout* below |
 
-- `versionCode` = the CI pipeline id (`--build-number=$CI_PIPELINE_ID`); `versionName` = `version:` in `pubspec.yaml`.
-- Release notes: `changelogs/default.txt` applies to every build; add `changelogs/<versionCode>.txt` to override for one build (≤500 chars).
-- Scripts: `tool/play_listing.py` (listing; `--dry-run` validates without credentials) and `tool/play_upload.py` (AAB + deobfuscation files + track). Tests: `python3 -m unittest discover -s tool/tests` (stdlib only; `lint-tools` runs them on every push).
+- `versionCode` = the CI pipeline id (`--build-number=$CI_PIPELINE_ID`) for **both** tracks — one instance-wide monotonic counter, so an internal build can never outrank a later production build (production 1.0.0 = 2882; the job refuses to build if the id is not above `PLAY_VERSION_CODE_MIN`). `versionName` = `version:` in `pubspec.yaml`, unless the job sets `PLAY_BUILD_NAME` (`publish-internal` does).
+- Compile-time flags: `INVENTORY_ANDROID_DART_DEFINES` (space-separated `--dart-define=K=V`, see *Marketplace integration flags*). **Cloud is on in all Play builds since 1.1.0:** both `publish-internal` and `publish-production` set it to `--dart-define=PLANTLY_CLOUD_ENABLED=true --dart-define=PLANTLY_PLAY_BILLING_ENABLED=true` in their own `variables:` (the app itself stays free; Inventory Cloud is the paid add-on bought in-app via Play Billing, included in Plantly Pro). Override per run in the Run-job form (an empty string = feature defaults: cloud OFF, billing OFF, sell OFF).
+- Release notes: `changelogs/default.txt` applies to every build; add `changelogs/<versionCode>.txt` to override for one build (≤500 chars). The internal track reads `android/fastlane/metadata/internal/` instead of the store-listing tree; `lint-tools` validates both.
+- Scripts: `tool/play_listing.py` (listing; `--dry-run` validates without credentials) and `tool/play_upload.py` (AAB + deobfuscation files + track; `--rollout-update` edits a staged rollout). Tests: `python3 -m unittest discover -s tool/tests` (stdlib only; `lint-tools` runs them on every push).
+- Store listing push from CI (`publish-listing`, or the first step of `publish-production`) is sometimes auto-cancelled by the next pipeline on the branch; the same push works from a workstation with the SA key: `python3 tool/play_listing.py --package ro.plantly.inventory --credentials ~/.secrets/plantly-play-publisher-inventory.json --metadata-dir android/fastlane/metadata/android` (`--dry-run` first).
+
+### Staged rollout (production)
+
+`publish-production` ships with `status: inProgress`, `userFraction 0.2`. Play serves the new versionCode to 20 % of users; everyone else keeps the previous release until the rollout is widened. Without a rebuild:
+
+```bash
+SA=~/.secrets/plantly-play-publisher-inventory.json
+python3 tool/play_upload.py --package ro.plantly.inventory --credentials "$SA" --track production --rollout-update 0.5       # widen to 50 %
+python3 tool/play_upload.py --package ro.plantly.inventory --credentials "$SA" --track production --rollout-update complete  # 100 %
+```
+
+The script opens an edit, takes the track's single `inProgress` release (or `--version-code <id>` when there are several), rewrites `userFraction` / `status` and commits; lowering a fraction is refused (halt from Play Console instead). Equivalent by hand: Play Console → *Production → Releases → Manage rollout → Update rollout / Complete rollout*. The pip deps are the same as CI's (`google-api-python-client google-auth google-auth-httplib2`).
 - Deobfuscation: release builds are R8-minified, so `play_upload.py` attaches the R8 mapping (`build/app/outputs/mapping/release/mapping.txt`, `deobfuscationFileType=proguard`) to the uploaded versionCode in the same edit — CI passes `--mapping` explicitly so a missing mapping fails the job; the mapping is also kept as a job artifact next to the AAB. Native debug symbols (`--native-symbols`, `nativeCode`) are auto-detected: AGP's `native-debug-symbols.zip` if the release buildType ever sets `ndk { debugSymbolLevel }`, else a zip of `build/app/intermediates/merged_native_libs/release/out/lib/<abi>/*.so` (silences Play's "no debug symbols" warning; Flutter's `.so`s are already stripped, so it does not add real native symbolication). `--mapping none` / `--native-symbols none` skip either.
 - Store metadata layout, console-only items and CI variables: [`android/fastlane/README.md`](android/fastlane/README.md), [`docs/play-console-checklist.md`](docs/play-console-checklist.md).
 - Privacy policy (en/ro): [`docs/privacy-policy.en.md`](docs/privacy-policy.en.md), [`docs/privacy-policy.ro.md`](docs/privacy-policy.ro.md) — to be hosted at `https://plantly.ro/app/inventory/privacy`.
+
+### Internal testing (Inventory Cloud + in-app subscription)
+
+The internal track builds with the same flags as production (`PLANTLY_CLOUD_ENABLED` +
+`PLANTLY_PLAY_BILLING_ENABLED` on, since 1.1.0) and is where a release is exercised with
+licence-tester (free) purchases before `publish-production` is clicked.
+
+**Run it**
+
+1. GitLab → *Build → Pipelines* → the latest green pipeline on `development` (or `main`) → stage *publish* → ▶ `publish-internal`.
+   CLI: `glab ci run -b development` then `glab ci view` and play the job, or
+   `curl -X POST -H "PRIVATE-TOKEN: $GITLAB_TOKEN" https://gitlab.urundead.win/api/v4/projects/13/jobs/<job id>/play`
+   (job id from `GET /projects/13/pipelines/<pipeline id>/jobs?scope[]=manual`).
+2. Optional per-run overrides in the *Run job* form (highest precedence):
+   `INVENTORY_ANDROID_DART_DEFINES` (e.g. add `--dart-define=PLANTLY_HOST=https://development.agent-khepri.urundead.win` to point at the preview backend, or an empty string for the production defaults), `PLAY_BUILD_NAME`, `PLAY_UPLOAD_EXTRA_ARGS`.
+3. ~10 min later the job log ends with `committed: ro.plantly.inventory versionCode <id> -> internal (completed)`; the AAB + R8 mapping are job artifacts for a week. `resource_group: play-upload` queues a second click behind a running one.
+4. Play Console → *Testing → Internal testing* shows the release within a few minutes (no review for internal releases).
+
+**Who can install** — only accounts on the internal testers list: Play Console → *Testing → Internal testing → Testers* → email list **"Testers"** (max 100). Add the Google account that is signed in on the test phone. The same accounts should also be on *Monetise → Monetisation setup → Licence testing* (**Testers** list, response *RESPOND_NORMALLY*) so that purchases are test purchases.
+
+**Opt-in link** — Play Console → *Testing → Internal testing → Testers* tab → *How testers join your test* → *Copy link*; it has the shape `https://play.google.com/apps/internaltest/<id>`. Each tester opens it once with their listed Google account, taps *Become a tester*, then installs/updates **Plantly Inventory** from the Play Store (the version string shows `1.1.0-internal.<iid>`; a sideloaded build of the same package must be uninstalled first). Allow a few minutes after the tester is added or the release is committed.
+
+**Test-purchase flow** (licence testers are never charged; Play test subscriptions renew on a compressed clock — monthly ≈ 5 min, yearly ≈ 30 min — and auto-cancel after a few renewals)
+
+1. In the app: *Me → Plantly account* → sign in with the plantly.ro account; *Me → Cloud* shows the Play plan picker (product `inventory_cloud`, base plans `monthly` / `yearly`) instead of the "available on plantly.ro" copy.
+2. Pick a plan → the Play purchase sheet says **"Test card, always approves"** (if it shows a real card, the Google account is not a licence tester or the opt-in step was skipped). Confirm.
+3. The app sends the purchase token to the marketplace, which verifies it with Play and grants the `inventory_cloud` entitlement. Verify in the app under `/me/cloud` (status *active*, provider **play**) and on plantly.ro → `/account/subscription` (same subscription listed with provider **play**; Stripe-sourced ones say *stripe*).
+4. Sync: link or create a collection, change a plant, confirm it appears on `https://inventory.plantly.ro` (web is always cloud-on) for the same account.
+5. Cancel from the app's *Manage subscription* link (Play → *Payments & subscriptions*) or wait for the test auto-cancel; the entitlement should lapse on the next re-check and the app falls back to local-only without touching local data.
+
+Pre-requisites outside this repo: the `inventory_cloud` subscription and both base plans **active** in Play Console (they are), the marketplace's Play RTDN / purchase-verification configured for `ro.plantly.inventory`, and the test account present in both testers lists above.
 
 ## Release (Web / inventory.plantly.ro)
 
