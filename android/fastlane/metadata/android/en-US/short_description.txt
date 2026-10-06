@@ -1,1 +1,1 @@
-Offline plant care tracker: reminders, watering log, spaces & photos.
+Free offline plant care tracker. Optional cloud sync between phone and web.
