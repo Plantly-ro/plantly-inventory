@@ -1,7 +1,1 @@
-Plantly Inventory 1.0.0 — prima versiune publică.
-• Evidența offline a plantelor, cu memento-uri inteligente și adaptive
-• Calendar pe săptămână / lună / an cu ce e de făcut și ce ai bifat
-• Spații cu hărți ale camerelor, poze și istoric complet de îngrijire
-• Backup criptat, export CSV și iCal
-• Engleză + română
-Fără cont, fără reclame, fără telemetrie dacă nu o activezi tu.
+Nou: Inventory Cloud — sincronizare între telefon și web, backup automat, colecții partajate și fotografii în cloud (abonament opțional, inclus în Plantly Pro). Îmbunătățiri și corecturi.

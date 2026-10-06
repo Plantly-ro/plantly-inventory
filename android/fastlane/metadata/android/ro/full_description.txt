@@ -1,7 +1,7 @@
 Plantly Inventory este un companion calm, offline, pentru iubitorii de plante de apartament. Ține evidența fiecărei plante, nu mai uita niciodată de udat și păstrează-ți întreaga colecție organizată — totul pe dispozitivul tău, fără cont și fără reclame.
 
 🌿 TOTUL RĂMÂNE PE DISPOZITIVUL TĂU
-Plantly Inventory funcționează complet offline. Plantele, pozele și notițele tale rămân pe telefon. Fără înregistrare, fără cloud obligatoriu și fără telemetrie în mod implicit — rapoartele de erori și de utilizare sunt strict opționale.
+Plantly Inventory funcționează complet offline. Plantele, pozele și notițele tale rămân pe telefon. Fără înregistrare, fără cloud obligatoriu (sincronizarea este un abonament opțional) și fără telemetrie în mod implicit — rapoartele de erori și de utilizare sunt strict opționale.
 
 💧 MEMENTO-URI INTELIGENTE
 • Memento-uri per plantă pentru udare, fertilizare, pulverizare, replantare, tuns și altele
@@ -34,5 +34,13 @@ Vederile pe săptămână, lună și an arată ce e de făcut și ce ai bifat de
 • Export CSV și iCal (.ics)
 • Import pentru restaurare sau mutare pe un telefon nou
 • Disponibil în engleză și română
+
+☁️ INVENTORY CLOUD (ABONAMENT OPȚIONAL)
+Aplicația rămâne gratuită și funcționează complet offline. Dacă vrei mai mult, Inventory Cloud adaugă:
+• Sincronizare între telefon și web — aceeași colecție pe inventory.plantly.ro și pe toate dispozitivele tale
+• Backup automat în cloud, ca să nu pierzi nimic dacă schimbi telefonul
+• Colecții partajate cu familia sau prietenii (fiecare membru are nevoie de abonament)
+• Fotografiile tale în cloud, disponibile de oriunde
+Abonamentul se cumpără din aplicație (Google Play) și este inclus în Plantly Pro. Fără abonament, totul rămâne pe telefon ca până acum — datele tale nu se șterg niciodată.
 
 Plantly Inventory este gratuit și îți respectă intimitatea. Pune puțină ordine în viața ta. 🌿

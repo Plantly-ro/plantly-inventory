@@ -165,8 +165,9 @@ build-android:
     - flutter build appbundle --release
 
 # ─── Play delivery ──────────────────────────────────────────────────────────
-# development|main → internal testing (manual, cloud + Play Billing ON);
-# main → production (manual, feature defaults). Both build a signed AAB and
+# development|main → internal testing (manual); main → production (manual).
+# Since 1.1.0 BOTH tracks compile Inventory Cloud + Play Billing ON (the app
+# stays free; Cloud is the paid add-on). Both build a signed AAB and
 # upload it via the Android Publisher API, with the per-locale "what's new"
 # text from $PLAY_RELEASE_NOTES_DIR/<locale>/changelogs/ (<versionCode>.txt,
 # else default.txt). The versionCode is the (globally increasing, instance-wide)
@@ -174,8 +175,8 @@ build-android:
 # outranks a later production build and nothing needs a manual pubspec bump;
 # versionName comes from pubspec unless the job sets PLAY_BUILD_NAME.
 # Compile-time feature flags come from INVENTORY_ANDROID_DART_DEFINES
-# (space-separated `--dart-define=K=V`), empty = feature defaults (cloud OFF,
-# billing OFF, sell OFF — see lib/config/plantly_features.dart).
+# (space-separated `--dart-define=K=V`; see lib/config/plantly_features.dart) —
+# both publish jobs set it to cloud + billing ON in their own `variables:`.
 #
 # Requires these PROTECTED CI/CD variables (set on the project) and PROTECTED
 # development + main branches so they are only exposed to those pipelines:
@@ -197,11 +198,14 @@ build-android:
     # $PLAY_METADATA_DIR inside this job, BEFORE the ~25 min AAB build, so a bad
     # listing fails in seconds. The listing is app-wide (not per track).
     PLAY_PUSH_LISTING: "false"
-    # Extra flags for tool/play_upload.py. Default = 100 % rollout. For a staged
-    # production rollout, run the manual job with this variable set in the
-    # "Run job" form, e.g.  PLAY_UPLOAD_EXTRA_ARGS="--user-fraction 0.2"
-    # (status inProgress, 20 % of users; finish it later in Play Console or by
-    # re-running with the same versionCode and no fraction).
+    # Staged rollout fraction in (0,1) → `play_upload.py --rollout <fraction>`
+    # (status inProgress, that share of users). Empty = `status: completed`
+    # (100 %). publish-production defaults to "0.2"; override in the Run-job
+    # form ("" for an immediate 100 %). Widen/finish later with
+    # `tool/play_upload.py --rollout-update 0.5|complete` (README § Release) or
+    # Play Console → Production → Manage rollout.
+    PLAY_ROLLOUT: ""
+    # Any other extra flags for tool/play_upload.py (e.g. "--status draft").
     PLAY_UPLOAD_EXTRA_ARGS: ""
     # Where the per-locale changelogs come from (default: the store-listing tree).
     PLAY_RELEASE_NOTES_DIR: "$PLAY_METADATA_DIR"
@@ -212,8 +216,8 @@ build-android:
     # ever moved to another GitLab instance or the counter is reset.
     PLAY_VERSION_CODE_MIN: "2882"
     # INVENTORY_ANDROID_DART_DEFINES is deliberately NOT given a default here
-    # (a job-level default would shadow a project-level variable). Jobs that
-    # need flags ON set it in their own `variables:` (publish-internal).
+    # (a job-level default would shadow a project-level variable). Each publish
+    # job sets it in its own `variables:` (cloud + billing ON on both tracks).
   script:
     # Fail loudly here rather than deep inside Gradle if a protected var is missing/empty
     # (e.g. job ran on an unprotected ref) — build.gradle.kts would otherwise error on keystore load.
@@ -226,7 +230,7 @@ build-android:
         echo "publish - versionCode $CI_PIPELINE_ID would not exceed PLAY_VERSION_CODE_MIN=$PLAY_VERSION_CODE_MIN"; exit 1
       fi
       PUBSPEC_VERSION=$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' pubspec.yaml)
-      echo "publish - track=$PLAY_TRACK versionCode=$CI_PIPELINE_ID versionName=${PLAY_BUILD_NAME:-$PUBSPEC_VERSION} notes=$PLAY_RELEASE_NOTES_DIR dart-defines: ${INVENTORY_ANDROID_DART_DEFINES:-<none, feature defaults>}"
+      echo "publish - track=$PLAY_TRACK versionCode=$CI_PIPELINE_ID versionName=${PLAY_BUILD_NAME:-$PUBSPEC_VERSION} rollout=${PLAY_ROLLOUT:-completed} notes=$PLAY_RELEASE_NOTES_DIR dart-defines: ${INVENTORY_ANDROID_DART_DEFINES:-<none, feature defaults>}"
     - *play-pip
     - |
       if [ "$PLAY_PUSH_LISTING" = "true" ]; then
@@ -257,7 +261,8 @@ build-android:
     # stops producing a mapping — otherwise Play crash stacks silently go
     # obfuscated. Native symbols stay auto-detected (intermediates path is not
     # a stable AGP contract; the script warns and continues when absent).
-    - python3 tool/play_upload.py --package "$PLAY_PACKAGE" --aab build/app/outputs/bundle/release/app-release.aab --mapping build/app/outputs/mapping/release/mapping.txt --credentials "$PLAY_SA_JSON" --track "$PLAY_TRACK" --release-notes-dir "$PLAY_RELEASE_NOTES_DIR" $PLAY_UPLOAD_EXTRA_ARGS
+    # shellcheck disable=SC2086  # PLAY_UPLOAD_EXTRA_ARGS is intentionally word-split
+    - python3 tool/play_upload.py --package "$PLAY_PACKAGE" --aab build/app/outputs/bundle/release/app-release.aab --mapping build/app/outputs/mapping/release/mapping.txt --credentials "$PLAY_SA_JSON" --track "$PLAY_TRACK" --release-notes-dir "$PLAY_RELEASE_NOTES_DIR" ${PLAY_ROLLOUT:+--rollout "$PLAY_ROLLOUT"} $PLAY_UPLOAD_EXTRA_ARGS
   artifacts:
     paths:
       - build/app/outputs/bundle/release/app-release.aab
@@ -291,9 +296,12 @@ publish-internal:
 # main → production: click-gated. A green main pipeline stages the job; a
 # human presses Play in the pipeline view to ship to the production track.
 # The job pushes the store listing first (fails fast on validation), then
-# builds, uploads with release notes and rolls out to 100 % — set
-# PLAY_UPLOAD_EXTRA_ARGS="--user-fraction 0.2" in the Run-job form for a
-# staged rollout instead.
+# builds with Inventory Cloud + Play Billing ON (since 1.1.0 — same flags as
+# publish-internal) and uploads with release notes as a STAGED rollout to 20 %
+# of users (PLAY_ROLLOUT="0.2"; set it to "" in the Run-job form for an
+# immediate 100 %). Widen/finish: `tool/play_upload.py --rollout-update` or
+# Play Console. `resource_group` serialises it with publish-internal so two
+# uploads never race on the same Play edit.
 # Until the app is published Play only accepts draft releases: on "Only releases
 # with status draft may be created on draft app" play_upload.py re-stages the
 # release as a draft in the same edit and commits again (no rebuild needed);
@@ -301,9 +309,12 @@ publish-internal:
 # `allow_failure: true` keeps a pending manual job from leaving main "blocked".
 publish-production:
   extends: .play-publish
+  resource_group: play-upload
   variables:
     PLAY_TRACK: production
     PLAY_PUSH_LISTING: "true"
+    PLAY_ROLLOUT: "0.2"
+    INVENTORY_ANDROID_DART_DEFINES: "--dart-define=PLANTLY_CLOUD_ENABLED=true --dart-define=PLANTLY_PLAY_BILLING_ENABLED=true"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual

@@ -15,9 +15,18 @@ Play publisher service-account JSON.
 
 `--release-notes-dir` attaches "what's new" text per locale from
 `<locale>/changelogs/<versionCode>.txt`, falling back to `changelogs/default.txt`.
-`--user-fraction 0.2` makes the release a staged rollout (`status: inProgress`,
-20 % of users) instead of the default `completed` (100 %); finish it later from
-Play Console or by re-running with the same versionCode and no fraction.
+`--rollout 0.2` (alias `--user-fraction`) makes the release a staged rollout
+(`status: inProgress`, 20 % of users) instead of the default `completed` (100 %).
+Raise or finish it later without a rebuild:
+
+    python3 tool/play_upload.py --package ro.plantly.inventory --credentials sa.json \
+        --track production --rollout-update 0.5        # widen to 50 %
+    python3 tool/play_upload.py ... --track production --rollout-update complete  # 100 %
+
+`--rollout-update` opens an edit, finds the track's single `inProgress` release
+(or the one named by `--version-code`), rewrites its `userFraction` / `status`
+and commits — no AAB, mapping or release notes involved. Play Console → Production
+→ the release's "Manage rollout" does the same by hand.
 `--status draft` stages the release without rolling it out. An app that has never
 been published ("draft app") only accepts draft releases: if Play rejects the
 commit with "Only releases with status draft may be created on draft app", the
@@ -177,12 +186,79 @@ def as_draft(release: dict) -> dict:
 
 
 def update_track(edits, package, edit_id, track, release) -> None:
+    update_track_releases(edits, package, edit_id, track, [release])
+
+
+def update_track_releases(edits, package, edit_id, track, releases) -> None:
     edits.tracks().update(
         packageName=package,
         editId=edit_id,
         track=track,
-        body={"releases": [release]},
+        body={"releases": releases},
     ).execute(num_retries=play_api.RETRIES)
+
+
+COMPLETE = "complete"
+IN_PROGRESS = "inProgress"
+
+
+def apply_rollout_update(releases, target, version_code=None):
+    """Return a new `releases` list with the staged release widened to `target`
+    (a fraction in (0, 1)) or finished (`target == COMPLETE`).
+
+    The release is the one whose versionCodes contain `version_code`, else the
+    track's single `inProgress` release. Raises `ValueError` when there is no
+    such release, more than one candidate, or a widen would not widen.
+    """
+    if version_code is not None:
+        candidates = [r for r in releases if str(version_code) in r.get("versionCodes", [])]
+        if not candidates:
+            raise ValueError(f"no release with versionCode {version_code} on this track")
+    else:
+        candidates = [r for r in releases if r.get("status") == IN_PROGRESS]
+        if not candidates:
+            raise ValueError("no inProgress (staged) release on this track; pass --version-code to pick one")
+        if len(candidates) > 1:
+            codes = ", ".join("/".join(r.get("versionCodes", [])) for r in candidates)
+            raise ValueError(f"several inProgress releases ({codes}); pass --version-code")
+    current = candidates[0]
+    updated = {key: value for key, value in current.items() if key != "userFraction"}
+    if target == COMPLETE:
+        updated["status"] = "completed"
+        # A track holds one completed release; the previous one is superseded
+        # the moment this rollout finishes, so drop it from the body.
+        releases = [r for r in releases if r is current or r.get("status") != "completed"]
+    else:
+        if current.get("status") == IN_PROGRESS and current.get("userFraction", 0) >= target:
+            raise ValueError(
+                f"release is already at {current['userFraction'] * 100:g}%; "
+                f"--rollout-update must raise the fraction (or be 'complete')"
+            )
+        updated["status"] = IN_PROGRESS
+        updated["userFraction"] = target
+    return [updated if r is current else r for r in releases]
+
+
+def run_rollout_update(service, args) -> int:
+    """`--rollout-update`: change the fraction/status of an existing staged release."""
+    edits = service.edits()
+    edit_id = edits.insert(body={}, packageName=args.package).execute(num_retries=play_api.RETRIES)["id"]
+    try:
+        track = edits.tracks().get(packageName=args.package, editId=edit_id, track=args.track).execute(
+            num_retries=play_api.RETRIES
+        )
+        releases = apply_rollout_update(track.get("releases", []), args.rollout_update, args.version_code)
+        update_track_releases(edits, args.package, edit_id, args.track, releases)
+        play_api.commit_edit(edits, args.package, edit_id, args.changes_not_sent_for_review)
+    except Exception:
+        play_api.discard_edit(edits, args.package, edit_id)
+        raise
+    if args.rollout_update == COMPLETE:
+        rollout = "completed"
+    else:
+        rollout = f"{IN_PROGRESS} {args.rollout_update * 100:g}%"
+    print(f"committed: {args.package} {args.track} rollout -> {rollout}")
+    return 0
 
 
 def commit_release(edits, package, edit_id, track, release, changes_not_sent_for_review=False) -> dict:
@@ -261,10 +337,21 @@ def user_fraction(value: str) -> float:
     return fraction
 
 
+def rollout_target(value: str):
+    """`--rollout-update` value: a fraction in (0,1), or `complete` / `1` / `100%` for 100 %."""
+    text = value.strip().lower()
+    if text in (COMPLETE, "completed", "1", "1.0", "100%"):
+        return COMPLETE
+    try:
+        return user_fraction(text)
+    except (ValueError, argparse.ArgumentTypeError):
+        raise argparse.ArgumentTypeError("must be a fraction strictly between 0 and 1 (e.g. 0.5) or 'complete'")
+
+
 def parse_args(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--package", required=True, help="applicationId / Play package name")
-    ap.add_argument("--aab", required=True, help="path to the signed .aab")
+    ap.add_argument("--aab", help="path to the signed .aab (required unless --rollout-update)")
     ap.add_argument("--credentials", required=True, help="path to the SA JSON")
     ap.add_argument("--track", default="internal", help="internal|alpha|beta|production")
     ap.add_argument(
@@ -279,10 +366,21 @@ def parse_args(argv=None):
         help="fastlane metadata dir; attaches <locale>/changelogs/<versionCode>.txt or default.txt",
     )
     ap.add_argument(
+        "--rollout",
         "--user-fraction",
+        dest="user_fraction",
         type=user_fraction,
-        help="staged rollout fraction in (0,1): sets status=inProgress with this userFraction",
+        help="staged rollout fraction in (0,1): sets status=inProgress with this userFraction "
+        "(omit = completed, 100 %%)",
     )
+    ap.add_argument(
+        "--rollout-update",
+        type=rollout_target,
+        metavar="FRACTION|complete",
+        help="do NOT upload anything: widen the track's staged (inProgress) release to this fraction, "
+        "or 'complete' it (100 %%); pick the release with --version-code if there are several",
+    )
+    ap.add_argument("--version-code", type=int, help="with --rollout-update: the release to change")
     ap.add_argument(
         "--mapping",
         default=AUTO,
@@ -301,12 +399,19 @@ def parse_args(argv=None):
         action="store_true",
         help="commit as a draft (send for review from Play Console); auto-retried on Play's refusal anyway",
     )
-    return ap.parse_args(argv)
+    args = ap.parse_args(argv)
+    if args.rollout_update is None and not args.aab:
+        ap.error("--aab is required (unless --rollout-update)")
+    if args.rollout_update is not None and (args.aab or args.user_fraction is not None):
+        ap.error("--rollout-update takes no --aab / --rollout: it only edits the existing release")
+    return args
 
 
 def main(argv=None) -> int:
     args = parse_args(argv)
     service = play_api.build_service(args.credentials)
+    if args.rollout_update is not None:
+        return run_rollout_update(service, args)
     return run(service, args)
 
 

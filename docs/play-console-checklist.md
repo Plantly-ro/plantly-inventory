@@ -153,6 +153,6 @@ defensible today because nothing can be transmitted with an empty DSN, but the f
 - After the first `publish-production` run, review the release in *Production → Releases*
   and click **Send for review** if the console asks (managed publishing is off by default,
   so an API commit normally goes straight to review).
-- `versionCode` = GitLab pipeline id; `versionName` = `pubspec.yaml` (`1.0.0`). Bump
+- `versionCode` = GitLab pipeline id; `versionName` = `pubspec.yaml` (`1.1.0`). Bump
   `pubspec.yaml`'s `version:` for user-visible version changes; `changelogs/<versionCode>.txt`
   for release-specific notes (else `default.txt`).

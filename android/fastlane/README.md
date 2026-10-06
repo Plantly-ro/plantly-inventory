@@ -24,9 +24,9 @@ metadata/android/<locale>/
 | Job | Branch | Trigger | Does |
 |---|---|---|---|
 | `lint-tools` | every branch | automatic | unit-tests the scripts + `play_listing.py --dry-run` (validates every file above) |
-| `publish-internal` | `development`, `main` | **manual** | signed AAB (cloud + Play Billing flags ON, `versionName 1.1.0-internal.<iid>`) → **internal** track, release notes from `../internal/<locale>/changelogs/` (not this tree); playbook in the top-level README § Internal testing |
+| `publish-internal` | `development`, `main` | **manual** | signed AAB (cloud + Play Billing ON, like production since 1.1.0; `versionName 1.1.0-internal.<iid>`) → **internal** track, release notes from `../internal/<locale>/changelogs/` (not this tree); playbook in the top-level README § Internal testing |
 | `publish-listing` | `development` | **manual** | pushes texts + graphics to the (app-wide) store listing, no build |
-| `publish-production` | `main` | **manual** | listing push (fails fast if invalid) → build → AAB → **production**, 100 % rollout with release notes; set `PLAY_UPLOAD_EXTRA_ARGS="--user-fraction 0.2"` in the Run-job form for a staged rollout |
+| `publish-production` | `main` | **manual** | listing push (fails fast if invalid) → build (cloud + Play Billing ON) → AAB → **production**, staged rollout to 20 % (`PLAY_ROLLOUT: "0.2"`, `""` = 100 %) with release notes; widen with `tool/play_upload.py --rollout-update` (top-level README § Staged rollout) |
 
 Locally:
 

@@ -1,7 +1,7 @@
 Plantly Inventory is a calm, offline-first companion for houseplant owners. Track every plant, never miss a watering, and keep your whole collection organized — all on your device, with no account and no ads.
 
 🌿 EVERYTHING STAYS ON YOUR DEVICE
-Plantly Inventory works fully offline. Your plants, photos and notes live on your phone. No sign-up, no cloud required, and zero telemetry by default — crash and usage reporting are strictly opt-in.
+Plantly Inventory works fully offline. Your plants, photos and notes live on your phone. No sign-up, no cloud required (sync is an optional subscription), and zero telemetry by default — crash and usage reporting are strictly opt-in.
 
 💧 SMART CARE REMINDERS
 • Per-plant reminders for watering, fertilizing, misting, repotting, pruning and more
@@ -34,5 +34,13 @@ Week, month and year views show what's due and what you've already done. Log car
 • CSV and iCal (.ics) export
 • Import to restore or move to a new phone
 • Available in English and Romanian
+
+☁️ INVENTORY CLOUD (OPTIONAL SUBSCRIPTION)
+The app stays free and works fully offline. If you want more, Inventory Cloud adds:
+• Sync between phone and web — the same collection on inventory.plantly.ro and on all your devices
+• Automatic cloud backup, so nothing is lost when you change phones
+• Shared collections with family or friends (every member needs a subscription)
+• Your photos in the cloud, available anywhere
+The subscription is bought in the app (Google Play) and is included in Plantly Pro. Without it, everything stays on your phone exactly as before — your data is never deleted.
 
 Plantly Inventory is free and privacy-respecting. Plant a little order in your life. 🌿
