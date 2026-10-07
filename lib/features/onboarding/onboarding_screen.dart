@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/breakpoints.dart';
 import '../../cloud/account_name.dart';
+import '../../cloud/data_residency.dart';
 import '../../data/providers.dart';
 import '../../data/user_prefs.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -13,7 +14,10 @@ import '../home/home_providers.dart';
 ///   1. Welcome + optional display name — used by the greeting. Prefilled
 ///      from the device's name, else from the signed-in plantly.ro account
 ///      (which can arrive after the screen is up); never over typed text.
+///      The body says where the collection lives ([DataResidency]).
 ///   2. Notification permission — plant reminders won't fire without it.
+///      Skipped where the platform has no OS notifications (web): there is
+///      nothing to grant, so the flow is two steps there.
 ///   3. Privacy & consent — both toggles default off; the user explicitly
 ///      opts in to crash reports and/or anonymous usage.
 /// Finishes by flipping [UserPrefs.onboardingSeen] so this never shows
@@ -77,8 +81,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     super.dispose();
   }
 
+  /// Whether step 2 (notification permission) is part of the flow.
+  bool get _hasNotifStep => ref.read(notificationServiceProvider).isSupported;
+
+  int get _lastStep => _hasNotifStep ? 2 : 1;
+
   Future<void> _next() async {
-    if (_step == 2) {
+    if (_step == _lastStep) {
       final prefsCtrl = ref.read(userPrefsProvider.notifier);
       await prefsCtrl.setName(_name.text);
       await prefsCtrl.setCrashConsent(_crash);
@@ -101,6 +110,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Widget build(BuildContext context) {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final hasNotifStep = ref.watch(notificationServiceProvider).isSupported;
+    final stepCount = hasNotifStep ? 3 : 2;
+    final lastStep = stepCount - 1;
 
     final column = Column(
           children: [
@@ -108,9 +120,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: Row(
                 children: [
-                  for (var i = 0; i < 3; i++) ...[
+                  for (var i = 0; i < stepCount; i++) ...[
                     Expanded(
                       child: Container(
+                        key: ValueKey('onb-progress-$i'),
                         height: 3,
                         decoration: BoxDecoration(
                           color: i <= _step ? surface.green : surface.border,
@@ -118,7 +131,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         ),
                       ),
                     ),
-                    if (i < 2) const SizedBox(width: 6),
+                    if (i < lastStep) const SizedBox(width: 6),
                   ],
                 ],
               ),
@@ -133,13 +146,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     nameController: _name,
                     fromAccount: _nameFromAccount,
                     onNameChanged: _onNameEdited,
+                    body: switch (ref.watch(dataResidencyProvider)) {
+                      // Paused: nothing syncs, so the local-only claim holds.
+                      DataResidency.deviceOnly ||
+                      DataResidency.syncPaused =>
+                        AppLocalizations.of(context).onbWelcomeBody,
+                      DataResidency.deviceAndCloud => AppLocalizations.of(context).onbWelcomeBodyCloud,
+                      DataResidency.web => AppLocalizations.of(context).onbWelcomeBodyWeb,
+                    },
                   ),
-                  _NotifStep(
-                    surface: surface,
-                    granted: _notifGranted,
-                    supported: ref.watch(notificationServiceProvider).isSupported,
-                    onRequest: _requestNotif,
-                  ),
+                  if (hasNotifStep)
+                    _NotifStep(
+                      surface: surface,
+                      granted: _notifGranted,
+                      onRequest: _requestNotif,
+                    ),
                   _PrivacyStep(
                     surface: surface,
                     crash: _crash,
@@ -161,7 +182,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius)),
                   ),
                   onPressed: _next,
-                  child: Text(_step == 2 ? AppLocalizations.of(context).onbStart : AppLocalizations.of(context).onbContinue,
+                  child: Text(_step == lastStep ? AppLocalizations.of(context).onbStart : AppLocalizations.of(context).onbContinue,
                       style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, fontSize: 15, fontWeight: FontWeight.w700)),
                 ),
               ),
@@ -202,9 +223,13 @@ class _WelcomeStep extends StatelessWidget {
     required this.nameController,
     required this.fromAccount,
     required this.onNameChanged,
+    required this.body,
   });
   final PlantlySurface surface;
   final TextEditingController nameController;
+
+  /// Intro copy — the variant true for where the collection lives.
+  final String body;
 
   /// The field holds the plantly.ro account's name: say where it came from.
   final bool fromAccount;
@@ -232,7 +257,8 @@ class _WelcomeStep extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            t.onbWelcomeBody,
+            body,
+            key: const ValueKey('onb-welcome-body'),
             style: TextStyle(fontSize: 14, color: surface.muted, height: 1.4),
           ),
           const SizedBox(height: 28),
@@ -285,13 +311,10 @@ class _NotifStep extends StatelessWidget {
   const _NotifStep({
     required this.surface,
     required this.granted,
-    required this.supported,
     required this.onRequest,
   });
   final PlantlySurface surface;
   final bool granted;
-  /// False on web — no permission to grant, say so instead.
-  final bool supported;
   final VoidCallback onRequest;
 
   @override
@@ -334,15 +357,11 @@ class _NotifStep extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    !supported
-                        ? t.notificationsWebUnavailableDetail
-                        : granted
-                            ? t.onbNotifGranted
-                            : t.onbNotifAsk,
+                    granted ? t.onbNotifGranted : t.onbNotifAsk,
                     style: TextStyle(fontSize: 14, color: surface.text, fontWeight: FontWeight.w600),
                   ),
                 ),
-                if (!granted && supported)
+                if (!granted)
                   TextButton(
                     style: TextButton.styleFrom(foregroundColor: surface.green),
                     onPressed: onRequest,
@@ -351,13 +370,11 @@ class _NotifStep extends StatelessWidget {
               ],
             ),
           ),
-          if (supported) ...[
-            const SizedBox(height: 12),
-            Text(
-              t.onbNotifSkip,
-              style: TextStyle(fontSize: 12, color: surface.muted),
-            ),
-          ],
+          const SizedBox(height: 12),
+          Text(
+            t.onbNotifSkip,
+            style: TextStyle(fontSize: 12, color: surface.muted),
+          ),
         ],
       ),
     );

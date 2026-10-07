@@ -758,6 +758,18 @@ abstract class AppLocalizations {
   /// **'A calm, offline-first way to track your houseplants — watering, fertilising, propagation, spaces, and more. Everything lives on your phone.'**
   String get onbWelcomeBody;
 
+  /// Onboarding step 1 body on the Android app while Inventory Cloud sync is running (onbWelcomeBody is the local-only variant).
+  ///
+  /// In en, this message translates to:
+  /// **'A calm, offline-first way to track your houseplants — watering, fertilising, propagation, spaces, and more. Everything works on your phone and syncs to your plantly.ro account.'**
+  String get onbWelcomeBodyCloud;
+
+  /// Onboarding step 1 body in the web app (always Inventory Cloud).
+  ///
+  /// In en, this message translates to:
+  /// **'A calm way to track your houseplants — watering, fertilising, propagation, spaces, and more. Your collection is saved in your plantly.ro account and stays in sync on every device you sign in on.'**
+  String get onbWelcomeBodyWeb;
+
   /// No description provided for @onbNameLabel.
   ///
   /// In en, this message translates to:
@@ -785,7 +797,7 @@ abstract class AppLocalizations {
   /// No description provided for @onbNotifBody.
   ///
   /// In en, this message translates to:
-  /// **'We schedule local notifications on your phone when a plant is due for care. Nothing is sent to a server.'**
+  /// **'We schedule reminders as local notifications on your phone when a plant is due for care — no push server involved.'**
   String get onbNotifBody;
 
   /// No description provided for @onbNotifGranted.
@@ -821,7 +833,7 @@ abstract class AppLocalizations {
   /// No description provided for @onbPrivacyBody.
   ///
   /// In en, this message translates to:
-  /// **'Both are off by default. Plant data never leaves your device for any reason. You can change these any time in Me → Privacy & data.'**
+  /// **'Both are off by default and never include plant data or photos. You can change these any time in Me → Privacy & data.'**
   String get onbPrivacyBody;
 
   /// No description provided for @onbCrashTitle.
@@ -1277,7 +1289,7 @@ abstract class AppLocalizations {
   /// Application title shown in task switcher and app bar
   ///
   /// In en, this message translates to:
-  /// **'PlantlyInventory'**
+  /// **'Plantly Inventory'**
   String get appTitle;
 
   /// Greeting on the home screen
@@ -2312,12 +2324,6 @@ abstract class AppLocalizations {
   /// **'Post on plantly.ro'**
   String get exportPostOnPlantlyRoCta;
 
-  /// No description provided for @exportSavedLocally.
-  ///
-  /// In en, this message translates to:
-  /// **'Saved locally — plantly.ro sync lands in Phase 2'**
-  String get exportSavedLocally;
-
   /// No description provided for @tagAdd.
   ///
   /// In en, this message translates to:
@@ -2924,11 +2930,11 @@ abstract class AppLocalizations {
   /// **'App'**
   String get meAboutApp;
 
-  /// No description provided for @meAboutAppValue.
+  /// Me → About → App row: app name and the build's version (PLANTLY_APP_VERSION).
   ///
   /// In en, this message translates to:
-  /// **'PlantlyInventory · Phase 1'**
-  String get meAboutAppValue;
+  /// **'Plantly Inventory · {version}'**
+  String meAboutAppValue(String version);
 
   /// No description provided for @meAboutLicense.
   ///
@@ -3107,7 +3113,7 @@ abstract class AppLocalizations {
   /// No description provided for @meIcsShareText.
   ///
   /// In en, this message translates to:
-  /// **'PlantlyInventory reminders'**
+  /// **'Plantly Inventory reminders'**
   String get meIcsShareText;
 
   /// No description provided for @meIcsSaved.
@@ -3131,7 +3137,7 @@ abstract class AppLocalizations {
   /// No description provided for @meCsvShareText.
   ///
   /// In en, this message translates to:
-  /// **'PlantlyInventory CSV'**
+  /// **'Plantly Inventory CSV'**
   String get meCsvShareText;
 
   /// No description provided for @meCsvSaved.
@@ -3158,11 +3164,35 @@ abstract class AppLocalizations {
   /// **'What leaves your device'**
   String get mePrivacyWhatLeaves;
 
+  /// Me → Privacy & data card heading in the web app (mePrivacyWhatLeaves on Android).
+  ///
+  /// In en, this message translates to:
+  /// **'Where your data lives'**
+  String get mePrivacyWhereDataLives;
+
   /// No description provided for @mePrivacyBulletLocal.
   ///
   /// In en, this message translates to:
   /// **'Nothing by default. Plants, photos, care events, and schedules live in a local SQLite database on your phone.'**
   String get mePrivacyBulletLocal;
+
+  /// Me → Privacy & data, Android app while Inventory Cloud sync is running (mePrivacyBulletLocal is the local-only variant).
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud sync is on: plants, photos, care events, and schedules stay in a local database on your phone and are synced to your plantly.ro account. Photos are stored privately — only you and the people you share a collection with can see them. For the Devices list (Me → Cloud → Devices) we also send the device name, platform and app version.'**
+  String get mePrivacyBulletCloud;
+
+  /// Me → Privacy & data in the web app (always Inventory Cloud).
+  ///
+  /// In en, this message translates to:
+  /// **'Plants, photos, care events, and schedules are saved in your plantly.ro account (Inventory Cloud), with a working copy in this browser. Photos are stored privately — only you and the people you share a collection with can see them. For the Devices list (Me → Cloud → Devices) we also send the device name, platform and app version.'**
+  String get mePrivacyBulletWeb;
+
+  /// Me → Privacy & data, Android app linked to a plantly.ro collection but not syncing (plan lapsed / signed out).
+  ///
+  /// In en, this message translates to:
+  /// **'Sync is paused: nothing new leaves this phone — plants, photos, care events, and schedules stay in its local database. Anything already synced to your plantly.ro account is kept as described in the privacy policy.'**
+  String get mePrivacyBulletPaused;
 
   /// No description provided for @mePrivacyBulletBackups.
   ///
@@ -3170,17 +3200,35 @@ abstract class AppLocalizations {
   /// **'Backups (JSON or ZIP) only leave the device when you tap Export — you choose where they go via the share sheet.'**
   String get mePrivacyBulletBackups;
 
+  /// Me → Privacy & data in the web app: exports are browser downloads, no share sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Backups (JSON or ZIP) are only created when you tap Export — your browser downloads the file to this device.'**
+  String get mePrivacyBulletBackupsWeb;
+
   /// No description provided for @mePrivacyBulletNotifications.
   ///
   /// In en, this message translates to:
   /// **'Notifications fire locally via the OS alarm system. We do not use a push server.'**
   String get mePrivacyBulletNotifications;
 
+  /// Me → Privacy & data in the web app: no OS notifications in the browser.
+  ///
+  /// In en, this message translates to:
+  /// **'The browser version doesn\'t send notifications — reminders appear in the app and the calendar. We do not use a push server.'**
+  String get mePrivacyBulletNotificationsWeb;
+
   /// No description provided for @mePrivacyBulletMarketplace.
   ///
   /// In en, this message translates to:
   /// **'If you later post a plant to plantly.ro, only the fields you review in the Export dialog are sent — never the full database.'**
   String get mePrivacyBulletMarketplace;
+
+  /// Me → Privacy & data while the collection syncs to plantly.ro (Android with cloud sync, web): the whole database already syncs privately, so the claim is about what gets published.
+  ///
+  /// In en, this message translates to:
+  /// **'If you post a plant for sale on plantly.ro, the listing contains only the fields you review in the Export dialog — nothing else from your collection is published.'**
+  String get mePrivacyBulletMarketplaceCloud;
 
   /// No description provided for @mePrivacySectionTelemetry.
   ///
@@ -3383,7 +3431,7 @@ abstract class AppLocalizations {
   /// No description provided for @meNotifPermGranted.
   ///
   /// In en, this message translates to:
-  /// **'OS notifications are allowed for PlantlyInventory.'**
+  /// **'OS notifications are allowed for Plantly Inventory.'**
   String get meNotifPermGranted;
 
   /// No description provided for @meNotifPermDenied.
@@ -4058,6 +4106,12 @@ abstract class AppLocalizations {
   /// **'Your plants, photos and care history are backed up to your plantly.ro account and kept in sync on every device you sign in on. Nothing leaves this device until you link it.'**
   String get cloudScreenIntro;
 
+  /// Me → Cloud intro in the web app — the browser is always linked, so no "until you link it" clause.
+  ///
+  /// In en, this message translates to:
+  /// **'Your plants, photos and care history are saved in your plantly.ro account and kept in sync on every device you sign in on.'**
+  String get cloudScreenIntroWeb;
+
   /// No description provided for @cloudSignInLabel.
   ///
   /// In en, this message translates to:
@@ -4213,6 +4267,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'renews {date}'**
   String cloudRenewsOn(String date);
+
+  /// Me → Cloud → Plan when the subscription is cancelled (cancel_at_period_end): the date it stops.
+  ///
+  /// In en, this message translates to:
+  /// **'ends {date}'**
+  String cloudEndsOn(String date);
 
   /// No description provided for @cloudPlayPlansTitle.
   ///
@@ -4489,6 +4549,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This collection is no longer available — unlink this device and link it again'**
   String get cloudErrCollectionUnavailable;
+
+  /// Web variant of cloudErrCollectionUnavailable: the browser has no "Unlink this device".
+  ///
+  /// In en, this message translates to:
+  /// **'This collection is no longer available — sign out and sign in again'**
+  String get cloudErrCollectionUnavailableWeb;
 
   /// No description provided for @cloudErrQuotaExceeded.
   ///

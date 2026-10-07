@@ -5,7 +5,7 @@
     "display": "standalone",
     "background_color": "#3D7A5F",
     "theme_color": "#3D7A5F",
-    "description": "Offline-first plant care tracker — collection, watering and care history, reminders calendar, plantly.ro export.",
+    "description": "Plant care tracker for Inventory Cloud — your collection, watering and care history and reminders calendar, synced with the Plantly Inventory Android app.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

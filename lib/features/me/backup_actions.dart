@@ -35,7 +35,7 @@ class BackupActions {
           fileName: 'plantly-backup-${_stamp()}.json',
           bytes: BackupService.encodeBlob(blob),
           mimeType: 'application/json',
-          shareText: 'PlantlyInventory backup',
+          shareText: 'Plantly Inventory backup',
         );
   }
 
@@ -46,7 +46,7 @@ class BackupActions {
           fileName: 'plantly-backup-${_stamp()}.zip',
           bytes: bytes,
           mimeType: 'application/zip',
-          shareText: 'PlantlyInventory backup',
+          shareText: 'Plantly Inventory backup',
         );
   }
 

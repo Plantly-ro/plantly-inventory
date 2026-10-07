@@ -18,6 +18,7 @@ import '../../cloud/sign_in_events.dart';
 import '../../cloud/cloud_sync.dart';
 import '../../cloud/sync_runner.dart';
 import '../../app/navigation.dart';
+import '../../config/plantly_features.dart';
 import '../../config/plantly_hosts.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../marketplace/plantly_api.dart';
@@ -200,7 +201,7 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
           key: const Key('cloud-last-error'),
           label: t.cloudLastErrorLabel,
           value: describeSyncError(t, status.lastError!,
-              detail: status.lastErrorDetail, status: status, collectionName: collectionName),
+              detail: status.lastErrorDetail, status: status, collectionName: collectionName, web: ref.watch(webPlatformProvider)),
           icon: Icons.error_outline,
           surface: surface,
           valueColor: surface.terra,
@@ -350,7 +351,7 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
             key: const Key('cloud-last-error'),
             label: t.cloudLastErrorLabel,
             value: describeSyncError(t, status.lastError!,
-                detail: status.lastErrorDetail, status: status, collectionName: collectionName),
+                detail: status.lastErrorDetail, status: status, collectionName: collectionName, web: ref.watch(webPlatformProvider)),
             icon: Icons.error_outline,
             surface: surface,
             valueColor: surface.terra,
@@ -376,14 +377,18 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
         onTap: state.linked && !status.inFlight ? _syncNow : null,
       ),
       _accountRow(t, state),
-      MeActionRow(
-        key: const Key('cloud-unlink'),
-        label: t.cloudUnlinkLabel,
-        value: t.cloudUnlinkValue,
-        icon: Icons.link_off,
-        surface: surface,
-        onTap: state.linked ? _unlink : null,
-      ),
+      // Not on web: the browser IS the Inventory Cloud surface. Unlinking it
+      // would leave the gate open on a stale, unsynced browser copy whose
+      // edits never reach the account — signing out is the browser's exit.
+      if (!ref.watch(webPlatformProvider))
+        MeActionRow(
+          key: const Key('cloud-unlink'),
+          label: t.cloudUnlinkLabel,
+          value: t.cloudUnlinkValue,
+          icon: Icons.link_off,
+          surface: surface,
+          onTap: state.linked ? _unlink : null,
+        ),
     ];
   }
 
@@ -526,7 +531,8 @@ String describeEntitlement(AppLocalizations t, CloudEntitlement? e) {
   final source = e.managedByPlay ? '$base · ${t.cloudEntitlementViaPlay}' : base;
   final end = e.currentPeriodEnd;
   if (end == null) return source;
-  return '$source · ${t.cloudRenewsOn(DateFormat.yMMMd(t.localeName).format(end.toLocal()))}';
+  final date = DateFormat.yMMMd(t.localeName).format(end.toLocal());
+  return '$source · ${e.cancelAtPeriodEnd ? t.cloudEndsOn(date) : t.cloudRenewsOn(date)}';
 }
 
 /// Engine error codes (`SyncStatus.lastError`) → copy; anything else is
@@ -540,7 +546,10 @@ String describeEntitlement(AppLocalizations t, CloudEntitlement? e) {
 /// the `not_a_member` copy ("You were removed from …"). The MULTI-USER-V2
 /// halts (`read_only`, `device_revoked`, `too_many_devices`) and the
 /// `device_lookup_failed` retry each get their own line.
-String describeSyncError(AppLocalizations t, String code, {String? detail, SyncStatus? status, String? collectionName}) =>
+/// [web]: the browser build has no "Unlink this device", so the generic
+/// collection-unavailable copy points at signing out and in again.
+String describeSyncError(AppLocalizations t, String code,
+        {String? detail, SyncStatus? status, String? collectionName, bool web = false}) =>
     switch (code) {
       'cloud_required' => switch (detail) {
           kOwnerPlanLapsedDetail => t.shareErrOwnerLapsed,
@@ -554,7 +563,7 @@ String describeSyncError(AppLocalizations t, String code, {String? detail, SyncS
           kReadOnlyDetail => t.shareErrReadOnly,
           kDeviceRevokedDetail => t.shareErrDeviceRevoked,
           kTooManyDevicesDetail => t.shareErrTooManyDevices,
-          _ => t.cloudErrCollectionUnavailable,
+          _ => web ? t.cloudErrCollectionUnavailableWeb : t.cloudErrCollectionUnavailable,
         },
       'quota_exceeded' => t.cloudErrQuotaExceeded,
       'op_too_large' => detail == null || detail.isEmpty ? t.cloudErrOpTooLarge : t.cloudErrOpTooLargeDetail(detail),

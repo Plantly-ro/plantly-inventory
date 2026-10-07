@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plantly_inventory/config/plantly_features.dart';
+import 'package:plantly_inventory/config/plantly_hosts.dart';
 import 'package:plantly_inventory/features/me/me_screen.dart';
 import 'package:plantly_inventory/l10n/generated/app_localizations.dart';
 import 'package:plantly_inventory/marketplace/session_store.dart';
@@ -70,6 +71,12 @@ void main() {
       expect(find.byKey(const Key('me-plantly-account')), findsNothing);
       expect(find.text('PLANTLY ACCOUNT'), findsNothing);
       expect(find.text('APPEARANCE'), findsOneWidget);
+    });
+
+    testWidgets('About → App shows the app name and build version, no "Phase 1"', (tester) async {
+      await pumpMe(tester, false);
+      expect(find.text('Plantly Inventory · ${PlantlyHosts.appVersion}'), findsOneWidget);
+      expect(find.textContaining('Phase 1'), findsNothing);
     });
 
     testWidgets('flag on → "Plantly account" section with Sign in', (tester) async {

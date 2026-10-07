@@ -115,13 +115,13 @@ class LocalDraftExportPlugin implements ExportPlugin {
     yield const ExportProgress(fraction: 0.3, message: 'Saving draft…');
     final posted = draft.copyWith(postedAt: DateTime.now().toUtc());
     await saveDraft(posted);
-    // No network in Phase 1 — the "remote id" is just the local key so the UI
-    // has a stable handle; the real plantly_ro plugin returns a server id.
+    // No network — the "remote id" is just the local key so the UI has a
+    // stable handle; the real plantly_ro plugin returns a server id. No
+    // message: the dialog shows its own localized "Draft saved".
     yield ExportProgress(
       fraction: 1,
       done: true,
       remoteId: _key(draft.sourcePlantId),
-      message: 'Saved locally — plantly.ro sync lands in Phase 2',
     );
   }
 }
