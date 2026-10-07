@@ -130,6 +130,16 @@ flutter:
           weight: 700
         - asset: assets/fonts/PlusJakartaSans-ExtraBold.ttf
           weight: 800
+    # Not used by the theme: the Flutter WEB engine downloads Roboto from
+    # fonts.gstatic.com at startup (its default/fallback face) unless a family
+    # named exactly "Roboto" is bundled. Regular instance cut from
+    # ofl/roboto/Roboto[wdth,wght].ttf (wght 400, wdth 100), SIL OFL 1.1.
+    # Glyph fallback beyond our fonts (emoji, symbols) is self-hosted too:
+    # tool/fetch_web_fallback_fonts.sh + web/flutter_bootstrap.js.
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+          weight: 400
 
 # Launcher icon generation. Source art lives in assets/launcher/ (derived
 # from the plantly.ro marketplace mark: leaf-on-green base + a white

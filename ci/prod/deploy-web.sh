@@ -2,13 +2,13 @@
 # Prod deploy of the Plantly Inventory WEB build → https://inventory.plantly.ro
 # Runs in the deploy-web-prod CI job on main (needs the build-web artifact).
 #
-# Flow: preflight -> ship (tar over ssh) -> extract into releases/<sha> ->
+# Flow: preflight -> ship (tar over ssh) -> extract into releases/<id> ->
 #       flip `current` symlink atomically -> verify (read-only) -> prune ->
 #       ledger. Verify failure re-points `current` at the previous release.
 #
 # Host side (quadlets repo, plantly-prod/README.md § Inventory web):
-#   /var/lib/plantly/inventory-web/releases/<short-sha>/   extracted build/web
-#   /var/lib/plantly/inventory-web/current -> releases/<short-sha>  (RELATIVE:
+#   /var/lib/plantly/inventory-web/releases/<id>/   extracted build/web (id = short sha + hex pipeline id)
+#   /var/lib/plantly/inventory-web/current -> releases/<id>  (RELATIVE:
 #       the dir is bind-mounted into the caddy container at /srv/inventory-web,
 #       so an absolute target would dangle there)
 #   /var/lib/plantly/inventory-web/.deployed-commit
@@ -20,7 +20,7 @@
 # PROD_DEPLOY_SSH_KEY (file) / PROD_SSH_HOST / PROD_SSH_USER / DEPLOY_LEDGER_TOKEN.
 set -euo pipefail
 
-: "${CI_COMMIT_SHORT_SHA:?}" "${CI_COMMIT_SHA:?}"
+: "${CI_COMMIT_SHORT_SHA:?}" "${CI_COMMIT_SHA:?}" "${CI_PIPELINE_ID:?}"
 : "${PROD_SSH_HOST:?}" "${PROD_SSH_USER:?}" "${PROD_DEPLOY_SSH_KEY:?}"
 
 # GitLab writes file-type variables world-readable; ssh refuses such keys
@@ -29,7 +29,14 @@ chmod 600 "$PROD_DEPLOY_SSH_KEY"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="${INVENTORY_WEB_BUILD_DIR:-build/web}"
 ROOT="${INVENTORY_WEB_ROOT:-/var/lib/plantly/inventory-web}"
-REL="releases/${CI_COMMIT_SHORT_SHA}"          # relative to $ROOT, also the symlink target
+# Release id = short sha + pipeline id (hex): MUST match the id build-web
+# passed to tool/web_version_assets.py. The pipeline part matters because the
+# release's /v/<id>/ URLs are served immutable — a new pipeline on the same
+# commit (e.g. other INVENTORY_WEB_DART_DEFINES) is a different build and must
+# never reuse a URL. Retrying this job inside the same pipeline keeps the id
+# (same artifact, same bytes).
+REL_ID="${CI_COMMIT_SHORT_SHA}$(printf '%x' "$CI_PIPELINE_ID")"
+REL="releases/${REL_ID}"                     # relative to $ROOT, also the symlink target
 KEEP="${INVENTORY_WEB_KEEP_RELEASES:-3}"
 SITE_HOST="${INVENTORY_WEB_HOST:-inventory.plantly.ro}"
 # Public base URL for the through-the-edge check. Empty or "skip" disables it;
@@ -51,9 +58,20 @@ hbody() { rssh "curl -s --max-time 10 -H 'Host: $SITE_HOST' 'http://127.0.0.1$1'
 
 # ---------- 1. preflight ----------
 log "preflight: build artifact"
-for f in index.html flutter_bootstrap.js version.json main.dart.js; do
-  [ -s "$BUILD_DIR/$f" ] || { echo "preflight: $BUILD_DIR/$f missing or empty (is the build-web artifact attached?)" >&2; exit 1; }
+# build-web versions the output (tool/web_version_assets.py): release files
+# live under v/<REL_ID>/, which must match $REL so Caddy's
+# /v/<id>/ -> releases/<id>/ fallback (old tabs) finds them.
+VPATH="v/${REL_ID}"
+for f in index.html version.json "$VPATH/flutter_bootstrap.js" "$VPATH/main.dart.js"; do
+  [ -s "$BUILD_DIR/$f" ] || { echo "preflight: $BUILD_DIR/$f missing or empty (is the build-web artifact attached and versioned as $REL_ID = short sha + hex pipeline id?)" >&2; exit 1; }
 done
+grep -q "src=\"$VPATH/flutter_bootstrap.js\"" "$BUILD_DIR/index.html" || {
+  echo "preflight: $BUILD_DIR/index.html does not load $VPATH/flutter_bootstrap.js" >&2; exit 1; }
+# Version-pinned drift worker + sqlite3 wasm (web/vendor/<pkg>-<ver>/), shared
+# by all releases; verified below through Caddy like the release files.
+VENDOR_FILES=$(cd "$BUILD_DIR" && find vendor -type f \( -name 'drift_worker.js' -o -name 'sqlite3.wasm' \) | sort)
+[ "$(printf '%s\n' "$VENDOR_FILES" | grep -c .)" -eq 2 ] || {
+  echo "preflight: expected exactly one vendor/*/drift_worker.js and one vendor/*/sqlite3.wasm in $BUILD_DIR, got: ${VENDOR_FILES:-none}" >&2; exit 1; }
 echo "build version.json: $(tr -d '\n' < "$BUILD_DIR/version.json")"
 
 log "preflight: host layout + rollback point"
@@ -67,16 +85,16 @@ else
   log "no current release yet (first deploy) — nothing to roll back to"
 fi
 if [ "$PREV_REL" = "$REL" ]; then
-  log "note: $REL is already live (re-run of the same commit); it will be re-extracted and re-flipped"
+  log "note: $REL is already live (retry of this pipeline's job); it will be re-extracted and re-flipped"
 fi
 
 # ---------- 2. ship + extract ----------
 log "ship: $BUILD_DIR -> $TARGET:$ROOT/$REL"
-TARBALL="${CI_PROJECT_DIR:-$PWD}/inventory-web-${CI_COMMIT_SHORT_SHA}.tgz"
+TARBALL="${CI_PROJECT_DIR:-$PWD}/inventory-web-${REL_ID}.tgz"
 tar -C "$BUILD_DIR" -czf "$TARBALL" .
 ls -l "$TARBALL"
 # Extract into a scratch dir first and move it into place, so a half-extracted
-# tree is never visible under releases/<sha> (matters for same-sha re-runs).
+# tree is never visible under releases/<id> (matters for job retries).
 rssh "set -e
 sudo rm -rf '$ROOT/$REL.tmp'
 sudo install -d -m 755 '$ROOT/$REL.tmp'
@@ -91,7 +109,7 @@ rm -f "$TARBALL"
 
 # ---------- 3. flip ----------
 STAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-RECORD="$CI_COMMIT_SHA $CI_COMMIT_SHORT_SHA $STAMP pipeline=${CI_PIPELINE_ID:-?}"
+RECORD="$CI_COMMIT_SHA $REL_ID $STAMP pipeline=${CI_PIPELINE_ID:-?}"
 log "flip: current -> $REL"
 rssh "set -e
 sudo ln -sfn '$REL' '$ROOT/current.tmp'
@@ -112,8 +130,11 @@ verify() {
   else
     echo "FAIL direct / does not look like the Flutter index (${body:0:80})"; ok=false
   fi
-  c=$(hcode /flutter_bootstrap.js)
-  if [ "$c" = "200" ]; then echo "ok   direct /flutter_bootstrap.js -> 200"; else echo "FAIL direct /flutter_bootstrap.js -> $c"; ok=false; fi
+  # shellcheck disable=SC2086  # VENDOR_FILES: newline list of space-free paths
+  for p in "/$VPATH/flutter_bootstrap.js" "/$VPATH/main.dart.js" $(printf '/%s ' $VENDOR_FILES); do
+    c=$(hcode "$p")
+    if [ "$c" = "200" ]; then echo "ok   direct $p -> 200"; else echo "FAIL direct $p -> $c"; ok=false; fi
+  done
   # SPA fallback: unknown path must serve index, not 404
   c=$(hcode /__deploy_probe__)
   if [ "$c" = "200" ]; then echo "ok   direct SPA fallback -> 200"; else echo "FAIL direct SPA fallback -> $c"; ok=false; fi
@@ -123,7 +144,8 @@ verify() {
     echo "skip public verify (INVENTORY_WEB_VERIFY_URL=${VERIFY_URL:-empty})"
   else
     local base="${VERIFY_URL%/}"
-    for p in /version.json /; do
+    # shellcheck disable=SC2086
+    for p in /version.json / "/$VPATH/flutter_bootstrap.js" $(printf '/%s ' $VENDOR_FILES); do
       c=$(code "$base$p")
       case "$c" in
         200) echo "ok   public $base$p -> 200" ;;
@@ -190,7 +212,7 @@ log "ledger: appending deploy record to quadlets DEPLOYED.md"
 LEDGER_OK=true
 if [ -n "${DEPLOY_LEDGER_TOKEN:-}" ]; then
   python3 "$HERE/ledger_append.py" \
-    "inventory-web → CI deploy ${CI_COMMIT_SHORT_SHA} (pipeline ${CI_PIPELINE_ID:-?}, ${CI_COMMIT_TITLE:-}); rollback point ${PREV_REL:-none}" \
+    "inventory-web → CI deploy ${REL_ID} (pipeline ${CI_PIPELINE_ID:-?}, ${CI_COMMIT_TITLE:-}); rollback point ${PREV_REL:-none}" \
     || { echo "ledger append FAILED" >&2; LEDGER_OK=false; }
 else
   echo "ledger: DEPLOY_LEDGER_TOKEN unset" >&2
