@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:ulid/ulid.dart';
 
+import '../../domain/services/local_calendar.dart';
 import '../../notifications/reminder_sync.dart';
 import '../../sync/op_log.dart';
 import '../database/app_database.dart';
@@ -307,9 +308,8 @@ class PlantRepository {
                 type: s.type,
                 baseIntervalDays: s.baseIntervalDays,
                 currentIntervalDays: s.baseIntervalDays,
-                nextDueAt: Value(DateTime.now().toUtc()
-                    .add(Duration(milliseconds: (s.baseIntervalDays * 86400 * 1000).round()))
-                    .millisecondsSinceEpoch),
+                nextDueAt: Value(const LocalCalendar()
+                    .addDays(DateTime.now().millisecondsSinceEpoch, s.baseIntervalDays)),
                 recurrenceMode: Value(s.recurrenceMode),
                 updatedHlc: hlc.encode(),
                 deviceId: opLog.clock.deviceId,

@@ -27,13 +27,16 @@ void showDayDetail(BuildContext context, DateTime day) {
 
 enum CalendarView { week, month, year }
 
-String _localeOf(BuildContext context) => Localizations.localeOf(context).toString();
+String _localeOf(BuildContext context) =>
+    Localizations.localeOf(context).toString();
 
 /// First day of the week as a `DateTime.weekday` value (Monday = 1 … Sunday
 /// = 7), taken from the Material locale so an en_US device gets a
 /// Sunday-first grid while ro_RO stays Monday-first.
 int _firstWeekdayOf(BuildContext context) {
-  final index = MaterialLocalizations.of(context).firstDayOfWeekIndex; // 0 = Sunday
+  final index = MaterialLocalizations.of(
+    context,
+  ).firstDayOfWeekIndex; // 0 = Sunday
   return index == 0 ? DateTime.sunday : index;
 }
 
@@ -99,7 +102,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     final mode = ref.watch(themeModeProvider);
-    final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    final surface = mode == ThemeMode.dark
+        ? PlantlySurface.dark
+        : PlantlySurface.light;
     final t = AppLocalizations.of(context);
 
     final schedulesAsync = ref.watch(allSchedulesProvider);
@@ -115,18 +120,28 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     );
     final plantsLoaded = plantsAsync.hasValue;
 
-    final schedules = schedulesAsync.maybeWhen(data: (r) => r, orElse: () => const <db.CareScheduleRow>[]);
-    final events = eventsAsync.maybeWhen(data: (r) => r, orElse: () => const <db.CareEventRow>[]);
+    final schedules = schedulesAsync.maybeWhen(
+      data: (r) => r,
+      orElse: () => const <db.CareScheduleRow>[],
+    );
+    final events = eventsAsync.maybeWhen(
+      data: (r) => r,
+      orElse: () => const <db.CareEventRow>[],
+    );
 
     // "Upcoming" list — next 10 schedules globally, regardless of view.
     final now = ref.watch(clockProvider)();
     final nowMs = now.millisecondsSinceEpoch;
     final upcoming = [
       for (final s in schedules)
-        if (s.nextDueAt != null && (!plantsLoaded || plantsById.containsKey(s.plantId))) s,
+        if (s.nextDueAt != null &&
+            (!plantsLoaded || plantsById.containsKey(s.plantId)))
+          s,
     ]..sort((a, b) => (a.nextDueAt ?? 0).compareTo(b.nextDueAt ?? 0));
     final upcomingNext10 = upcoming.take(10).toList();
-    final firstOverdueOrToday = upcoming.where((s) => s.nextDueAt! <= nowMs + 86400000).length;
+    final firstOverdueOrToday = upcoming
+        .where((s) => s.nextDueAt! <= nowMs + 86400000)
+        .length;
 
     return Scaffold(
       backgroundColor: surface.bg,
@@ -137,7 +152,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         leading: adaptiveBackButton(context, surface),
         title: Text(
           _titleFor(context, _view, _anchor),
-          style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
+          style: TextStyle(
+            fontFamily: PlantlyFonts.plusJakartaSans,
             fontSize: 20,
             fontWeight: FontWeight.w800,
             color: surface.text,
@@ -147,12 +163,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         actions: [
           IconButton(
             tooltip: t.calPrevious,
-            onPressed: () => setState(() => _anchor = _step(_anchor, _view, -1)),
+            onPressed: () =>
+                setState(() => _anchor = _step(_anchor, _view, -1)),
             icon: Icon(Icons.arrow_back_ios_new, size: 18, color: surface.text),
           ),
           IconButton(
             tooltip: t.calendarToday,
-            onPressed: () => setState(() => _anchor = ref.read(clockProvider)()),
+            onPressed: () =>
+                setState(() => _anchor = ref.read(clockProvider)()),
             icon: Icon(Icons.today_outlined, color: surface.text),
           ),
           IconButton(
@@ -170,9 +188,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
             child: SegmentedButton<CalendarView>(
               segments: [
-                ButtonSegment(value: CalendarView.week, label: Text(t.calendarWeek)),
-                ButtonSegment(value: CalendarView.month, label: Text(t.calendarMonth)),
-                ButtonSegment(value: CalendarView.year, label: Text(t.calendarYear)),
+                ButtonSegment(
+                  value: CalendarView.week,
+                  label: Text(t.calendarWeek),
+                ),
+                ButtonSegment(
+                  value: CalendarView.month,
+                  label: Text(t.calendarMonth),
+                ),
+                ButtonSegment(
+                  value: CalendarView.year,
+                  label: Text(t.calendarYear),
+                ),
               ],
               selected: {_view},
               showSelectedIcon: false,
@@ -184,13 +211,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
               children: [
                 if (upcomingNext10.isNotEmpty) ...[
-                  _sectionLabel('${t.calendarUpcoming}${firstOverdueOrToday > 0 ? '  ·  $firstOverdueOrToday' : ''}', surface),
+                  _sectionLabel(
+                    '${t.calendarUpcoming}${firstOverdueOrToday > 0 ? '  ·  $firstOverdueOrToday' : ''}',
+                    surface,
+                  ),
                   const SizedBox(height: 8),
                   Container(
                     decoration: BoxDecoration(
                       color: surface.surface,
                       border: Border.all(color: surface.border),
-                      borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
+                      borderRadius: BorderRadius.circular(
+                        PlantlyTokens.radiusXl,
+                      ),
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: Column(
@@ -199,7 +231,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                           _UpcomingScheduleRow(
                             now: now,
                             schedule: upcomingNext10[i],
-                            plantName: plantsById[upcomingNext10[i].plantId]?.nickname ?? upcomingNext10[i].plantId,
+                            plantName:
+                                plantsById[upcomingNext10[i].plantId]
+                                    ?.nickname ??
+                                upcomingNext10[i].plantId,
                             surface: surface,
                             types: types,
                             last: i == upcomingNext10.length - 1,
@@ -270,24 +305,33 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         return d.add(Duration(days: 7 * direction));
       case CalendarView.month:
         final m = d.month + direction;
-        return DateTime(d.year + (m < 1 ? -1 : m > 12 ? 1 : 0), ((m - 1) % 12 + 12) % 12 + 1, 1);
+        return DateTime(
+          d.year +
+              (m < 1
+                  ? -1
+                  : m > 12
+                  ? 1
+                  : 0),
+          ((m - 1) % 12 + 12) % 12 + 1,
+          1,
+        );
       case CalendarView.year:
         return DateTime(d.year + direction, d.month, 1);
     }
   }
 
   Widget _sectionLabel(String text, PlantlySurface surface) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: surface.green,
-            letterSpacing: 0.1 * 11,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 2),
+    child: Text(
+      text,
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: surface.green,
+        letterSpacing: 0.1 * 11,
+      ),
+    ),
+  );
 }
 
 class _WeekView extends StatelessWidget {
@@ -313,22 +357,44 @@ class _WeekView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final weekStart = weekStartOf(anchor, _firstWeekdayOf(context));
-    final weekEnd = weekStart.add(const Duration(days: 7));
-    final days = <_DayBucket>[for (var i = 0; i < 7; i++) _DayBucket(date: weekStart.add(Duration(days: i)))];
+    // Calendar arithmetic, not Duration: a DST week is 167h or 169h long,
+    // so +Duration(days: n) and difference().inDays misplace days.
+    final weekEnd = DateTime(
+      weekStart.year,
+      weekStart.month,
+      weekStart.day + 7,
+    );
+    final days = <_DayBucket>[
+      for (var i = 0; i < 7; i++)
+        _DayBucket(
+          date: DateTime(weekStart.year, weekStart.month, weekStart.day + i),
+        ),
+    ];
+    int dayIndex(DateTime day) => DateTime.utc(day.year, day.month, day.day)
+        .difference(
+          DateTime.utc(weekStart.year, weekStart.month, weekStart.day),
+        )
+        .inDays;
 
     for (final s in schedules) {
       if (s.nextDueAt == null) continue;
       if (plantsLoaded && !plantsById.containsKey(s.plantId)) continue;
-      final due = DateTime.fromMillisecondsSinceEpoch(s.nextDueAt!, isUtc: true).toLocal();
+      final due = DateTime.fromMillisecondsSinceEpoch(
+        s.nextDueAt!,
+        isUtc: true,
+      ).toLocal();
       final day = DateTime(due.year, due.month, due.day);
       if (day.isBefore(weekStart) || !day.isBefore(weekEnd)) continue;
-      days[day.difference(weekStart).inDays].scheduled.add(s);
+      days[dayIndex(day)].scheduled.add(s);
     }
     for (final e in events) {
-      final done = DateTime.fromMillisecondsSinceEpoch(e.doneAt, isUtc: true).toLocal();
+      final done = DateTime.fromMillisecondsSinceEpoch(
+        e.doneAt,
+        isUtc: true,
+      ).toLocal();
       final day = DateTime(done.year, done.month, done.day);
       if (day.isBefore(weekStart) || !day.isBefore(weekEnd)) continue;
-      days[day.difference(weekStart).inDays].done.add(e);
+      days[dayIndex(day)].done.add(e);
     }
 
     final today = now;
@@ -390,12 +456,18 @@ class _MonthView extends StatelessWidget {
     for (final s in schedules) {
       if (s.nextDueAt == null) continue;
       if (plantsLoaded && !plantsById.containsKey(s.plantId)) continue;
-      final d = DateTime.fromMillisecondsSinceEpoch(s.nextDueAt!, isUtc: true).toLocal();
+      final d = DateTime.fromMillisecondsSinceEpoch(
+        s.nextDueAt!,
+        isUtc: true,
+      ).toLocal();
       if (d.year != anchor.year || d.month != anchor.month) continue;
       counts[d.day - 1]++;
     }
     for (final e in events) {
-      final d = DateTime.fromMillisecondsSinceEpoch(e.doneAt, isUtc: true).toLocal();
+      final d = DateTime.fromMillisecondsSinceEpoch(
+        e.doneAt,
+        isUtc: true,
+      ).toLocal();
       if (d.year != anchor.year || d.month != anchor.month) continue;
       done[d.day - 1]++;
     }
@@ -403,7 +475,9 @@ class _MonthView extends StatelessWidget {
     final today = now;
     // intl's narrow weekday symbols are Sunday-first; rotate to firstWeekday.
     final narrow = DateFormat.E(_localeOf(context)).dateSymbols.NARROWWEEKDAYS;
-    final dayLabels = [for (var i = 0; i < 7; i++) narrow[(firstWeekday + i) % 7]];
+    final dayLabels = [
+      for (var i = 0; i < 7; i++) narrow[(firstWeekday + i) % 7],
+    ];
 
     return Container(
       padding: const EdgeInsets.all(10),
@@ -419,7 +493,14 @@ class _MonthView extends StatelessWidget {
               for (final lbl in dayLabels)
                 Expanded(
                   child: Center(
-                    child: Text(lbl, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: surface.muted)),
+                    child: Text(
+                      lbl,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: surface.muted,
+                      ),
+                    ),
                   ),
                 ),
             ],
@@ -475,7 +556,10 @@ class _MonthCell extends StatelessWidget {
     if (day < 1 || day > daysInMonth) {
       return const AspectRatio(aspectRatio: 1, child: SizedBox.shrink());
     }
-    final isToday = today.year == anchor.year && today.month == anchor.month && today.day == day;
+    final isToday =
+        today.year == anchor.year &&
+        today.month == anchor.month &&
+        today.day == day;
     final count = counts[day - 1];
     final doneCount = done[day - 1];
     return AspectRatio(
@@ -486,57 +570,58 @@ class _MonthCell extends StatelessWidget {
             context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
-            builder: (_) => DayDetailSheet(day: DateTime(anchor.year, anchor.month, day)),
+            builder: (_) =>
+                DayDetailSheet(day: DateTime(anchor.year, anchor.month, day)),
           );
         },
         borderRadius: BorderRadius.circular(6),
         child: Container(
-        margin: const EdgeInsets.all(2),
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: isToday ? surface.greenSoft : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-          border: isToday ? Border.all(color: surface.green) : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '$day',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
-                color: isToday ? surface.green : surface.text,
+          margin: const EdgeInsets.all(2),
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: isToday ? surface.greenSoft : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            border: isToday ? Border.all(color: surface.green) : null,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$day',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
+                  color: isToday ? surface.green : surface.text,
+                ),
               ),
-            ),
-            const Spacer(),
-            Row(
-              children: [
-                if (count > 0)
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: surface.terra,
-                      shape: BoxShape.circle,
+              const Spacer(),
+              Row(
+                children: [
+                  if (count > 0)
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: surface.terra,
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
-                if (doneCount > 0) ...[
-                  if (count > 0) const SizedBox(width: 3),
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: surface.green,
-                      shape: BoxShape.circle,
+                  if (doneCount > 0) ...[
+                    if (count > 0) const SizedBox(width: 3),
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: surface.green,
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -566,7 +651,10 @@ class _YearView extends StatelessWidget {
     for (final s in schedules) {
       if (s.nextDueAt == null) continue;
       if (plantsLoaded && !plantsById.containsKey(s.plantId)) continue;
-      final d = DateTime.fromMillisecondsSinceEpoch(s.nextDueAt!, isUtc: true).toLocal();
+      final d = DateTime.fromMillisecondsSinceEpoch(
+        s.nextDueAt!,
+        isUtc: true,
+      ).toLocal();
       if (d.year != year) continue;
       counts[d.month - 1]++;
     }
@@ -594,18 +682,27 @@ class _YearView extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    DateFormat.MMM(_localeOf(context)).format(DateTime(year, m)),
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: surface.text),
+                    DateFormat.MMM(
+                      _localeOf(context),
+                    ).format(DateTime(year, m)),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: surface.text,
+                    ),
                   ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         '${counts[m - 1]}',
-                        style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
+                        style: TextStyle(
+                          fontFamily: PlantlyFonts.plusJakartaSans,
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
-                          color: counts[m - 1] > 0 ? surface.green : surface.muted,
+                          color: counts[m - 1] > 0
+                              ? surface.green
+                              : surface.muted,
                         ),
                       ),
                       Icon(Icons.chevron_right, size: 16, color: surface.muted),
@@ -640,7 +737,10 @@ class _UpcomingScheduleRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final ct = resolveCareType(types, schedule.type);
-    final due = DateTime.fromMillisecondsSinceEpoch(schedule.nextDueAt!, isUtc: true).toLocal();
+    final due = DateTime.fromMillisecondsSinceEpoch(
+      schedule.nextDueAt!,
+      isUtc: true,
+    ).toLocal();
     final delta = due.difference(now);
     final (whenLabel, urgent) = upcomingDueLabel(t, delta);
     return InkWell(
@@ -649,7 +749,9 @@ class _UpcomingScheduleRow extends StatelessWidget {
       },
       child: Container(
         decoration: BoxDecoration(
-          border: last ? null : Border(bottom: BorderSide(color: surface.border)),
+          border: last
+              ? null
+              : Border(bottom: BorderSide(color: surface.border)),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
@@ -661,23 +763,50 @@ class _UpcomingScheduleRow extends StatelessWidget {
                 color: urgent ? surface.terraSoft : surface.greenSoft,
                 borderRadius: BorderRadius.circular(PlantlyTokens.radius),
               ),
-              child: Icon(ct.icon, size: 14, color: urgent ? surface.terra : surface.green),
+              child: Icon(
+                ct.icon,
+                size: 14,
+                color: urgent ? surface.terra : surface.green,
+              ),
             ),
             const SizedBox(width: 11),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(plantName, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: surface.text)),
-                  Text('${careTypeVerb(t, ct)} · $whenLabel', style: TextStyle(fontSize: 11, color: urgent ? surface.terra : surface.muted)),
+                  Text(
+                    plantName,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: surface.text,
+                    ),
+                  ),
+                  Text(
+                    '${careTypeVerb(t, ct)} · $whenLabel',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: urgent ? surface.terra : surface.muted,
+                    ),
+                  ),
                 ],
               ),
             ),
-            AssigneeChip(userId: schedule.assigneeUserId, tenantId: schedule.tenantId, surface: surface, size: 18, padLeft: 0),
+            AssigneeChip(
+              userId: schedule.assigneeUserId,
+              tenantId: schedule.tenantId,
+              surface: surface,
+              size: 18,
+              padLeft: 0,
+            ),
             if (schedule.assigneeUserId != null) const SizedBox(width: 6),
             Text(
               DateFormat.MMMd(_localeOf(context)).format(due),
-              style: TextStyle(fontSize: 11, color: surface.muted, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontSize: 11,
+                color: surface.muted,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
@@ -714,87 +843,103 @@ class _DayRow extends StatelessWidget {
     final t = AppLocalizations.of(context);
     // "MON" / "LUN" — intl abbreviations carry a trailing dot in ro; drop it
     // for the stacked label.
-    final weekday = DateFormat.E(_localeOf(context)).format(bucket.date).replaceAll('.', '');
+    final weekday = DateFormat.E(
+      _localeOf(context),
+    ).format(bucket.date).replaceAll('.', '');
 
     return InkWell(
       onTap: () => showDayDetail(context, bucket.date),
       child: Container(
-      decoration: BoxDecoration(
-        color: isToday ? surface.greenSoft : null,
-        border: last ? null : Border(bottom: BorderSide(color: surface.border)),
-      ),
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 56,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  weekday.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: isToday ? surface.green : surface.muted,
-                    letterSpacing: 0.1 * 11,
-                  ),
-                ),
-                Text(
-                  bucket.date.day.toString(),
-                  style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: isToday ? surface.green : surface.text,
-                    letterSpacing: -0.02 * 22,
-                    height: 1,
-                  ),
-                ),
-                if (isToday)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      t.commonTodayLabel.toUpperCase(),
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: surface.green),
+        decoration: BoxDecoration(
+          color: isToday ? surface.greenSoft : null,
+          border: last
+              ? null
+              : Border(bottom: BorderSide(color: surface.border)),
+        ),
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 56,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    weekday.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: isToday ? surface.green : surface.muted,
+                      letterSpacing: 0.1 * 11,
                     ),
                   ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (bucket.scheduled.isEmpty && bucket.done.isEmpty)
-                  Text(t.calDayFree, style: TextStyle(fontSize: 12, color: surface.muted, fontStyle: FontStyle.italic)),
-                for (final s in bucket.scheduled) ...[
-                  _ScheduleChip(
-                    schedule: s,
-                    plantName: plantsById[s.plantId]?.nickname ?? s.plantId,
-                    plantId: s.plantId,
-                    surface: surface,
-                    types: types,
+                  Text(
+                    bucket.date.day.toString(),
+                    style: TextStyle(
+                      fontFamily: PlantlyFonts.plusJakartaSans,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: isToday ? surface.green : surface.text,
+                      letterSpacing: -0.02 * 22,
+                      height: 1,
+                    ),
                   ),
-                  const SizedBox(height: 5),
+                  if (isToday)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        t.commonTodayLabel.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: surface.green,
+                        ),
+                      ),
+                    ),
                 ],
-                for (final e in bucket.done) ...[
-                  _DoneChip(
-                    event: e,
-                    plantName: plantsById[e.plantId]?.nickname ?? e.plantId,
-                    plantId: e.plantId,
-                    surface: surface,
-                    types: types,
-                  ),
-                  const SizedBox(height: 5),
-                ],
-              ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (bucket.scheduled.isEmpty && bucket.done.isEmpty)
+                    Text(
+                      t.calDayFree,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: surface.muted,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  for (final s in bucket.scheduled) ...[
+                    _ScheduleChip(
+                      schedule: s,
+                      plantName: plantsById[s.plantId]?.nickname ?? s.plantId,
+                      plantId: s.plantId,
+                      surface: surface,
+                      types: types,
+                    ),
+                    const SizedBox(height: 5),
+                  ],
+                  for (final e in bucket.done) ...[
+                    _DoneChip(
+                      event: e,
+                      plantName: plantsById[e.plantId]?.nickname ?? e.plantId,
+                      plantId: e.plantId,
+                      surface: surface,
+                      types: types,
+                    ),
+                    const SizedBox(height: 5),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
     );
   }
 }
@@ -835,10 +980,17 @@ class _ScheduleChip extends StatelessWidget {
             Expanded(
               child: Text(
                 plantName,
-                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: surface.text),
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: surface.text,
+                ),
               ),
             ),
-            Text(careTypeLabel(AppLocalizations.of(context), ct).toLowerCase(), style: TextStyle(fontSize: 11, color: surface.muted)),
+            Text(
+              careTypeLabel(AppLocalizations.of(context), ct).toLowerCase(),
+              style: TextStyle(fontSize: 11, color: surface.muted),
+            ),
           ],
         ),
       ),
@@ -882,10 +1034,17 @@ class _DoneChip extends StatelessWidget {
             Expanded(
               child: Text(
                 plantName,
-                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: surface.text),
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: surface.text,
+                ),
               ),
             ),
-            Text(careTypePastLabel(AppLocalizations.of(context), ct).toLowerCase(), style: TextStyle(fontSize: 11, color: surface.muted)),
+            Text(
+              careTypePastLabel(AppLocalizations.of(context), ct).toLowerCase(),
+              style: TextStyle(fontSize: 11, color: surface.muted),
+            ),
           ],
         ),
       ),
