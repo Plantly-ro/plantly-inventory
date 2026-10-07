@@ -161,6 +161,11 @@ class HttpSyncTransport implements SyncTransport, CollectionUsageSource, PhotoTr
   }
 
   @override
+  Future<void> deletePhoto(String sha256) async {
+    await _send(() async => _client.delete(_uri('/photos/$sha256'), headers: await _headers()));
+  }
+
+  @override
   Future<Uint8List> download(String sha256) async {
     // One code path for io and web: ask the API for the object location as
     // JSON (`Accept: application/json` → `200 {"url","expires_at"}`) and

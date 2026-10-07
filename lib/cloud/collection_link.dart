@@ -155,12 +155,24 @@ Future<int> migrateTenant(AppDatabase db, {required String from, required String
     var rewritten = 0;
     for (final table in db.allTables) {
       if (!table.columnsByName.containsKey('tenant_id')) continue;
+      // Tables keyed per tenant (`photos`: (tenant_id, sha256)) can already
+      // hold the same key under [to]; that row wins and the [from] duplicate
+      // is dropped (the blob on disk is shared by sha, nothing is lost).
+      final perTenantKey = table.$primaryKey.any((c) => c.name == 'tenant_id');
       rewritten += await db.customUpdate(
-        'UPDATE ${table.actualTableName} SET tenant_id = ? WHERE tenant_id = ?',
+        'UPDATE${perTenantKey ? ' OR IGNORE' : ''} ${table.actualTableName} SET tenant_id = ? WHERE tenant_id = ?',
         variables: [Variable<String>(to), Variable<String>(from)],
         updates: {table},
         updateKind: UpdateKind.update,
       );
+      if (perTenantKey) {
+        await db.customUpdate(
+          'DELETE FROM ${table.actualTableName} WHERE tenant_id = ?',
+          variables: [Variable<String>(from)],
+          updates: {table},
+          updateKind: UpdateKind.delete,
+        );
+      }
     }
     return rewritten;
   });
