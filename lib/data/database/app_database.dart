@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
+import 'web_db_assets.dart';
+
 part 'app_database.g.dart';
 
 // Columns in the "synced-row common" bundle — id/tenant_id/updated_hlc/
@@ -335,15 +337,16 @@ class SyncRejections extends Table {
 ])
 class AppDatabase extends _$AppDatabase {
   /// io: sqlite file in the app's data dir. Web: sqlite3.wasm + the drift
-  /// worker committed under `web/` (see tool/fetch_web_sqlite.sh), persisted
-  /// to OPFS when the page is cross-origin isolated, IndexedDB otherwise.
-  /// `driftDatabase` throws synchronously on web without these options.
+  /// worker committed under `web/vendor/` (see tool/fetch_web_sqlite.sh and
+  /// web_db_assets.dart), persisted to OPFS when the page is cross-origin
+  /// isolated, IndexedDB otherwise. `driftDatabase` throws synchronously on
+  /// web without these options.
   AppDatabase()
       : super(driftDatabase(
           name: 'plantly_inventory',
           web: DriftWebOptions(
-            sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-            driftWorker: Uri.parse('drift_worker.js'),
+            sqlite3Wasm: webDeployedFileUri(kSqlite3WasmPath),
+            driftWorker: webDeployedFileUri(kDriftWorkerPath),
           ),
         ));
   AppDatabase.forTesting(super.executor);

@@ -69,8 +69,10 @@ Toolchain notes for this box (as of Phase 1 scaffold):
 | `lib/data/photo_blob_store.dart` | sharded files under app documents | IndexedDB `plantly_inventory_photos` |
 | `lib/services/file_export.dart` | write to documents + `share_plus` | `<a download>` Blob click |
 | `lib/notifications/platform_notification_service.dart` | `flutter_local_notifications` | `UnsupportedNotificationService` (`isSupported == false`, UI shows honest copy) |
-| `lib/data/database/app_database.dart` | sqlite file | `DriftWebOptions` → `web/sqlite3.wasm` + `web/drift_worker.js` (`tool/fetch_web_sqlite.sh`) |
+| `lib/data/database/app_database.dart` | sqlite file | `DriftWebOptions` → `web/vendor/sqlite3-<ver>/sqlite3.wasm` + `web/vendor/drift-<ver>/drift_worker.js` (`tool/fetch_web_sqlite.sh`; paths in `web_db_assets.dart`, absolute via `document.baseURI`) |
 | `lib/data/image_processor.dart` | `flutter_image_compress` | pass-through (`kIsWeb`) |
+
+Release builds are post-processed by `tool/web_version_assets.py` (per-release `v/<sha>/` URL space; README §"Web build" → Caching / releases) — keep `web/flutter_bootstrap.js` (custom loader, resolves everything relative to its own URL) and `web/index.html`'s single `<script src="flutter_bootstrap.js">` tag intact; `tool/tests/test_web_version_assets.py` guards both.
 
 UI never touches photo bytes directly — use `StoredPhotoImage` (`lib/shared/stored_photo_image.dart`). When adding a new `dart:io` dependency, add it to the io half of an existing seam or create a new `_io.dart` / `_web.dart` pair; `grep -rl 'dart:io' lib` should only list `*_io.dart` files.
 

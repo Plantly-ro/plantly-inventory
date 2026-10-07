@@ -119,6 +119,14 @@ build-web:
       # shellcheck disable=SC2086  # INVENTORY_WEB_DART_DEFINES is intentionally word-split
       flutter build web --release --no-web-resources-cdn \
         --dart-define=PLANTLY_APP_VERSION="$APP_VERSION" ${INVENTORY_WEB_DART_DEFINES:-}
+    # Per-release URL space: everything but index.html & co. moves under
+    # build/web/v/<id>/ so no browser/edge cache can serve a previous
+    # release's main.dart.js/assets (Flutter names aren't hashed). id = short
+    # sha + hex pipeline id: /v/<id>/ is immutable, and a new pipeline on the
+    # same commit may build different bytes (other dart-defines). Must equal
+    # REL_ID in ci/prod/deploy-web.sh. Also drops web/prototype/ (design
+    # reference, not shipped).
+    - python3 tool/web_version_assets.py build/web "${CI_COMMIT_SHORT_SHA}$(printf '%x' "$CI_PIPELINE_ID")"
     - cat build/web/version.json; echo
   artifacts:
     paths:
