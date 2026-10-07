@@ -140,6 +140,11 @@ class CareTypesController extends StateNotifier<List<CareType>> {
   static const _key = 'plantly_care_types';
   final Future<SharedPreferences> _prefs;
 
+  /// Re-read the persisted registry — after something wrote the pref
+  /// behind this controller's back (a backup restore). A label change
+  /// re-syncs the OS reminders through `reminderSyncProvider`'s listener.
+  Future<void> reload() => _load();
+
   Future<void> _load() async {
     final prefs = await _prefs;
     final raw = prefs.getString(_key);

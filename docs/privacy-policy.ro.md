@@ -24,7 +24,7 @@ Toate acestea se află în stocarea privată a aplicației (în versiunea web: s
 
 **Fără Inventory Cloud: nimic, în mod implicit.** Situațiile de mai jos apar doar când le declanșezi tu:
 
-- **Backup-uri și exporturi** (JSON, ZIP cu poze, CSV, iCal). Sunt create pe dispozitiv și predate aplicației pe care o alegi, prin meniul de partajare sau selectorul de fișiere al sistemului (în browser: descărcate ca fișier). Unde ajung depinde de tine.
+- **Backup-uri și exporturi** (JSON, ZIP cu poze, CSV, iCal). Sunt create pe dispozitiv și predate aplicației pe care o alegi, prin meniul de partajare sau selectorul de fișiere al sistemului (în browser: descărcate ca fișier). Unde ajung depinde de tine. Backup-urile JSON și ZIP **nu sunt criptate**: parola pe care o alegi doar semnează fișierul, ca orice modificare să fie detectată la import — oricine are fișierul îl poate citi, așa că păstrează-l doar pentru tine.
 - **Linkuri pe care le deschizi.** Unele ecrane pot deschide plantly.ro în browser, unde se aplică [politica de confidențialitate plantly.ro](https://plantly.ro/privacy).
 - **Date despre plante primite prin link.** Aplicația poate primi detalii despre o plantă printr-un link `plantlyinventory://import` sau `plantly.ro/app/inventory/import`, de exemplu din Plantly Assistant sau de pe plantly.ro. Datele sunt conținute chiar în link și sunt prelucrate doar pe dispozitivul tău; nimic nu este trimis înapoi.
 

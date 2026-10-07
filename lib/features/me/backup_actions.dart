@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../cloud/collections.dart';
+import '../../data/care_types.dart';
 import '../../data/providers.dart';
 import '../../domain/services/backup_service.dart';
 import '../../services/file_export.dart';
@@ -81,6 +82,10 @@ class BackupActions {
           );
       summary = (rows: result.total, photos: null);
     }
+    // The restore also replayed the registry pref (custom care types):
+    // load it now, not on the next app start, and before the re-sync
+    // below so restored reminders get their custom titles.
+    await _ref.read(careTypesProvider.notifier).reload();
     // The restored schedules carry `next_due_at` values the OS knows
     // nothing about yet — same class of gap as issue #13. Best-effort.
     try {

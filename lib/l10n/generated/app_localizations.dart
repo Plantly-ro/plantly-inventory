@@ -3026,11 +3026,23 @@ abstract class AppLocalizations {
   /// **'Backup passphrase'**
   String get meBackupPassphrase;
 
-  /// No description provided for @meBackupPassphraseHint.
+  /// Hint in the passphrase field when exporting a backup.
   ///
   /// In en, this message translates to:
-  /// **'Pick anything — needed to import again'**
-  String get meBackupPassphraseHint;
+  /// **'Choose a passphrase — you\'ll need it to import'**
+  String get meBackupPassphraseExportHint;
+
+  /// Export passphrase dialog body. The passphrase only signs the backup (HMAC); the contents are plaintext. Must not imply encryption.
+  ///
+  /// In en, this message translates to:
+  /// **'The passphrase protects the file against tampering; the file is not encrypted — keep it private.'**
+  String get meBackupPassphraseExportNote;
+
+  /// Hint in the passphrase field when importing a backup.
+  ///
+  /// In en, this message translates to:
+  /// **'The passphrase you chose when exporting'**
+  String get meBackupPassphraseImportHint;
 
   /// No description provided for @meBackupSaved.
   ///
@@ -3197,13 +3209,13 @@ abstract class AppLocalizations {
   /// No description provided for @mePrivacyBulletBackups.
   ///
   /// In en, this message translates to:
-  /// **'Backups (JSON or ZIP) only leave the device when you tap Export — you choose where they go via the share sheet.'**
+  /// **'Backups (JSON or ZIP) only leave the device when you tap Export — you choose where they go via the share sheet. They are not encrypted (the passphrase only protects them against tampering), so keep them private.'**
   String get mePrivacyBulletBackups;
 
   /// Me → Privacy & data in the web app: exports are browser downloads, no share sheet.
   ///
   /// In en, this message translates to:
-  /// **'Backups (JSON or ZIP) are only created when you tap Export — your browser downloads the file to this device.'**
+  /// **'Backups (JSON or ZIP) are only created when you tap Export — your browser downloads the file to this device. They are not encrypted (the passphrase only protects them against tampering), so keep them private.'**
   String get mePrivacyBulletBackupsWeb;
 
   /// No description provided for @mePrivacyBulletNotifications.

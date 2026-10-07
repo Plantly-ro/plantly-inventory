@@ -1654,7 +1654,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get meBackupPassphrase => 'Backup passphrase';
 
   @override
-  String get meBackupPassphraseHint => 'Pick anything — needed to import again';
+  String get meBackupPassphraseExportHint =>
+      'Choose a passphrase — you\'ll need it to import';
+
+  @override
+  String get meBackupPassphraseExportNote =>
+      'The passphrase protects the file against tampering; the file is not encrypted — keep it private.';
+
+  @override
+  String get meBackupPassphraseImportHint =>
+      'The passphrase you chose when exporting';
 
   @override
   String meBackupSaved(String where) {
@@ -1777,11 +1786,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mePrivacyBulletBackups =>
-      'Backups (JSON or ZIP) only leave the device when you tap Export — you choose where they go via the share sheet.';
+      'Backups (JSON or ZIP) only leave the device when you tap Export — you choose where they go via the share sheet. They are not encrypted (the passphrase only protects them against tampering), so keep them private.';
 
   @override
   String get mePrivacyBulletBackupsWeb =>
-      'Backups (JSON or ZIP) are only created when you tap Export — your browser downloads the file to this device.';
+      'Backups (JSON or ZIP) are only created when you tap Export — your browser downloads the file to this device. They are not encrypted (the passphrase only protects them against tampering), so keep them private.';
 
   @override
   String get mePrivacyBulletNotifications =>

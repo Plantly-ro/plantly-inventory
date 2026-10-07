@@ -22,6 +22,7 @@ import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../../app/navigation.dart';
 import 'backup_actions.dart';
+import 'backup_passphrase_dialog.dart';
 import '../collections/read_only_banner.dart';
 import 'cloud_section.dart';
 import 'me_rows.dart';
@@ -466,7 +467,7 @@ class _BackupRow extends ConsumerWidget {
     final t = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final actions = ref.read(backupActionsProvider);
-    final secret = await _promptSecret(context, title: t.meBackupPassphrase);
+    final secret = await showBackupPassphraseDialog(context, purpose: BackupPassphrasePurpose.export);
     if (secret == null || secret.isEmpty) return;
     try {
       final where = withPhotos
@@ -515,7 +516,7 @@ class _ImportRow extends ConsumerWidget {
     );
     if (file == null) return;
     if (!context.mounted) return;
-    final secret = await _promptSecret(context, title: t.meBackupPassphrase);
+    final secret = await showBackupPassphraseDialog(context, purpose: BackupPassphrasePurpose.import);
     if (secret == null || secret.isEmpty) return;
     try {
       final bytes = await file.readAsBytes();
@@ -586,56 +587,6 @@ class _ICalRow extends ConsumerWidget {
         ..clearSnackBars()
         ..showSnackBar(SnackBar(content: Text(t.meExportFailed('$e'))));
     }
-  }
-}
-
-Future<String?> _promptSecret(BuildContext context, {required String title}) {
-  return showDialog<String>(
-    context: context,
-    builder: (_) => _SecretDialog(title: title),
-  );
-}
-
-/// Owns its [TextEditingController] so it is disposed with the route, not
-/// the moment `showDialog` returns — the dialog is still animating out then
-/// and its TextField would rebuild against a disposed controller.
-class _SecretDialog extends StatefulWidget {
-  const _SecretDialog({required this.title});
-  final String title;
-
-  @override
-  State<_SecretDialog> createState() => _SecretDialogState();
-}
-
-class _SecretDialogState extends State<_SecretDialog> {
-  final _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    return AlertDialog(
-      title: Text(widget.title),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        obscureText: true,
-        decoration: InputDecoration(
-          hintText: t.meBackupPassphraseHint,
-          border: OutlineInputBorder(),
-        ),
-        onSubmitted: (v) => Navigator.of(context).pop(v),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(null), child: Text(t.cancel)),
-        FilledButton(onPressed: () => Navigator.of(context).pop(_controller.text), child: Text(t.commonOk)),
-      ],
-    );
   }
 }
 
