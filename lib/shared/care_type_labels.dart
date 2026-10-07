@@ -79,6 +79,11 @@ String careKeyVerb(AppLocalizations t, List<CareType> types, String key) =>
 String careKeyPastLabel(AppLocalizations t, List<CareType> types, String key) =>
     careTypePastLabel(t, resolveCareType(types, key));
 
+/// Icon for a raw `care_events.type` / `care_schedules.type` key: the
+/// registry entry's (user-editable) icon, or [kUnknownCareTypeIcon] for a
+/// key that isn't registered.
+IconData careKeyIcon(List<CareType> types, String key) => resolveCareType(types, key).icon;
+
 String? _noun(AppLocalizations t, String key) => switch (key) {
       'water' => t.careTypeWater,
       'fertilize' => t.careTypeFertilize,

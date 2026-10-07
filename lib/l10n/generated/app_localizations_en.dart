@@ -1214,18 +1214,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quickLogTitle => 'Quick log';
 
   @override
-  String get quickLogWater => 'Water';
-
-  @override
-  String get quickLogFertilize => 'Fertilize';
-
-  @override
-  String get quickLogMist => 'Mist';
-
-  @override
-  String get quickLogRotate => 'Rotate';
-
-  @override
   String get tipOfTheDay => 'TIP OF THE DAY';
 
   @override

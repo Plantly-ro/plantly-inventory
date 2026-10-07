@@ -225,8 +225,27 @@ final reminderSyncProvider = Provider<ReminderSync>((ref) {
       if (prev != next) unawaited(sync.syncFromDatabase());
     },
   );
+  // Notification titles are baked at sync time from the care-type registry,
+  // so a rename / add / reset must re-derive the OS reminders (issue #16) —
+  // otherwise already-scheduled ones keep the old name until an unrelated
+  // write. Icon / colour / interval edits don't touch titles: skip those.
+  ref.listen<List<CareType>>(careTypesProvider, (prev, next) {
+    if (prev != null && !_sameCareTypeLabels(prev, next)) {
+      unawaited(sync.syncFromDatabase());
+    }
+  });
   return sync;
 });
+
+/// True when both registries map the same keys to the same labels — the
+/// only care-type fields that end up in a notification title.
+bool _sameCareTypeLabels(List<CareType> a, List<CareType> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i].key != b[i].key || a[i].label != b[i].label) return false;
+  }
+  return true;
+}
 
 final careScheduleRepositoryProvider = Provider<CareScheduleRepository>((ref) {
   final ctx = ref.watch(appContextProvider).requireValue;

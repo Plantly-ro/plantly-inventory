@@ -2240,30 +2240,6 @@ abstract class AppLocalizations {
   /// **'Quick log'**
   String get quickLogTitle;
 
-  /// No description provided for @quickLogWater.
-  ///
-  /// In en, this message translates to:
-  /// **'Water'**
-  String get quickLogWater;
-
-  /// No description provided for @quickLogFertilize.
-  ///
-  /// In en, this message translates to:
-  /// **'Fertilize'**
-  String get quickLogFertilize;
-
-  /// No description provided for @quickLogMist.
-  ///
-  /// In en, this message translates to:
-  /// **'Mist'**
-  String get quickLogMist;
-
-  /// No description provided for @quickLogRotate.
-  ///
-  /// In en, this message translates to:
-  /// **'Rotate'**
-  String get quickLogRotate;
-
   /// No description provided for @tipOfTheDay.
   ///
   /// In en, this message translates to:
