@@ -10,6 +10,20 @@ import 'sync_engine.dart';
 /// it — see [SyncRejectionStore.retryAll].
 const String kIdCollisionReason = 'id_collision';
 
+/// Ledger reason written by the applier when a pulled op can never be
+/// applied on this schema (a null for a NOT NULL column, a value of the
+/// wrong type). The op is remote — never re-queued.
+const String kInvalidRemoteOpReason = 'invalid_remote_op';
+
+/// Ledger reason written by the applier when applying a pulled op failed in
+/// SQL (e.g. a rename onto a taken unique name). Rolled back to its
+/// savepoint; the op is remote — never re-queued.
+const String kApplyErrorReason = 'apply_error';
+
+/// Reasons whose ledger rows point at REMOTE ops parked by the applier
+/// (not at our own server-rejected ops).
+const Set<String> kInboundRejectionReasons = {kIdCollisionReason, kInvalidRemoteOpReason, kApplyErrorReason};
+
 /// What the runner does with a server-rejected op.
 enum SyncRejectionKind {
   /// The server will never take this op: park it (`pushed_at` set) so the
@@ -179,22 +193,29 @@ class SyncRejectionStore {
 
   /// User action "Retry all": un-park every listed op (`pushed_at` back to
   /// NULL so the next cycle sends it again) and forget the rows. Returns
-  /// how many ops were re-queued. [kIdCollisionReason] rows point at
+  /// how many ops were re-queued. [kInboundRejectionReasons] rows point at
   /// *remote* ops — re-queuing one would push another device's op under
-  /// ours — so they are only forgotten, never un-parked.
+  /// ours — so they are never un-parked: [kApplyErrorReason] rows are
+  /// flagged for the applier to re-apply on the next cycle (`parked` false,
+  /// see `SyncApplier.repair`), the others are forgotten.
   Future<int> retryAll() async {
     return db.transaction(() async {
       final rows = await all();
       if (rows.isEmpty) return 0;
       final seqs = [
         for (final r in rows)
-          if (r.reason != kIdCollisionReason) r.opSeq,
+          if (!kInboundRejectionReasons.contains(r.reason)) r.opSeq,
       ];
       if (seqs.isNotEmpty) {
         await (db.update(db.syncOps)..where((o) => o.seq.isIn(seqs)))
             .write(const SyncOpsCompanion(pushedAt: Value(null)));
       }
-      await (db.delete(db.syncRejections)..where((r) => r.tenantId.equals(tenantId))).go();
+      await (db.update(db.syncRejections)
+            ..where((r) => r.tenantId.equals(tenantId) & r.reason.equals(kApplyErrorReason)))
+          .write(const SyncRejectionsCompanion(parked: Value(false)));
+      await (db.delete(db.syncRejections)
+            ..where((r) => r.tenantId.equals(tenantId) & r.reason.equals(kApplyErrorReason).not()))
+          .go();
       return seqs.length;
     });
   }

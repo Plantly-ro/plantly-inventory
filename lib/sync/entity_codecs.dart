@@ -113,11 +113,16 @@ class EntityCodec<D> {
   /// SQL-shaped values for the known wire columns of [wire]; unknown keys are
   /// ignored. With [fillDefaults], absent non-nullable columns receive the
   /// schema default (or a type-appropriate zero) so an insert can't fail
-  /// NOT NULL on a partial payload from an older client.
-  Map<String, Object?> decodeRow(Map<String, dynamic> wire, {bool fillDefaults = false}) {
+  /// NOT NULL on a partial payload from an older client. With [dropInvalid],
+  /// a column whose value [acceptsValue] refuses is treated as absent.
+  Map<String, Object?> decodeRow(
+    Map<String, dynamic> wire, {
+    bool fillDefaults = false,
+    bool dropInvalid = false,
+  }) {
     final out = <String, Object?>{};
     for (final c in wireColumns) {
-      if (wire.containsKey(c.name)) {
+      if (wire.containsKey(c.name) && (!dropInvalid || acceptsValue(c.name, wire[c.name]))) {
         out[c.name] = decodeField(c.name, wire[c.name]);
       } else if (fillDefaults) {
         final d = _defaultFor(c);
@@ -147,6 +152,18 @@ class EntityCodec<D> {
       default:
         return wireValue;
     }
+  }
+
+  /// Whether [wireValue] can be stored in [column]: it decodes to the
+  /// column's type (a non-null value that decodes to null — `"abc"` for an
+  /// int, an unparseable timestamp — does not) and is not null for a NOT
+  /// NULL column. Unknown columns are refused.
+  bool acceptsValue(String column, Object? wireValue) {
+    final col = table.columnsByName[column];
+    if (col == null) return false;
+    final decoded = decodeField(column, wireValue);
+    if (decoded == null) return wireValue == null && col.$nullable;
+    return true;
   }
 
   /// Drift insertable for a SQL-shaped map, typed per column so the

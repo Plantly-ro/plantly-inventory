@@ -30,6 +30,12 @@ class TagRepository {
         .getSingleOrNull();
     if (existing != null) return existing;
     return db.transaction(() async {
+      // UNIQUE(tenant_id, name) is not partial: a tag deleted elsewhere still
+      // holds the name. Deletes are final, so drop the dead row (its
+      // tombstone op stays) and create a fresh tag.
+      await (db.delete(db.tags)
+            ..where((t) => t.tenantId.equals(opLog.tenantId) & t.name.equals(normalised) & t.deletedAt.isNotNull()))
+          .go();
       final id = Ulid().toString();
       final hlc = await opLog.recordCreate(
         entity: 'tags',

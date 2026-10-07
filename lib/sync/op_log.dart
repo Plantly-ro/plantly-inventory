@@ -14,6 +14,37 @@ const String kTombstoneField = '__tombstone__';
 /// Whole-row create/upsert sentinel used in sync_ops.field.
 const String kWholeRowField = '*';
 
+/// Seed a freshly created [clock] with the highest HLC in `sync_ops` — every
+/// tenant, local and remote ops alike — so the first op of this launch
+/// outranks everything this device has already produced or merged. Without
+/// it the clock restarts from the wall clock: after merging a peer op
+/// stamped ahead of us (allowed up to [HlcClock.maxRemoteDrift]) a restart +
+/// edit of the same field would lose to that op everywhere, for good.
+///
+/// Stamps further ahead than [HlcClock.maxRemoteDrift] are skipped, as
+/// [HlcClock.merge] would refuse them at pull time (a forged far-future
+/// stamp must not pin the clock); the newest sane one below them seeds.
+/// Returns the HLC absorbed, or null when there was none.
+///
+/// Call before anything can record an op (the clock provider awaits it).
+Future<Hlc?> seedClockFromOpLog(AppDatabase db, HlcClock clock) async {
+  // Fixed-width encoding: string order == HLC order for well-formed stamps,
+  // and anything malformed sorts above a '0'-led bound or fails to parse.
+  final bound = Hlc(clock.wallMillis + clock.maxRemoteDrift.inMilliseconds + 1, 0, '').encode();
+  final rows = await db
+      .customSelect(
+        'SELECT hlc FROM sync_ops WHERE hlc < ? ORDER BY hlc DESC LIMIT 32',
+        variables: [Variable<String>(bound)],
+        readsFrom: {db.syncOps},
+      )
+      .get();
+  for (final r in rows) {
+    final h = Hlc.tryParse(r.read<String>('hlc'));
+    if (h != null && clock.merge(h)) return h;
+  }
+  return null;
+}
+
 /// Writes to every synced entity go through this helper so (a) the HLC is
 /// stamped consistently and (b) a sync_ops row is produced for later push.
 ///
@@ -239,10 +270,13 @@ class OpLogWriter {
 
   /// All op rows for one entity row — used by the applier to resolve
   /// per-field winners when materialising a `*` op.
-  Future<List<SyncOpRow>> opsFor({required String entity, required String entityId}) {
+  /// [fields] narrows the read to those `field` values (in SQL).
+  Future<List<SyncOpRow>> opsFor({required String entity, required String entityId, List<String>? fields}) {
     return (db.select(db.syncOps)
-          ..where((o) =>
-              o.tenantId.equals(tenantId) & o.entity.equals(entity) & o.entityId.equals(entityId)))
+          ..where((o) {
+            final key = o.tenantId.equals(tenantId) & o.entity.equals(entity) & o.entityId.equals(entityId);
+            return fields == null ? key : key & o.field.isIn(fields);
+          }))
         .get();
   }
 
