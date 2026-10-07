@@ -68,6 +68,22 @@ class CareScheduleRepository {
         .getSingleOrNull();
   }
 
+  /// `UNIQUE(tenant_id, plant_id, type)` is not partial, so a soft-deleted
+  /// schedule still holds the key and re-adding the same reminder type would
+  /// fail. Deletes are final on the wire (CLOUD-SYNC-CONTRACT §2.3), so the
+  /// dead row is not revived: it is dropped here (its tombstone op stays in
+  /// `sync_ops`) and the caller creates a fresh row under a new id, which
+  /// every peer accepts the same way (`SyncApplier._resolveUniqueConflict`).
+  Future<void> _purgeDeleted(String plantId, String type) {
+    return (db.delete(db.careSchedules)
+          ..where((s) =>
+              s.tenantId.equals(opLog.tenantId) &
+              s.plantId.equals(plantId) &
+              s.type.equals(type) &
+              s.deletedAt.isNotNull()))
+        .go();
+  }
+
   /// Create a schedule with a base interval. `next_due_at` is computed
   /// from [firstDueAt] (defaults to "now + base_interval_days").
   /// [recurrenceMode] — `after_completion` (default — re-schedule from
@@ -85,6 +101,7 @@ class CareScheduleRepository {
     final existing = await forPlantAndType(plantId, type);
     final row = existing ??
         await db.transaction<CareScheduleRow>(() async {
+          await _purgeDeleted(plantId, type);
           final id = Ulid().toString();
           final firstDue = firstDueAt ??
               DateTime.fromMillisecondsSinceEpoch(

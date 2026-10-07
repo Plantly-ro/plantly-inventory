@@ -45,6 +45,30 @@ void main() {
       expect(s.enabled, isTrue);
     });
 
+    test('delete a reminder, then add the same type again: a fresh live row, the dead one purged (no UNIQUE crash)', () async {
+      final p = await plants.create(nickname: 'Calathea');
+      final first = await schedules.upsert(plantId: p.id, type: 'water', baseIntervalDays: 5);
+      await schedules.softDelete(first.id);
+
+      final again = await schedules.upsert(plantId: p.id, type: 'water', baseIntervalDays: 9);
+      expect(again.id, isNot(first.id));
+      expect(again.deletedAt, isNull);
+      expect(again.baseIntervalDays, 9);
+      final rows = await db.select(db.careSchedules).get();
+      expect(rows.map((r) => r.id), [again.id]);
+
+      // Peers learn both: the tombstone of the old row (final per contract
+      // §2.3) and the create of the new one.
+      final ops = await db.select(db.syncOps).get();
+      expect(ops.where((o) => o.entityId == first.id).map((o) => o.field), containsAll(['*', '__tombstone__']));
+      expect(ops.where((o) => o.entityId == again.id).map((o) => o.field), ['*']);
+
+      // And a third round works too.
+      await schedules.softDelete(again.id);
+      final third = await schedules.upsert(plantId: p.id, type: 'water', baseIntervalDays: 3);
+      expect((await db.select(db.careSchedules).get()).map((r) => r.id), [third.id]);
+    });
+
     test('is idempotent — second upsert returns the existing row', () async {
       final p = await plants.create(nickname: 'Fern');
       final a = await schedules.upsert(plantId: p.id, type: 'water', baseIntervalDays: 5);

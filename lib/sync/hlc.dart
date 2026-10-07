@@ -33,6 +33,15 @@ class Hlc implements Comparable<Hlc> {
     return Hlc(phys, logi, dev);
   }
 
+  /// [Hlc.parse] that returns null instead of throwing.
+  static Hlc? tryParse(String raw) {
+    try {
+      return Hlc.parse(raw);
+    } on FormatException {
+      return null;
+    }
+  }
+
   String encode() {
     return '${physicalMs.toString().padLeft(14, '0')}'
         '-${logical.toString().padLeft(5, '0')}'
@@ -89,6 +98,12 @@ class HlcClock {
   /// (one op stamped `20260927102954-…`, i.e. year ~2612, pinned a device's
   /// clock there and every later local edit inherited it). Such stamps are
   /// ignored by [merge]; the op itself still applies under LWW.
+  ///
+  /// Must stay >= the server's `hlcFutureTolerance` (24 h; it refuses ops
+  /// further ahead as `hlc_future`): every op the server accepted has to be
+  /// mergeable here, otherwise a peer whose clock runs ahead by more than
+  /// this window outranks an edit we make after seeing its op — the edit
+  /// loses everywhere. Lower both together, server first.
   final Duration maxRemoteDrift;
   final void Function(String message) _log;
 
@@ -100,6 +115,9 @@ class HlcClock {
   int ignoredRemoteCount = 0;
 
   static void _developerLog(String message) => developer.log(message, name: 'plantly.hlc');
+
+  /// The clock's wall time source, unix ms.
+  int get wallMillis => _nowProvider().millisecondsSinceEpoch;
 
   /// Emit a fresh HLC that is strictly greater than every previous call on
   /// this clock, and greater than every remote HLC that has been [merge]d.

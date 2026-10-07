@@ -73,11 +73,20 @@ final currentTenantIdProvider = StateProvider<String>((ref) {
 });
 
 /// Device id + HLC clock, independent of the tenant so a link/unlink never
-/// resets the clock's monotonic state.
+/// resets the clock's monotonic state. Seeded from `sync_ops` before it is
+/// handed out — every op writer gets its clock here, so no op of this launch
+/// can be stamped below one already in the log.
 final hlcClockProvider = FutureProvider<HlcClock>((ref) async {
   final prefs = await ref.watch(sharedPreferencesProvider.future);
   final deviceId = await DeviceId.load(prefs);
-  return HlcClock(deviceId: deviceId);
+  final clock = HlcClock(deviceId: deviceId);
+  try {
+    await seedClockFromOpLog(ref.watch(databaseProvider), clock);
+  } catch (e, st) {
+    // Never brick startup; an unseeded clock is the pre-fix behaviour.
+    debugPrint('hlc: seeding from sync_ops failed: $e\n$st');
+  }
+  return clock;
 });
 
 class AppContext {

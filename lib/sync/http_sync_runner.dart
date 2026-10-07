@@ -90,7 +90,7 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
           userId: userId,
           batchSize: batchSize,
         ),
-        _applier = SyncApplier(db: db, opLog: opLog, clock: opLog.clock) {
+        _applier = SyncApplier(db: db, opLog: opLog, clock: opLog.clock, readOnly: readOnly) {
     _backoff = minBackoff;
   }
 
@@ -275,6 +275,13 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
     while (true) {
       try {
         await _synthesizeInitialOps();
+        // Retry parked apply errors; full self-heal on the first cycle. A
+        // repair failure must never stop push/pull.
+        try {
+          await _applier.repair();
+        } catch (e, st) {
+          debugPrint('sync: repair failed, continuing: $e\n$st');
+        }
         final pushed = readOnly
             ? const SyncPushResult(
                 sent: 0, accepted: 0, rejected: [], batches: 0, cursor: '', hasMore: false, freshOps: 0)
