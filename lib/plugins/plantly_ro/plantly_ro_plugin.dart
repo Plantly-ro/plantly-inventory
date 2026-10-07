@@ -184,21 +184,30 @@ class PlantlyRoExportPlugin implements ExportPlugin {
     }
 
     yield const ExportProgress(fraction: 0.9, message: 'Uploading…');
-    final CreatePostResult result;
+    CreatePostResult result;
+    Future<CreatePostResult> post(String token) => _api.createPost(
+          token: token,
+          title: draft.title.trim(),
+          description: draft.description.trim(),
+          price: '${draft.priceLei}',
+          categoryId: draft.category!.trim(),
+          county: draft.county,
+          city: draft.city,
+          images: images,
+        );
     try {
-      result = await _api.createPost(
-        token: session.token,
-        title: draft.title.trim(),
-        description: draft.description.trim(),
-        price: '${draft.priceLei}',
-        categoryId: draft.category!.trim(),
-        county: draft.county,
-        city: draft.city,
-        images: images,
-      );
+      try {
+        result = await post(session.token);
+      } on PlantlyApiException catch (e) {
+        // A 401 here is not the end of the session: refresh once and retry.
+        // Only a refused refresh drops the session (keeping local data).
+        if (!e.isUnauthorized) rethrow;
+        final fresh = await _auth.refreshAfterUnauthorized();
+        if (fresh == null) rethrow;
+        result = await post(fresh.token);
+      }
     } on PlantlyApiException catch (e) {
       if (e.isUnauthorized) {
-        await _auth.signOut();
         yield ExportProgress(
           fraction: 0.9,
           done: true,
@@ -260,10 +269,16 @@ class PlantlyRoExportPlugin implements ExportPlugin {
       throw const PlantlyExportError(PlantlyExportErrorKind.signInRequired, 'Sign in to plantly.ro first');
     }
     try {
-      await _api.markSold(session.token, remoteId);
+      try {
+        await _api.markSold(session.token, remoteId);
+      } on PlantlyApiException catch (e) {
+        if (!e.isUnauthorized) rethrow;
+        final fresh = await _auth.refreshAfterUnauthorized();
+        if (fresh == null) rethrow;
+        await _api.markSold(fresh.token, remoteId);
+      }
     } on PlantlyApiException catch (e) {
       if (e.isUnauthorized) {
-        await _auth.signOut();
         throw PlantlyExportError(PlantlyExportErrorKind.signInRequired, e.message);
       }
       throw PlantlyExportError(PlantlyExportErrorKind.server, e.message, status: e.status, code: e.code);

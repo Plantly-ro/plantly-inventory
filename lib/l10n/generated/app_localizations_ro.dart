@@ -3690,4 +3690,63 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get devicesPlatformUnknown => 'Dispozitiv';
+
+  @override
+  String gateHeldByOtherTitle(String other) {
+    return 'Acest browser conține încă plantele lui $other';
+  }
+
+  @override
+  String gateHeldByOtherBody(String username, String other) {
+    return 'Ești conectat ca $username. Ca plantele lui $other să rămână private, Plantly Inventory rămâne închis în acest browser până când ștergi copia locală. Colecția lui rămâne în cloud; modificările nesincronizate din acest browser se pierd.';
+  }
+
+  @override
+  String get gateClearLocal => 'Șterge datele din browser și continuă';
+
+  @override
+  String cloudSignOutBodyWeb(String username) {
+    return '$username va fi deconectat, iar copia colecției din acest browser va fi ștearsă. Tot ce s-a sincronizat rămâne în cloud.';
+  }
+
+  @override
+  String get cloudStorageMemoryLabel => 'Nu se salvează în acest browser';
+
+  @override
+  String get cloudStorageMemoryValue =>
+      'Browserul blochează stocarea locală (fereastră privată?). Modificările se păstrează doar după ce se sincronizează în cloud.';
+
+  @override
+  String get signOutSyncing => 'Se sincronizează ultimele modificări…';
+
+  @override
+  String get signOutUnsyncedTitle => 'Nu tot a ajuns în cloud';
+
+  @override
+  String signOutUnsyncedBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count de modificări nu au ajuns încă în cloud. Te deconectezi oricum? Se vor pierde.',
+      few:
+          '$count modificări nu au ajuns încă în cloud. Te deconectezi oricum? Se vor pierde.',
+      one:
+          'O modificare nu a ajuns încă în cloud. Te deconectezi oricum? Se va pierde.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get signOutAnyway => 'Deconectează-te oricum';
+
+  @override
+  String signOutWipeFailed(String error) {
+    return 'Te-ai deconectat, dar copia din acest browser nu a putut fi ștearsă ($error). Rămâne blocată în spatele autentificării — conectează-te și deconectează-te din nou pentru a reîncerca.';
+  }
+
+  @override
+  String gateClearFailed(String error) {
+    return 'Copia din acest browser nu a putut fi ștearsă ($error). Încearcă din nou.';
+  }
 }

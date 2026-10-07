@@ -17,6 +17,7 @@ import '../../marketplace/plantly_auth.dart';
 import '../../plugins/plantly_ro/plantly_ro_plugin.dart';
 import '../../plugins/plugin_registry.dart';
 import '../../services/file_export.dart';
+import '../../shared/web_sign_out_flow.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../../app/navigation.dart';
@@ -258,11 +259,13 @@ class _PlantlyAccountRow extends ConsumerWidget {
   Future<void> _signOut(BuildContext context, WidgetRef ref, String username) async {
     final t = AppLocalizations.of(context);
     final plugin = ref.read(plantlyRoPluginProvider); // before the await (#14)
+    final web = ref.read(webPlatformProvider);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(t.mePlantlySignOutTitle),
-        content: Text(t.mePlantlySignOutBody(username)),
+        // Web: the same session drives the cloud — signing out wipes this browser.
+        content: Text(web ? t.cloudSignOutBodyWeb(username) : t.mePlantlySignOutBody(username)),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.listedCancel)),
           FilledButton(
@@ -273,7 +276,12 @@ class _PlantlyAccountRow extends ConsumerWidget {
         ],
       ),
     );
-    if (ok == true) await plugin?.revoke();
+    if (ok != true || !context.mounted) return;
+    if (web) {
+      await completeWebSignOut(context, ref);
+      return;
+    }
+    await plugin?.revoke();
   }
 }
 

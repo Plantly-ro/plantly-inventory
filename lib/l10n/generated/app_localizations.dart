@@ -6049,6 +6049,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Device'**
   String get devicesPlatformUnknown;
+
+  /// No description provided for @gateHeldByOtherTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This browser still holds {other}\'s plants'**
+  String gateHeldByOtherTitle(String other);
+
+  /// No description provided for @gateHeldByOtherBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re signed in as {username}. To keep {other}\'s plants private, Plantly Inventory stays closed in this browser until its copy is cleared. Their collection stays in their cloud; changes that never synced from this browser are lost.'**
+  String gateHeldByOtherBody(String username, String other);
+
+  /// No description provided for @gateClearLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear this browser and continue'**
+  String get gateClearLocal;
+
+  /// No description provided for @cloudSignOutBodyWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'{username} is signed out and this browser\'s copy of the collection is removed. Everything that synced stays in the cloud.'**
+  String cloudSignOutBodyWeb(String username);
+
+  /// No description provided for @cloudStorageMemoryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Not saved in this browser'**
+  String get cloudStorageMemoryLabel;
+
+  /// No description provided for @cloudStorageMemoryValue.
+  ///
+  /// In en, this message translates to:
+  /// **'This browser blocks local storage (a private window?). Changes are kept only once they sync to the cloud.'**
+  String get cloudStorageMemoryValue;
+
+  /// No description provided for @signOutSyncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing your last changes…'**
+  String get signOutSyncing;
+
+  /// No description provided for @signOutUnsyncedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Not everything reached the cloud'**
+  String get signOutUnsyncedTitle;
+
+  /// No description provided for @signOutUnsyncedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 change hasn\'t reached the cloud yet. Sign out anyway? It will be lost.} other{{count} changes haven\'t reached the cloud yet. Sign out anyway? They will be lost.}}'**
+  String signOutUnsyncedBody(int count);
+
+  /// No description provided for @signOutAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out anyway'**
+  String get signOutAnyway;
+
+  /// No description provided for @signOutWipeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed out, but this browser\'s copy could not be removed ({error}). It stays locked behind sign-in — sign in and sign out again to retry.'**
+  String signOutWipeFailed(String error);
+
+  /// No description provided for @gateClearFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'This browser\'s copy could not be removed ({error}). Try again.'**
+  String gateClearFailed(String error);
 }
 
 class _AppLocalizationsDelegate

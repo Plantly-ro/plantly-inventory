@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:plantly_inventory/cloud/entitlement.dart';
+import 'package:plantly_inventory/cloud/local_data_wipe.dart';
 import 'package:plantly_inventory/cloud/web_access.dart';
 import 'package:plantly_inventory/config/plantly_features.dart';
 import 'package:plantly_inventory/features/gate/web_access_gate.dart';
@@ -74,6 +75,7 @@ void main() {
     String? storedToken,
     bool settle = true,
     Size size = const Size(480, 1400),
+    List<Override> extra = const [],
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
@@ -85,6 +87,7 @@ void main() {
         webAccessProvider.overrideWithValue(access),
         httpClientProvider.overrideWith((_) => client()),
         sessionStoreProvider.overrideWith((_) => InMemorySessionStore(storedToken)),
+        ...extra,
       ],
       child: MaterialApp(
         locale: locale,
@@ -272,6 +275,72 @@ void main() {
     });
   });
 
+  group('held by another account (shared computer)', () {
+    testWidgets('RO: names the other account, no way in but "clear" or sign out; clear wipes + reloads', (tester) async {
+      final wiper = _CountingWiper();
+      await pump(
+        tester,
+        access: WebAccess.closedHeldByOther('alice', 'bob'),
+        storedToken: token,
+        extra: [localDataWiperProvider.overrideWith((ref) => wiper)],
+      );
+      expect(find.byKey(const Key('gate-held-by-other')), findsOneWidget);
+      expect(find.text('Acest browser conține încă plantele lui bob'), findsOneWidget);
+      expect(find.textContaining('Ești conectat ca alice.'), findsOneWidget);
+      expect(find.byKey(const Key('gate-subscribe')), findsNothing);
+      expect(find.byKey(const Key('gate-sign-out')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('gate-clear-local')));
+      await tester.pump();
+      expect(wiper.calls, 1);
+      // Busy: a second tap does nothing.
+      await tester.tap(find.byKey(const Key('gate-clear-local')), warnIfMissed: false);
+      await tester.pump();
+      expect(wiper.calls, 1);
+    });
+
+    testWidgets('explicit sign-out: flush, then a second confirm when changes would be lost', (tester) async {
+      final wiper = _CountingWiper()..pending = 2;
+      await pump(
+        tester,
+        access: WebAccess.closedNotEntitled('alice'),
+        locale: const Locale('en'),
+        storedToken: token,
+        extra: [localDataWiperProvider.overrideWith((ref) => wiper)],
+      );
+      Future<void> startSignOut() async {
+        await tester.ensureVisible(find.byKey(const Key('gate-sign-out')));
+        await tester.tap(find.byKey(const Key('gate-sign-out')));
+        await tester.pumpAndSettle();
+        expect(find.textContaining("this browser's copy of the collection is removed"), findsOneWidget);
+        await tester.tap(find.byKey(const Key('gate-sign-out-confirm')));
+        await tester.pumpAndSettle();
+      }
+
+      await startSignOut();
+      expect(find.text("2 changes haven't reached the cloud yet. Sign out anyway? They will be lost."), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(wiper.signOuts, 0, reason: 'backing out keeps the session and the data');
+
+      await startSignOut();
+      await tester.tap(find.byKey(const Key('sign-out-anyway')));
+      await tester.pumpAndSettle();
+      expect(wiper.signOuts, 1);
+
+      wiper.pending = 0;
+      await startSignOut();
+      expect(find.byKey(const Key('sign-out-unsynced')), findsNothing, reason: 'all synced: no second question');
+      expect(wiper.signOuts, 2);
+    });
+
+    testWidgets('EN copy', (tester) async {
+      await pump(tester, access: WebAccess.closedHeldByOther('alice', 'bob'), locale: const Locale('en'), storedToken: token);
+      expect(find.text("This browser still holds bob's plants"), findsOneWidget);
+      expect(find.text('Clear this browser and continue'), findsOneWidget);
+    });
+  });
+
   group('unreachable variant', () {
     testWidgets('offline, nothing usable cached → retry, no plan summary', (tester) async {
       await pump(tester, access: WebAccess.closedUnreachable('alice'), storedToken: token);
@@ -319,4 +388,18 @@ void main() {
       expect(tester.widgetList<Semantics>(live).any((w) => w.properties.liveRegion == true), isTrue);
     });
   });
+}
+
+class _CountingWiper implements LocalDataWiper {
+  int calls = 0;
+  int signOuts = 0;
+  int pending = 0;
+  @override
+  Future<void> wipeAndReload() async => calls++;
+  @override
+  Future<int> flush({Duration timeout = Duration.zero, Duration pause = Duration.zero}) async => pending;
+  @override
+  Future<int> pendingCount() async => pending;
+  @override
+  Future<void> signOutAndWipe() async => signOuts++;
 }

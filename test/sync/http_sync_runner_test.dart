@@ -475,6 +475,41 @@ void main() {
     expect(r.current.lastErrorDetail, isNull);
   });
 
+  group('stale cursor (lost database, surviving prefs)', () {
+    test('a cursor with no synced op behind it is reset: the pull starts over and restores the cache', () async {
+      // OPFS evicted / in-memory fallback: the database is new, the
+      // prefs cursor from the old one survived.
+      cursor.value = '3';
+      transport.serverOps.addAll([remotePlant('R1', 1000), remotePlant('R2', 2000), remotePlant('R3', 3000)]);
+      final r = make();
+      await r.syncNow();
+      expect(transport.pulls.first.since, '', reason: 'resuming at 3 would leave the cache empty forever');
+      expect(await plantIds(), {'R1', 'R2', 'R3'});
+      expect(cursor.value, '3');
+    });
+
+    test('a healthy cache (ops received or pushed before) keeps its cursor', () async {
+      transport.serverOps.addAll([remotePlant('R1', 1000), remotePlant('R2', 2000)]);
+      final r = make();
+      await r.syncNow();
+      expect(cursor.value, '2');
+      transport.serverOps.add(remotePlant('R3', 3000));
+      await r.syncNow();
+      expect(transport.pulls.last.since, '2');
+      expect(await plantIds(), {'R1', 'R2', 'R3'});
+    });
+
+    test('pending-only local ops do not count as history: the cursor still resets', () async {
+      cursor.value = '2';
+      transport.serverOps.addAll([remotePlant('R1', 1000), remotePlant('R2', 2000)]);
+      await localPlant('L1');
+      final r = make();
+      await r.syncNow();
+      expect(transport.pushes.single.toJson()['since'], '0', reason: 'empty cursor goes out as since=0');
+      expect(await plantIds(), {'L1', 'R1', 'R2'});
+    });
+  });
+
   test('NoopSyncRunner is inert', () async {
     const n = NoopSyncRunner();
     await n.syncNow();

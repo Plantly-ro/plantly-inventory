@@ -194,7 +194,7 @@ void main() {
     await signInAlice();
     final fern = await container.read(plantRepositoryProvider).create(nickname: 'Fern');
     final seeded = await plantsIn('col-1');
-    expect(seeded, greaterThan(1), reason: 'demo seed + Fern migrated into the default');
+    expect(seeded, 1, reason: 'Fern migrated into the default; the untouched demo seed was dropped at link');
     await waitFor(() => container.read(syncRunnerProvider) is HttpSyncRunner);
     final runner1 = container.read(syncRunnerProvider) as HttpSyncRunner;
     expect(runner1.collectionId, 'col-1');

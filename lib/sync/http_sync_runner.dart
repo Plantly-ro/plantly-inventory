@@ -274,6 +274,7 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
     var authRetried = false;
     while (true) {
       try {
+        await _healStaleCursor();
         await _synthesizeInitialOps();
         final pushed = readOnly
             ? const SyncPushResult(
@@ -385,6 +386,24 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
     } catch (_) {
       return false;
     }
+  }
+
+  /// The cursor lives in prefs, the data in the database: a lost database
+  /// with surviving prefs (OPFS evicted, a partial site-data clear, the
+  /// in-memory fallback, a restored prefs backup) would resume the pull
+  /// past every op the empty cache is missing. Every op this device ever
+  /// pushed or received sits in `sync_ops` with `pushed_at` set, so a
+  /// cursor with none of those behind it is stale: pull from the start.
+  /// Harmless when wrong — a full pull is idempotent.
+  Future<void> _healStaleCursor() async {
+    final current = await cursor.get();
+    if (current.isEmpty || current == '0') return;
+    final row = await db.customSelect(
+      'SELECT EXISTS(SELECT 1 FROM sync_ops WHERE tenant_id = ? AND pushed_at IS NOT NULL) AS present',
+      variables: [Variable<String>(collectionId)],
+      readsFrom: {db.syncOps},
+    ).getSingle();
+    if (!row.read<bool>('present')) await cursor.set('');
   }
 
   /// Rows that exist locally without any op (pre-cloud data, restored

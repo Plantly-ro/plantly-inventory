@@ -8,6 +8,7 @@ import '../config/plantly_features.dart';
 import '../data/providers.dart';
 import '../marketplace/plantly_api.dart';
 import '../marketplace/plantly_auth.dart';
+import 'collection_link.dart';
 import 'entitlement.dart';
 
 /// Web access gate (WEB-ACCESS-POLICY §0/§1): the browser build is the
@@ -35,6 +36,12 @@ sealed class WebAccess {
   /// Signed in, server unreachable and no entitled check cached in the last
   /// 24 h: closed, with a retry.
   static WebAccess closedUnreachable(String username) => WebAccessUnreachable(username);
+
+  /// Signed in and entitled, but this browser still holds another
+  /// account's data (`CloudState.heldByOther`): closed, with the offer to
+  /// clear this browser's copy. The web has no "Move to me" — the local
+  /// database is only a cache of somebody else's collection.
+  static WebAccess closedHeldByOther(String username, String other) => WebAccessHeldByOther(username, other);
 
   /// State 3: normal app. [offline] = served from a ≤ 24 h cached check
   /// while the server is unreachable → read-only banner.
@@ -84,6 +91,21 @@ class WebAccessUnreachable extends WebAccess {
   int get hashCode => Object.hash(4, username);
   @override
   String toString() => 'WebAccess.closedUnreachable($username)';
+}
+
+class WebAccessHeldByOther extends WebAccess {
+  const WebAccessHeldByOther(this.username, this.other);
+  final String username;
+
+  /// Display name of the account whose data is still here.
+  final String other;
+  @override
+  bool operator ==(Object other) =>
+      other is WebAccessHeldByOther && other.username == username && other.other == this.other;
+  @override
+  int get hashCode => Object.hash(6, username, other);
+  @override
+  String toString() => 'WebAccess.closedHeldByOther($username, $other)';
 }
 
 class WebAccessOpen extends WebAccess {
@@ -156,8 +178,17 @@ final webAccessProvider = Provider<WebAccess>((ref) {
     final at = notifier.lastVerifiedAt;
     final now = ref.watch(webAccessClockProvider)();
     if (at == null || now.difference(at) > webAccessOfflineGrace) return WebAccess.closedUnreachable(username);
-    return const WebAccessOpen(offline: true);
   }
+
+  // Another account's data on this browser (a sign-out from before the
+  // wipe-on-sign-out, an expired session that never signed out): never
+  // show it. Undecided until the persisted link state has been read.
+  final links = ref.watch(collectionLinkProvider);
+  if (!links.loaded) return WebAccess.checking;
+  final other = links.heldByOtherLabel(session.userId);
+  if (other != null) return WebAccess.closedHeldByOther(username, other);
+
+  if (notifier.source == EntitlementSource.staleCache) return const WebAccessOpen(offline: true);
   return WebAccess.open;
 });
 

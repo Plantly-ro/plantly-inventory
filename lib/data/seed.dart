@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ulid/ulid.dart';
 
 import '../l10n/generated/app_localizations.dart';
@@ -8,6 +9,7 @@ import 'database/app_database.dart';
 import 'mock_plants.dart';
 import 'repositories/care_schedule_repository.dart';
 import 'repositories/location_repository.dart';
+import 'seed_manifest.dart';
 
 /// Localized display nickname for a seeded demo plant. Species / scientific
 /// names stay as-is (they live on the decorative [MockPlant]); only the
@@ -37,7 +39,25 @@ String seedPlantName(AppLocalizations t, MockPlant mock) => switch (mock.id) {
 /// [appLocalizationsForPlatform] (the locale `MaterialApp` is about to
 /// pick) unless a caller injects [l10n]. Existing installs are unaffected —
 /// the seed is a no-op when data exists.
+///
+/// With [prefs] the ops it writes are recorded in the seed manifest
+/// ([kSeedManifestPrefKey]) so a later link can tell untouched demo rows
+/// from the user's own and drop them instead of uploading them.
 Future<void> seedIfEmpty({
+  required AppDatabase db,
+  required OpLogWriter opLog,
+  AppLocalizations? l10n,
+  SharedPreferences? prefs,
+}) async {
+  final before = prefs == null ? 0 : await maxSyncOpSeq(db);
+  try {
+    await _seed(db: db, opLog: opLog, l10n: l10n);
+  } finally {
+    if (prefs != null) await recordSeedOpRange(prefs, before, await maxSyncOpSeq(db));
+  }
+}
+
+Future<void> _seed({
   required AppDatabase db,
   required OpLogWriter opLog,
   AppLocalizations? l10n,

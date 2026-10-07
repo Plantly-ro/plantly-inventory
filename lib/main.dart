@@ -9,6 +9,7 @@ import 'app/url_strategy.dart';
 import 'cloud/account_name.dart';
 import 'cloud/cloud_notices.dart';
 import 'cloud/cloud_sync.dart';
+import 'cloud/local_data_wipe.dart';
 import 'cloud/play_billing_notices.dart';
 import 'cloud/play_billing_providers.dart';
 import 'cloud/web_access.dart';
@@ -95,6 +96,8 @@ class _PlantlyAppState extends ConsumerState<PlantlyApp> {
     // the entitlement on tab focus (inert off web).
     ref.watch(webAccessListenableProvider);
     ref.watch(webAccessWatcherProvider);
+    // Web: reload when another tab signs out; wipe on device_revoked (inert off web).
+    ref.watch(webSessionGuardProvider);
     return MaterialApp.router(
       title: 'Plantly Inventory',
       debugShowCheckedModeBanner: false,
