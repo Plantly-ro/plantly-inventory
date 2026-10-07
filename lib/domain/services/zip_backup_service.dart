@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart';
+import 'package:drift/drift.dart' show BooleanExpressionOperators, Value;
 
 import '../../data/database/app_database.dart';
 import '../../data/photo_blob_store.dart';
@@ -94,6 +95,11 @@ class ZipBackupService {
         mime: PhotoBlobStore.mimeForExtension(m.group(3)!),
         bytes: content,
       );
+      // Bytes restored: a restored row waiting for a download can upload
+      // instead (`already_stored` when the collection has it).
+      await (db.update(db.photos)
+            ..where((p) => p.tenantId.equals(opLog.tenantId) & p.sha256.equals(sha) & p.remoteState.equals('remote')))
+          .write(const PhotosCompanion(remoteState: Value('local')));
       photoCount++;
     }
 

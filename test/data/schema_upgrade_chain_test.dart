@@ -97,13 +97,13 @@ void main() {
     expect(idx, hasLength(1), reason: 'tenant index created with the table');
     expect(await columns(db, 'sync_ops'), contains('user_id'));
     expect(await columns(db, 'care_schedules'), contains('assignee_user_id'));
-    expect(await userVersion(db), 12);
+    expect(await userVersion(db), db.schemaVersion);
   }
 
-  test('schemaVersion is 12', () {
+  test('schemaVersion is 13', () {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
-    expect(db.schemaVersion, 12);
+    expect(db.schemaVersion, 13);
   });
 
   test('a fresh database has care_schedules.assignee_user_id', () async {
@@ -196,7 +196,7 @@ void main() {
     expect(rej.single.parked, isTrue);
   });
 
-  test('a second open of the same upgraded file is a no-op at v12', () async {
+  test('a second open of the same upgraded file is a no-op at the current version', () async {
     final dir = await Directory.systemTemp.createTemp('plantly-schema-chain-');
     addTearDown(() => dir.delete(recursive: true));
     final file = File('${dir.path}/app.db');

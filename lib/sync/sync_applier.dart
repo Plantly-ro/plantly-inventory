@@ -92,6 +92,7 @@ class SyncApplier {
 
   Future<SyncApplyResult> applyBatch(List<SyncOpDto> ops) async {
     final result = SyncApplyResult();
+    await _replayParkedPhotoCollisions(result);
     if (ops.isEmpty) return result;
     await db.transaction(() async {
       for (final op in ops) {
@@ -148,6 +149,44 @@ class SyncApplier {
       _collisionTenant = null;
       await _parkIdCollision(op, seq: seq, heldByTenant: held, result: result);
     }
+  }
+
+  bool _photoCollisionsReplayed = false;
+
+  /// Before schema 13 a pulled `photos` `*` op for a sha this device held
+  /// under another tenant was parked as [kIdCollisionReason]. Photos are
+  /// keyed per tenant now, so those rows can be materialised: once per
+  /// applier, insert each parked op's row (unless it exists or was
+  /// tombstoned since) and clear the ledger entry.
+  Future<void> _replayParkedPhotoCollisions(SyncApplyResult result) async {
+    if (_photoCollisionsReplayed) return;
+    _photoCollisionsReplayed = true;
+    final codec = codecs.forEntity('photos');
+    if (codec == null) return;
+    final parked = await (db.select(db.syncRejections)
+          ..where((r) =>
+              r.tenantId.equals(tenantId) & r.entity.equals('photos') & r.reason.equals(kIdCollisionReason)))
+        .get();
+    if (parked.isEmpty) return;
+    await db.transaction(() async {
+      for (final r in parked) {
+        final row = await (db.select(db.syncOps)..where((o) => o.seq.equals(r.opSeq))).getSingleOrNull();
+        if (row != null && row.field == kWholeRowField && await _readRow(codec, row.entityId) == null) {
+          final op = SyncOpDto.fromRow(row);
+          final value = op.value;
+          final ops = await opLog.opsFor(entity: 'photos', entityId: row.entityId);
+          if (value is Map && !ops.any((o) => o.field == kTombstoneField)) {
+            try {
+              await _insertFromWholeRow(
+                  codec, op, Hlc.parse(op.hlc), row.deviceId, value.map((k, v) => MapEntry('$k', v)), ops, result);
+            } on FormatException {
+              // unparseable HLC: nothing to replay
+            }
+          }
+        }
+        await (db.delete(db.syncRejections)..where((x) => x.opSeq.equals(r.opSeq))).go();
+      }
+    });
   }
 
   /// Ledger entry for a `*` op we could not materialise because its id is
@@ -496,7 +535,10 @@ class SyncApplier {
   // --- row helpers -----------------------------------------------------------
 
   /// Tenant of the row with primary key [id], any tenant; null when absent.
+  /// Always null for tables keyed per tenant (`photos`: (tenant_id, sha256))
+  /// — the same sha in another collection is a separate row, not a collision.
   Future<String?> _tenantHolding(EntityCodec codec, String id) async {
+    if (codec.table.$primaryKey.any((c) => c.name == 'tenant_id')) return null;
     final row = await db
         .customSelect(
           'SELECT tenant_id FROM ${codec.table.actualTableName} WHERE ${codec.idColumn} = ?',

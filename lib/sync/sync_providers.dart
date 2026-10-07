@@ -180,6 +180,7 @@ final httpSyncRunnerProvider = Provider<SyncRunner>((ref) {
             tenantId: collectionId,
             blobs: ref.watch(photoBlobStoreProvider),
             transport: photoTransport,
+            deviceId: ctx.deviceId,
           ),
     usage: ref.watch(collectionUsageSourceProvider),
     refreshAuth: () async => (await auth.current()) != null,

@@ -94,6 +94,28 @@ void main() {
     });
   });
 
+  group('migrateTenant — photos keyed (tenant_id, sha256)', () {
+    late AppDatabase db;
+    setUp(() => db = AppDatabase.forTesting(NativeDatabase.memory()));
+    tearDown(() => db.close());
+
+    Future<void> photo(String tenant, String sha, String state) => db.into(db.photos).insert(PhotosCompanion.insert(
+        sha256: sha, tenantId: tenant, mime: 'image/jpeg', bytes: 1, updatedHlc: 'h-$tenant', deviceId: 'd', remoteState: Value(state)));
+
+    test('a sha already held by the target tenant keeps that row; the source duplicate is dropped', () async {
+      await photo('local', 'shared-sha', 'local');
+      await photo('local', 'only-local', 'local');
+      await photo('col-1', 'shared-sha', 'remote');
+      await migrateTenant(db, from: 'local', to: 'col-1');
+      final rows = await db.select(db.photos).get();
+      expect({for (final r in rows) r.sha256: (r.tenantId, r.remoteState)}, {
+        'shared-sha': ('col-1', 'remote'),
+        'only-local': ('col-1', 'local'),
+      });
+      expect(rows, hasLength(2));
+    });
+  });
+
   group('CollectionLinkService', () {
     final token = fakeJwt(
       iat: DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000,
