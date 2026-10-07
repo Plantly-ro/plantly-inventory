@@ -41,7 +41,8 @@ class DayDetailSheet extends ConsumerWidget {
           orElse: () => const <String, db.PlantRow>{},
         );
     final startOfDay = DateTime(day.year, day.month, day.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1));
+    // Next calendar midnight (23h/25h on DST days), not +24h.
+    final endOfDay = DateTime(day.year, day.month, day.day + 1);
     final dayScheduled = [
       for (final s in schedules)
         if (s.nextDueAt != null) ...[

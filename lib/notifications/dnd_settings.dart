@@ -54,7 +54,8 @@ class DndSettings {
     final end = DateTime(when.year, when.month, when.day, endHour, endMinute);
     if (end.isAfter(when)) return end;
     // If the end is earlier in the day (wraps midnight), push to tomorrow.
-    return end.add(const Duration(days: 1));
+    // Calendar day, not +24h: across a DST change +24h lands an hour off.
+    return DateTime(when.year, when.month, when.day + 1, endHour, endMinute);
   }
 
   DndSettings copyWith({

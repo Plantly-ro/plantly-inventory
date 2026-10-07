@@ -28,8 +28,11 @@ class LocalCalendar {
 
   /// [utcMs] advanced by [days] (≥ 0) per the class rule.
   int addDays(int utcMs, double days) {
-    final whole = days.floor();
-    final fracMs = ((days - whole) * Duration.millisecondsPerDay).round();
+    // Round the total first: 123/30*30 = 122.99999999999999 must be 123
+    // calendar days, not 122 days + ~24h of elapsed time.
+    final total = (days * Duration.millisecondsPerDay).round();
+    final whole = total ~/ Duration.millisecondsPerDay;
+    final fracMs = total - whole * Duration.millisecondsPerDay;
     return _addCalendarDays(utcMs, whole) + fracMs;
   }
 
