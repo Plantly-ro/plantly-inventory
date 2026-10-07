@@ -9,10 +9,12 @@ import 'dart:convert';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:plantly_inventory/app/side_sheet.dart';
 import 'package:plantly_inventory/cloud/cloud_sync.dart';
 import 'package:plantly_inventory/cloud/collection_link.dart';
 import 'package:plantly_inventory/cloud/collections.dart';
@@ -142,8 +144,19 @@ void main() {
         httpClientProvider.overrideWith((_) => client()),
       ];
 
-  Future<ProviderContainer> pumpSheet(WidgetTester tester, {bool purchaseLink = true, Locale locale = const Locale('ro')}) async {
+  Future<ProviderContainer> pumpSheet(
+    WidgetTester tester, {
+    bool purchaseLink = true,
+    Locale locale = const Locale('ro'),
+    Size? size,
+  }) async {
     addTearDown(() => tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50))));
+    if (size != null) {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+    }
     await tester.pumpWidget(buildTestApp(
       overrides: overrides(purchaseLink: purchaseLink),
       child: MaterialApp(
@@ -169,7 +182,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('open')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('join-collection-title')), findsOneWidget);
+    expect(find.byType(JoinCollectionSheet), findsOneWidget);
     return container;
   }
 
@@ -364,6 +377,62 @@ void main() {
     expect(paths('/inventory/collections/join'), isEmpty);
     expect(c.read(joinParkingProvider), isNull);
     expect(await parkedInPrefs(), isNull);
+  });
+
+  // #29: the desktop side sheet's SheetChrome header already shows the
+  // title + subtitle; the body must not repeat them. Phone keeps its
+  // in-body title (no header there).
+  group('title / subtitle exactly once (#29)', () {
+    const phone = Size(390, 844);
+    const desktop = Size(1280, 960);
+    const joinTitle = 'Alătură-te unei colecții partajate';
+    const joinBody = 'Introdu codul de 8 caractere din invitația primită.';
+    const reqTitle = 'Inventory Cloud este necesar pentru colecțiile partajate';
+
+    for (final (label, size) in [('phone', phone), ('desktop', desktop)]) {
+      final isDesktop = size == desktop;
+
+      testWidgets('join form ($label)', (tester) async {
+        entitlement.value = const CloudEntitlement(active: true, source: 'pro');
+        await pumpSheet(tester, size: size);
+        expect(find.byType(SideSheetPanel), isDesktop ? findsOneWidget : findsNothing);
+        expect(find.byType(BottomSheet), isDesktop ? findsNothing : findsOneWidget);
+        expect(find.text(joinTitle), findsOneWidget);
+        expect(find.text(joinBody), findsOneWidget);
+        expect(find.byKey(const Key('join-collection-title')), isDesktop ? findsNothing : findsOneWidget);
+        expect(find.byKey(const Key('join-collection-code')), findsOneWidget);
+        expect(find.byKey(const Key('join-collection-submit')), findsOneWidget);
+      });
+
+      testWidgets('requirement step ($label)', (tester) async {
+        await pumpSheet(tester, size: size);
+        await tester.tap(find.byKey(const Key('join-collection-submit')));
+        await pumpFrames(tester);
+        expect(find.byKey(const Key('join-cloud-retry')), findsOneWidget, reason: 'on the requirement step');
+        expect(find.text(reqTitle), findsOneWidget);
+        expect(find.textContaining('Fiecare membru al unei colecții partajate are nevoie de propriul plan Inventory Cloud'),
+            findsOneWidget);
+        expect(find.byKey(const Key('join-cloud-required')), isDesktop ? findsNothing : findsOneWidget);
+        expect(find.byKey(const Key('join-cloud-required-body')), isDesktop ? findsNothing : findsOneWidget);
+        expect(find.byKey(const Key('join-cloud-parked')), findsOneWidget);
+      });
+    }
+
+    testWidgets('requirement step (desktop, ro): header title wraps, no ellipsis / overflow, semantic header',
+        (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pumpSheet(tester, size: desktop);
+      await tester.tap(find.byKey(const Key('join-collection-submit')));
+      await pumpFrames(tester);
+      final title = find.text(reqTitle);
+      expect(title, findsOneWidget);
+      final p = tester.renderObject<RenderParagraph>(title);
+      expect(p.didExceedMaxLines, isFalse, reason: 'full title, no ellipsis');
+      expect(p.size.height, greaterThan(30), reason: 'the long ro title takes two lines');
+      expect(tester.getSemantics(title), isSemantics(isHeader: true));
+      expect(tester.takeException(), isNull);
+      semantics.dispose();
+    });
   });
 
   group('HandoffListener resume', () {

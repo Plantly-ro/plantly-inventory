@@ -151,10 +151,10 @@ void main() {
       ];
   }
 
-  Future<void> pump(WidgetTester tester, Widget child, List<Override> ov) async {
+  Future<void> pump(WidgetTester tester, Widget child, List<Override> ov, {Size size = const Size(390, 844)}) async {
     SharedPreferences.setMockInitialValues({});
     addTearDown(() => tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50))));
-    tester.view.physicalSize = const Size(390, 844);
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -461,6 +461,59 @@ void main() {
       expect(find.textContaining('10 active invites'), findsOneWidget);
       expect(find.byKey(const Key('invite-create')), findsOneWidget);
     });
+  });
+
+  // #29: on desktop the SheetChrome header carries title (+ subtitle);
+  // the in-body copy is phone/tablet only — never both.
+  group('sheet titles: header on desktop, body on phone (#29)', () {
+    const phone = Size(390, 844);
+    const desktop = Size(1280, 960);
+
+    Future<void> open(WidgetTester tester, Size size, Key row) async {
+      await pump(tester, SharingRows(surface: PlantlySurface.light), overrides([_mine, _shared], _mine, []), size: size);
+      await tester.tap(find.byKey(row));
+      await tester.pumpAndSettle();
+    }
+
+    for (final (label, size) in [('phone', phone), ('desktop', desktop)]) {
+      final isDesktop = size == desktop;
+      testWidgets('invite sheet ($label): title + hint exactly once', (tester) async {
+        await open(tester, size, const Key('share-invite'));
+        expect(find.byType(InviteSheet), findsOneWidget);
+        expect(find.text('Invite to My plants'), findsOneWidget);
+        expect(find.text('Choose what the invite allows, then share the code.'), findsOneWidget);
+        expect(find.byKey(const Key('invite-title')), isDesktop ? findsNothing : findsOneWidget);
+        expect(find.byKey(const Key('invite-create')), findsOneWidget);
+      });
+
+      testWidgets('members sheet ($label): title exactly once', (tester) async {
+        await open(tester, size, const Key('share-members'));
+        expect(find.byType(MembersSheet), findsOneWidget);
+        expect(find.text('Members of My plants'), findsOneWidget);
+        expect(find.byKey(const Key('members-title')), isDesktop ? findsNothing : findsOneWidget);
+        expect(find.text('alice (you)'), findsOneWidget);
+      });
+
+      testWidgets('switcher sheet ($label): title exactly once', (tester) async {
+        await pump(
+          tester,
+          Builder(
+            builder: (ctx) => TextButton(
+              key: const Key('open-switcher'),
+              onPressed: () => showCollectionSwitcherSheet(ctx),
+              child: const Text('open'),
+            ),
+          ),
+          overrides([_mine, _shared], _mine, []),
+          size: size,
+        );
+        await tester.tap(find.byKey(const Key('open-switcher')));
+        await tester.pumpAndSettle();
+        expect(find.byType(CollectionSwitcherSheet), findsOneWidget);
+        expect(find.text('Collections'), findsOneWidget);
+        expect(find.byKey(const Key('collection-switcher-sheet-title')), isDesktop ? findsNothing : findsOneWidget);
+      });
+    }
   });
 
   group('collection switcher v2', () {

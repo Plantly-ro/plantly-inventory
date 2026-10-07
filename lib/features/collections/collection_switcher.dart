@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/breakpoints.dart';
 import '../../app/side_sheet.dart';
 import '../../cloud/cloud_state.dart';
 import '../../cloud/cloud_sync.dart';
@@ -388,16 +389,18 @@ class CollectionSwitcherSheet extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                t.shareSwitcherTitle,
-                key: const Key('collection-switcher-sheet-title'),
-                style: TextStyle(
-                  fontFamily: PlantlyFonts.plusJakartaSans,
-                  fontSize: 19,
-                  fontWeight: FontWeight.w800,
-                  color: surface.text,
+              // Desktop: the SheetChrome header carries the title (#29).
+              if (!context.isDesktop)
+                Text(
+                  t.shareSwitcherTitle,
+                  key: const Key('collection-switcher-sheet-title'),
+                  style: TextStyle(
+                    fontFamily: PlantlyFonts.plusJakartaSans,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    color: surface.text,
+                  ),
                 ),
-              ),
               if (mine.isNotEmpty) header(t.shareMineSection),
               for (final c in mine) tile(c),
               header(t.shareSharedWithMe),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../app/breakpoints.dart';
 import '../../app/side_sheet.dart';
 import '../../cloud/cloud_state.dart';
 import '../../cloud/collections.dart';
@@ -280,19 +281,22 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                key: const Key('invite-title'),
-                style: TextStyle(
-                  fontFamily: PlantlyFonts.plusJakartaSans,
-                  fontSize: 19,
-                  fontWeight: FontWeight.w800,
-                  color: surface.text,
+              // Desktop: title + hint live in the SheetChrome header (#29).
+              if (!context.isDesktop) ...[
+                Text(
+                  title,
+                  key: const Key('invite-title'),
+                  style: TextStyle(
+                    fontFamily: PlantlyFonts.plusJakartaSans,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    color: surface.text,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(hint, style: TextStyle(fontSize: 12.5, color: surface.muted)),
-              const SizedBox(height: 16),
+                const SizedBox(height: 4),
+                Text(hint, style: TextStyle(fontSize: 12.5, color: surface.muted)),
+                const SizedBox(height: 16),
+              ],
               if (invite == null) ..._form(t, surface),
               if (invite != null) ..._result(t, surface, invite),
               const SizedBox(height: 8),
@@ -657,17 +661,20 @@ class MembersSheet extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                title,
-                key: const Key('members-title'),
-                style: TextStyle(
-                  fontFamily: PlantlyFonts.plusJakartaSans,
-                  fontSize: 19,
-                  fontWeight: FontWeight.w800,
-                  color: surface.text,
+              // Desktop: the SheetChrome header carries the title (#29).
+              if (!context.isDesktop) ...[
+                Text(
+                  title,
+                  key: const Key('members-title'),
+                  style: TextStyle(
+                    fontFamily: PlantlyFonts.plusJakartaSans,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    color: surface.text,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
+                const SizedBox(height: 10),
+              ],
               members.when(
                 loading: () => Padding(
                   padding: const EdgeInsets.all(16),

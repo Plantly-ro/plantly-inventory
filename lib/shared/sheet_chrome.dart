@@ -11,8 +11,9 @@ import '../theme/tokens.dart';
 ///   40×4 drag handle centred with [handleGap] below it, then [children]
 ///   (the sheet's own title stays in there, untouched), then [footer].
 ///   Byte-identical to the hand-rolled version each sheet had before.
-/// * desktop (side sheet) — no radius, no handle. A 56 px header carries
-///   [title] (18 w800) and a `×`; the body scrolls; [footer] is pinned in a
+/// * desktop (side sheet) — no radius, no handle. A header (min 56 px,
+///   grows for a 2-line title) carries [title] (18 w800, a semantic
+///   header) and a `×`; the body scrolls; [footer] is pinned in a
 ///   64 px bottom bar with a top border.
 ///
 /// [expand] is for sheets that live in a `DraggableScrollableSheet` (the
@@ -110,23 +111,30 @@ class SheetChrome extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            height: 56,
+          // At least 56 px; a long title (ro copy, long collection
+          // names) wraps to a 2nd line and the header grows. One-line
+          // titles lay out exactly as in a fixed 56 px bar: the 4 px
+          // vertical padding + the 48 px close button = 56.
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 56),
             child: Padding(
-              padding: EdgeInsets.only(left: padding.left, right: padding.right - 8),
+              padding: EdgeInsets.fromLTRB(padding.left, 4, padding.right - 8, 4),
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      title ?? '',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: PlantlyFonts.plusJakartaSans,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: surface.text,
-                        letterSpacing: -0.02 * 18,
+                    child: Semantics(
+                      header: true,
+                      child: Text(
+                        title ?? '',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: PlantlyFonts.plusJakartaSans,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: surface.text,
+                          letterSpacing: -0.02 * 18,
+                        ),
                       ),
                     ),
                   ),
