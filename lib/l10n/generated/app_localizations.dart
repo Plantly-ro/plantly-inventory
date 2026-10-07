@@ -770,6 +770,12 @@ abstract class AppLocalizations {
   /// **'We use this only in the greeting at the top of the home screen. You can change or remove it later in Me.'**
   String get onbNameHelp;
 
+  /// Onboarding step 1: helper under the name field when it was prefilled from the signed-in plantly.ro account.
+  ///
+  /// In en, this message translates to:
+  /// **'From your plantly.ro account — you can change it.'**
+  String get onbNameFromAccount;
+
   /// No description provided for @onbNotifTitle.
   ///
   /// In en, this message translates to:

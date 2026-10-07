@@ -112,6 +112,7 @@
   "onbWelcomeBody": "Un mod calm, offline, de a-ți urmări plantele de apartament — udare, fertilizare, înmulțire, spații și altele. Totul rămâne pe telefonul tău.",
   "onbNameLabel": "NUMELE TĂU (OPȚIONAL)",
   "onbNameHelp": "Îl folosim doar în salutul din partea de sus a ecranului principal. Îl poți schimba sau șterge mai târziu din Eu.",
+  "onbNameFromAccount": "Din contul tău plantly.ro — îl poți schimba.",
   "onbNotifTitle": "Memento-uri pentru plante",
   "onbNotifBody": "Programăm notificări locale pe telefonul tău când o plantă are nevoie de îngrijire. Nimic nu se trimite către un server.",
   "onbNotifGranted": "Memento-urile sunt activate.",

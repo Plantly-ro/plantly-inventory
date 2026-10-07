@@ -417,6 +417,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'We use this only in the greeting at the top of the home screen. You can change or remove it later in Me.';
 
   @override
+  String get onbNameFromAccount =>
+      'From your plantly.ro account — you can change it.';
+
+  @override
   String get onbNotifTitle => 'Plant reminders';
 
   @override

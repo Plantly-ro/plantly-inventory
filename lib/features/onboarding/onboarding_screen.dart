@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/breakpoints.dart';
+import '../../cloud/account_name.dart';
 import '../../data/providers.dart';
 import '../../data/user_prefs.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -9,7 +10,9 @@ import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 
 /// First-run onboarding. Three steps:
-///   1. Welcome + optional display name — used by the greeting.
+///   1. Welcome + optional display name — used by the greeting. Prefilled
+///      from the device's name, else from the signed-in plantly.ro account
+///      (which can arrive after the screen is up); never over typed text.
 ///   2. Notification permission — plant reminders won't fire without it.
 ///   3. Privacy & consent — both toggles default off; the user explicitly
 ///      opts in to crash reports and/or anonymous usage.
@@ -29,6 +32,43 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   bool _notifGranted = false;
   bool _crash = false;
   bool _analytics = false;
+
+  /// The user typed in the name field: prefills never touch it again.
+  bool _nameEdited = false;
+
+  /// The field currently holds the account's suggested name (helper line).
+  bool _nameFromAccount = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _prefillName(rebuild: false);
+    ref.listenManual(accountGreetingNameProvider, (_, _) => _prefillName());
+    ref.listenManual(userPrefsProvider.select((p) => p.userName), (_, _) => _prefillName());
+  }
+
+  /// Local name first (the device's choice wins), then the account's.
+  void _prefillName({bool rebuild = true}) {
+    if (_nameEdited || !mounted) return;
+    final local = ref.read(userPrefsProvider).userName;
+    final accountAsync = ref.read(accountGreetingNameProvider);
+    final account = accountAsync.isLoading ? null : accountAsync.valueOrNull;
+    final value = local ?? account;
+    if (value == null) return;
+    final fromAccount = value == account;
+    if (_name.text == value && _nameFromAccount == fromAccount) return;
+    _name.text = value;
+    if (rebuild) {
+      setState(() => _nameFromAccount = fromAccount);
+    } else {
+      _nameFromAccount = fromAccount;
+    }
+  }
+
+  void _onNameEdited(String _) {
+    _nameEdited = true;
+    if (_nameFromAccount) setState(() => _nameFromAccount = false);
+  }
 
   @override
   void dispose() {
@@ -88,7 +128,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 controller: _pages,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
-                  _WelcomeStep(surface: surface, nameController: _name),
+                  _WelcomeStep(
+                    surface: surface,
+                    nameController: _name,
+                    fromAccount: _nameFromAccount,
+                    onNameChanged: _onNameEdited,
+                  ),
                   _NotifStep(
                     surface: surface,
                     granted: _notifGranted,
@@ -152,9 +197,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 }
 
 class _WelcomeStep extends StatelessWidget {
-  const _WelcomeStep({required this.surface, required this.nameController});
+  const _WelcomeStep({
+    required this.surface,
+    required this.nameController,
+    required this.fromAccount,
+    required this.onNameChanged,
+  });
   final PlantlySurface surface;
   final TextEditingController nameController;
+
+  /// The field holds the plantly.ro account's name: say where it came from.
+  final bool fromAccount;
+  final ValueChanged<String> onNameChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -186,6 +240,7 @@ class _WelcomeStep extends StatelessWidget {
           const SizedBox(height: 8),
           TextField(
             controller: nameController,
+            onChanged: onNameChanged,
             textCapitalization: TextCapitalization.words,
             decoration: InputDecoration(
               hintText: t.meYourNameHint,
@@ -207,6 +262,14 @@ class _WelcomeStep extends StatelessWidget {
               ),
             ),
           ),
+          if (fromAccount) ...[
+            const SizedBox(height: 8),
+            Text(
+              t.onbNameFromAccount,
+              key: const ValueKey('onb-name-from-account'),
+              style: TextStyle(fontSize: 12, color: surface.green, fontWeight: FontWeight.w600),
+            ),
+          ],
           const SizedBox(height: 8),
           Text(
             t.onbNameHelp,

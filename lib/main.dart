@@ -6,6 +6,7 @@ import 'app/desktop_theme.dart';
 import 'app/router.dart';
 import 'app/scroll_behavior.dart';
 import 'app/url_strategy.dart';
+import 'cloud/account_name.dart';
 import 'cloud/cloud_notices.dart';
 import 'cloud/cloud_sync.dart';
 import 'cloud/play_billing_notices.dart';
@@ -87,6 +88,9 @@ class _PlantlyAppState extends ConsumerState<PlantlyApp> {
     ref.watch(cloudSyncCoordinatorProvider);
     // Play Billing restore/resume glue (inert off Android or with the flags off).
     ref.watch(playBillingCoordinatorProvider);
+    // Signed in with no greeting name on this device: adopt the plantly.ro
+    // account's first name (never over a local one).
+    ref.watch(accountNameAdoptionProvider);
     // Web access gate: keeps the verdict → router bridge alive and re-checks
     // the entitlement on tab focus (inert off web).
     ref.watch(webAccessListenableProvider);
