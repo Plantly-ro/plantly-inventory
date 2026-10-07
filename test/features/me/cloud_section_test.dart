@@ -15,6 +15,7 @@ import 'package:plantly_inventory/cloud/cloud_sync.dart';
 import 'package:plantly_inventory/cloud/sync_runner.dart';
 import 'package:plantly_inventory/config/plantly_features.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
+import 'package:plantly_inventory/data/database_storage.dart';
 import 'package:plantly_inventory/data/providers.dart';
 import 'package:plantly_inventory/features/me/cloud_screen.dart';
 import 'package:plantly_inventory/features/me/cloud_section.dart';
@@ -154,6 +155,39 @@ void main() {
       // Opened from Cloud → the cloud subtitle, not the listing one.
       expect(find.text('Use your plantly.ro account for cloud backup & sync.'), findsOneWidget);
       expect(find.text('Use your plantly.ro account to post listings.'), findsNothing);
+    });
+
+    testWidgets('web in-memory fallback: a warning row that data is not persisted in this browser', (tester) async {
+      await pump(tester, signedIn: false, extra: [databaseInMemoryProvider.overrideWithValue(true)]);
+      expect(find.byKey(const Key('cloud-storage-memory')), findsOneWidget);
+      expect(find.text('Not saved in this browser'), findsOneWidget);
+      expect(find.byKey(const Key('cloud-sign-in')), findsOneWidget, reason: 'non-blocking');
+    });
+
+    testWidgets('persisted storage → no warning row', (tester) async {
+      await pump(tester, signedIn: false);
+      expect(find.byKey(const Key('cloud-storage-memory')), findsNothing);
+    });
+
+    testWidgets('web sign-out: copy says the browser copy goes; nothing pending → straight through', (tester) async {
+      final runner = await pump(
+        tester,
+        entitlement: const CloudEntitlement(active: true, source: 'pro'),
+        extra: [webPlatformProvider.overrideWithValue(true)],
+      );
+      final button = find.byKey(const Key('cloud-account'));
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      expect(find.textContaining("this browser's copy of the collection is removed"), findsOneWidget);
+      await tester.tap(find.byKey(const Key('cloud-sign-out-confirm')));
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.pumpAndSettle();
+      // Nothing pending → no second question, no extra sync; signed out.
+      expect(find.byKey(const Key('sign-out-unsynced')), findsNothing);
+      expect(runner.syncNowCalls, 0);
+      final container = ProviderScope.containerOf(tester.element(find.byType(Scaffold).first));
+      expect(container.read(plantlyAuthProvider).valueOrNull, isNull);
     });
 
     testWidgets('signedOut (ro)', (tester) async {
@@ -338,7 +372,7 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString(kCollectionUserIdPrefKey), 'u-1');
       expect(prefs.getString(kTenantIdPrefKey), 'col-9');
-      expect(prefs.getBool(kSkipSeedPrefKey), isNull);
+      expect(prefs.getBool(kSkipSeedPrefKey), isTrue, reason: 'a linked install never seeds demo data again');
       expect(find.byKey(const Key('cloud-move-to-me')), findsNothing);
       expect(find.byKey(const Key('cloud-sync-now')), findsOneWidget);
     });

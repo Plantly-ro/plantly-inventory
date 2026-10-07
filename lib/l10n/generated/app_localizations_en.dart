@@ -3628,4 +3628,61 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get devicesPlatformUnknown => 'Device';
+
+  @override
+  String gateHeldByOtherTitle(String other) {
+    return 'This browser still holds $other\'s plants';
+  }
+
+  @override
+  String gateHeldByOtherBody(String username, String other) {
+    return 'You\'re signed in as $username. To keep $other\'s plants private, Plantly Inventory stays closed in this browser until its copy is cleared. Their collection stays in their cloud; changes that never synced from this browser are lost.';
+  }
+
+  @override
+  String get gateClearLocal => 'Clear this browser and continue';
+
+  @override
+  String cloudSignOutBodyWeb(String username) {
+    return '$username is signed out and this browser\'s copy of the collection is removed. Everything that synced stays in the cloud.';
+  }
+
+  @override
+  String get cloudStorageMemoryLabel => 'Not saved in this browser';
+
+  @override
+  String get cloudStorageMemoryValue =>
+      'This browser blocks local storage (a private window?). Changes are kept only once they sync to the cloud.';
+
+  @override
+  String get signOutSyncing => 'Syncing your last changes…';
+
+  @override
+  String get signOutUnsyncedTitle => 'Not everything reached the cloud';
+
+  @override
+  String signOutUnsyncedBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count changes haven\'t reached the cloud yet. Sign out anyway? They will be lost.',
+      one:
+          '1 change hasn\'t reached the cloud yet. Sign out anyway? It will be lost.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get signOutAnyway => 'Sign out anyway';
+
+  @override
+  String signOutWipeFailed(String error) {
+    return 'Signed out, but this browser\'s copy could not be removed ($error). It stays locked behind sign-in — sign in and sign out again to retry.';
+  }
+
+  @override
+  String gateClearFailed(String error) {
+    return 'This browser\'s copy could not be removed ($error). Try again.';
+  }
 }

@@ -13,7 +13,7 @@ PhotoBlobStore createPhotoBlobStore() => IndexedDbPhotoBlobStore();
 /// photos survive page reloads alongside the Drift database. Bytes go in as
 /// typed arrays (structured-cloned, no base64). Decoded [MemoryImage]s are
 /// memoised per key so list rebuilds don't re-read IndexedDB and re-decode.
-class IndexedDbPhotoBlobStore implements PhotoBlobStore {
+class IndexedDbPhotoBlobStore implements PhotoBlobStore, ClearablePhotoBlobStore {
   IndexedDbPhotoBlobStore();
 
   static const _databaseName = 'plantly_inventory_photos';
@@ -85,6 +85,15 @@ class IndexedDbPhotoBlobStore implements PhotoBlobStore {
     if (bytes == null) return null;
     if (_images.length >= _imageCacheMax) _images.remove(_images.keys.first);
     return _images[key] = MemoryImage(bytes);
+  }
+
+  @override
+  Future<void> clear() async {
+    _images.clear();
+    final db = await _open();
+    final txn = db.transaction(_storeName.toJS, 'readwrite');
+    txn.objectStore(_storeName).clear();
+    await _awaitTransaction(txn);
   }
 
   static Future<JSAny?> _awaitRequest(web.IDBRequest request) {

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/plantly_features.dart';
 import '../domain/services/backup_service.dart';
 import '../domain/services/ical_export.dart';
 import '../domain/services/reminder_engine.dart';
@@ -130,8 +131,13 @@ final appContextProvider = FutureProvider<AppContext>((ref) async {
     tenantId: tenantId,
     currentUserId: () => ref.read(plantlyAuthProvider).valueOrNull?.userId,
   );
-  if (!(prefs.getBool(kSkipSeedPrefKey) ?? false)) {
-    await seedIfEmpty(db: db, opLog: opLog);
+  // Demo seed: only the pre-cloud local tenant of an app install, never a
+  // collection tenant (it would be pushed into the user's real collection —
+  // a fresh device seeding before its first pull, an empty locations table
+  // after a link) and never on web, which is a cloud-only surface
+  // (WEB-ACCESS-POLICY §0). The manifest lets a later link drop it untouched.
+  if (!(prefs.getBool(kSkipSeedPrefKey) ?? false) && tenantId == kDefaultTenantId && !ref.read(webPlatformProvider)) {
+    await seedIfEmpty(db: db, opLog: opLog, prefs: prefs);
   }
   // Startup only *reads* the permission state — it must never prompt. The
   // system dialog used to pop over the first onboarding page (and again

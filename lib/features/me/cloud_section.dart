@@ -20,10 +20,12 @@ import '../../cloud/sync_runner.dart';
 import '../../app/navigation.dart';
 import '../../config/plantly_features.dart';
 import '../../config/plantly_hosts.dart';
+import '../../data/database_storage.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../marketplace/plantly_api.dart';
 import '../../marketplace/plantly_auth.dart';
 import '../../plugins/plantly_ro/login_sheet.dart';
+import '../../shared/web_sign_out_flow.dart';
 import '../../theme/tokens.dart';
 import '../collections/sharing_rows.dart';
 import 'me_rows.dart';
@@ -140,12 +142,25 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
     ref.listen<CloudState>(cloudStateProvider, (_, next) => _maybeAutoLink(next));
     final state = ref.watch(cloudStateProvider);
     final t = AppLocalizations.of(context);
-    final rows = switch (state.phase) {
-      CloudPhase.off => const <Widget>[],
-      CloudPhase.signedOut => _signedOut(t),
-      CloudPhase.notEntitled => _notEntitled(t, state),
-      CloudPhase.ready => _ready(t, state),
-    };
+    final rows = [
+      // Web, drift's silent in-memory fallback: nothing survives a reload
+      // unless it reached the cloud.
+      if (state.phase != CloudPhase.off && ref.watch(databaseInMemoryProvider))
+        MeActionRow(
+          key: const Key('cloud-storage-memory'),
+          label: t.cloudStorageMemoryLabel,
+          value: t.cloudStorageMemoryValue,
+          icon: Icons.warning_amber_outlined,
+          surface: surface,
+          valueColor: surface.terra,
+        ),
+      ...switch (state.phase) {
+        CloudPhase.off => const <Widget>[],
+        CloudPhase.signedOut => _signedOut(t),
+        CloudPhase.notEntitled => _notEntitled(t, state),
+        CloudPhase.ready => _ready(t, state),
+      },
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -458,11 +473,13 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
   Future<void> _signOut(String username) async {
     final t = AppLocalizations.of(context);
     final auth = ref.read(plantlyAuthProvider.notifier); // before the await (#14)
+    final web = ref.read(webPlatformProvider);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(t.cloudSignOutTitle),
-        content: Text(t.cloudSignOutBody(username)),
+        // Web: the sign-out wipes this browser's copy (local_data_wipe.dart).
+        content: Text(web ? t.cloudSignOutBodyWeb(username) : t.cloudSignOutBody(username)),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.cancel)),
           FilledButton(
@@ -473,7 +490,12 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
         ],
       ),
     );
-    if (ok == true) await auth.signOut();
+    if (ok != true || !mounted) return;
+    if (web) {
+      await completeWebSignOut(context, ref);
+      return;
+    }
+    await auth.signOut();
   }
 
   Future<void> _unlink() async {

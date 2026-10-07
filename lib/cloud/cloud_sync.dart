@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/plantly_features.dart';
+import '../marketplace/plantly_auth.dart';
 import '../sync/sync_providers.dart';
 import 'cloud_state.dart';
 import 'collection_link.dart';
@@ -61,6 +62,30 @@ class CloudSyncCoordinator {
     _ref.listen<String?>(collectionLinkProvider.select((s) => s.link?.id), (prev, next) {
       if (next != null && next != prev) requestSync();
     });
+    _bootInFlight = _handleBoot();
+  }
+
+  Future<void>? _bootInFlight;
+
+  /// Resolves when the boot-time link check has finished (tests).
+  Future<void> get booted => _bootInFlight ?? Future.value();
+
+  /// App start with a session already stored (a reload, the "clear this
+  /// browser" reload, a restart): link now when nothing is linked yet, so
+  /// plants added before anyone opens Me → Cloud get pushed. Never over
+  /// another account's data, never after the user unlinked.
+  Future<void> _handleBoot() async {
+    try {
+      final session = await _ref.read(plantlyAuthProvider.notifier).current();
+      if (session == null) return;
+      await _ref.read(collectionLinkProvider.notifier).ready;
+      final state = _ref.read(cloudStateProvider);
+      if (state.phase == CloudPhase.signedOut || state.phase == CloudPhase.off) return;
+      if (state.linked || state.unlinkedByUser || state.heldByOther != null) return;
+      await _ref.read(collectionLinkProvider.notifier).ensureLinked();
+    } catch (_) {
+      // Offline / server error: the sign-in path and Me → Cloud retry.
+    }
   }
 
   /// Resolves when the most recent sign-in has been fully handled.

@@ -2109,5 +2109,62 @@
   "devicesPlatformIos": "iPhone / iPad",
   "devicesPlatformWeb": "Web",
   "devicesPlatformDesktop": "Desktop",
-  "devicesPlatformUnknown": "Device"
+  "devicesPlatformUnknown": "Device",
+  "gateHeldByOtherTitle": "This browser still holds {other}'s plants",
+  "@gateHeldByOtherTitle": {
+    "placeholders": {
+      "other": {
+        "type": "String"
+      }
+    }
+  },
+  "gateHeldByOtherBody": "You're signed in as {username}. To keep {other}'s plants private, Plantly Inventory stays closed in this browser until its copy is cleared. Their collection stays in their cloud; changes that never synced from this browser are lost.",
+  "@gateHeldByOtherBody": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      },
+      "other": {
+        "type": "String"
+      }
+    }
+  },
+  "gateClearLocal": "Clear this browser and continue",
+  "cloudSignOutBodyWeb": "{username} is signed out and this browser's copy of the collection is removed. Everything that synced stays in the cloud.",
+  "@cloudSignOutBodyWeb": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudStorageMemoryLabel": "Not saved in this browser",
+  "cloudStorageMemoryValue": "This browser blocks local storage (a private window?). Changes are kept only once they sync to the cloud.",
+  "signOutSyncing": "Syncing your last changes…",
+  "signOutUnsyncedTitle": "Not everything reached the cloud",
+  "signOutUnsyncedBody": "{count, plural, =1{1 change hasn't reached the cloud yet. Sign out anyway? It will be lost.} other{{count} changes haven't reached the cloud yet. Sign out anyway? They will be lost.}}",
+  "@signOutUnsyncedBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "signOutAnyway": "Sign out anyway",
+  "signOutWipeFailed": "Signed out, but this browser's copy could not be removed ({error}). It stays locked behind sign-in — sign in and sign out again to retry.",
+  "@signOutWipeFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "gateClearFailed": "This browser's copy could not be removed ({error}). Try again.",
+  "@gateClearFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
 }

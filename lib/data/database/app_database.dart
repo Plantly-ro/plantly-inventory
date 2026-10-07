@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:flutter/foundation.dart' show ValueNotifier, debugPrint;
 
 import 'web_db_assets.dart';
 
@@ -350,9 +351,25 @@ class AppDatabase extends _$AppDatabase {
           web: DriftWebOptions(
             sqlite3Wasm: webDeployedFileUri(kSqlite3WasmPath),
             driftWorker: webDeployedFileUri(kDriftWorkerPath),
+            onResult: reportWebStorage,
           ),
         ));
   AppDatabase.forTesting(super.executor);
+
+  /// Storage the browser build ended up with (null off web / until the
+  /// database opened). `inMemory` = nothing survives a reload: drift falls
+  /// back to it silently when neither OPFS nor IndexedDB is usable (private
+  /// windows, blocked storage). Me → Cloud shows a warning for it.
+  static final ValueNotifier<WasmStorageImplementation?> webStorage = ValueNotifier(null);
+
+  /// `DriftWebOptions.onResult`: log the choice and publish it.
+  static void reportWebStorage(WasmDatabaseResult result) {
+    if (result.chosenImplementation == WasmStorageImplementation.inMemory || result.missingFeatures.isNotEmpty) {
+      debugPrint('AppDatabase: web storage ${result.chosenImplementation.name} '
+          '(missing: ${result.missingFeatures.map((f) => f.name).join(', ')})');
+    }
+    webStorage.value = result.chosenImplementation;
+  }
 
   @override
   int get schemaVersion => 13;

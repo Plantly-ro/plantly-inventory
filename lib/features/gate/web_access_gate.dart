@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../cloud/entitlement.dart';
+import '../../cloud/local_data_wipe.dart';
 import '../../cloud/sign_in_events.dart';
 import '../../cloud/web_access.dart';
 import '../../config/plantly_hosts.dart';
@@ -12,6 +13,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../marketplace/plantly_api.dart';
 import '../../marketplace/plantly_auth.dart';
 import '../../plugins/plantly_ro/login_sheet.dart';
+import '../../shared/web_sign_out_flow.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 
@@ -62,6 +64,15 @@ class _WebAccessGateState extends ConsumerState<WebAccessGate> {
         username: username,
         busy: _busy,
         onRetry: _retry,
+        onSignOut: () => _signOut(username),
+      ),
+      WebAccessHeldByOther(:final username, :final other) => _HeldByOther(
+        key: const Key('gate-held-by-other'),
+        surface: surface,
+        username: username,
+        other: other,
+        busy: _busy,
+        onClear: _clearLocal,
         onSignOut: () => _signOut(username),
       ),
       WebAccessChecking() || WebAccessOpen() => _Checking(surface: surface, label: t.gateChecking),
@@ -122,14 +133,28 @@ class _WebAccessGateState extends ConsumerState<WebAccessGate> {
     }
   }
 
+  /// Held by another account: drop this browser's copy (the session stays)
+  /// and start over — the reload re-links for the signed-in account.
+  Future<void> _clearLocal() async {
+    if (_busy) return;
+    final t = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+    try {
+      await ref.read(localDataWiperProvider).wipeAndReload();
+    } catch (e) {
+      if (mounted) setState(() => _busy = false);
+      messenger.showSnackBar(SnackBar(content: Text(t.gateClearFailed('$e'))));
+    }
+  }
+
   Future<void> _signOut(String username) async {
     final t = AppLocalizations.of(context);
-    final auth = ref.read(plantlyAuthProvider.notifier); // before the await (#14)
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(t.cloudSignOutTitle),
-        content: Text(t.cloudSignOutBody(username)),
+        content: Text(t.cloudSignOutBodyWeb(username)),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.cancel)),
           FilledButton(
@@ -140,7 +165,9 @@ class _WebAccessGateState extends ConsumerState<WebAccessGate> {
         ],
       ),
     );
-    if (ok == true) await auth.signOut();
+    if (ok != true || !mounted) return;
+    // The gate only exists on web: an explicit sign-out wipes this browser.
+    await completeWebSignOut(context, ref);
   }
 }
 
@@ -335,6 +362,88 @@ class _NotEntitled extends ConsumerWidget {
           child: TextButton(
             key: const Key('gate-sign-out'),
             onPressed: onSignOut,
+            child: Text(t.gateSignOutLink, style: TextStyle(color: surface.muted)),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeldByOther extends StatelessWidget {
+  const _HeldByOther({
+    required this.surface,
+    required this.username,
+    required this.other,
+    required this.busy,
+    required this.onClear,
+    required this.onSignOut,
+    super.key,
+  });
+  final PlantlySurface surface;
+  final String username;
+  final String other;
+  final bool busy;
+  final VoidCallback onClear;
+  final VoidCallback onSignOut;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Card(
+          surface: surface,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Icon(Icons.lock_person_outlined, color: surface.muted, size: 32),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                t.gateHeldByOtherTitle(other),
+                key: const Key('gate-held-by-other-title'),
+                style: TextStyle(
+                  fontFamily: PlantlyFonts.plusJakartaSans,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: surface.text,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                t.gateHeldByOtherBody(username, other),
+                style: TextStyle(fontSize: 14.5, color: surface.muted, height: 1.4),
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                key: const Key('gate-clear-local'),
+                onPressed: busy ? null : onClear,
+                icon: busy
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.cleaning_services_outlined),
+                label: Text(t.gateClearLocal),
+                style: FilledButton.styleFrom(
+                  backgroundColor: surface.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Center(
+          child: TextButton(
+            key: const Key('gate-sign-out'),
+            onPressed: busy ? null : onSignOut,
             child: Text(t.gateSignOutLink, style: TextStyle(color: surface.muted)),
           ),
         ),

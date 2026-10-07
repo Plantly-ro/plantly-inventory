@@ -7,11 +7,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:plantly_inventory/cloud/collection_link.dart';
+import 'package:plantly_inventory/config/plantly_features.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
 import 'package:plantly_inventory/data/providers.dart';
+import 'package:plantly_inventory/data/seed_manifest.dart';
 import 'package:plantly_inventory/marketplace/plantly_auth.dart';
 import 'package:plantly_inventory/marketplace/session_store.dart';
 import 'package:plantly_inventory/notifications/notification_service.dart';
+import 'package:plantly_inventory/sync/http_sync_runner.dart';
+import 'package:plantly_inventory/sync/op_log.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../marketplace/plantly_session_test.dart' show fakeJwt;
@@ -38,6 +42,19 @@ Future<void> insertDummy(AppDatabase db, TableInfo<Table, dynamic> table, String
     variables: cols.map(value).toList(),
     updates: {table},
   );
+}
+
+/// A plant created through the op log under [opLog]'s tenant (pending op).
+Future<void> userPlant(OpLogWriter opLog, String id) async {
+  final h = await opLog.recordCreate(entity: 'plants', entityId: id, value: {'id': id, 'nickname': id, 'status': 'alive'});
+  await opLog.db.into(opLog.db.plants).insert(PlantsCompanion.insert(
+        id: id,
+        tenantId: opLog.tenantId,
+        nickname: id,
+        status: 'alive',
+        updatedHlc: h.encode(),
+        deviceId: opLog.clock.deviceId,
+      ));
 }
 
 Future<int> countTenant(AppDatabase db, TableInfo<Table, dynamic> table, String tenant) async {
@@ -155,14 +172,17 @@ void main() {
       return c;
     }
 
-    test('link(): default collection → tenant migration (incl. sync_ops) → prefs → tenant provider flips; unlink keeps data', () async {
+    test('link(): default collection → tenant migration → prefs → tenant provider flips; unlink keeps data', () async {
       final c = make(storedToken: token);
       final ctx = await c.read(appContextProvider.future);
       expect(ctx.tenantId, kDefaultTenantId);
-      final seededPlants = await db.managers.plants.count();
-      expect(seededPlants, greaterThan(0));
-      final pendingBefore = await ctx.opLog.pendingCount();
-      expect(pendingBefore, greaterThan(0));
+      expect(await db.managers.plants.count(), 8, reason: 'demo seed on a fresh install');
+      // The user's own plant + one demo plant they renamed: both theirs now.
+      await userPlant(ctx.opLog, 'mine');
+      final renamed = (await db.select(db.plants).get()).firstWhere((p) => p.id != 'mine');
+      await ctx.opLog.recordFieldUpdate(entity: 'plants', entityId: renamed.id, field: 'nickname', value: 'Bobby');
+      const seededPlants = 2; // the 7 untouched demo plants never reach the collection
+      expect(await ctx.opLog.pendingCount(), greaterThan(0));
 
       final link = await c.read(collectionLinkProvider.notifier).link();
       expect(link, const CollectionLink(id: 'col-1', name: 'My plants', userId: 'u-1', username: 'alice'));
@@ -179,17 +199,25 @@ void main() {
       expect(prefs.getString(kCollectionUsernamePrefKey), 'alice');
 
       expect(await countTenant(db, db.plants, 'local'), 0);
+      expect({for (final p in await db.select(db.plants).get()) p.id}, {'mine', renamed.id});
       expect(await countTenant(db, db.plants, 'col-1'), seededPlants);
+      expect(await countTenant(db, db.locations, 'col-1'), 0, reason: 'untouched demo spaces dropped too');
       expect(await countTenant(db, db.syncOps, 'local'), 0);
-      expect(await countTenant(db, db.syncOps, 'col-1'), pendingBefore);
+      // The local op log is discarded: the runner re-synthesizes one `*`
+      // per live row for the collection (see the "Move" tests).
+      expect(await countTenant(db, db.syncOps, 'col-1'), 0);
+      expect(prefs.getBool(kSkipSeedPrefKey), isTrue);
+      expect(prefs.getString(kSeedManifestPrefKey), isNull);
 
       // The app context rebuilt under the new tenant — and did NOT re-seed.
       final ctx2 = await c.read(appContextProvider.future);
       expect(ctx2.tenantId, 'col-1');
       expect(ctx2.opLog.tenantId, 'col-1');
       expect(await db.managers.plants.count(), seededPlants);
-      expect(await ctx2.opLog.pendingCount(), pendingBefore);
+      expect(await countTenant(db, db.locations, 'col-1'), 0, reason: 'never seeds a collection tenant');
       expect(identical(ctx2.clock, ctx.clock), isTrue, reason: 'HLC clock survives the flip');
+      await synthesizeInitialOps(db: db, opLog: ctx2.opLog, deviceId: ctx2.deviceId);
+      expect(await ctx2.opLog.pendingCount(), seededPlants + 1, reason: '2 plants + the kept demo plant\'s schedule');
 
       // Re-link is a no-op migration (same collection).
       await c.read(collectionLinkProvider.notifier).ensureLinked();
@@ -220,8 +248,14 @@ void main() {
         kCollectionUsernamePrefKey: 'bob',
       });
       final c = make(storedToken: token);
-      await c.read(appContextProvider.future); // seeds under col-other (A's data)
-      expect(await countTenant(db, db.plants, 'col-other'), greaterThan(0));
+      final ctx = await c.read(appContextProvider.future);
+      // A's synced collection: three plants, their ops already pushed.
+      final aLog = OpLogWriter(db: db, clock: ctx.clock, tenantId: 'col-other', currentUserId: () => 'u-other');
+      for (final id in ['a1', 'a2', 'a3']) {
+        await userPlant(aLog, id);
+      }
+      await db.customStatement("UPDATE sync_ops SET pushed_at = 1 WHERE tenant_id = 'col-other'");
+      expect(await countTenant(db, db.plants, 'col-other'), 3);
       return c;
     }
 
@@ -302,7 +336,8 @@ void main() {
             })),
       ]);
       addTearDown(c.dispose);
-      await c.read(appContextProvider.future); // seeds A's demo data under 'local'
+      final ctx = await c.read(appContextProvider.future); // seeds the demo data under 'local'
+      await userPlant(ctx.opLog, 'alices-plant'); // ...and A adds a plant of their own
       final links = c.read(collectionLinkProvider.notifier);
       final prefs = await SharedPreferences.getInstance();
 
@@ -389,10 +424,147 @@ void main() {
       final ctx = await c.read(appContextProvider.future);
       expect(ctx.tenantId, 'col-1');
       expect(c.read(currentTenantIdProvider), 'col-1');
-      expect(await countTenant(db, db.plants, 'local'), 0, reason: 'seed must land under the persisted tenant');
+      expect(await countTenant(db, db.plants, 'local'), 0, reason: 'no seed under a stale local tenant');
+      expect(await countTenant(db, db.plants, 'col-1'), 0, reason: 'and never into a collection tenant');
+      expect(await countTenant(db, db.locations, 'col-1'), 0);
       final links = c.read(collectionLinkProvider.notifier);
       await links.ready;
       expect(c.read(collectionLinkProvider).link, const CollectionLink(id: 'col-1', name: 'My plants', userId: 'u-1'));
+    });
+
+    test('"Move to me" after A synced: A\'s op log is discarded; the runner re-uploads every live row for B', () async {
+      final c = await heldByOther();
+      final ctx = await c.read(appContextProvider.future);
+      // A also left a pending edit (stamped u-other: B's engine would skip
+      // it forever), a deleted plant, a synced photo and a rejection.
+      final aLog = OpLogWriter(db: db, clock: ctx.clock, tenantId: 'col-other', currentUserId: () => 'u-other');
+      await aLog.recordFieldUpdate(entity: 'plants', entityId: 'a1', field: 'nickname', value: 'A1 renamed');
+      await userPlant(aLog, 'a-gone');
+      await (db.update(db.plants)..where((p) => p.id.equals('a-gone'))).write(const PlantsCompanion(deletedAt: Value(5)));
+      await db.into(db.photos).insert(PhotosCompanion.insert(
+            sha256: 'sha-1',
+            tenantId: 'col-other',
+            mime: 'image/jpeg',
+            bytes: 3,
+            remoteState: const Value('synced'),
+            updatedHlc: ctx.clock.now().encode(),
+            deviceId: 'dev-a',
+          ));
+      await insertDummy(db, db.syncRejections, 'col-other');
+      // ...and a photo pulled from A's cloud whose blob never came down,
+      // attached to a1 and used as a care-event photo.
+      await db.into(db.photos).insert(PhotosCompanion.insert(
+            sha256: 'sha-remote',
+            tenantId: 'col-other',
+            mime: 'image/jpeg',
+            bytes: 3,
+            remoteState: const Value('remote'),
+            updatedHlc: ctx.clock.now().encode(),
+            deviceId: 'dev-b',
+          ));
+      await db.into(db.plantPhotos).insert(PlantPhotosCompanion.insert(
+            id: 'pp-1',
+            tenantId: 'col-other',
+            plantId: 'a1',
+            photoSha: 'sha-remote',
+            addedHlc: ctx.clock.now().encode(),
+            deviceId: 'dev-b',
+          ));
+      await db.into(db.careEvents).insert(CareEventsCompanion.insert(
+            id: 'ev-1',
+            tenantId: 'col-other',
+            plantId: 'a1',
+            type: 'water',
+            doneAt: 1,
+            photoSha: const Value('sha-remote'),
+            updatedHlc: ctx.clock.now().encode(),
+            deviceId: 'dev-b',
+          ));
+
+      await c.read(collectionLinkProvider.notifier).link();
+      expect(await countTenant(db, db.syncOps, 'col-1'), 0);
+      expect(await countTenant(db, db.syncRejections, 'col-1'), 0);
+      expect((await db.select(db.photos).getSingle()).remoteState, 'local', reason: 'the blob must upload to B too');
+      expect(await db.select(db.plantPhotos).get(), isEmpty, reason: 'unreachable remote photo dropped with its link');
+      expect((await db.select(db.careEvents).getSingle()).photoSha, isNull);
+
+      // B's runner: initial upload covers every live row, stamped for B.
+      final bLog = OpLogWriter(db: db, clock: ctx.clock, tenantId: 'col-1', currentUserId: () => 'u-1');
+      await synthesizeInitialOps(db: db, opLog: bLog, deviceId: ctx.deviceId);
+      final ops = await (db.select(db.syncOps)..where((o) => o.tenantId.equals('col-1'))).get();
+      expect(
+        {for (final o in ops) '${o.entity}/${o.entityId}'},
+        {'plants/a1', 'plants/a2', 'plants/a3', 'photos/sha-1', 'care_events/ev-1'},
+        reason: 'live rows only — a fresh collection needs no tombstones',
+      );
+      expect(ops.every((o) => o.field == '*' && o.pushedAt == null && o.userId == 'u-1'), isTrue);
+      final a1 = ops.firstWhere((o) => o.entityId == 'a1');
+      expect(json.decode(a1.valueJson!)['nickname'], 'a1', reason: 'the row as it stands');
+    });
+
+    test('a re-created home (deleted / purged → new id) gets everything re-uploaded too', () async {
+      SharedPreferences.setMockInitialValues({
+        kTenantIdPrefKey: 'col-old',
+        kCollectionIdPrefKey: 'col-old',
+        kCollectionNamePrefKey: 'My plants',
+        kCollectionUserIdPrefKey: 'u-1',
+        kCollectionUsernamePrefKey: 'alice',
+        kSkipSeedPrefKey: true,
+      });
+      final c = make(storedToken: token);
+      final ctx = await c.read(appContextProvider.future);
+      await userPlant(ctx.opLog, 'p1');
+      await db.customStatement("UPDATE sync_ops SET pushed_at = 1 WHERE tenant_id = 'col-old'");
+      final link = await c.read(collectionLinkProvider.notifier).link(); // server now answers col-1
+      expect(link.id, 'col-1');
+      expect(await countTenant(db, db.plants, 'col-1'), 1);
+      expect(await countTenant(db, db.syncOps, 'col-1'), 0, reason: 'the pushed history belonged to col-old');
+    });
+
+    test('re-linking the SAME collection keeps the op log (pushed history and pending ops)', () async {
+      SharedPreferences.setMockInitialValues({kTenantIdPrefKey: 'col-1', kSkipSeedPrefKey: true});
+      final c = make(storedToken: token);
+      final ctx = await c.read(appContextProvider.future);
+      await userPlant(ctx.opLog, 'p1');
+      await userPlant(ctx.opLog, 'p2');
+      await db.customStatement("UPDATE sync_ops SET pushed_at = 1 WHERE entity_id = 'p1'");
+      await c.read(collectionLinkProvider.notifier).link();
+      final ops = await db.select(db.syncOps).get();
+      expect(ops.map((o) => (o.entityId, o.pushedAt)), [('p1', 1), ('p2', null)]);
+    });
+
+    test('never seeds a collection tenant, nor on web', () async {
+      SharedPreferences.setMockInitialValues({kTenantIdPrefKey: 'col-1'});
+      final c = make(storedToken: token);
+      await c.read(appContextProvider.future);
+      expect(await db.select(db.plants).get(), isEmpty);
+      expect(await db.select(db.locations).get(), isEmpty, reason: 'an empty locations table used to get demo spaces');
+
+      SharedPreferences.setMockInitialValues({});
+      final web = ProviderContainer(overrides: [
+        databaseProvider.overrideWithValue(db),
+        notificationServiceProvider.overrideWith((_) => FakeNotificationService()),
+        sessionStoreProvider.overrideWith((_) => InMemorySessionStore(null)),
+        webPlatformProvider.overrideWithValue(true),
+      ]);
+      addTearDown(web.dispose);
+      final ctx = await web.read(appContextProvider.future);
+      expect(ctx.tenantId, kDefaultTenantId);
+      expect(await db.select(db.plants).get(), isEmpty, reason: 'web is cloud-only: no demo plants');
+      expect(await db.select(db.syncOps).get(), isEmpty);
+    });
+
+    test('a fresh install that signs in straight away links an empty tenant: nothing demo is uploaded', () async {
+      final c = make(storedToken: token);
+      final ctx = await c.read(appContextProvider.future);
+      expect(await countTenant(db, db.plants, 'local'), 8);
+      await c.read(collectionLinkProvider.notifier).link();
+      final ctx2 = await c.read(appContextProvider.future);
+      await synthesizeInitialOps(db: db, opLog: ctx2.opLog, deviceId: ctx.deviceId);
+      expect(await db.select(db.plants).get(), isEmpty);
+      expect(await db.select(db.locations).get(), isEmpty);
+      expect(await db.select(db.careSchedules).get(), isEmpty);
+      expect(await db.select(db.syncOps).get(), isEmpty, reason: 'nothing to push');
     });
 
     test('link() when signed out throws and touches nothing', () async {

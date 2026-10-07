@@ -1308,5 +1308,17 @@
   "devicesPlatformIos": "iPhone / iPad",
   "devicesPlatformWeb": "Web",
   "devicesPlatformDesktop": "Desktop",
-  "devicesPlatformUnknown": "Dispozitiv"
+  "devicesPlatformUnknown": "Dispozitiv",
+  "gateHeldByOtherTitle": "Acest browser conține încă plantele lui {other}",
+  "gateHeldByOtherBody": "Ești conectat ca {username}. Ca plantele lui {other} să rămână private, Plantly Inventory rămâne închis în acest browser până când ștergi copia locală. Colecția lui rămâne în cloud; modificările nesincronizate din acest browser se pierd.",
+  "gateClearLocal": "Șterge datele din browser și continuă",
+  "cloudSignOutBodyWeb": "{username} va fi deconectat, iar copia colecției din acest browser va fi ștearsă. Tot ce s-a sincronizat rămâne în cloud.",
+  "cloudStorageMemoryLabel": "Nu se salvează în acest browser",
+  "cloudStorageMemoryValue": "Browserul blochează stocarea locală (fereastră privată?). Modificările se păstrează doar după ce se sincronizează în cloud.",
+  "signOutSyncing": "Se sincronizează ultimele modificări…",
+  "signOutUnsyncedTitle": "Nu tot a ajuns în cloud",
+  "signOutUnsyncedBody": "{count, plural, =1{O modificare nu a ajuns încă în cloud. Te deconectezi oricum? Se va pierde.} few{{count} modificări nu au ajuns încă în cloud. Te deconectezi oricum? Se vor pierde.} other{{count} de modificări nu au ajuns încă în cloud. Te deconectezi oricum? Se vor pierde.}}",
+  "signOutAnyway": "Deconectează-te oricum",
+  "signOutWipeFailed": "Te-ai deconectat, dar copia din acest browser nu a putut fi ștearsă ({error}). Rămâne blocată în spatele autentificării — conectează-te și deconectează-te din nou pentru a reîncerca.",
+  "gateClearFailed": "Copia din acest browser nu a putut fi ștearsă ({error}). Încearcă din nou."
 }
