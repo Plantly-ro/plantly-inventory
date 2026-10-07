@@ -237,6 +237,10 @@
   "onbWelcomeBody": "A calm, offline-first way to track your houseplants — watering, fertilising, propagation, spaces, and more. Everything lives on your phone.",
   "onbNameLabel": "YOUR NAME (OPTIONAL)",
   "onbNameHelp": "We use this only in the greeting at the top of the home screen. You can change or remove it later in Me.",
+  "onbNameFromAccount": "From your plantly.ro account — you can change it.",
+  "@onbNameFromAccount": {
+    "description": "Onboarding step 1: helper under the name field when it was prefilled from the signed-in plantly.ro account."
+  },
   "onbNotifTitle": "Plant reminders",
   "onbNotifBody": "We schedule local notifications on your phone when a plant is due for care. Nothing is sent to a server.",
   "onbNotifGranted": "Reminders are enabled.",

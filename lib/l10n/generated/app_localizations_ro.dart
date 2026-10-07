@@ -428,6 +428,10 @@ class AppLocalizationsRo extends AppLocalizations {
       'Îl folosim doar în salutul din partea de sus a ecranului principal. Îl poți schimba sau șterge mai târziu din Eu.';
 
   @override
+  String get onbNameFromAccount =>
+      'Din contul tău plantly.ro — îl poți schimba.';
+
+  @override
   String get onbNotifTitle => 'Memento-uri pentru plante';
 
   @override
