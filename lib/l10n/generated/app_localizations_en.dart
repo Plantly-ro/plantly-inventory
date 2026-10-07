@@ -3685,4 +3685,71 @@ class AppLocalizationsEn extends AppLocalizations {
   String gateClearFailed(String error) {
     return 'This browser\'s copy could not be removed ($error). Try again.';
   }
+
+  @override
+  String cloudHomeLostRemoved(String name) {
+    return 'You no longer have access to $name. Your plants are still on this device — nothing was deleted.';
+  }
+
+  @override
+  String cloudHomeLostDeleted(String name) {
+    return '$name was deleted on the server. Your plants are still on this device — nothing was deleted.';
+  }
+
+  @override
+  String get cloudHomeLostBanner =>
+      'Your cloud collection is unavailable — changes stay on this device. Tap to fix.';
+
+  @override
+  String get cloudHomeRehomeLabel => 'Start a new collection';
+
+  @override
+  String get cloudHomeRehomeValue =>
+      'Upload the plants on this device to a new collection you own';
+
+  @override
+  String get cloudHomeRehomeTitle => 'Start a new collection?';
+
+  @override
+  String get cloudHomeRehomeBody =>
+      'The plants on this device will be uploaded to a collection you own. Nothing is deleted.';
+
+  @override
+  String get cloudHomeRehomeConfirm => 'Start';
+
+  @override
+  String cloudHomeRehomeDone(String name) {
+    return 'Your plants now sync to $name';
+  }
+
+  @override
+  String get cloudHomeSwitchLabel => 'Switch collection';
+
+  @override
+  String get cloudHomeSwitchValue =>
+      'Open another collection you have access to';
+
+  @override
+  String cloudHomeMoveLabel(String name) {
+    return 'Move your plants into “$name”';
+  }
+
+  @override
+  String cloudHomeMoveTitle(String name) {
+    return 'Move your plants into “$name”?';
+  }
+
+  @override
+  String cloudHomeMoveBody(String name) {
+    return 'They are added to your collection “$name” and uploaded again from this device. Nothing is deleted.';
+  }
+
+  @override
+  String cloudHomeMoveBodyShared(String name, int count) {
+    return 'They are added to “$name”, which you share with $count people — they will see them too. Uploaded again from this device; nothing is deleted.';
+  }
+
+  @override
+  String get dbBusyOtherTab =>
+      'Another Plantly tab is busy with your data — retrying…';
 }

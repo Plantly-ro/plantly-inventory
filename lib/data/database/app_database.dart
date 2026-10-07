@@ -4,6 +4,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart' show ValueNotifier, debugPrint;
 
 import 'web_db_assets.dart';
+import 'cross_tab_lock.dart';
 
 part 'app_database.g.dart';
 
@@ -345,8 +346,11 @@ class AppDatabase extends _$AppDatabase {
   /// web_db_assets.dart), persisted to OPFS when the page is cross-origin
   /// isolated, IndexedDB otherwise. `driftDatabase` throws synchronously on
   /// web without these options.
+  /// On the web every tab has its own connection to the same file: it is
+  /// opened, and accessed, under one cross-tab lock (`cross_tab_lock.dart`);
+  /// elsewhere this is plain `driftDatabase`.
   AppDatabase()
-      : super(driftDatabase(
+      : super(openAppDatabase(
           name: 'plantly_inventory',
           web: DriftWebOptions(
             sqlite3Wasm: webDeployedFileUri(kSqlite3WasmPath),

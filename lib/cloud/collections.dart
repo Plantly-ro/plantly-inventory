@@ -9,6 +9,7 @@ import '../data/providers.dart';
 import '../marketplace/plantly_api.dart';
 import '../marketplace/plantly_auth.dart';
 import '../marketplace/plantly_session.dart';
+import '../sync/sync_tabs.dart';
 import 'cloud_state.dart';
 import 'collection_link.dart';
 import 'sign_in_events.dart';
@@ -77,6 +78,54 @@ final deviceRevokedNoticeProvider = StateProvider<bool>((_) => false);
 /// once (`CloudNotices` SnackBar) and resets it to null.
 final collectionRemovedNoticeProvider = StateProvider<String?>((_) => null);
 
+/// Why the linked default ("home") is gone for this account.
+enum HomeLossReason {
+  /// 403 `not_a_member`: after a transfer (§2.8) the new owner removed us.
+  removed,
+
+  /// 410 `collection_deleted` / 404 `collection_not_found`: deleted by its
+  /// (new) owner, or purged after the owner's plan lapsed (backend#211).
+  deleted,
+}
+
+/// The linked default ("home") answered as gone on a sync call and the
+/// server list no longer names it. The local rows stay where they are,
+/// editable; nothing syncs against that collection any more until the user
+/// starts a new one ([CollectionsNotifier.rehome]) or the server lists it
+/// again (re-added / reactivated), which clears the flag.
+class HomeLoss {
+  const HomeLoss({required this.collectionId, required this.name, required this.reason});
+  final String collectionId;
+  final String name;
+  final HomeLossReason reason;
+
+  factory HomeLoss.fromJson(Map<String, dynamic> m) => HomeLoss(
+        collectionId: m['id'] as String? ?? '',
+        name: m['name'] as String? ?? '',
+        reason: m['reason'] == HomeLossReason.deleted.name ? HomeLossReason.deleted : HomeLossReason.removed,
+      );
+
+  Map<String, dynamic> toJson() => {'id': collectionId, 'name': name, 'reason': reason.name};
+
+  @override
+  bool operator ==(Object other) =>
+      other is HomeLoss && other.collectionId == collectionId && other.name == name && other.reason == reason;
+
+  @override
+  int get hashCode => Object.hash(collectionId, name, reason);
+
+  @override
+  String toString() => 'HomeLoss($collectionId, ${reason.name})';
+}
+
+/// Persisted [HomeLoss] (JSON), so the next boot does not start a runner
+/// against the lost collection before the first halt.
+const String kHomeLossPrefKey = 'plantly_home_loss';
+
+/// One-shot: the home was just found lost; `CloudNotices` shows it once and
+/// resets it to null. The persistent surfaces read [homeLossProvider].
+final homeLostNoticeProvider = StateProvider<HomeLoss?>((_) => null);
+
 class CollectionsState {
   const CollectionsState({
     this.items = const [],
@@ -85,7 +134,12 @@ class CollectionsState {
     this.error,
     this.fetchedAt,
     this.callerEntitled = true,
+    this.homeLoss,
   });
+
+  /// See [HomeLoss]; read through [homeLossProvider] (which also checks it
+  /// is still about the linked default).
+  final HomeLoss? homeLoss;
 
   /// Own default first (when known), then the shared ones by name.
   final List<CloudCollection> items;
@@ -133,6 +187,7 @@ class CollectionsState {
     Object? error = _unset,
     DateTime? fetchedAt,
     bool? callerEntitled,
+    Object? homeLoss = _unset,
   }) =>
       CollectionsState(
         items: items ?? this.items,
@@ -141,13 +196,14 @@ class CollectionsState {
         error: identical(error, _unset) ? this.error : error,
         fetchedAt: fetchedAt ?? this.fetchedAt,
         callerEntitled: callerEntitled ?? this.callerEntitled,
+        homeLoss: identical(homeLoss, _unset) ? this.homeLoss : homeLoss as HomeLoss?,
       );
 
   static const _unset = Object();
 
   @override
   String toString() =>
-      'CollectionsState(${items.length} items, loaded=$loaded, loading=$loading, callerEntitled=$callerEntitled, error=$error)';
+      'CollectionsState(${items.length} items, loaded=$loaded, loading=$loading, callerEntitled=$callerEntitled, homeLoss=$homeLoss, error=$error)';
 }
 
 /// Why the collection on screen cannot be edited (MULTI-USER-V2 §0/§8).
@@ -197,6 +253,7 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
   CollectionsNotifier(
     this._ref, {
     this.refreshInterval = const Duration(minutes: 15),
+    this.homeRecheckDelay = const Duration(seconds: 30),
     bool autoStart = true,
     List<CloudCollection> initial = const [],
     bool callerEntitled = true,
@@ -231,10 +288,24 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
 
   final Ref _ref;
   final Duration refreshInterval;
+
+  /// Retry delay for confirming a suspected [HomeLoss] when the list could
+  /// not be fetched (doubles per attempt, capped at 16x).
+  final Duration homeRecheckDelay;
   late final Future<void> _ready;
   Timer? _timer;
+
+  /// The home answered as gone but the list could not confirm it yet:
+  /// `(collection id, server detail)`. Settled by the next successful fetch.
+  (String, String)? _suspectedHomeLoss;
+  Timer? _homeRecheck;
+  int _homeRecheckAttempts = 0;
   StreamSubscription<Object?>? _signIns;
   Future<void>? _inflight;
+
+  /// Ids the last successful `GET /inventory/collections` named (the
+  /// linked-default stand-in of [_withLinkedDefault] excluded).
+  Set<String> _listed = const {};
 
   /// Number of server fetches performed (tests).
   int fetches = 0;
@@ -261,7 +332,19 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
         // Corrupt cache — ignore, the next fetch rewrites it.
       }
     }
-    if (mounted) state = state.copyWith(items: items, loaded: true, callerEntitled: callerEntitled);
+    HomeLoss? loss;
+    final rawLoss = p.getString(kHomeLossPrefKey);
+    if (rawLoss != null) {
+      try {
+        final decoded = json.decode(rawLoss);
+        if (decoded is Map<String, dynamic>) loss = HomeLoss.fromJson(decoded);
+      } catch (_) {
+        // Corrupt marker: the next halt on the home writes it again.
+      }
+    }
+    if (mounted) {
+      state = state.copyWith(items: items, loaded: true, callerEntitled: callerEntitled, homeLoss: loss);
+    }
   }
 
   static List<CloudCollection> _decodeList(Object? list) => [
@@ -300,6 +383,20 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
     try {
       fetches++;
       final listing = await _ref.read(plantlyApiProvider).fetchCollections(session.token);
+      _listed = {for (final c in listing.items) c.id};
+      final suspected = _suspectedHomeLoss;
+      if (suspected != null) {
+        _suspectedHomeLoss = null;
+        _homeRecheck?.cancel();
+        _homeRecheckAttempts = 0;
+        if (!_listed.contains(suspected.$1) && _homeId() == suspected.$1) {
+          await _markHomeLost(suspected.$1, suspected.$2);
+        }
+      }
+      final loss = state.homeLoss;
+      // Listed again (re-added by the owner, reactivated inside the purge
+      // window): the home is back, the runner resumes against it.
+      if (loss != null && _listed.contains(loss.collectionId)) await _setHomeLoss(null);
       final items = _sorted(_withLinkedDefault(listing.items));
       await _saveCache(session.userId, items, callerEntitled: listing.callerEntitled);
       if (!mounted) return;
@@ -566,6 +663,104 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
     return session;
   }
 
+  Future<void> _setHomeLoss(HomeLoss? loss) async {
+    final p = await _prefs;
+    if (loss == null) {
+      await p.remove(kHomeLossPrefKey);
+    } else {
+      await p.setString(kHomeLossPrefKey, json.encode(loss.toJson()));
+    }
+    if (mounted) state = state.copyWith(homeLoss: loss);
+  }
+
+  /// A sync call on the linked default ("home") answered 403 `not_a_member`
+  /// / 410 `collection_deleted` / 404 `collection_not_found` ([detail]).
+  /// After an ownership transfer (MULTI-USER-V2 §2.8) the previous owner is
+  /// a member like any other — removable — and the collection can be
+  /// deleted or purged under them. Unlike a shared collection the home is
+  /// not dropped: its rows are this device's data. Re-checks the list first
+  /// (a stray 403 on a collection the server still names is not a loss),
+  /// then flags it ([HomeLoss], persisted), which stops the runner and
+  /// raises [homeLostNoticeProvider]. Nothing local is touched.
+  ///
+  /// The re-check must SUCCEED: offline / a failed fetch never flags the
+  /// home — the suspicion is kept, re-checked with backoff and settled by
+  /// the next successful list.
+  Future<void> homeUnavailable(String collectionId, String detail) async {
+    await _ready;
+    if (_homeId() != collectionId || state.homeLoss?.collectionId == collectionId) return;
+    _suspectedHomeLoss = (collectionId, detail);
+    await refresh();
+    if (_suspectedHomeLoss == null || !mounted) return; // settled by the fetch
+    // Fetch failed: try again later, never conclude from a failure.
+    _homeRecheck?.cancel();
+    final factor = 1 << (_homeRecheckAttempts < 4 ? _homeRecheckAttempts : 4);
+    _homeRecheckAttempts++;
+    _homeRecheck = Timer(homeRecheckDelay * factor, () async {
+      if (!mounted || _suspectedHomeLoss == null) return;
+      final (id, d) = _suspectedHomeLoss!;
+      _suspectedHomeLoss = null;
+      await homeUnavailable(id, d);
+    });
+  }
+
+  Future<void> _markHomeLost(String collectionId, String detail) async {
+    final link = _ref.read(collectionLinkProvider).link;
+    final name = state.byId(collectionId)?.name ?? (link?.id == collectionId ? link!.name : '');
+    final loss = HomeLoss(
+      collectionId: collectionId,
+      name: name.isEmpty ? collectionId : name,
+      reason: detail == kNotAMemberDetail ? HomeLossReason.removed : HomeLossReason.deleted,
+    );
+    await _setHomeLoss(loss);
+    _ref.read(homeLostNoticeProvider.notifier).state = loss;
+  }
+
+  /// Where [rehome] will move the lost home's plants: the account's OLDEST
+  /// owned live collection (what `POST /collections/default` returns — it
+  /// may be shared with other people), or null when the account owns none
+  /// and the server will create one. From the list; nothing is created.
+  CloudCollection? get rehomeTarget {
+    final lost = state.homeLoss?.collectionId;
+    final owned = [
+      for (final c in state.items)
+        if (c.isOwner && c.id != lost && _listed.contains(c.id)) c,
+    ];
+    if (owned.isEmpty) return null;
+    owned.sort((a, b) {
+      final x = a.createdAt, y = b.createdAt;
+      if (x == null || y == null) return x == null ? (y == null ? 0 : 1) : -1;
+      return x.compareTo(y);
+    });
+    return owned.first;
+  }
+
+  /// "Move your plants into …" after a [HomeLoss]: link to the account's
+  /// default (`POST /collections/default`: its oldest owned collection, or
+  /// a new one) — `CollectionLinkService.link` moves the lost home's rows
+  /// there. The target never saw the lost home's op log, so the sync state
+  /// is reset first: its ops (pushed history, other members' pulled ops)
+  /// are dropped and the runner's initial-upload pass re-creates one
+  /// whole-row op per live row, stamped with THIS account; synced photos go
+  /// back to `local` to upload again. Other tabs are told to reload.
+  Future<CollectionLink> rehome() async {
+    await _ready;
+    final loss = state.homeLoss;
+    if (loss == null || _homeId() != loss.collectionId) throw StateError('the linked collection is not lost');
+    await _requireSession();
+    // `link()` asks the server first, then moves the rows with
+    // `migrateTenant(..., resetSyncState: true)`: the lost home's op log
+    // (pushed history, other members' pulled ops) is dropped, synced photos
+    // upload again, never-downloaded ones are dropped, and the runner's
+    // initial-upload pass re-creates one whole-row op per live row for
+    // THIS account.
+    final link = await _ref.read(collectionLinkProvider.notifier).link();
+    await _setHomeLoss(null);
+    broadcastTabReload(_ref.read(syncTabsProvider));
+    unawaited(refresh());
+    return link;
+  }
+
   /// The server answered 403 `not_a_member` for [collectionId] while it was
   /// the active one (the owner removed this account): forget it locally,
   /// fall back to the linked default when it was the current tenant, and
@@ -597,6 +792,7 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
   @override
   void dispose() {
     _timer?.cancel();
+    _homeRecheck?.cancel();
     _signIns?.cancel();
     super.dispose();
   }
@@ -605,8 +801,15 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
 /// Timing knob for tests (the 15-minute auto refresh).
 final collectionsRefreshIntervalProvider = Provider<Duration>((_) => const Duration(minutes: 15));
 
+/// Timing knob for tests: first retry of an unconfirmed home loss.
+final homeRecheckDelayProvider = Provider<Duration>((_) => const Duration(seconds: 30));
+
 final collectionsProvider = StateNotifierProvider<CollectionsNotifier, CollectionsState>((ref) {
-  return CollectionsNotifier(ref, refreshInterval: ref.watch(collectionsRefreshIntervalProvider));
+  return CollectionsNotifier(
+    ref,
+    refreshInterval: ref.watch(collectionsRefreshIntervalProvider),
+    homeRecheckDelay: ref.watch(homeRecheckDelayProvider),
+  );
 });
 
 /// Id of the linked default collection ("home") straight from the link
@@ -615,6 +818,14 @@ final collectionsProvider = StateNotifierProvider<CollectionsNotifier, Collectio
 /// shared tenant from home. Null = never linked / unlinked.
 final homeCollectionIdProvider = Provider<String?>((ref) {
   return ref.watch(collectionLinkProvider.select((s) => s.link?.id));
+});
+
+/// The [HomeLoss] of the CURRENT linked default, or null. A marker left by
+/// an earlier link (re-homed, re-linked elsewhere) does not count.
+final homeLossProvider = Provider<HomeLoss?>((ref) {
+  final loss = ref.watch(collectionsProvider.select((s) => s.homeLoss));
+  if (loss == null) return null;
+  return ref.watch(homeCollectionIdProvider) == loss.collectionId ? loss : null;
 });
 
 /// The collection the runner syncs against: the current tenant when it is
@@ -631,8 +842,15 @@ final activeCollectionIdProvider = Provider<String?>((ref) {
   if (!cloudAccountReady(cloud)) return null;
   final entitled = cloud.phase == CloudPhase.ready;
   final tenant = ref.watch(currentTenantIdProvider);
-  if (tenant == cloud.collectionId) return entitled ? tenant : null;
   final col = ref.watch(collectionsProvider.select((s) => s.byId(tenant)));
+  if (tenant == cloud.collectionId) {
+    // Lost (removed / deleted after a transfer): nothing to sync against.
+    if (ref.watch(homeLossProvider) != null) return null;
+    // Owned (or not listed yet): the caller's plan. Transferred away, the
+    // home is a membership like any other and runs on the owner's plan.
+    if (col == null || col.isOwner) return entitled ? tenant : null;
+    return collectionSyncAllowed(cloud, col) ? tenant : null;
+  }
   if (col == null) {
     // A shared collection before this boot's first fetch (cache still
     // loading / cleared), or one the account was removed from. Stay quiet
@@ -688,7 +906,8 @@ final activeCollectionReadOnlyReasonProvider = Provider<ReadOnlyReason>((ref) {
     final home = ref.watch(homeCollectionIdProvider);
     return home == null || tenant == home ? ReadOnlyReason.none : ReadOnlyReason.viewer;
   }
-  if (tenant == cloud.collectionId) return ReadOnlyReason.none;
+  // The linked default included: after a transfer the account's role in it
+  // is whatever the server list says (editor, or viewer once demoted).
   final col = ref.watch(collectionsProvider.select((s) => s.byId(tenant)));
   if (col == null || col.isOwner) return ReadOnlyReason.none;
   if (ref.watch(sharedNeedsCloudProvider)) return ReadOnlyReason.cloudRequired;

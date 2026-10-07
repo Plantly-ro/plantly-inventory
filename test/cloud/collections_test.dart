@@ -19,7 +19,7 @@ import 'package:plantly_inventory/cloud/collections.dart';
 import 'package:plantly_inventory/cloud/entitlement.dart';
 import 'package:plantly_inventory/cloud/sign_in_events.dart';
 import 'package:plantly_inventory/cloud/sync_runner.dart';
-import 'package:plantly_inventory/features/me/cloud_section.dart' show describeSyncError;
+import 'package:plantly_inventory/features/me/cloud_section.dart' show describeHomeLoss, describeSyncError;
 import 'package:plantly_inventory/l10n/generated/app_localizations.dart';
 import 'package:plantly_inventory/config/plantly_features.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
@@ -35,6 +35,7 @@ import 'package:plantly_inventory/sync/http_sync_runner.dart';
 import 'package:plantly_inventory/sync/op_log.dart';
 import 'package:plantly_inventory/sync/sync_engine.dart';
 import 'package:plantly_inventory/sync/sync_providers.dart';
+import 'package:plantly_inventory/sync/sync_tabs.dart';
 import 'package:plantly_inventory/sync/sync_transport.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -64,6 +65,9 @@ void main() {
   late Map<String, ScriptedTransport> fakes;
   late ProviderContainer container;
   Completer<void>? holdCollections; // when set, GET /inventory/collections waits on it
+  late Map<String, dynamic> aliceDefault; // what POST /collections/default returns for u-1
+  late SyncTabs tabs; // cross-tab coordinator (single tab unless a test swaps it)
+  var failCollections = false; // GET /inventory/collections answers 503
 
   Map<String, dynamic> col(String id, String name, {String role = 'owner', String owner = 'u-1', int members = 1}) =>
       {'id': id, 'name': name, 'role': role, 'owner_user_id': owner, 'member_count': members};
@@ -79,6 +83,9 @@ void main() {
     fakes = {};
     holdCollections = null;
     callerEntitled = null;
+    aliceDefault = {'id': 'col-1', 'name': 'My plants', 'role': 'owner'};
+    tabs = SyncTabs.single;
+    failCollections = false;
     serverCollections = [
       col('col-1', 'My plants'),
       col('col-2', 'Family greenhouse', role: 'editor', owner: 'u-2', members: 3),
@@ -90,7 +97,9 @@ void main() {
       notificationServiceProvider.overrideWith((_) => FakeNotificationService()),
       photoBlobStoreProvider.overrideWithValue(InMemoryPhotoBlobStore()),
       syncRunnerConfigProvider.overrideWithValue(config),
+      syncTabsProvider.overrideWith((_) => tabs),
       collectionsRefreshIntervalProvider.overrideWithValue(Duration.zero),
+      homeRecheckDelayProvider.overrideWithValue(const Duration(milliseconds: 100)),
       syncTransportProvider.overrideWith((ref) {
         final id = ref.watch(syncCollectionIdProvider);
         return id == null ? null : fakes.putIfAbsent(id, ScriptedTransport.new);
@@ -116,11 +125,12 @@ void main() {
               return jsonRes({
                 'collection': uid == 'u-2'
                     ? {'id': 'col-5', 'name': "Bob's plants", 'role': 'owner'}
-                    : {'id': 'col-1', 'name': 'My plants', 'role': 'owner'},
+                    : aliceDefault,
               });
             }
             if (req.method == 'GET' && path.endsWith('/inventory/collections')) {
               if (holdCollections != null) await holdCollections!.future;
+              if (failCollections) return jsonRes({'error': 'unavailable'}, 503);
               return jsonRes({'collections': serverCollections, 'caller_entitled': ?callerEntitled});
             }
             if (req.method == 'POST' && path.endsWith('/inventory/collections/join')) {
@@ -150,6 +160,21 @@ void main() {
     final row = await db.customSelect('SELECT COUNT(*) AS n FROM plants WHERE tenant_id = ?',
         variables: [Variable<String>(tenant)]).getSingle();
     return row.read<int>('n');
+  }
+
+  Future<int> opsIn(String tenant, {bool pendingOnly = false}) async {
+    final row = await db.customSelect(
+        'SELECT COUNT(*) AS n FROM sync_ops WHERE tenant_id = ?${pendingOnly ? ' AND pushed_at IS NULL' : ''}',
+        variables: [Variable<String>(tenant)]).getSingle();
+    return row.read<int>('n');
+  }
+
+  Future<HttpSyncRunner> runnerOn(String id) async {
+    await waitFor(() {
+      final r = container.read(syncRunnerProvider);
+      return r is HttpSyncRunner && r.collectionId == id;
+    }, reason: 'runner bound to $id');
+    return container.read(syncRunnerProvider) as HttpSyncRunner;
   }
 
   /// Boot + sign in as alice (entitled) → auto-linked to col-1, list fetched.
@@ -531,6 +556,10 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(container.read(collectionRemovedNoticeProvider), isNull);
     expect(container.read(collectionsProvider).items.map((c) => c.id), ['col-1', 'col-2']);
+    // The server still lists the home as ours: a stray 403 is not a loss.
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(container.read(homeLossProvider), isNull);
+    expect(container.read(homeLostNoticeProvider), isNull);
   });
 
   test('QA2 BUG-4: b signs in on a\'s device via a join link — decision first, a\'s pending ops never pushed as b (nor b\'s as a)', () async {
@@ -699,4 +728,324 @@ void main() {
     expect(cached.map((m) => m.username), ['bob', 'alice'], reason: 'cache survives a failed refresh');
     container.dispose();
   });
+
+  group('home collection no longer owned (MULTI-USER-V2 §2.8 transfer)', () {
+    test('old owner = editor of the home: role/canEdit come from the server list; demoted to viewer under a push (403 read_only) → read-only, runner pull-only',
+        () async {
+      serverCollections = [
+        col('col-1', 'My plants', role: 'editor', owner: 'u-2', members: 2),
+        col('col-2', 'Family greenhouse', role: 'editor', owner: 'u-2', members: 3),
+      ];
+      await signInAlice();
+      var runner = await runnerOn('col-1');
+      expect(container.read(activeCollectionIsSharedProvider), isTrue, reason: 'runs on the new owner\'s plan');
+      expect(container.read(canEditActiveCollectionProvider), isTrue);
+      expect(runner.readOnly, isFalse);
+      expect(runner.entitlementIsOwners, isTrue);
+      await waitFor(() => container.read(appContextProvider).requireValue.tenantId == 'col-1');
+
+      // The new owner demotes alice; her next push races the change.
+      serverCollections = [
+        col('col-1', 'My plants', role: 'viewer', owner: 'u-2', members: 2),
+        col('col-2', 'Family greenhouse', role: 'editor', owner: 'u-2', members: 3),
+      ];
+      fakes['col-1']!.failures.add(const SyncCollectionError('read_only', status: 403));
+      await container.read(plantRepositoryProvider).create(nickname: 'Edited before the demotion');
+      await runner.syncNow();
+      expect(runner.current.lastErrorDetail, kReadOnlyDetail);
+      await waitFor(() => container.read(activeCollectionReadOnlyReasonProvider) == ReadOnlyReason.viewer,
+          reason: 'home follows the server role like any collection');
+      expect(container.read(canEditActiveCollectionProvider), isFalse);
+      await waitFor(() {
+        final r = container.read(syncRunnerProvider);
+        return r is HttpSyncRunner && r.collectionId == 'col-1' && r.readOnly;
+      }, reason: 'runner rebuilt pull-only');
+      runner = container.read(syncRunnerProvider) as HttpSyncRunner;
+      final pushesBefore = fakes['col-1']!.pushes.length;
+      await runner.syncNow();
+      expect(fakes['col-1']!.pushes.length, pushesBefore, reason: 'viewer never pushes');
+      expect(fakes['col-1']!.pulls, isNotEmpty);
+      expect(container.read(homeLossProvider), isNull, reason: 'still a member: not lost');
+    });
+
+    test('old owner without a plan of their own: the former home still pulls on the new owner\'s plan (read-only, §8)', () async {
+      entitled = false;
+      serverCollections = [col('col-1', 'My plants', role: 'editor', owner: 'u-2', members: 2)];
+      container.read(cloudSyncCoordinatorProvider);
+      await container.read(appContextProvider.future);
+      await container.read(collectionLinkProvider.notifier).ready;
+      final alice = await container.read(plantlyAuthProvider.notifier).adoptToken(aliceToken);
+      container.read(signInEventsProvider).emit(alice);
+      await waitFor(() => container.read(cloudStateProvider).linked, reason: 'linked without a plan');
+      await waitFor(() => container.read(collectionsProvider).items.any((c) => c.id == 'col-1' && !c.isOwner));
+      final runner = await runnerOn('col-1');
+      expect(runner.readOnly, isTrue);
+      expect(container.read(activeCollectionReadOnlyReasonProvider), ReadOnlyReason.cloudRequired);
+    });
+
+    test('403 not_a_member on the home (removed after a transfer): flagged lost, runner stops, local rows kept and editable; rehome → a new collection owns them, one whole-row op per live row for this account',
+        () async {
+      final fake = FakeSyncTabs()..autoGrant = true;
+      tabs = fake;
+      await signInAlice();
+      var runner = await runnerOn('col-1');
+      await waitFor(() => container.read(appContextProvider).requireValue.tenantId == 'col-1');
+      final fern = await container.read(plantRepositoryProvider).create(nickname: 'Fern');
+      await runner.syncNow();
+      expect(fakes['col-1']!.pushes.expand((p) => p.ops).any((o) => o.entityId == fern.id), isTrue);
+      expect(await opsIn('col-1', pendingOnly: true), 0);
+      final rowsBefore = await plantsIn('col-1');
+      final opsBefore = await opsIn('col-1');
+      expect(rowsBefore, greaterThan(0));
+
+      // The new owner removes alice from her former home.
+      serverCollections = [col('col-2', 'Family greenhouse', role: 'editor', owner: 'u-2', members: 3)];
+      fakes['col-1']!.failures.add(const SyncCollectionError('not_a_member', status: 403));
+      await runner.syncNow();
+      await waitFor(() => container.read(homeLossProvider) != null, reason: 'home flagged lost');
+      final loss = container.read(homeLossProvider)!;
+      expect(loss.collectionId, 'col-1');
+      expect(loss.reason, HomeLossReason.removed);
+      expect(loss.name, 'My plants');
+      expect(container.read(homeLostNoticeProvider)?.collectionId, 'col-1', reason: 'one-shot notice');
+      expect(container.read(collectionRemovedNoticeProvider), isNull, reason: 'not the shared-collection path');
+      expect(container.read(currentTenantIdProvider), 'col-1', reason: 'stays on the local data');
+      await waitFor(() => container.read(syncRunnerProvider) is NoopSyncRunner,
+          reason: 'no runner looping against a collection we lost');
+      expect(container.read(canEditActiveCollectionProvider), isTrue, reason: 'local data stays editable');
+      expect(await plantsIn('col-1'), rowsBefore, reason: 'nothing deleted');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString(kHomeLossPrefKey), isNotNull, reason: 'survives a restart');
+      final t = lookupAppLocalizations(const Locale('en'));
+      expect(describeHomeLoss(t, loss), contains('My plants'));
+
+      // Edits made while lost are kept and travel with the rows.
+      final ivy = await container.read(plantRepositoryProvider).create(nickname: 'Ivy (offline)');
+
+      // A historical op another member pushed (pulled: user NULL, foreign device).
+      await db.customStatement(
+          "INSERT INTO sync_ops (tenant_id, entity, entity_id, field, hlc, device_id, value_json, pushed_at) "
+          "VALUES ('col-1', 'plants', '${fern.id}', 'nickname', '00000000000001-00000-bobdev', 'bobdev', '\"Bob\"', 1)");
+
+      // "Move your plants into …": the account owns no other collection →
+      // the server creates one; the dialog has no target to name.
+      expect(container.read(collectionsProvider.notifier).rehomeTarget, isNull);
+      aliceDefault = {'id': 'col-9', 'name': 'My plants', 'role': 'owner'};
+      serverCollections = [col('col-9', 'My plants'), ...serverCollections];
+      final link = await container.read(collectionsProvider.notifier).rehome();
+      expect(link.id, 'col-9');
+      expect(container.read(cloudStateProvider).collectionId, 'col-9');
+      expect(container.read(currentTenantIdProvider), 'col-9');
+      expect(await plantsIn('col-9'), rowsBefore + 1);
+      expect(await plantsIn('col-1'), 0);
+      expect(container.read(homeLossProvider), isNull);
+      expect(prefs.getString(kHomeLossPrefKey), isNull);
+      expect(fake.posted.map((m) => m.kind), contains(SyncTabMessageKind.reload), reason: 'other tabs reload');
+      runner = await runnerOn('col-9');
+      await runner.syncNow();
+      final pushed = fakes['col-9']!.pushes.expand((p) => p.ops).toList();
+      expect(pushed.map((o) => o.entityId), containsAll([fern.id, ivy.id]), reason: 'every live row uploaded');
+      expect(pushed.every((o) => o.field == '*'), isTrue,
+          reason: 'a snapshot per row, not the old op history (other members\' ops are not replayed as ours)');
+      final keys = pushed.map((o) => '${o.entity}/${o.entityId}').toList();
+      expect(keys.toSet().length, keys.length, reason: 'one op per row');
+      expect(pushed.where((o) => o.entityId == fern.id).single.value, isA<Map>());
+      final foreign = await db.customSelect(
+          "SELECT COUNT(*) AS n FROM sync_ops WHERE tenant_id = 'col-9' AND (user_id IS NULL OR user_id <> 'u-1')").getSingle();
+      expect(foreign.read<int>('n'), 0, reason: 'everything in the new collection is stamped with this account');
+      expect(await opsIn('col-9', pendingOnly: true), 0);
+      expect(opsBefore, greaterThan(0));
+      expect(fakes['col-1']!.pushes.expand((p) => p.ops).where((o) => o.entityId == ivy.id), isEmpty,
+          reason: 'never pushed into the lost collection');
+    });
+
+    test('rehome target = the OLDEST owned live collection (may be shared): named before anything moves', () async {
+      await signInAlice();
+      final runner = await runnerOn('col-1');
+      serverCollections = [
+        {...col('col-7', 'Shared jungle', members: 3), 'created_at': '2026-03-01T00:00:00Z'},
+        {...col('col-8', 'Newer', members: 1), 'created_at': '2026-05-01T00:00:00Z'},
+        col('col-2', 'Family greenhouse', role: 'editor', owner: 'u-2', members: 3),
+      ];
+      fakes['col-1']!.failures.add(const SyncCollectionError('not_a_member', status: 403));
+      await runner.syncNow();
+      await waitFor(() => container.read(homeLossProvider) != null);
+      final target = container.read(collectionsProvider.notifier).rehomeTarget!;
+      expect(target.id, 'col-7');
+      expect(target.memberCount, 3);
+      aliceDefault = {'id': 'col-7', 'name': 'Shared jungle', 'role': 'owner'};
+      final link = await container.read(collectionsProvider.notifier).rehome();
+      expect(link.id, 'col-7');
+      expect(container.read(currentTenantIdProvider), 'col-7');
+    });
+
+    test('offline re-check: a failed list fetch never flags the home; retried, settled by the next successful fetch', () async {
+      await signInAlice();
+      final runner = await runnerOn('col-1');
+      serverCollections = [col('col-2', 'Family greenhouse', role: 'editor', owner: 'u-2', members: 3)];
+      failCollections = true;
+      fakes['col-1']!.failures.add(const SyncCollectionError('not_a_member', status: 403));
+      await runner.syncNow();
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      expect(container.read(homeLossProvider), isNull, reason: 'not concluded from a failed fetch');
+      expect(container.read(homeLostNoticeProvider), isNull);
+      failCollections = false;
+      await waitFor(() => container.read(homeLossProvider) != null, reason: 'retried with backoff, then confirmed');
+      expect(container.read(homeLossProvider)!.reason, HomeLossReason.removed);
+    });
+
+    test('410 collection_deleted on the home (deleted / purged): lost (deleted); a list that names it again clears the flag', () async {
+      await signInAlice();
+      final runner = await runnerOn('col-1');
+      serverCollections = [col('col-2', 'Family greenhouse', role: 'editor', owner: 'u-2', members: 3)];
+      fakes['col-1']!.failures.add(const SyncCollectionError('collection_deleted', status: 410));
+      await runner.syncNow();
+      await waitFor(() => container.read(homeLossProvider) != null);
+      expect(container.read(homeLossProvider)!.reason, HomeLossReason.deleted);
+      expect(container.read(collectionsProvider).items.map((c) => c.id), contains('col-1'),
+          reason: 'home stays reachable in the switcher (local data)');
+
+      // Switching away and back home works; nothing syncs against the lost home.
+      await container.read(collectionsProvider.notifier).switchCollection('col-2');
+      await runnerOn('col-2');
+      await container.read(collectionsProvider.notifier).switchCollection('col-1');
+      await waitFor(() => container.read(syncRunnerProvider) is NoopSyncRunner);
+
+      // Restored server-side (reactivation within the purge window): the list names it again.
+      serverCollections = [col('col-1', 'My plants'), ...serverCollections];
+      await container.read(collectionsProvider.notifier).refresh();
+      expect(container.read(homeLossProvider), isNull);
+      await runnerOn('col-1');
+    });
+
+    test('a persisted loss is restored on the next boot (before any sync)', () async {
+      await signInAlice();
+      final runner = await runnerOn('col-1');
+      serverCollections = [col('col-2', 'Family greenhouse', role: 'editor', owner: 'u-2', members: 3)];
+      fakes['col-1']!.failures.add(const SyncCollectionError('not_a_member', status: 403));
+      await runner.syncNow();
+      await waitFor(() => container.read(homeLossProvider) != null);
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(kHomeLossPrefKey)!;
+      final decoded = HomeLoss.fromJson(json.decode(raw) as Map<String, dynamic>);
+      expect(decoded.collectionId, 'col-1');
+      expect(decoded.reason, HomeLossReason.removed);
+    });
+  });
+
+  group('browser tabs (one runner per collection across tabs)', () {
+    test('another tab holds the lock: this tab follows (forwards writes + sync now, mirrors status, never talks to the server); lock granted → real runner, peer writes trigger its push',
+        () async {
+      final fake = FakeSyncTabs();
+      tabs = fake;
+      await signInAlice();
+      await waitFor(() => container.read(syncRunnerProvider) is FollowerSyncRunner, reason: 'not the leader yet');
+      final follower = container.read(syncRunnerProvider) as FollowerSyncRunner;
+      expect(fake.posted.map((m) => m.kind), contains(SyncTabMessageKind.hello));
+      await waitFor(() => container.read(appContextProvider).requireValue.tenantId == 'col-1');
+
+      await container.read(plantRepositoryProvider).create(nickname: 'Written in a follower tab');
+      await waitFor(() => fake.posted.any((m) => m.kind == SyncTabMessageKind.changed && m.collectionId == 'col-1'));
+      await follower.syncNow();
+      expect(fake.posted.last.kind, SyncTabMessageKind.syncNow);
+      fake.deliver(const SyncTabMessage(SyncTabMessageKind.status, 'col-1', status: SyncStatus(pendingOps: 4)));
+      await waitFor(() => follower.current.pendingOps == 4, reason: 'leader status mirrored');
+      expect(fakes['col-1']?.pushes ?? const [], isEmpty, reason: 'only the leading tab syncs');
+
+      // The leading tab closes: the lock passes here.
+      fake.grant('col-1');
+      final runner = await runnerOn('col-1');
+      await waitFor(() => fakes['col-1']!.pushes.isNotEmpty, reason: 'pending ops of this tab pushed');
+      final before = fakes['col-1']!.pushes.length;
+      // Another tab (now a follower) writes into the shared database.
+      await db.customStatement("UPDATE sync_ops SET pushed_at = NULL WHERE seq = (SELECT MAX(seq) FROM sync_ops)");
+      fake.deliver(const SyncTabMessage(SyncTabMessageKind.changed, 'col-1'));
+      await waitFor(() => fakes['col-1']!.pushes.length > before, reason: 'peer change debounced into a push');
+      expect(fake.posted.any((m) => m.kind == SyncTabMessageKind.status && m.collectionId == 'col-1'), isTrue,
+          reason: 'leader publishes its status');
+      fake.deliver(const SyncTabMessage(SyncTabMessageKind.hello, 'col-1'));
+      await waitFor(() => fake.posted.last.kind == SyncTabMessageKind.status);
+      expect(runner.collectionId, 'col-1');
+    });
+
+    test('clocks across tabs: every message carries the sender\'s latest HLC and every tab merges it', () async {
+      final fake = FakeSyncTabs();
+      tabs = fake;
+      await signInAlice();
+      await waitFor(() => container.read(syncRunnerProvider) is FollowerSyncRunner);
+      final ctx = await container.read(appContextProvider.future);
+      await waitFor(() => ctx.tenantId == 'col-1' || container.read(appContextProvider).requireValue.tenantId == 'col-1');
+      final clock = container.read(appContextProvider).requireValue.clock;
+      // The leader is ahead (it just pulled): its status stamp is merged here.
+      final ahead = Hlc(DateTime.now().toUtc().millisecondsSinceEpoch + 60000, 7, 'dev-x');
+      fake.deliver(SyncTabMessage(SyncTabMessageKind.status, 'col-1', status: SyncStatus.empty, hlc: ahead.encode()));
+      await waitFor(() => (clock.latest?.compareTo(ahead) ?? -1) >= 0, reason: 'follower merged the leader\'s HLC');
+      final p = await container.read(plantRepositoryProvider).create(nickname: 'After the merge');
+      final row = await db.customSelect("SELECT updated_hlc FROM plants WHERE id = ?", variables: [Variable<String>(p.id)]).getSingle();
+      expect(Hlc.parse(row.read<String>('updated_hlc')) > ahead, isTrue, reason: 'the next local edit sorts after it');
+      await waitFor(() => fake.posted.any((m) => m.kind == SyncTabMessageKind.changed && m.hlc != null));
+      final sent = fake.posted.lastWhere((m) => m.kind == SyncTabMessageKind.changed);
+      expect(Hlc.parse(sent.hlc!) > ahead, isTrue, reason: 'the follower shares its own latest stamp');
+      // Malformed stamps are ignored.
+      fake.deliver(const SyncTabMessage(SyncTabMessageKind.changed, 'col-1', hlc: 'garbage'));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+
+    test('leader shares its HLC right after each applied batch (followers merge before showing pulled rows)', () async {
+      final fake = FakeSyncTabs()..autoGrant = true;
+      tabs = fake;
+      await signInAlice();
+      await runnerOn('col-1');
+      final clock = container.read(appContextProvider).requireValue.clock;
+      final ahead = Hlc(DateTime.now().toUtc().millisecondsSinceEpoch + 30000, 2, 'peer');
+      clock.merge(ahead); // what the applier does for a pulled op …
+      fake.posted.clear();
+      // … then records it in sync_ops.
+      await db.customStatement(
+          "INSERT INTO sync_ops (tenant_id, entity, entity_id, field, hlc, device_id, value_json, pushed_at) "
+          "VALUES ('col-1', 'plants', 'p-x', 'nickname', '${ahead.encode()}', 'peer', '\"x\"', 1)");
+      await waitFor(() => fake.posted.any((m) => m.kind == SyncTabMessageKind.status && m.hlc != null));
+      final m = fake.posted.firstWhere((m) => m.kind == SyncTabMessageKind.status && m.hlc != null);
+      expect(Hlc.parse(m.hlc!) > ahead, isTrue);
+    });
+
+    test('switching collection releases the lock of the old one', () async {
+      final fake = FakeSyncTabs()..autoGrant = true;
+      tabs = fake;
+      await signInAlice();
+      await runnerOn('col-1');
+      await container.read(collectionsProvider.notifier).switchCollection('col-2');
+      await runnerOn('col-2');
+      await waitFor(() => fake.released.contains('col-1'));
+      expect(fake.released, isNot(contains('col-2')));
+    });
+  });
+}
+
+class FakeSyncTabs implements SyncTabs {
+  final Map<String, Completer<void>> _grants = {};
+  final List<SyncTabMessage> posted = [];
+  final List<String> released = [];
+  final _messages = StreamController<SyncTabMessage>.broadcast();
+  bool autoGrant = false;
+
+  void grant(String id) {
+    final c = _grants[id];
+    if (c != null && !c.isCompleted) c.complete();
+  }
+
+  void deliver(SyncTabMessage m) => _messages.add(m);
+
+  @override
+  SyncLease acquire(String collectionId) {
+    final c = _grants[collectionId] = Completer<void>();
+    if (autoGrant) c.complete();
+    return SyncLease(granted: c.future, onRelease: () => released.add(collectionId), grantedNow: autoGrant);
+  }
+
+  @override
+  Stream<SyncTabMessage> get messages => _messages.stream;
+
+  @override
+  void post(SyncTabMessage message) => posted.add(message);
 }

@@ -6121,6 +6121,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This browser\'s copy could not be removed ({error}). Try again.'**
   String gateClearFailed(String error);
+
+  /// No description provided for @cloudHomeLostRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'You no longer have access to {name}. Your plants are still on this device — nothing was deleted.'**
+  String cloudHomeLostRemoved(String name);
+
+  /// No description provided for @cloudHomeLostDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} was deleted on the server. Your plants are still on this device — nothing was deleted.'**
+  String cloudHomeLostDeleted(String name);
+
+  /// No description provided for @cloudHomeLostBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Your cloud collection is unavailable — changes stay on this device. Tap to fix.'**
+  String get cloudHomeLostBanner;
+
+  /// No description provided for @cloudHomeRehomeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a new collection'**
+  String get cloudHomeRehomeLabel;
+
+  /// No description provided for @cloudHomeRehomeValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload the plants on this device to a new collection you own'**
+  String get cloudHomeRehomeValue;
+
+  /// No description provided for @cloudHomeRehomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a new collection?'**
+  String get cloudHomeRehomeTitle;
+
+  /// No description provided for @cloudHomeRehomeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The plants on this device will be uploaded to a collection you own. Nothing is deleted.'**
+  String get cloudHomeRehomeBody;
+
+  /// No description provided for @cloudHomeRehomeConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get cloudHomeRehomeConfirm;
+
+  /// No description provided for @cloudHomeRehomeDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Your plants now sync to {name}'**
+  String cloudHomeRehomeDone(String name);
+
+  /// No description provided for @cloudHomeSwitchLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch collection'**
+  String get cloudHomeSwitchLabel;
+
+  /// No description provided for @cloudHomeSwitchValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Open another collection you have access to'**
+  String get cloudHomeSwitchValue;
+
+  /// No description provided for @cloudHomeMoveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Move your plants into “{name}”'**
+  String cloudHomeMoveLabel(String name);
+
+  /// No description provided for @cloudHomeMoveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Move your plants into “{name}”?'**
+  String cloudHomeMoveTitle(String name);
+
+  /// No description provided for @cloudHomeMoveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'They are added to your collection “{name}” and uploaded again from this device. Nothing is deleted.'**
+  String cloudHomeMoveBody(String name);
+
+  /// No description provided for @cloudHomeMoveBodyShared.
+  ///
+  /// In en, this message translates to:
+  /// **'They are added to “{name}”, which you share with {count} people — they will see them too. Uploaded again from this device; nothing is deleted.'**
+  String cloudHomeMoveBodyShared(String name, int count);
+
+  /// No description provided for @dbBusyOtherTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Another Plantly tab is busy with your data — retrying…'**
+  String get dbBusyOtherTab;
 }
 
 class _AppLocalizationsDelegate

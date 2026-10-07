@@ -49,12 +49,20 @@ Future<void> seedIfEmpty({
   AppLocalizations? l10n,
   SharedPreferences? prefs,
 }) async {
-  final before = prefs == null ? 0 : await maxSyncOpSeq(db);
-  try {
+  // ONE transaction from the "is it empty?" checks to the last insert: on
+  // the web every browser tab runs this at boot against the same database,
+  // and the cross-tab lease (`cross_tab_lock.dart`) holds a transaction
+  // from its first statement to commit — so a second tab sees the first
+  // tab's rows and seeds nothing (it used to seed the demo set twice).
+  var before = 0;
+  var after = 0;
+  await db.transaction(() async {
+    before = await maxSyncOpSeq(db);
     await _seed(db: db, opLog: opLog, l10n: l10n);
-  } finally {
-    if (prefs != null) await recordSeedOpRange(prefs, before, await maxSyncOpSeq(db));
-  }
+    after = await maxSyncOpSeq(db);
+  });
+  // After the commit: a rolled-back seed wrote no ops to remember.
+  if (prefs != null) await recordSeedOpRange(prefs, before, after);
 }
 
 Future<void> _seed({

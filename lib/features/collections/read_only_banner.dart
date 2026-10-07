@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/navigation.dart' show openMeSection;
 import '../../cloud/collections.dart';
+import '../../data/providers.dart' show currentTenantIdProvider;
 import '../home/home_providers.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
@@ -23,6 +25,13 @@ class ReadOnlyBanner extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // The linked home was lost (removed / deleted after a transfer) while
+    // its local rows are on screen: editable, but nothing syncs — say so,
+    // tap → Me → Cloud for the way out.
+    final loss = ref.watch(homeLossProvider);
+    if (loss != null && ref.watch(currentTenantIdProvider) == loss.collectionId) {
+      return const _HomeLostStrip();
+    }
     // Visibility follows the edit right; the reason only picks the copy
     // (so a plain `canEdit` override — tests, call sites — still works).
     if (ref.watch(canEditActiveCollectionProvider)) return const SizedBox.shrink();
@@ -53,6 +62,41 @@ class ReadOnlyBanner extends ConsumerWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeLostStrip extends ConsumerWidget {
+  const _HomeLostStrip();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(themeModeProvider);
+    final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
+    return Material(
+      key: const Key('home-lost-banner'),
+      color: surface.surfaceAlt,
+      child: InkWell(
+        onTap: () => openMeSection(context, 'cloud'),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: surface.border))),
+          child: Row(
+            children: [
+              Icon(Icons.cloud_off_outlined, size: 16, color: surface.terra),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  AppLocalizations.of(context).cloudHomeLostBanner,
+                  style: TextStyle(fontSize: 12, color: surface.muted, fontWeight: FontWeight.w600),
+                ),
+              ),
+              Icon(Icons.chevron_right, size: 16, color: surface.muted),
+            ],
+          ),
         ),
       ),
     );

@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:plantly_inventory/cloud/cloud_state.dart';
 import 'package:plantly_inventory/cloud/collection_link.dart';
+import 'package:plantly_inventory/cloud/collections.dart';
 import 'package:plantly_inventory/cloud/entitlement.dart';
 import 'package:plantly_inventory/cloud/cloud_sync.dart';
 import 'package:plantly_inventory/cloud/sync_runner.dart';
@@ -75,8 +76,11 @@ void main() {
     AppDatabase? db,
     bool? purchaseLink,
     List<Override> extra = const [],
+    Map<String, Object> prefs = const {},
+    List<Map<String, Object?>>? collections,
   }) async {
     SharedPreferences.setMockInitialValues({
+      ...prefs,
       'plantly_onboarded': true,
       if (linked) kCollectionIdPrefKey: 'col-1',
       if (linked) kCollectionNamePrefKey: 'My plants',
@@ -109,6 +113,10 @@ void main() {
                   200,
                   headers: {'content-type': 'application/json; charset=utf-8'},
                 );
+              }
+              if (collections != null && req.method == 'GET' && req.url.path.endsWith('/inventory/collections')) {
+                return http.Response(json.encode({'collections': collections}), 200,
+                    headers: {'content-type': 'application/json; charset=utf-8'});
               }
               return http.Response('{"error":"nope"}', 404);
             })),
@@ -428,6 +436,89 @@ void main() {
       expect(prefs.getString(kCollectionUserIdPrefKey), 'u-1');
       expect(find.byKey(const Key('cloud-start-empty')), findsNothing);
       expect(find.text('Sincronizează acum'), findsOneWidget);
+    });
+
+    testWidgets('home lost (removed after a transfer): copy + no sync rows; Start a new collection confirms, links, moves the rows',
+        (tester) async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      await pump(
+        tester,
+        entitlement: const CloudEntitlement(active: true, source: 'pro'),
+        db: db,
+        prefs: {
+          kHomeLossPrefKey: json.encode(
+              const HomeLoss(collectionId: 'col-1', name: 'My plants', reason: HomeLossReason.removed).toJson()),
+        },
+      );
+      expect(find.byKey(const Key('cloud-home-lost')), findsOneWidget);
+      expect(find.textContaining('You no longer have access to My plants'), findsOneWidget);
+      expect(find.byKey(const Key('cloud-sync-now')), findsNothing);
+      expect(find.byKey(const Key('cloud-unlink')), findsNothing);
+      expect(find.byKey(const Key('cloud-home-switch')), findsNothing, reason: 'no other collection to switch to');
+
+      await tester.tap(find.byKey(const Key('cloud-home-rehome')));
+      await tester.pumpAndSettle();
+      expect(find.text('Start a new collection?'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('cloud-home-rehome-confirm')));
+      await tester.pumpAndSettle();
+      expect(collectionCreates, 1);
+      final p = await SharedPreferences.getInstance();
+      expect(p.getString(kCollectionIdPrefKey), 'col-9');
+      expect(p.getString(kTenantIdPrefKey), 'col-9');
+      expect(p.getString(kHomeLossPrefKey), isNull);
+      expect(find.byKey(const Key('cloud-home-lost')), findsNothing);
+      expect(find.text('Your plants now sync to Colecția mea'), findsOneWidget);
+    });
+
+    testWidgets('home lost, account owns a shared collection: row + dialog name the target and its members', (tester) async {
+      await pump(
+        tester,
+        entitlement: const CloudEntitlement(active: true, source: 'pro'),
+        prefs: {
+          kHomeLossPrefKey: json.encode(
+              const HomeLoss(collectionId: 'col-1', name: 'My plants', reason: HomeLossReason.removed).toJson()),
+        },
+        collections: [
+          {'id': 'col-7', 'name': 'Shared jungle', 'role': 'owner', 'owner_user_id': 'u-1', 'member_count': 3},
+        ],
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Move your plants into “Shared jungle”'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('cloud-home-rehome')));
+      await tester.pumpAndSettle();
+      expect(find.text('Move your plants into “Shared jungle”?'), findsOneWidget);
+      expect(find.textContaining('which you share with 2 people'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(collectionCreates, 0, reason: 'nothing moves before confirming');
+    });
+
+    testWidgets('home lost (ro, deleted)', (tester) async {
+      await pump(
+        tester,
+        entitlement: const CloudEntitlement(active: true, source: 'pro'),
+        locale: const Locale('ro'),
+        prefs: {
+          kHomeLossPrefKey: json.encode(
+              const HomeLoss(collectionId: 'col-1', name: 'Plantele mele', reason: HomeLossReason.deleted).toJson()),
+        },
+      );
+      expect(find.textContaining('Plantele mele a fost ștearsă de pe server'), findsOneWidget);
+      expect(find.text('Începe o colecție nouă'), findsOneWidget);
+    });
+
+    testWidgets('a loss marker for another collection than the linked one is ignored', (tester) async {
+      await pump(
+        tester,
+        entitlement: const CloudEntitlement(active: true, source: 'pro'),
+        prefs: {
+          kHomeLossPrefKey: json.encode(
+              const HomeLoss(collectionId: 'col-old', name: 'Old', reason: HomeLossReason.removed).toJson()),
+        },
+      );
+      expect(find.byKey(const Key('cloud-home-lost')), findsNothing);
+      expect(find.byKey(const Key('cloud-sync-now')), findsOneWidget);
     });
 
     testWidgets('section title opens the Cloud screen with plan + collection detail', (tester) async {

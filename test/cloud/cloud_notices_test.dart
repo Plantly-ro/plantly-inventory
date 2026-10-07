@@ -72,4 +72,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Ai fost eliminat din Sera familiei'), findsOneWidget);
   });
+
+  testWidgets('home-lost notice → SnackBar (removed / deleted copy), provider reset to null', (tester) async {
+    final c = await pump(tester);
+    c.read(homeLostNoticeProvider.notifier).state =
+        const HomeLoss(collectionId: 'col-1', name: 'My plants', reason: HomeLossReason.removed);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('cloud-notice-home-lost')), findsOneWidget);
+    expect(find.textContaining('You no longer have access to My plants'), findsOneWidget);
+    expect(c.read(homeLostNoticeProvider), isNull, reason: 'one-shot');
+    c.read(homeLostNoticeProvider.notifier).state =
+        const HomeLoss(collectionId: 'col-1', name: 'My plants', reason: HomeLossReason.deleted);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('My plants was deleted on the server'), findsOneWidget);
+  });
 }
