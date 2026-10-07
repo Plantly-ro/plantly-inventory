@@ -3749,4 +3749,70 @@ class AppLocalizationsRo extends AppLocalizations {
   String gateClearFailed(String error) {
     return 'Copia din acest browser nu a putut fi ștearsă ($error). Încearcă din nou.';
   }
+
+  @override
+  String cloudHomeLostRemoved(String name) {
+    return 'Nu mai ai acces la $name. Plantele tale sunt încă pe acest dispozitiv — nu s-a șters nimic.';
+  }
+
+  @override
+  String cloudHomeLostDeleted(String name) {
+    return '$name a fost ștearsă de pe server. Plantele tale sunt încă pe acest dispozitiv — nu s-a șters nimic.';
+  }
+
+  @override
+  String get cloudHomeLostBanner =>
+      'Colecția din cloud nu mai este disponibilă — modificările rămân pe acest dispozitiv. Atinge pentru a rezolva.';
+
+  @override
+  String get cloudHomeRehomeLabel => 'Începe o colecție nouă';
+
+  @override
+  String get cloudHomeRehomeValue =>
+      'Încarcă plantele de pe acest dispozitiv într-o colecție nouă, a ta';
+
+  @override
+  String get cloudHomeRehomeTitle => 'Începi o colecție nouă?';
+
+  @override
+  String get cloudHomeRehomeBody =>
+      'Plantele de pe acest dispozitiv vor fi încărcate într-o colecție a ta. Nu se șterge nimic.';
+
+  @override
+  String get cloudHomeRehomeConfirm => 'Începe';
+
+  @override
+  String cloudHomeRehomeDone(String name) {
+    return 'Plantele tale se sincronizează acum cu $name';
+  }
+
+  @override
+  String get cloudHomeSwitchLabel => 'Schimbă colecția';
+
+  @override
+  String get cloudHomeSwitchValue => 'Deschide altă colecție la care ai acces';
+
+  @override
+  String cloudHomeMoveLabel(String name) {
+    return 'Mută plantele în „$name”';
+  }
+
+  @override
+  String cloudHomeMoveTitle(String name) {
+    return 'Muți plantele în „$name”?';
+  }
+
+  @override
+  String cloudHomeMoveBody(String name) {
+    return 'Sunt adăugate în colecția ta „$name” și încărcate din nou de pe acest dispozitiv. Nu se șterge nimic.';
+  }
+
+  @override
+  String cloudHomeMoveBodyShared(String name, int count) {
+    return 'Sunt adăugate în „$name”, pe care o împarți cu $count persoane — le vor vedea și ele. Sunt încărcate din nou de pe acest dispozitiv; nu se șterge nimic.';
+  }
+
+  @override
+  String get dbBusyOtherTab =>
+      'Altă filă Plantly lucrează cu datele tale — reîncercăm…';
 }

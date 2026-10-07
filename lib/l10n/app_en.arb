@@ -2166,5 +2166,28 @@
         "type": "String"
       }
     }
-  }
+  },
+  "cloudHomeLostRemoved": "You no longer have access to {name}. Your plants are still on this device — nothing was deleted.",
+  "@cloudHomeLostRemoved": {"placeholders": {"name": {"type": "String"}}},
+  "cloudHomeLostDeleted": "{name} was deleted on the server. Your plants are still on this device — nothing was deleted.",
+  "@cloudHomeLostDeleted": {"placeholders": {"name": {"type": "String"}}},
+  "cloudHomeLostBanner": "Your cloud collection is unavailable — changes stay on this device. Tap to fix.",
+  "cloudHomeRehomeLabel": "Start a new collection",
+  "cloudHomeRehomeValue": "Upload the plants on this device to a new collection you own",
+  "cloudHomeRehomeTitle": "Start a new collection?",
+  "cloudHomeRehomeBody": "The plants on this device will be uploaded to a collection you own. Nothing is deleted.",
+  "cloudHomeRehomeConfirm": "Start",
+  "cloudHomeRehomeDone": "Your plants now sync to {name}",
+  "@cloudHomeRehomeDone": {"placeholders": {"name": {"type": "String"}}},
+  "cloudHomeSwitchLabel": "Switch collection",
+  "cloudHomeSwitchValue": "Open another collection you have access to",
+  "cloudHomeMoveLabel": "Move your plants into “{name}”",
+  "@cloudHomeMoveLabel": {"placeholders": {"name": {"type": "String"}}},
+  "cloudHomeMoveTitle": "Move your plants into “{name}”?",
+  "@cloudHomeMoveTitle": {"placeholders": {"name": {"type": "String"}}},
+  "cloudHomeMoveBody": "They are added to your collection “{name}” and uploaded again from this device. Nothing is deleted.",
+  "@cloudHomeMoveBody": {"placeholders": {"name": {"type": "String"}}},
+  "cloudHomeMoveBodyShared": "They are added to “{name}”, which you share with {count} people — they will see them too. Uploaded again from this device; nothing is deleted.",
+  "@cloudHomeMoveBodyShared": {"placeholders": {"name": {"type": "String"}, "count": {"type": "int"}}},
+  "dbBusyOtherTab": "Another Plantly tab is busy with your data — retrying…"
 }

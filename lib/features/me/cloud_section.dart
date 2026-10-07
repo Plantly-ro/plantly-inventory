@@ -26,7 +26,9 @@ import '../../marketplace/plantly_api.dart';
 import '../../marketplace/plantly_auth.dart';
 import '../../plugins/plantly_ro/login_sheet.dart';
 import '../../shared/web_sign_out_flow.dart';
+import '../../sync/sync_tabs.dart' show broadcastTabReload, syncTabsProvider;
 import '../../theme/tokens.dart';
+import '../collections/collection_switcher.dart' show showCollectionSwitcherSheet;
 import '../collections/sharing_rows.dart';
 import 'me_rows.dart';
 import 'play_plan_picker.dart';
@@ -122,12 +124,15 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
 
   Future<void> _link() async {
     final links = ref.read(collectionLinkProvider.notifier);
+    final tabs = ref.read(syncTabsProvider);
     setState(() {
       _linking = true;
       _linkError = null;
     });
     try {
       await links.link();
+      // Other open tabs still point at the previous tenant: reload them.
+      broadcastTabReload(tabs);
     } catch (e) {
       if (mounted) setState(() => _linkError = _describe(e));
     } finally {
@@ -188,6 +193,8 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
     // still hold (and join, §3) collections, and never on top of another
     // account's link.
     if (state.heldByOther != null) return _heldByOther(t, state);
+    final loss = ref.watch(homeLossProvider);
+    if (loss != null) return _homeLost(t, state, loss);
     final purchaseLink = ref.watch(cloudPurchaseLinkAllowedProvider);
     // Android with both flags on: buy in-app (PLAY-BILLING-CONTRACT §4). The
     // picker never shows while the entitlement is still being checked —
@@ -299,8 +306,46 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
     ];
   }
 
+  /// The linked home is gone (removed / deleted after a transfer): say so,
+  /// keep the local data, offer a new collection or another one.
+  List<Widget> _homeLost(AppLocalizations t, CloudState state, HomeLoss loss) {
+    final others = ref.watch(collectionsProvider.select((s) => s.items.any((c) => c.id != loss.collectionId)));
+    ref.watch(collectionsProvider); // the target follows the list
+    final target = ref.read(collectionsProvider.notifier).rehomeTarget;
+    return [
+      MeActionRow(
+        key: const Key('cloud-home-lost'),
+        label: t.cloudStatusLabel,
+        value: _linking ? t.cloudSettingUp : (_linkError ?? describeHomeLoss(t, loss)),
+        icon: Icons.cloud_off_outlined,
+        surface: surface,
+        valueColor: surface.terra,
+      ),
+      MeActionRow(
+        key: const Key('cloud-home-rehome'),
+        label: target == null ? t.cloudHomeRehomeLabel : t.cloudHomeMoveLabel(target.displayName),
+        value: t.cloudHomeRehomeValue,
+        icon: Icons.create_new_folder_outlined,
+        surface: surface,
+        onTap: _linking ? null : _rehome,
+      ),
+      if (others)
+        MeActionRow(
+          key: const Key('cloud-home-switch'),
+          label: t.cloudHomeSwitchLabel,
+          value: t.cloudHomeSwitchValue,
+          icon: Icons.swap_horiz,
+          surface: surface,
+          onTap: () => showCollectionSwitcherSheet(context),
+        ),
+      _accountRow(t, state),
+    ];
+  }
+
   List<Widget> _ready(AppLocalizations t, CloudState state) {
     if (state.heldByOther != null) return _heldByOther(t, state);
+    final loss = ref.watch(homeLossProvider);
+    if (loss != null) return _homeLost(t, state, loss);
     final status = ref.watch(syncStatusProvider).valueOrNull ?? SyncStatus.empty;
     final collectionName = ref.watch(activeCollectionProvider)?.displayName;
     final String statusText;
@@ -425,14 +470,59 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
     await _link();
   }
 
+  Future<void> _rehome() async {
+    final t = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final collections = ref.read(collectionsProvider.notifier); // before the await (#14)
+    // `POST /collections/default` hands out the OLDEST collection the
+    // account owns — possibly a shared one: name it before moving anything.
+    final target = collections.rehomeTarget;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(target == null ? t.cloudHomeRehomeTitle : t.cloudHomeMoveTitle(target.displayName)),
+        content: Text(target == null
+            ? t.cloudHomeRehomeBody
+            : target.memberCount > 1
+                ? t.cloudHomeMoveBodyShared(target.displayName, target.memberCount - 1)
+                : t.cloudHomeMoveBody(target.displayName)),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.cancel)),
+          FilledButton(
+            key: const Key('cloud-home-rehome-confirm'),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(t.cloudHomeRehomeConfirm),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() {
+      _linking = true;
+      _linkError = null;
+    });
+    try {
+      final link = await collections.rehome();
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(t.cloudHomeRehomeDone(link.name.isEmpty ? link.id : link.name))));
+    } catch (e) {
+      if (mounted) setState(() => _linkError = _describe(e));
+    } finally {
+      if (mounted) setState(() => _linking = false);
+    }
+  }
+
   Future<void> _startEmpty() async {
     final links = ref.read(collectionLinkProvider.notifier); // before the await (#14)
+    final tabs = ref.read(syncTabsProvider);
     setState(() {
       _linking = true;
       _linkError = null;
     });
     try {
       await links.startEmpty();
+      broadcastTabReload(tabs);
     } catch (e) {
       if (mounted) setState(() => _linkError = _describe(e));
     } finally {
@@ -596,6 +686,13 @@ String describeSyncError(AppLocalizations t, String code,
       'offline' => t.cloudErrOffline,
       'error' => t.cloudErrGeneric,
       _ => code,
+    };
+
+/// Copy for a lost linked home ([HomeLoss]): who took it away, and that the
+/// local plants are untouched.
+String describeHomeLoss(AppLocalizations t, HomeLoss loss) => switch (loss.reason) {
+      HomeLossReason.removed => t.cloudHomeLostRemoved(loss.name),
+      HomeLossReason.deleted => t.cloudHomeLostDeleted(loss.name),
     };
 
 /// 1024-based, at most one decimal: `0 B`, `512 KB`, `1.5 MB`, `2 GB`.

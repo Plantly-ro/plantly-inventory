@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plantly_inventory/cloud/collections.dart';
+import 'package:plantly_inventory/data/providers.dart' show currentTenantIdProvider;
 import 'package:plantly_inventory/features/collections/read_only_banner.dart';
 import 'package:plantly_inventory/features/home/home_screen.dart';
 import 'package:plantly_inventory/l10n/generated/app_localizations.dart';
@@ -14,11 +15,14 @@ import '../../helpers/test_app.dart';
 const _bannerKey = Key('read-only-banner');
 const _snackKey = Key('read-only-snack');
 
-Widget _app(Widget home, {required bool canEdit, Locale locale = const Locale('en'), ReadOnlyReason? reason}) {
+Widget _app(Widget home,
+    {required bool canEdit, Locale locale = const Locale('en'), ReadOnlyReason? reason, HomeLoss? homeLoss}) {
   return buildTestApp(
     overrides: [
       canEditActiveCollectionProvider.overrideWithValue(canEdit),
       if (reason != null) activeCollectionReadOnlyReasonProvider.overrideWithValue(reason),
+      if (homeLoss != null) homeLossProvider.overrideWithValue(homeLoss),
+      if (homeLoss != null) currentTenantIdProvider.overrideWith((_) => homeLoss.collectionId),
     ],
     child: MaterialApp(
       locale: locale,
@@ -170,5 +174,19 @@ void main() {
       expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(find.byKey(_bannerKey), findsNothing);
     });
+  });
+
+  testWidgets('lost home on screen → the "collection unavailable" strip (editable, not the viewer banner)', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(_app(const _GuardProbe(),
+        canEdit: true,
+        homeLoss: const HomeLoss(collectionId: 'col-1', name: 'My plants', reason: HomeLossReason.removed)));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('home-lost-banner')), findsOneWidget);
+    expect(find.byKey(_bannerKey), findsNothing);
+    expect(find.textContaining('Your cloud collection is unavailable'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('probe-mutate')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('probe-mutated')), findsOneWidget, reason: 'local data stays editable');
   });
 }
