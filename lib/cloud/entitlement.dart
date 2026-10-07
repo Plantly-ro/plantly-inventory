@@ -53,6 +53,7 @@ class CloudEntitlement {
     this.source,
     this.provider,
     this.currentPeriodEnd,
+    this.cancelAtPeriodEnd = false,
     this.sharedAccess = SharedAccess.none,
   });
 
@@ -75,6 +76,12 @@ class CloudEntitlement {
   final String? provider;
   final DateTime? currentPeriodEnd;
 
+  /// The granting subscription is cancelled and will not renew:
+  /// [currentPeriodEnd] is when it ends, not when it renews. Read from the
+  /// `subscriptions[]` row behind the grant (the `entitlements` block does
+  /// not carry it); false when unknown.
+  final bool cancelAtPeriodEnd;
+
   /// The entitling row is a Google Play subscription: managed (cancel /
   /// pause / change plan) in Play, not on plantly.ro.
   bool get managedByPlay => active && provider == 'play';
@@ -89,11 +96,14 @@ class CloudEntitlement {
     if (ents is Map<String, dynamic>) {
       final e = ents['inventory_cloud'];
       if (e is Map<String, dynamic>) {
+        final source = e['source'] as String?;
+        final provider = e['provider'] as String?;
         return CloudEntitlement(
           active: e['active'] == true,
-          source: e['source'] as String?,
-          provider: e['provider'] as String?,
+          source: source,
+          provider: provider,
           currentPeriodEnd: _date(e['current_period_end']),
+          cancelAtPeriodEnd: _grantCancels(body['subscriptions'], source, provider),
           sharedAccess: SharedAccess.fromJson(e['shared_access']),
         );
       }
@@ -106,7 +116,22 @@ class CloudEntitlement {
       active: isPro,
       source: isPro ? 'pro' : null,
       currentPeriodEnd: isPro ? _date(body['current_period_end']) : null,
+      cancelAtPeriodEnd: isPro && body['cancel_at_period_end'] == true,
     );
+  }
+
+  /// `cancel_at_period_end` of the `subscriptions[]` row that grants the
+  /// entitlement: product = [source] (`pro` | `inventory_cloud`), provider
+  /// as given (absent provider = Stripe, as everywhere else).
+  static bool _grantCancels(Object? subs, String? source, String? provider) {
+    if (subs is! List || source == null) return false;
+    for (final row in subs) {
+      if (row is! Map<String, dynamic>) continue;
+      if (row['product'] != source) continue;
+      if ((row['provider'] ?? 'stripe') != (provider ?? 'stripe')) continue;
+      return row['cancel_at_period_end'] == true;
+    }
+    return false;
   }
 
   static DateTime? _date(Object? v) => v is String && v.isNotEmpty ? DateTime.tryParse(v)?.toUtc() : null;
@@ -116,6 +141,7 @@ class CloudEntitlement {
         'source': source,
         'provider': provider,
         'current_period_end': currentPeriodEnd?.toIso8601String(),
+        'cancel_at_period_end': cancelAtPeriodEnd,
         'shared_access': sharedAccess.toJson(),
       };
 
@@ -124,6 +150,7 @@ class CloudEntitlement {
         source: m['source'] as String?,
         provider: m['provider'] as String?,
         currentPeriodEnd: _date(m['current_period_end']),
+        cancelAtPeriodEnd: m['cancel_at_period_end'] == true,
         sharedAccess: SharedAccess.fromJson(m['shared_access']),
       );
 
@@ -134,14 +161,15 @@ class CloudEntitlement {
       other.source == source &&
       other.provider == provider &&
       other.currentPeriodEnd == currentPeriodEnd &&
+      other.cancelAtPeriodEnd == cancelAtPeriodEnd &&
       other.sharedAccess == sharedAccess;
 
   @override
-  int get hashCode => Object.hash(active, source, provider, currentPeriodEnd, sharedAccess);
+  int get hashCode => Object.hash(active, source, provider, currentPeriodEnd, cancelAtPeriodEnd, sharedAccess);
 
   @override
   String toString() =>
-      'CloudEntitlement(active=$active, source=$source, provider=$provider, until=$currentPeriodEnd, shared=$sharedAccess)';
+      'CloudEntitlement(active=$active, source=$source, provider=$provider, until=$currentPeriodEnd, cancels=$cancelAtPeriodEnd, shared=$sharedAccess)';
 }
 
 /// How the value currently held by [cloudEntitlementProvider] was obtained.

@@ -421,6 +421,14 @@ class AppLocalizationsRo extends AppLocalizations {
       'Un mod calm, offline, de a-ți urmări plantele de apartament — udare, fertilizare, înmulțire, spații și altele. Totul rămâne pe telefonul tău.';
 
   @override
+  String get onbWelcomeBodyCloud =>
+      'Un mod calm, offline, de a-ți urmări plantele de apartament — udare, fertilizare, înmulțire, spații și altele. Totul funcționează pe telefonul tău și se sincronizează cu contul tău plantly.ro.';
+
+  @override
+  String get onbWelcomeBodyWeb =>
+      'Un mod calm de a-ți urmări plantele de apartament — udare, fertilizare, înmulțire, spații și altele. Colecția ta e salvată în contul tău plantly.ro și rămâne sincronizată pe orice dispozitiv pe care te conectezi.';
+
+  @override
   String get onbNameLabel => 'NUMELE TĂU (OPȚIONAL)';
 
   @override
@@ -436,7 +444,7 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get onbNotifBody =>
-      'Programăm notificări locale pe telefonul tău când o plantă are nevoie de îngrijire. Nimic nu se trimite către un server.';
+      'Programăm memento-uri ca notificări locale pe telefonul tău când o plantă are nevoie de îngrijire — fără niciun server de push.';
 
   @override
   String get onbNotifGranted => 'Memento-urile sunt activate.';
@@ -457,7 +465,7 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get onbPrivacyBody =>
-      'Ambele sunt oprite implicit. Datele despre plante nu părăsesc niciodată dispozitivul tău. Le poți schimba oricând din Eu → Confidențialitate și date.';
+      'Ambele sunt oprite implicit și nu includ niciodată date despre plante sau fotografii. Le poți schimba oricând din Eu → Confidențialitate și date.';
 
   @override
   String get onbCrashTitle => 'Rapoarte de erori';
@@ -721,7 +729,7 @@ class AppLocalizationsRo extends AppLocalizations {
   String get spaceCaptionHint => 'ex.: colțul cu lumină de dimineață';
 
   @override
-  String get appTitle => 'PlantlyInventory';
+  String get appTitle => 'Plantly Inventory';
 
   @override
   String goodMorning(String name) {
@@ -1274,10 +1282,6 @@ class AppLocalizationsRo extends AppLocalizations {
   String get exportPostOnPlantlyRoCta => 'Publică pe plantly.ro';
 
   @override
-  String get exportSavedLocally =>
-      'Salvat local — sincronizarea cu plantly.ro vine în Faza 2';
-
-  @override
   String get tagAdd => 'Adaugă o etichetă';
 
   @override
@@ -1621,7 +1625,9 @@ class AppLocalizationsRo extends AppLocalizations {
   String get meAboutApp => 'Aplicație';
 
   @override
-  String get meAboutAppValue => 'PlantlyInventory · Faza 1';
+  String meAboutAppValue(String version) {
+    return 'Plantly Inventory · $version';
+  }
 
   @override
   String get meAboutLicense => 'Licență';
@@ -1745,7 +1751,7 @@ class AppLocalizationsRo extends AppLocalizations {
       'Deschide mementourile din următoarele 30 de zile în orice aplicație de calendar.';
 
   @override
-  String get meIcsShareText => 'Mementouri PlantlyInventory';
+  String get meIcsShareText => 'Mementouri Plantly Inventory';
 
   @override
   String meIcsSaved(String where) {
@@ -1760,7 +1766,7 @@ class AppLocalizationsRo extends AppLocalizations {
       'Plante + evenimente de îngrijire, într-un fișier pentru foi de calcul.';
 
   @override
-  String get meCsvShareText => 'CSV PlantlyInventory';
+  String get meCsvShareText => 'CSV Plantly Inventory';
 
   @override
   String meCsvSaved(String where) {
@@ -1779,20 +1785,47 @@ class AppLocalizationsRo extends AppLocalizations {
   String get mePrivacyWhatLeaves => 'Ce părăsește dispozitivul tău';
 
   @override
+  String get mePrivacyWhereDataLives => 'Unde stau datele tale';
+
+  @override
   String get mePrivacyBulletLocal =>
       'Nimic, implicit. Plantele, fotografiile, evenimentele de îngrijire și programele stau într-o bază de date SQLite locală, pe telefonul tău.';
+
+  @override
+  String get mePrivacyBulletCloud =>
+      'Sincronizarea cloud e pornită: plantele, fotografiile, evenimentele de îngrijire și programele stau într-o bază de date locală pe telefonul tău și se sincronizează cu contul tău plantly.ro. Fotografiile sunt stocate privat — le vezi doar tu și persoanele cu care partajezi o colecție. Pentru lista de dispozitive (Eu → Cloud → Dispozitive) trimitem și numele dispozitivului, platforma și versiunea aplicației.';
+
+  @override
+  String get mePrivacyBulletWeb =>
+      'Plantele, fotografiile, evenimentele de îngrijire și programele sunt salvate în contul tău plantly.ro (Inventory Cloud), cu o copie de lucru în acest browser. Fotografiile sunt stocate privat — le vezi doar tu și persoanele cu care partajezi o colecție. Pentru lista de dispozitive (Eu → Cloud → Dispozitive) trimitem și numele dispozitivului, platforma și versiunea aplicației.';
+
+  @override
+  String get mePrivacyBulletPaused =>
+      'Sincronizarea e în pauză: nimic nou nu mai pleacă de pe acest telefon — plantele, fotografiile, evenimentele de îngrijire și programele rămân în baza de date locală. Ce s-a sincronizat deja în contul tău plantly.ro se păstrează așa cum descrie politica de confidențialitate.';
 
   @override
   String get mePrivacyBulletBackups =>
       'Copiile de siguranță (JSON sau ZIP) părăsesc dispozitivul doar când apeși Exportă — tu alegi unde ajung, prin meniul de partajare.';
 
   @override
+  String get mePrivacyBulletBackupsWeb =>
+      'Copiile de siguranță (JSON sau ZIP) se creează doar când apeși Exportă — browserul descarcă fișierul pe acest dispozitiv.';
+
+  @override
   String get mePrivacyBulletNotifications =>
       'Notificările se declanșează local, prin sistemul de alarme al telefonului. Nu folosim un server de push.';
 
   @override
+  String get mePrivacyBulletNotificationsWeb =>
+      'Versiunea din browser nu trimite notificări — memento-urile apar în aplicație și în calendar. Nu folosim un server de push.';
+
+  @override
   String get mePrivacyBulletMarketplace =>
       'Dacă publici ulterior o plantă pe plantly.ro, se trimit doar câmpurile pe care le verifici în dialogul de publicare — niciodată întreaga bază de date.';
+
+  @override
+  String get mePrivacyBulletMarketplaceCloud =>
+      'Dacă scoți o plantă la vânzare pe plantly.ro, anunțul conține doar câmpurile pe care le verifici în dialogul de publicare — nimic altceva din colecția ta nu este publicat.';
 
   @override
   String get mePrivacySectionTelemetry => 'TELEMETRIE OPȚIONALĂ';
@@ -1922,7 +1955,7 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get meNotifPermGranted =>
-      'Notificările de sistem sunt permise pentru PlantlyInventory.';
+      'Notificările de sistem sunt permise pentru Plantly Inventory.';
 
   @override
   String get meNotifPermDenied =>
@@ -2356,6 +2389,10 @@ class AppLocalizationsRo extends AppLocalizations {
       'Plantele, pozele și istoricul de îngrijire sunt salvate în contul tău plantly.ro și ținute sincronizate pe orice dispozitiv pe care te conectezi. Nimic nu părăsește acest dispozitiv până nu îl conectezi.';
 
   @override
+  String get cloudScreenIntroWeb =>
+      'Plantele, pozele și istoricul de îngrijire sunt salvate în contul tău plantly.ro și ținute sincronizate pe orice dispozitiv pe care te conectezi.';
+
+  @override
   String get cloudSignInLabel => 'Conectează-te la plantly.ro';
 
   @override
@@ -2476,6 +2513,11 @@ class AppLocalizationsRo extends AppLocalizations {
   @override
   String cloudRenewsOn(String date) {
     return 'se reînnoiește $date';
+  }
+
+  @override
+  String cloudEndsOn(String date) {
+    return 'se încheie pe $date';
   }
 
   @override
@@ -2647,6 +2689,10 @@ class AppLocalizationsRo extends AppLocalizations {
   @override
   String get cloudErrCollectionUnavailable =>
       'Această colecție nu mai este disponibilă — deconectează dispozitivul și conectează-l din nou';
+
+  @override
+  String get cloudErrCollectionUnavailableWeb =>
+      'Această colecție nu mai este disponibilă — ieși din cont și conectează-te din nou';
 
   @override
   String get cloudErrQuotaExceeded =>

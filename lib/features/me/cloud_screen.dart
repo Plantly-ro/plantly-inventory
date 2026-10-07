@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/navigation.dart';
 import '../../cloud/cloud_state.dart';
+import '../../config/plantly_features.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../collections/collection_activity_screen.dart';
@@ -46,7 +47,7 @@ class CloudScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         children: [
           Text(
-            t.cloudScreenIntro,
+            ref.watch(webPlatformProvider) ? t.cloudScreenIntroWeb : t.cloudScreenIntro,
             key: const Key('cloud-screen-intro'),
             style: TextStyle(fontSize: 13, height: 1.4, color: surface.muted),
           ),

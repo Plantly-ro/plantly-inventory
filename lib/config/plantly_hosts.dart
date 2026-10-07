@@ -16,10 +16,11 @@ abstract final class PlantlyHosts {
   static String get host => _hostDefine.replaceAll(RegExp(r'/+$'), '');
 
   /// App version reported in the User-Agent. Overridable at build time so CI
-  /// can stamp the real pubspec version without a code change.
+  /// can stamp the real pubspec version without a code change. Unstamped
+  /// (local/dev) builds say `dev` rather than pretend to be a release.
   static const String appVersion = String.fromEnvironment(
     'PLANTLY_APP_VERSION',
-    defaultValue: '1.0.0',
+    defaultValue: 'dev',
   );
 
   static String apiBase([String? origin]) => '${origin ?? host}/api/v1';

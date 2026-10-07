@@ -201,7 +201,7 @@ final iCalFutureProvider = FutureProvider.autoDispose<String>((ref) async {
     typeLabel: (type) => careKeyVerb(appLocalizationsForPlatform(), ref.read(careTypesProvider), type),
   );
   return ICalExport.fromEvents(
-    productId: '-//PlantlyInventory//Phase1//EN',
+    productId: 'Plantly//Plantly Inventory',
     events: events,
   );
 });

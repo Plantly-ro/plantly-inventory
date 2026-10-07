@@ -410,6 +410,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'A calm, offline-first way to track your houseplants — watering, fertilising, propagation, spaces, and more. Everything lives on your phone.';
 
   @override
+  String get onbWelcomeBodyCloud =>
+      'A calm, offline-first way to track your houseplants — watering, fertilising, propagation, spaces, and more. Everything works on your phone and syncs to your plantly.ro account.';
+
+  @override
+  String get onbWelcomeBodyWeb =>
+      'A calm way to track your houseplants — watering, fertilising, propagation, spaces, and more. Your collection is saved in your plantly.ro account and stays in sync on every device you sign in on.';
+
+  @override
   String get onbNameLabel => 'YOUR NAME (OPTIONAL)';
 
   @override
@@ -425,7 +433,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onbNotifBody =>
-      'We schedule local notifications on your phone when a plant is due for care. Nothing is sent to a server.';
+      'We schedule reminders as local notifications on your phone when a plant is due for care — no push server involved.';
 
   @override
   String get onbNotifGranted => 'Reminders are enabled.';
@@ -445,7 +453,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onbPrivacyBody =>
-      'Both are off by default. Plant data never leaves your device for any reason. You can change these any time in Me → Privacy & data.';
+      'Both are off by default and never include plant data or photos. You can change these any time in Me → Privacy & data.';
 
   @override
   String get onbCrashTitle => 'Crash reports';
@@ -705,7 +713,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get spaceCaptionHint => 'e.g. morning light corner';
 
   @override
-  String get appTitle => 'PlantlyInventory';
+  String get appTitle => 'Plantly Inventory';
 
   @override
   String goodMorning(String name) {
@@ -1253,10 +1261,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exportPostOnPlantlyRoCta => 'Post on plantly.ro';
 
   @override
-  String get exportSavedLocally =>
-      'Saved locally — plantly.ro sync lands in Phase 2';
-
-  @override
   String get tagAdd => 'Add a tag';
 
   @override
@@ -1599,7 +1603,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get meAboutApp => 'App';
 
   @override
-  String get meAboutAppValue => 'PlantlyInventory · Phase 1';
+  String meAboutAppValue(String version) {
+    return 'Plantly Inventory · $version';
+  }
 
   @override
   String get meAboutLicense => 'License';
@@ -1717,7 +1723,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Open the next 30 days of reminders in any calendar app.';
 
   @override
-  String get meIcsShareText => 'PlantlyInventory reminders';
+  String get meIcsShareText => 'Plantly Inventory reminders';
 
   @override
   String meIcsSaved(String where) {
@@ -1732,7 +1738,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Plants + care events as a spreadsheet-friendly dump.';
 
   @override
-  String get meCsvShareText => 'PlantlyInventory CSV';
+  String get meCsvShareText => 'Plantly Inventory CSV';
 
   @override
   String meCsvSaved(String where) {
@@ -1751,20 +1757,47 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mePrivacyWhatLeaves => 'What leaves your device';
 
   @override
+  String get mePrivacyWhereDataLives => 'Where your data lives';
+
+  @override
   String get mePrivacyBulletLocal =>
       'Nothing by default. Plants, photos, care events, and schedules live in a local SQLite database on your phone.';
+
+  @override
+  String get mePrivacyBulletCloud =>
+      'Cloud sync is on: plants, photos, care events, and schedules stay in a local database on your phone and are synced to your plantly.ro account. Photos are stored privately — only you and the people you share a collection with can see them. For the Devices list (Me → Cloud → Devices) we also send the device name, platform and app version.';
+
+  @override
+  String get mePrivacyBulletWeb =>
+      'Plants, photos, care events, and schedules are saved in your plantly.ro account (Inventory Cloud), with a working copy in this browser. Photos are stored privately — only you and the people you share a collection with can see them. For the Devices list (Me → Cloud → Devices) we also send the device name, platform and app version.';
+
+  @override
+  String get mePrivacyBulletPaused =>
+      'Sync is paused: nothing new leaves this phone — plants, photos, care events, and schedules stay in its local database. Anything already synced to your plantly.ro account is kept as described in the privacy policy.';
 
   @override
   String get mePrivacyBulletBackups =>
       'Backups (JSON or ZIP) only leave the device when you tap Export — you choose where they go via the share sheet.';
 
   @override
+  String get mePrivacyBulletBackupsWeb =>
+      'Backups (JSON or ZIP) are only created when you tap Export — your browser downloads the file to this device.';
+
+  @override
   String get mePrivacyBulletNotifications =>
       'Notifications fire locally via the OS alarm system. We do not use a push server.';
 
   @override
+  String get mePrivacyBulletNotificationsWeb =>
+      'The browser version doesn\'t send notifications — reminders appear in the app and the calendar. We do not use a push server.';
+
+  @override
   String get mePrivacyBulletMarketplace =>
       'If you later post a plant to plantly.ro, only the fields you review in the Export dialog are sent — never the full database.';
+
+  @override
+  String get mePrivacyBulletMarketplaceCloud =>
+      'If you post a plant for sale on plantly.ro, the listing contains only the fields you review in the Export dialog — nothing else from your collection is published.';
 
   @override
   String get mePrivacySectionTelemetry => 'OPT-IN TELEMETRY';
@@ -1890,7 +1923,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get meNotifPermGranted =>
-      'OS notifications are allowed for PlantlyInventory.';
+      'OS notifications are allowed for Plantly Inventory.';
 
   @override
   String get meNotifPermDenied =>
@@ -2318,6 +2351,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your plants, photos and care history are backed up to your plantly.ro account and kept in sync on every device you sign in on. Nothing leaves this device until you link it.';
 
   @override
+  String get cloudScreenIntroWeb =>
+      'Your plants, photos and care history are saved in your plantly.ro account and kept in sync on every device you sign in on.';
+
+  @override
   String get cloudSignInLabel => 'Sign in to plantly.ro';
 
   @override
@@ -2433,6 +2470,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String cloudRenewsOn(String date) {
     return 'renews $date';
+  }
+
+  @override
+  String cloudEndsOn(String date) {
+    return 'ends $date';
   }
 
   @override
@@ -2605,6 +2647,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get cloudErrCollectionUnavailable =>
       'This collection is no longer available — unlink this device and link it again';
+
+  @override
+  String get cloudErrCollectionUnavailableWeb =>
+      'This collection is no longer available — sign out and sign in again';
 
   @override
   String get cloudErrQuotaExceeded =>

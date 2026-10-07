@@ -96,7 +96,7 @@ class _PlantlyAppState extends ConsumerState<PlantlyApp> {
     ref.watch(webAccessListenableProvider);
     ref.watch(webAccessWatcherProvider);
     return MaterialApp.router(
-      title: 'PlantlyInventory',
+      title: 'Plantly Inventory',
       debugShowCheckedModeBanner: false,
       routerConfig: _router,
       themeMode: mode,

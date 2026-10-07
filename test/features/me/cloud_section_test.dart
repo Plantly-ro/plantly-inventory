@@ -284,6 +284,17 @@ void main() {
       expect(find.text('Deconectează acest dispozitiv'), findsOneWidget);
     });
 
+    testWidgets('ready on web: no "Unlink this device" — signing out is the browser\'s exit', (tester) async {
+      await pump(
+        tester,
+        entitlement: const CloudEntitlement(active: true, source: 'inventory_cloud'),
+        extra: [webPlatformProvider.overrideWithValue(true)],
+      );
+      expect(find.byKey(const Key('cloud-sync-now')), findsOneWidget);
+      expect(find.byKey(const Key('cloud-account')), findsOneWidget);
+      expect(find.byKey(const Key('cloud-unlink')), findsNothing);
+    });
+
     testWidgets('ready but not linked yet → links the default collection automatically', (tester) async {
       final db = AppDatabase.forTesting(NativeDatabase.memory());
       addTearDown(db.close);
@@ -474,6 +485,28 @@ void main() {
       expect(find.text('Modificări nesincronizate'), findsOneWidget);
       expect(find.byKey(const Key('cloud-rejections-empty')), findsOneWidget);
       expect(find.byKey(const Key('cloud-rejections-retry')), findsNothing);
+    });
+
+    test('describeEntitlement: "renews" vs "ends" when the grant is cancelled at period end', () {
+      final t = lookupAppLocalizations(const Locale('en'));
+      final ro = lookupAppLocalizations(const Locale('ro'));
+      final end = DateTime.utc(2026, 11, 7, 12);
+      final renewing = CloudEntitlement(active: true, source: 'pro', currentPeriodEnd: end);
+      final ending = CloudEntitlement(active: true, source: 'pro', currentPeriodEnd: end, cancelAtPeriodEnd: true);
+      expect(describeEntitlement(t, renewing), contains('renews'));
+      expect(describeEntitlement(t, ending), 'Included with Plantly Pro · ends Nov 7, 2026');
+      expect(describeEntitlement(t, ending), isNot(contains('renews')));
+      expect(describeEntitlement(ro, ending), contains('se încheie pe'));
+    });
+
+    test('describeSyncError: generic collection_unavailable on web says sign out / in (no Unlink there)', () {
+      final t = lookupAppLocalizations(const Locale('en'));
+      expect(describeSyncError(t, 'collection_unavailable', web: true), 'This collection is no longer available — sign out and sign in again');
+      expect(describeSyncError(t, 'collection_unavailable'), t.cloudErrCollectionUnavailable);
+      expect(describeSyncError(lookupAppLocalizations(const Locale('ro')), 'collection_unavailable', web: true),
+          'Această colecție nu mai este disponibilă — ieși din cont și conectează-te din nou');
+      // Specific halts keep their own copy on web too.
+      expect(describeSyncError(t, 'collection_unavailable', detail: 'read_only', web: true), t.shareErrReadOnly);
     });
 
     test('describeSyncError: collection_unavailable + not_a_member names the collection; generic otherwise', () {

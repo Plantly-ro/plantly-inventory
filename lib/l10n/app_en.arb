@@ -235,6 +235,14 @@
   "onbStart": "Start using Plantly",
   "onbWelcomeTitle": "Welcome to Plantly",
   "onbWelcomeBody": "A calm, offline-first way to track your houseplants — watering, fertilising, propagation, spaces, and more. Everything lives on your phone.",
+  "onbWelcomeBodyCloud": "A calm, offline-first way to track your houseplants — watering, fertilising, propagation, spaces, and more. Everything works on your phone and syncs to your plantly.ro account.",
+  "@onbWelcomeBodyCloud": {
+    "description": "Onboarding step 1 body on the Android app while Inventory Cloud sync is running (onbWelcomeBody is the local-only variant)."
+  },
+  "onbWelcomeBodyWeb": "A calm way to track your houseplants — watering, fertilising, propagation, spaces, and more. Your collection is saved in your plantly.ro account and stays in sync on every device you sign in on.",
+  "@onbWelcomeBodyWeb": {
+    "description": "Onboarding step 1 body in the web app (always Inventory Cloud)."
+  },
   "onbNameLabel": "YOUR NAME (OPTIONAL)",
   "onbNameHelp": "We use this only in the greeting at the top of the home screen. You can change or remove it later in Me.",
   "onbNameFromAccount": "From your plantly.ro account — you can change it.",
@@ -242,13 +250,13 @@
     "description": "Onboarding step 1: helper under the name field when it was prefilled from the signed-in plantly.ro account."
   },
   "onbNotifTitle": "Plant reminders",
-  "onbNotifBody": "We schedule local notifications on your phone when a plant is due for care. Nothing is sent to a server.",
+  "onbNotifBody": "We schedule reminders as local notifications on your phone when a plant is due for care — no push server involved.",
   "onbNotifGranted": "Reminders are enabled.",
   "onbNotifAsk": "Grant permission so reminders can fire.",
   "onbGrant": "Grant",
   "onbNotifSkip": "You can skip this and turn reminders on later in Me → Notifications.",
   "onbPrivacyTitle": "Help us improve",
-  "onbPrivacyBody": "Both are off by default. Plant data never leaves your device for any reason. You can change these any time in Me → Privacy & data.",
+  "onbPrivacyBody": "Both are off by default and never include plant data or photos. You can change these any time in Me → Privacy & data.",
   "onbCrashTitle": "Crash reports",
   "onbCrashSub": "Send a stack trace if the app crashes. No plant data, no photos.",
   "onbUsageTitle": "Anonymous usage",
@@ -401,7 +409,7 @@
   "spacePhotoActionsTitle": "Photo",
   "spaceCaptionTitle": "Caption",
   "spaceCaptionHint": "e.g. morning light corner",
-  "appTitle": "PlantlyInventory",
+  "appTitle": "Plantly Inventory",
   "@appTitle": {
     "description": "Application title shown in task switcher and app bar"
   },
@@ -620,7 +628,6 @@
   "exportNoPhotos": "No photos attached. Add some on the plant detail screen first.",
   "exportDraftSaved": "Draft saved",
   "exportPostOnPlantlyRoCta": "Post on plantly.ro",
-  "exportSavedLocally": "Saved locally — plantly.ro sync lands in Phase 2",
   "tagAdd": "Add a tag",
   "tagHint": "e.g. variegated",
   "tagPickExisting": "OR PICK EXISTING",
@@ -799,7 +806,15 @@
   "meStatCardPlants": "PLANTS",
   "meStatCardSpaces": "SPACES",
   "meAboutApp": "App",
-  "meAboutAppValue": "PlantlyInventory · Phase 1",
+  "meAboutAppValue": "Plantly Inventory · {version}",
+  "@meAboutAppValue": {
+    "description": "Me → About → App row: app name and the build's version (PLANTLY_APP_VERSION).",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
   "meAboutLicense": "License",
   "meThemeLabel": "Theme",
   "meThemeDark": "Dark",
@@ -878,7 +893,7 @@
   },
   "meIcsLabel": "Download .ics",
   "meIcsValue": "Open the next 30 days of reminders in any calendar app.",
-  "meIcsShareText": "PlantlyInventory reminders",
+  "meIcsShareText": "Plantly Inventory reminders",
   "meIcsSaved": ".ics saved: {where}",
   "@meIcsSaved": {
     "placeholders": {
@@ -889,7 +904,7 @@
   },
   "meCsvLabel": "Export CSV",
   "meCsvValue": "Plants + care events as a spreadsheet-friendly dump.",
-  "meCsvShareText": "PlantlyInventory CSV",
+  "meCsvShareText": "Plantly Inventory CSV",
   "meCsvSaved": "CSV saved: {where}",
   "@meCsvSaved": {
     "placeholders": {
@@ -908,10 +923,38 @@
   },
   "mePrivacyTitle": "Privacy & data",
   "mePrivacyWhatLeaves": "What leaves your device",
+  "mePrivacyWhereDataLives": "Where your data lives",
+  "@mePrivacyWhereDataLives": {
+    "description": "Me → Privacy & data card heading in the web app (mePrivacyWhatLeaves on Android)."
+  },
   "mePrivacyBulletLocal": "Nothing by default. Plants, photos, care events, and schedules live in a local SQLite database on your phone.",
+  "mePrivacyBulletCloud": "Cloud sync is on: plants, photos, care events, and schedules stay in a local database on your phone and are synced to your plantly.ro account. Photos are stored privately — only you and the people you share a collection with can see them. For the Devices list (Me → Cloud → Devices) we also send the device name, platform and app version.",
+  "@mePrivacyBulletCloud": {
+    "description": "Me → Privacy & data, Android app while Inventory Cloud sync is running (mePrivacyBulletLocal is the local-only variant)."
+  },
+  "mePrivacyBulletWeb": "Plants, photos, care events, and schedules are saved in your plantly.ro account (Inventory Cloud), with a working copy in this browser. Photos are stored privately — only you and the people you share a collection with can see them. For the Devices list (Me → Cloud → Devices) we also send the device name, platform and app version.",
+  "@mePrivacyBulletWeb": {
+    "description": "Me → Privacy & data in the web app (always Inventory Cloud)."
+  },
+  "mePrivacyBulletPaused": "Sync is paused: nothing new leaves this phone — plants, photos, care events, and schedules stay in its local database. Anything already synced to your plantly.ro account is kept as described in the privacy policy.",
+  "@mePrivacyBulletPaused": {
+    "description": "Me → Privacy & data, Android app linked to a plantly.ro collection but not syncing (plan lapsed / signed out)."
+  },
   "mePrivacyBulletBackups": "Backups (JSON or ZIP) only leave the device when you tap Export — you choose where they go via the share sheet.",
+  "mePrivacyBulletBackupsWeb": "Backups (JSON or ZIP) are only created when you tap Export — your browser downloads the file to this device.",
+  "@mePrivacyBulletBackupsWeb": {
+    "description": "Me → Privacy & data in the web app: exports are browser downloads, no share sheet."
+  },
   "mePrivacyBulletNotifications": "Notifications fire locally via the OS alarm system. We do not use a push server.",
+  "mePrivacyBulletNotificationsWeb": "The browser version doesn't send notifications — reminders appear in the app and the calendar. We do not use a push server.",
+  "@mePrivacyBulletNotificationsWeb": {
+    "description": "Me → Privacy & data in the web app: no OS notifications in the browser."
+  },
   "mePrivacyBulletMarketplace": "If you later post a plant to plantly.ro, only the fields you review in the Export dialog are sent — never the full database.",
+  "mePrivacyBulletMarketplaceCloud": "If you post a plant for sale on plantly.ro, the listing contains only the fields you review in the Export dialog — nothing else from your collection is published.",
+  "@mePrivacyBulletMarketplaceCloud": {
+    "description": "Me → Privacy & data while the collection syncs to plantly.ro (Android with cloud sync, web): the whole database already syncs privately, so the claim is about what gets published."
+  },
   "mePrivacySectionTelemetry": "OPT-IN TELEMETRY",
   "mePrivacyCrashTitle": "Crash reports",
   "mePrivacyCrashBody": "If the app crashes, send the stack trace to help us fix it. No plant data, no photos.",
@@ -993,7 +1036,7 @@
   "meDndStart": "Start",
   "meDndEnd": "End",
   "meNotifPermChecking": "Checking system permission…",
-  "meNotifPermGranted": "OS notifications are allowed for PlantlyInventory.",
+  "meNotifPermGranted": "OS notifications are allowed for Plantly Inventory.",
   "meNotifPermDenied": "OS notifications are OFF. Reminders won't fire.",
   "statsCellPlants": "PLANTS",
   "statsCellEvents": "EVENTS",
@@ -1274,6 +1317,10 @@
   "cloudSectionTitle": "Cloud",
   "cloudScreenTitle": "Cloud",
   "cloudScreenIntro": "Your plants, photos and care history are backed up to your plantly.ro account and kept in sync on every device you sign in on. Nothing leaves this device until you link it.",
+  "cloudScreenIntroWeb": "Your plants, photos and care history are saved in your plantly.ro account and kept in sync on every device you sign in on.",
+  "@cloudScreenIntroWeb": {
+    "description": "Me → Cloud intro in the web app — the browser is always linked, so no \"until you link it\" clause."
+  },
   "cloudSignInLabel": "Sign in to plantly.ro",
   "cloudSignInPitch": "Back up your plants and sync them across devices",
   "cloudNotIncludedLabel": "Cloud backup & sync",
@@ -1339,6 +1386,15 @@
   "cloudEntitlementSourceCloud": "Plantly Inventory Cloud",
   "cloudRenewsOn": "renews {date}",
   "@cloudRenewsOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudEndsOn": "ends {date}",
+  "@cloudEndsOn": {
+    "description": "Me → Cloud → Plan when the subscription is cancelled (cancel_at_period_end): the date it stops.",
     "placeholders": {
       "date": {
         "type": "String"
@@ -1464,6 +1520,10 @@
     }
   },
   "cloudErrCollectionUnavailable": "This collection is no longer available — unlink this device and link it again",
+  "cloudErrCollectionUnavailableWeb": "This collection is no longer available — sign out and sign in again",
+  "@cloudErrCollectionUnavailableWeb": {
+    "description": "Web variant of cloudErrCollectionUnavailable: the browser has no \"Unlink this device\"."
+  },
   "cloudErrQuotaExceeded": "Cloud storage is full — new photos stay on this device until space frees up",
   "cloudErrOpTooLarge": "One change is too large to upload and was skipped",
   "cloudErrOpTooLargeDetail": "One change is too large to upload and was skipped ({detail})",

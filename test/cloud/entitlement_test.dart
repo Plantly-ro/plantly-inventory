@@ -126,6 +126,51 @@ void main() {
     test('round-trips through the prefs cache shape', () {
       const e = CloudEntitlement(active: true, source: 'pro');
       expect(CloudEntitlement.fromJson(json.decode(json.encode(e.toJson())) as Map<String, dynamic>), e);
+      const cancelling = CloudEntitlement(active: true, source: 'inventory_cloud', cancelAtPeriodEnd: true);
+      expect(CloudEntitlement.fromJson(json.decode(json.encode(cancelling.toJson())) as Map<String, dynamic>), cancelling);
+      expect(cancelling == const CloudEntitlement(active: true, source: 'inventory_cloud'), isFalse);
+    });
+
+    test('cancel_at_period_end comes from the subscriptions[] row behind the grant', () {
+      Map<String, dynamic> body({required String source, String provider = 'stripe', required List<Map<String, dynamic>> subs}) => {
+            'is_pro': source == 'pro',
+            'subscriptions': subs,
+            'entitlements': {
+              'inventory_cloud': {
+                'active': true,
+                'source': source,
+                'provider': provider,
+                'current_period_end': '2026-11-07T00:00:00Z',
+              },
+            },
+          };
+      // The granting Pro row is cancelled; an unrelated inventory_cloud row is not.
+      expect(
+        CloudEntitlement.fromSubscriptionJson(body(source: 'pro', subs: [
+          {'product': 'pro', 'provider': 'stripe', 'cancel_at_period_end': true},
+          {'product': 'inventory_cloud', 'provider': 'stripe', 'cancel_at_period_end': false},
+        ])).cancelAtPeriodEnd,
+        isTrue,
+      );
+      // Matching is per product + provider: a cancelled Stripe row does not
+      // describe the Play grant.
+      expect(
+        CloudEntitlement.fromSubscriptionJson(body(source: 'inventory_cloud', provider: 'play', subs: [
+          {'product': 'inventory_cloud', 'provider': 'stripe', 'cancel_at_period_end': true},
+          {'product': 'inventory_cloud', 'provider': 'play', 'cancel_at_period_end': false},
+        ])).cancelAtPeriodEnd,
+        isFalse,
+      );
+      expect(
+        CloudEntitlement.fromSubscriptionJson(body(source: 'inventory_cloud', subs: const [])).cancelAtPeriodEnd,
+        isFalse,
+        reason: 'no matching row → renews (unknown)',
+      );
+      // Legacy body: top-level Pro fields.
+      expect(
+        CloudEntitlement.fromSubscriptionJson({'is_pro': true, 'cancel_at_period_end': true}).cancelAtPeriodEnd,
+        isTrue,
+      );
     });
   });
 

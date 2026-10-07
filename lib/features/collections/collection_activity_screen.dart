@@ -226,7 +226,7 @@ class CollectionActivityScreen extends ConsumerWidget {
       body: RefreshIndicator(
         color: surface.green,
         onRefresh: notifier.refresh,
-        child: _body(context, t, surface, feed, notifier),
+        child: _body(context, t, surface, feed, notifier, web: ref.watch(webPlatformProvider)),
       ),
     );
   }
@@ -236,8 +236,9 @@ class CollectionActivityScreen extends ConsumerWidget {
     AppLocalizations t,
     PlantlySurface surface,
     ActivityFeedState feed,
-    CollectionActivityNotifier notifier,
-  ) {
+    CollectionActivityNotifier notifier, {
+    required bool web,
+  }) {
     // Always a scrollable so pull-to-refresh works on the empty / error
     // states too.
     if (feed.isEmpty) {
@@ -248,7 +249,7 @@ class CollectionActivityScreen extends ConsumerWidget {
         child = _Message(
           key: const Key('activity-error'),
           icon: Icons.cloud_off_outlined,
-          text: '${t.activityLoadError}\n${_describeError(t, feed.error!)}',
+          text: '${t.activityLoadError}\n${_describeError(t, feed.error!, web: web)}',
           surface: surface,
           color: surface.terra,
         );
@@ -312,11 +313,11 @@ class CollectionActivityScreen extends ConsumerWidget {
     );
   }
 
-  static String _describeError(AppLocalizations t, Object e) {
+  static String _describeError(AppLocalizations t, Object e, {required bool web}) {
     if (e is PlantlyNetworkException) return t.plantlyErrorNetwork;
     if (e is PlantlyApiException) {
       if (e.isRateLimited) return t.plantlyErrorRateLimited;
-      if (e.status == 403 || e.status == 404 || e.status == 410) return t.cloudErrCollectionUnavailable;
+      if (e.status == 403 || e.status == 404 || e.status == 410) return web ? t.cloudErrCollectionUnavailableWeb : t.cloudErrCollectionUnavailable;
       return e.message;
     }
     return '$e';

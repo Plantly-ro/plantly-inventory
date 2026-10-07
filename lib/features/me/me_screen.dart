@@ -11,6 +11,7 @@ import '../../data/user_prefs.dart';
 import '../../domain/services/backup_service.dart';
 import '../../domain/services/zip_backup_service.dart';
 import '../../config/plantly_features.dart';
+import '../../config/plantly_hosts.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../marketplace/plantly_auth.dart';
 import '../../plugins/plantly_ro/plantly_ro_plugin.dart';
@@ -138,7 +139,7 @@ class MeScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           _ReadOnlyRow(
             label: t.meAboutApp,
-            value: t.meAboutAppValue,
+            value: t.meAboutAppValue(PlantlyHosts.appVersion),
             icon: Icons.info_outline,
             surface: surface,
           ),
