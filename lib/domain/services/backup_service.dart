@@ -2,9 +2,13 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../cloud/collection_link.dart' show isCollectionTenant;
 import '../../data/database/app_database.dart';
+import '../../data/providers.dart' show kSkipSeedPrefKey;
+import '../../data/seed_manifest.dart';
 import '../../sync/hlc.dart';
 import '../../sync/op_log.dart';
 
@@ -116,7 +120,23 @@ class BackupService {
     }
 
     final counts = <String, int>{};
+    final prefs = await SharedPreferences.getInstance();
+    // A restore replaces the demo seed (Android QA b06: a fresh install
+    // ended up with the 8 demo plants next to the restored ones). Same
+    // rules as a collection link: only untouched seed rows of a local
+    // tenant go — never anything the user edited, cared for or filed —
+    // and the seed never comes back on this install.
+    final pruneSeed = !isCollectionTenant(tenantId);
     await db.transaction(() async {
+      if (pruneSeed) {
+        await dropUntouchedSeed(
+          db: db,
+          tenant: tenantId,
+          prefs: prefs,
+          deviceId: opLog.clock.deviceId,
+          web: kIsWeb,
+        );
+      }
       counts['plants'] = await _restore(db.plants, payload['plants'], opLog, 'plants');
       counts['locations'] = await _restore(db.locations, payload['locations'], opLog, 'locations');
       counts['species'] = await _restore(db.species, payload['species'], opLog, 'species');
@@ -139,12 +159,13 @@ class BackupService {
         'location_photos',
       );
     });
+    if (pruneSeed) await prefs.setBool(kSkipSeedPrefKey, true);
     // Replay the user preferences blob (custom care types / layout /
     // theme / sort). Guards each value against the expected type so a
-    // broken backup can't crash the app on read.
+    // broken backup can't crash the app on read. Providers that cached
+    // these values must reload them — `BackupActions.importBackup`.
     final prefsBlob = payload['prefs'];
     if (prefsBlob is Map<String, dynamic>) {
-      final prefs = await SharedPreferences.getInstance();
       for (final entry in prefsBlob.entries) {
         final v = entry.value;
         if (v is String) {

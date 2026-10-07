@@ -24,7 +24,7 @@ All of this lives in the app's private storage (in the web version: this browser
 
 **Without Inventory Cloud: nothing, by default.** The cases below only happen when you trigger them:
 
-- **Backups and exports** (JSON, ZIP with photos, CSV, iCal). Created on your device and handed to the app you choose through the system share sheet or file picker (in the browser: downloaded as a file). Where they go is up to you.
+- **Backups and exports** (JSON, ZIP with photos, CSV, iCal). Created on your device and handed to the app you choose through the system share sheet or file picker (in the browser: downloaded as a file). Where they go is up to you. JSON and ZIP backups are **not encrypted**: the passphrase you choose only signs the file so that tampering is detected on import — anyone who gets the file can read it, so keep it private.
 - **Links you open.** Some screens can open plantly.ro in your browser, which then applies plantly.ro's own [privacy policy](https://plantly.ro/privacy).
 - **Plant data arriving by link.** The app can receive plant details through a `plantlyinventory://import` or `plantly.ro/app/inventory/import` link, for example from Plantly Assistant or plantly.ro. The data travels inside the link and is processed only on your device; nothing is sent back.
 

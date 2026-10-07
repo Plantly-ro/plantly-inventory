@@ -1678,7 +1678,15 @@ class AppLocalizationsRo extends AppLocalizations {
   String get meBackupPassphrase => 'Parola copiei de siguranță';
 
   @override
-  String get meBackupPassphraseHint => 'Alege orice — îți trebuie la import';
+  String get meBackupPassphraseExportHint =>
+      'Alege o parolă — îți va trebui la import';
+
+  @override
+  String get meBackupPassphraseExportNote =>
+      'Parola protejează fișierul împotriva modificărilor; fișierul nu este criptat — păstrează-l doar pentru tine.';
+
+  @override
+  String get meBackupPassphraseImportHint => 'Parola aleasă la export';
 
   @override
   String meBackupSaved(String where) {
@@ -1805,11 +1813,11 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get mePrivacyBulletBackups =>
-      'Copiile de siguranță (JSON sau ZIP) părăsesc dispozitivul doar când apeși Exportă — tu alegi unde ajung, prin meniul de partajare.';
+      'Copiile de siguranță (JSON sau ZIP) părăsesc dispozitivul doar când apeși Exportă — tu alegi unde ajung, prin meniul de partajare. Nu sunt criptate (parola doar le protejează împotriva modificărilor), așa că păstrează-le doar pentru tine.';
 
   @override
   String get mePrivacyBulletBackupsWeb =>
-      'Copiile de siguranță (JSON sau ZIP) se creează doar când apeși Exportă — browserul descarcă fișierul pe acest dispozitiv.';
+      'Copiile de siguranță (JSON sau ZIP) se creează doar când apeși Exportă — browserul descarcă fișierul pe acest dispozitiv. Nu sunt criptate (parola doar le protejează împotriva modificărilor), așa că păstrează-le doar pentru tine.';
 
   @override
   String get mePrivacyBulletNotifications =>

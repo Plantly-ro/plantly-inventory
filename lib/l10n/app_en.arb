@@ -830,7 +830,18 @@
   "meExportZipValue": "Includes every attached photo. Larger file.",
   "meExportJsonValue": "HMAC-signed JSON of every plant / schedule / event.",
   "meBackupPassphrase": "Backup passphrase",
-  "meBackupPassphraseHint": "Pick anything — needed to import again",
+  "meBackupPassphraseExportHint": "Choose a passphrase — you'll need it to import",
+  "@meBackupPassphraseExportHint": {
+    "description": "Hint in the passphrase field when exporting a backup."
+  },
+  "meBackupPassphraseExportNote": "The passphrase protects the file against tampering; the file is not encrypted — keep it private.",
+  "@meBackupPassphraseExportNote": {
+    "description": "Export passphrase dialog body. The passphrase only signs the backup (HMAC); the contents are plaintext. Must not imply encryption."
+  },
+  "meBackupPassphraseImportHint": "The passphrase you chose when exporting",
+  "@meBackupPassphraseImportHint": {
+    "description": "Hint in the passphrase field when importing a backup."
+  },
   "meBackupSaved": "Backup saved: {where}",
   "@meBackupSaved": {
     "placeholders": {
@@ -940,8 +951,8 @@
   "@mePrivacyBulletPaused": {
     "description": "Me → Privacy & data, Android app linked to a plantly.ro collection but not syncing (plan lapsed / signed out)."
   },
-  "mePrivacyBulletBackups": "Backups (JSON or ZIP) only leave the device when you tap Export — you choose where they go via the share sheet.",
-  "mePrivacyBulletBackupsWeb": "Backups (JSON or ZIP) are only created when you tap Export — your browser downloads the file to this device.",
+  "mePrivacyBulletBackups": "Backups (JSON or ZIP) only leave the device when you tap Export — you choose where they go via the share sheet. They are not encrypted (the passphrase only protects them against tampering), so keep them private.",
+  "mePrivacyBulletBackupsWeb": "Backups (JSON or ZIP) are only created when you tap Export — your browser downloads the file to this device. They are not encrypted (the passphrase only protects them against tampering), so keep them private.",
   "@mePrivacyBulletBackupsWeb": {
     "description": "Me → Privacy & data in the web app: exports are browser downloads, no share sheet."
   },
