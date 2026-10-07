@@ -1235,18 +1235,6 @@ class AppLocalizationsRo extends AppLocalizations {
   String get quickLogTitle => 'Înregistrare rapidă';
 
   @override
-  String get quickLogWater => 'Udare';
-
-  @override
-  String get quickLogFertilize => 'Fertilizare';
-
-  @override
-  String get quickLogMist => 'Pulverizare';
-
-  @override
-  String get quickLogRotate => 'Rotire';
-
-  @override
   String get tipOfTheDay => 'SFATUL ZILEI';
 
   @override

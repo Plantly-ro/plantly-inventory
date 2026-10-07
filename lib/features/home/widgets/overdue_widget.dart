@@ -145,7 +145,7 @@ class OverdueWidget extends ConsumerWidget {
             swatch: swatch,
             surface: surface,
             subtitle: subtitle,
-            subtitleIcon: _iconFor(schedule.type),
+            subtitleIcon: ct.icon,
             subtitleColor: surface.terra,
             first: false,
             last: last,
@@ -166,17 +166,6 @@ class OverdueWidget extends ConsumerWidget {
         );
       },
     );
-  }
-
-  IconData _iconFor(String type) {
-    switch (type) {
-      case 'fertilize':
-        return Icons.eco_outlined;
-      case 'rotate':
-        return Icons.light_mode_outlined;
-      default:
-        return Icons.water_drop_outlined;
-    }
   }
 }
 

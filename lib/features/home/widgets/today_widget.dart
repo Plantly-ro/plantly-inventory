@@ -137,7 +137,7 @@ class TodayWidget extends ConsumerWidget {
             swatch: swatch,
             surface: surface,
             subtitle: action,
-            subtitleIcon: _iconFor(schedule.type),
+            subtitleIcon: ct.icon,
             subtitleColor: surface.muted,
             first: false,
             last: last,
@@ -158,17 +158,6 @@ class TodayWidget extends ConsumerWidget {
         );
       },
     );
-  }
-
-  IconData _iconFor(String type) {
-    switch (type) {
-      case 'fertilize':
-        return Icons.eco_outlined;
-      case 'rotate':
-        return Icons.light_mode_outlined;
-      default:
-        return Icons.water_drop_outlined;
-    }
   }
 }
 
