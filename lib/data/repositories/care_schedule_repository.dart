@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:ulid/ulid.dart';
 
 import '../../domain/services/adaptive_schedule.dart';
+import '../../domain/services/local_calendar.dart';
 import '../../notifications/reminder_sync.dart';
 import '../../sync/op_log.dart';
 import '../database/app_database.dart';
@@ -17,11 +18,19 @@ import '../database/app_database.dart';
 /// list of `{done_at, snoozed}` records, newest-first, capped at
 /// [AdaptiveSchedule.windowSize] entries.
 class CareScheduleRepository {
-  CareScheduleRepository({required this.db, required this.opLog, this.reminderSync});
+  CareScheduleRepository({
+    required this.db,
+    required this.opLog,
+    this.reminderSync,
+    this.calendar = const LocalCalendar(),
+  });
 
   final AppDatabase db;
   final OpLogWriter opLog;
   final ReminderSync? reminderSync;
+
+  /// Due-date arithmetic in the user's local zone (DST-safe).
+  final LocalCalendar calendar;
 
   static const int maxWindow = AdaptiveSchedule.windowSize;
 
@@ -78,9 +87,10 @@ class CareScheduleRepository {
         await db.transaction<CareScheduleRow>(() async {
           final id = Ulid().toString();
           final firstDue = firstDueAt ??
-              DateTime.now().toUtc().add(Duration(
-                    milliseconds: (baseIntervalDays * 86400 * 1000).round(),
-                  ));
+              DateTime.fromMillisecondsSinceEpoch(
+                calendar.addDays(DateTime.now().millisecondsSinceEpoch, baseIntervalDays),
+                isUtc: true,
+              );
           final value = {
             'id': id,
             'tenant_id': opLog.tenantId,
@@ -180,7 +190,8 @@ class CareScheduleRepository {
           break;
         case 'fixed':
           // The schedule's original next_due_at is the anchor; advance
-          // by whole-interval steps until we land strictly after doneAt.
+          // by whole-interval steps (local calendar days, so the time of
+          // day survives DST) until we land strictly after doneAt.
           final intervalMs = (s.currentIntervalDays * 86400 * 1000).round();
           if (intervalMs <= 0) {
             nextDueAtMs = null;
@@ -188,7 +199,7 @@ class CareScheduleRepository {
           } else {
             var next = s.nextDueAt ?? nowMs;
             while (next <= nowMs) {
-              next += intervalMs;
+              next = calendar.addDays(next, s.currentIntervalDays);
             }
             nextDueAtMs = next;
             intervalDaysForPersist = s.currentIntervalDays; // no adaptation
@@ -196,9 +207,7 @@ class CareScheduleRepository {
           break;
         case 'after_completion':
         default:
-          nextDueAtMs = doneAt.add(Duration(
-            milliseconds: (decision.nextIntervalDays * 86400 * 1000).round(),
-          )).millisecondsSinceEpoch;
+          nextDueAtMs = calendar.addDays(nowMs, decision.nextIntervalDays);
           break;
       }
 
@@ -394,7 +403,7 @@ class CareScheduleRepository {
     await db.transaction(() async {
       final s = await (db.select(db.careSchedules)..where((r) => r.id.equals(scheduleId))).getSingleOrNull();
       if (s == null || s.nextDueAt == null) return;
-      final next = s.nextDueAt! + by.inMilliseconds;
+      final next = calendar.addDuration(s.nextDueAt!, by);
       final hlc = await opLog.recordFieldUpdate(
         entity: 'care_schedules',
         entityId: s.id,

@@ -63,6 +63,10 @@ class SyncApplyResult {
 ///      `pushed_at` set, so it informs future comparisons but is never
 ///      pushed back.
 ///
+/// On OR-Set join tables `added_hlc` is the HLC of the add: metadata field
+/// ops (caption, captured_at, display_order) and `removed_hlc` never
+/// re-stamp it — see [_orSetMembershipColumns].
+///
 /// Tombstones are final: a tombstoned row ignores every later op. A field op
 /// for a row we have not received yet is kept and materialised when the `*`
 /// op arrives (newer field ops override the `*` payload).
@@ -289,6 +293,8 @@ class SyncApplier {
     for (final e in newest.entries) {
       final dto = SyncOpDto.fromRow(e.value);
       sql[e.key] = codec.decodeField(e.key, dto.value);
+      if (codec.isOrSet && e.key == 'removed_hlc') sql[e.key] ??= e.value.hlc;
+      if (!_restampsRowHlc(codec, e.key)) continue;
       final h = Hlc.parse(e.value.hlc);
       if (h > rowHlc) {
         rowHlc = h;
@@ -339,14 +345,27 @@ class SyncApplier {
 
     Object? value = codec.decodeField(op.field, op.value);
     if (codec.isOrSet && op.field == 'removed_hlc') value ??= op.hlc;
-    final bump = rowHlc == null || opHlc > rowHlc;
+    final newer = rowHlc == null || opHlc > rowHlc;
+    final restamp = newer && _restampsRowHlc(codec, op.field);
     await _update(codec, op.entityId, {
       op.field: value,
-      if (bump) codec.hlcColumn: op.hlc,
-      if (bump) 'device_id': deviceId,
+      if (restamp) codec.hlcColumn: op.hlc,
+      if (restamp || newer && codec.isOrSet && op.field == 'removed_hlc') 'device_id': deviceId,
     });
     return true;
   }
+
+  /// OR-Set columns whose change is a new membership assertion (e.g. a
+  /// `plant_tags` row re-pointed at a surviving tag) and therefore re-stamps
+  /// `added_hlc`. Every other OR-Set field op — `removed_hlc` or metadata
+  /// such as caption / captured_at / display_order — leaves `added_hlc`
+  /// alone: it is the HLC of the add, compared against removes for presence
+  /// (PlantPhotoRepository) and shown as the fallback "date added".
+  static const Set<String> _orSetMembershipColumns = {'plant_id', 'location_id', 'photo_sha', 'tag_id'};
+
+  /// Whether a field op on [field] moves the row-level HLC column.
+  bool _restampsRowHlc(EntityCodec codec, String field) =>
+      !codec.isOrSet || _orSetMembershipColumns.contains(field);
 
   /// Pre-cloud clients recorded detaches as `removed_hlc` ops keyed
   /// `<parent_id>/<child_id>`; honour them by stamping every live add-row of

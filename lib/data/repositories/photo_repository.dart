@@ -96,6 +96,11 @@ class PhotoRepository {
 /// OR-Set operations over `plant_photos`. A photo is "present" on a plant
 /// when its most-recent add_hlc outranks every remove_hlc for the same
 /// (plant, photo) pair — PLAN.md §"Schema non-negotiables".
+///
+/// Metadata edits (caption, captured_at, display_order) are plain field ops
+/// and never touch `added_hlc` / `device_id`: those belong to the add itself
+/// (presence, gallery tie-break order, fallback "date added"), and
+/// `SyncApplier` leaves them alone for the same ops on every other device.
 class PlantPhotoRepository {
   PlantPhotoRepository({required this.db, required this.opLog});
 
@@ -215,7 +220,7 @@ class PlantPhotoRepository {
   /// Update the caption of a specific attachment.
   Future<void> setCaption(String plantPhotoRowId, String? caption) async {
     return db.transaction(() async {
-      final hlc = await opLog.recordFieldUpdate(
+      await opLog.recordFieldUpdate(
         entity: 'plant_photos',
         entityId: plantPhotoRowId,
         field: 'caption',
@@ -224,8 +229,6 @@ class PlantPhotoRepository {
       await (db.update(db.plantPhotos)..where((r) => r.id.equals(plantPhotoRowId))).write(
         PlantPhotosCompanion(
           caption: Value(caption),
-          addedHlc: Value(hlc.encode()),
-          deviceId: Value(opLog.clock.deviceId),
         ),
       );
     });
@@ -235,7 +238,7 @@ class PlantPhotoRepository {
   /// fall back to the HLC physicalMs.
   Future<void> setCapturedAt(String plantPhotoRowId, int? capturedAtMs) async {
     return db.transaction(() async {
-      final hlc = await opLog.recordFieldUpdate(
+      await opLog.recordFieldUpdate(
         entity: 'plant_photos',
         entityId: plantPhotoRowId,
         field: 'captured_at',
@@ -244,8 +247,6 @@ class PlantPhotoRepository {
       await (db.update(db.plantPhotos)..where((r) => r.id.equals(plantPhotoRowId))).write(
         PlantPhotosCompanion(
           capturedAt: Value(capturedAtMs),
-          addedHlc: Value(hlc.encode()),
-          deviceId: Value(opLog.clock.deviceId),
         ),
       );
     });
@@ -259,7 +260,7 @@ class PlantPhotoRepository {
       for (var i = 0; i < orderedRows.length; i++) {
         final row = orderedRows[i];
         if (row.displayOrder == i) continue;
-        final hlc = await opLog.recordFieldUpdate(
+        await opLog.recordFieldUpdate(
           entity: 'plant_photos',
           entityId: row.id,
           field: 'display_order',
@@ -268,8 +269,6 @@ class PlantPhotoRepository {
         await (db.update(db.plantPhotos)..where((r) => r.id.equals(row.id))).write(
           PlantPhotosCompanion(
             displayOrder: Value(i),
-            addedHlc: Value(hlc.encode()),
-            deviceId: Value(opLog.clock.deviceId),
           ),
         );
       }
@@ -378,7 +377,7 @@ class LocationPhotoRepository {
 
   Future<void> setCaption(String rowId, String? caption) async {
     return db.transaction(() async {
-      final hlc = await opLog.recordFieldUpdate(
+      await opLog.recordFieldUpdate(
         entity: 'location_photos',
         entityId: rowId,
         field: 'caption',
@@ -387,8 +386,6 @@ class LocationPhotoRepository {
       await (db.update(db.locationPhotos)..where((r) => r.id.equals(rowId))).write(
         LocationPhotosCompanion(
           caption: Value(caption),
-          addedHlc: Value(hlc.encode()),
-          deviceId: Value(opLog.clock.deviceId),
         ),
       );
     });
@@ -396,7 +393,7 @@ class LocationPhotoRepository {
 
   Future<void> setCapturedAt(String rowId, int? capturedAtMs) async {
     return db.transaction(() async {
-      final hlc = await opLog.recordFieldUpdate(
+      await opLog.recordFieldUpdate(
         entity: 'location_photos',
         entityId: rowId,
         field: 'captured_at',
@@ -405,8 +402,6 @@ class LocationPhotoRepository {
       await (db.update(db.locationPhotos)..where((r) => r.id.equals(rowId))).write(
         LocationPhotosCompanion(
           capturedAt: Value(capturedAtMs),
-          addedHlc: Value(hlc.encode()),
-          deviceId: Value(opLog.clock.deviceId),
         ),
       );
     });
