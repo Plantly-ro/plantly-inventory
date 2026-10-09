@@ -12,6 +12,7 @@ import '../data/providers.dart';
 import '../marketplace/plantly_auth.dart';
 import '../shared/page_reload.dart';
 import '../shared/session_tab_events.dart';
+import '../sync/sync_markers.dart';
 import 'cloud_sync.dart';
 import 'collections.dart' show deviceRevokedNoticeProvider;
 
@@ -51,6 +52,7 @@ Future<void> wipeDatabase(AppDatabase db) async {
       );
     }
     await db.customStatement('DELETE FROM plants_fts');
+    await clearSyncMarkers(db);
   });
   await db.customStatement('VACUUM');
 }

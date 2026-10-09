@@ -11,6 +11,7 @@ import '../data/providers.dart';
 import '../data/seed_manifest.dart';
 import '../marketplace/plantly_auth.dart';
 import '../sync/device_id.dart';
+import '../sync/sync_markers.dart';
 
 /// The cloud collection this device is linked to (CLOUD-SYNC-CONTRACT §2.4),
 /// remembered together with the account that linked it: a different user
@@ -181,6 +182,10 @@ Future<int> migrateTenant(
 }) async {
   if (from == to) return 0;
   return db.transaction(() async {
+    // One-shot sync passes re-run for both: [from]'s log is discarded or
+    // merged into [to]'s, so neither marker describes the result any more.
+    await clearSyncMarkers(db, tenantId: from);
+    await clearSyncMarkers(db, tenantId: to);
     if (resetSyncState) {
       for (final TableInfo table in [db.syncOps, db.syncRejections]) {
         await db.customUpdate(
