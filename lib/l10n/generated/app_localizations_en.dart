@@ -3761,4 +3761,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get dbBusyOtherTab =>
       'Another Plantly tab is busy with your data — retrying…';
+
+  @override
+  String get reminderTapOtherCollection =>
+      'That plant is in another collection — switch to it to see the plant.';
+
+  @override
+  String get reminderTapPlantGone =>
+      'That plant is no longer in your collection.';
+
+  @override
+  String statsCardInDaysShort(int count) {
+    return 'in ${count}d';
+  }
 }

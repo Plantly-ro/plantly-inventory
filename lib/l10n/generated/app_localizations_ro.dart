@@ -3823,4 +3823,16 @@ class AppLocalizationsRo extends AppLocalizations {
   @override
   String get dbBusyOtherTab =>
       'Altă filă Plantly lucrează cu datele tale — reîncercăm…';
+
+  @override
+  String get reminderTapOtherCollection =>
+      'Planta este în altă colecție — comută pe ea ca să vezi planta.';
+
+  @override
+  String get reminderTapPlantGone => 'Planta nu mai este în colecția ta.';
+
+  @override
+  String statsCardInDaysShort(int count) {
+    return 'în $count z';
+  }
 }

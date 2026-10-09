@@ -54,6 +54,7 @@ class ReminderEngine {
         location: plant.locationId != null
             ? locationsById[plant.locationId]?.name
             : null,
+        plantId: plant.id,
       ));
     }
     events.sort((a, b) => a.start.compareTo(b.start));

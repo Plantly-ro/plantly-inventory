@@ -11,6 +11,7 @@ import '../../../data/care_types.dart';
 import '../../../shared/care_feedback.dart';
 import '../../../shared/assignee_initial.dart';
 import '../../../shared/care_type_labels.dart';
+import '../../../shared/relative_days.dart';
 import 'plant_row.dart';
 import 'swipe_row.dart';
 import 'widget_shell.dart';
@@ -115,7 +116,10 @@ class OverdueWidget extends ConsumerWidget {
     final plant = plantsById[schedule.plantId];
     final title = plant?.nickname ?? schedule.plantId;
     final swatch = MockPlants.byId(schedule.plantId);
-    final daysLate = ((now.millisecondsSinceEpoch - schedule.nextDueAt!) / (86400 * 1000)).floor();
+    // Calendar days, like every other relative date (shared/relative_days.dart);
+    // under a day late reads "<action> now".
+    final lateMs = now.millisecondsSinceEpoch - schedule.nextDueAt!;
+    final daysLate = lateMs < Duration.millisecondsPerDay ? 0 : calendarDaysUntilMs(schedule.nextDueAt!, now).abs();
     return Consumer(
       builder: (context, ref, _) {
         final ct = resolveCareType(ref.watch(careTypesProvider), schedule.type);

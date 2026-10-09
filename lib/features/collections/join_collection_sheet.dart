@@ -159,6 +159,7 @@ class _JoinCollectionSheetState extends ConsumerState<JoinCollectionSheet> {
       // left behind): the user decides where they go BEFORE the join —
       // otherwise `join` finds no link of ours and lands nowhere (QA2 BUG-4).
       await links.ready;
+      await links.releaseEmptyForeignClaims(session.userId);
       if (!mounted) return;
       final cloud = ref.read(cloudStateProvider);
       final other = cloud.heldByOther;

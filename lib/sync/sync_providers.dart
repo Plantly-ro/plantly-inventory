@@ -257,6 +257,15 @@ final httpSyncRunnerProvider = Provider<SyncRunner>((ref) {
     usageInterval: config.usageInterval,
     entitlementIsOwners: shared,
     readOnly: readOnly,
+    // Schedules pulled in (a join's first pull, another member's edits,
+    // another device logging care) must reach the OS reminders too —
+    // repository writes do that for local edits, nothing did for remote
+    // ones. Only for the tenant on screen (reminderSyncProvider is scoped
+    // to it); filtered + debounced in RemoteReminderResync.
+    onRemoteApplied: (entities) {
+      if (ref.read(currentTenantIdProvider) != collectionId) return;
+      ref.read(remoteReminderResyncProvider).onApplied(entities);
+    },
   );
 
   var refreshedForHalt = false;

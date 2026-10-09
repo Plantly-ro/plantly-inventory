@@ -35,6 +35,10 @@ class SyncIdCollision {
 class SyncApplyResult {
   int applied = 0;
 
+  /// Entities with at least one applied op (e.g. `care_schedules`) — lets
+  /// listeners react only to changes they care about.
+  final Set<String> appliedEntities = {};
+
   /// Ops persisted without touching a row (duplicates, unknown entities,
   /// ops for rows we do not have yet, losers of the LWW comparison).
   int skipped = 0;
@@ -192,6 +196,7 @@ class SyncApplier {
   /// pull retries the page later instead of parking a good op.
   Future<void> _applyIsolated(SyncOpDto op, SyncApplyResult result) async {
     final applied = result.applied;
+    final appliedEntities = {...result.appliedEntities};
     final skipped = result.skipped;
     final photos = result.remotePhotoShas.length;
     final collisions = result.idCollisions.length;
@@ -202,6 +207,9 @@ class SyncApplier {
     } catch (e) {
       // Restore the counters the failed attempt may have touched.
       result.applied = applied;
+      result.appliedEntities
+        ..clear()
+        ..addAll(appliedEntities);
       result.skipped = skipped;
       result.remotePhotoShas.length = photos;
       result.idCollisions.length = collisions;
@@ -260,6 +268,7 @@ class SyncApplier {
     }
     if (applied) {
       result.applied++;
+      result.appliedEntities.add(op.entity);
     } else {
       result.skipped++;
     }
@@ -1061,7 +1070,10 @@ class SyncApplier {
           requireNew: true,
         );
         _collisionTenant = null;
-        if (inserted) result.applied++;
+        if (inserted) {
+          result.applied++;
+          result.appliedEntities.add(codec.entity);
+        }
       } catch (e) {
         _collisionTenant = null;
         if (!isDeterministicApplyFailure(e)) rethrow;

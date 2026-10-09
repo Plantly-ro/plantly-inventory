@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:plantly_inventory/cloud/cloud_state.dart';
 import 'package:plantly_inventory/cloud/collection_link.dart';
 import 'package:plantly_inventory/config/plantly_features.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
@@ -379,6 +380,144 @@ void main() {
       // B is linked for B → ensureLinked is a no-op.
       expect(await links.ensureLinked(), link);
       expect(creates, 2);
+    });
+
+    ProviderContainer twoAccounts(String bobToken, {bool web = false}) {
+      final c = ProviderContainer(overrides: [
+        cloudEnabledProvider.overrideWithValue(true),
+        if (web) webPlatformProvider.overrideWithValue(true),
+        databaseProvider.overrideWithValue(db),
+        notificationServiceProvider.overrideWith((_) => FakeNotificationService()),
+        sessionStoreProvider.overrideWith((_) => InMemorySessionStore(token)),
+        httpClientProvider.overrideWith((_) => MockClient((req) async {
+              if (req.method == 'POST' && req.url.path.endsWith('/inventory/collections/default')) {
+                creates++;
+                final bob = req.headers['Authorization'] == 'Bearer $bobToken';
+                return http.Response(
+                  json.encode({
+                    'collection': {'id': bob ? 'col-2' : 'col-1', 'name': bob ? 'Bob' : 'My plants', 'role': 'owner'},
+                  }),
+                  200,
+                );
+              }
+              return http.Response('{"error":"nope"}', 404);
+            })),
+      ]);
+      addTearDown(c.dispose);
+      return c;
+    }
+
+    String bobJwt() => fakeJwt(
+          iat: DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000,
+          exp: DateTime.now().toUtc().add(const Duration(hours: 24)).millisecondsSinceEpoch ~/ 1000,
+          username: 'bob',
+          userId: 'u-2',
+        );
+
+    /// A (alice) has plants in col-1; B (bob) signs in and picks "Start
+    /// empty" → B's col-2 is linked, empty, and the data-owner marker is B.
+    Future<(ProviderContainer, int)> switchedToEmptyBob(String bobToken, {bool web = false}) async {
+      final c = twoAccounts(bobToken, web: web);
+      final ctx = await c.read(appContextProvider.future);
+      await userPlant(ctx.opLog, 'alices-plant');
+      final links = c.read(collectionLinkProvider.notifier);
+      await links.link();
+      final plantsA = await countTenant(db, db.plants, 'col-1');
+      await c.read(plantlyAuthProvider.notifier).adoptToken(bobToken);
+      await links.startEmpty();
+      expect(c.read(currentTenantIdProvider), 'col-2');
+      expect(creates, 2);
+      return (c, plantsA);
+    }
+
+    test('switching back to A when B\'s collection holds nothing: no Move/Start-empty question, A\'s plants come back (QA u26)', () async {
+      final bobToken = bobJwt();
+      final (c, plantsA) = await switchedToEmptyBob(bobToken);
+      final links = c.read(collectionLinkProvider.notifier);
+      // B deleted a plant they had added: only a tombstone (pushed) is left.
+      final bobCtx = await c.read(appContextProvider.future);
+      await userPlant(bobCtx.opLog, 'bobs-gone');
+      await (db.update(db.plants)..where((p) => p.id.equals('bobs-gone'))).write(const PlantsCompanion(deletedAt: Value(1)));
+      await db.customStatement("UPDATE sync_ops SET pushed_at = 1 WHERE tenant_id = 'col-2'");
+
+      await c.read(plantlyAuthProvider.notifier).adoptToken(token); // A again
+      expect(await links.releaseEmptyForeignClaims('u-1'), isTrue);
+      expect(c.read(collectionLinkProvider).heldByOtherLabel('u-1'), isNull);
+      expect(c.read(cloudStateProvider).heldByOther, isNull, reason: 'nothing of bob\'s is visible here — no prompt');
+
+      final link = await links.ensureLinked();
+      expect(link?.id, 'col-1');
+      expect(link?.userId, 'u-1');
+      expect(c.read(currentTenantIdProvider), 'col-1');
+      expect(await countTenant(db, db.plants, 'col-1'), plantsA, reason: "A's parked plants are back");
+      expect(await countTenant(db, db.plants, 'col-2'), 1, reason: "B's leftovers stay parked under B's tenant");
+      expect(c.read(collectionLinkProvider).dataOwnerUserId, 'u-1');
+    });
+
+    test('B\'s collection still holds a live plant (or unpushed ops): the decision stands', () async {
+      final bobToken = bobJwt();
+      final (c, _) = await switchedToEmptyBob(bobToken);
+      final links = c.read(collectionLinkProvider.notifier);
+      final bobCtx = await c.read(appContextProvider.future);
+      await userPlant(bobCtx.opLog, 'bobs-plant'); // live row + pending op
+      await c.read(plantlyAuthProvider.notifier).adoptToken(token);
+      expect(await links.releaseEmptyForeignClaims('u-1'), isFalse);
+      expect(c.read(cloudStateProvider).heldByOther, 'bob');
+      expect(await links.ensureLinked(), isNull);
+
+      // Plant gone but its ops never reached the server: still B's to push.
+      await (db.update(db.plants)..where((p) => p.id.equals('bobs-plant'))).write(const PlantsCompanion(deletedAt: Value(1)));
+      expect(await links.releaseEmptyForeignClaims('u-1'), isFalse);
+      expect(c.read(cloudStateProvider).heldByOther, 'bob');
+      expect(c.read(currentTenantIdProvider), 'col-2');
+    });
+
+    test('release refuses over a live tag, or over the other account\'s unpushed ops in ANY tenant', () async {
+      final (c, _) = await switchedToEmptyBob(bobJwt());
+      final links = c.read(collectionLinkProvider.notifier);
+      await insertDummy(db, db.tags, 'col-2');
+      await c.read(plantlyAuthProvider.notifier).adoptToken(token);
+      expect(await links.releaseEmptyForeignClaims('u-1'), isFalse, reason: 'a live tag is data');
+      await db.customStatement("UPDATE tags SET deleted_at = 1 WHERE tenant_id = 'col-2'");
+      // An unpushed op of bob parked in some other tenant.
+      await db.into(db.syncOps).insert(SyncOpsCompanion.insert(
+          tenantId: 'col-bob-old', entity: 'plants', entityId: 'x', field: 'nickname', hlc: 'h', deviceId: 'd',
+          userId: const Value('u-2')));
+      expect(await links.releaseEmptyForeignClaims('u-1'), isFalse, reason: "bob's pending work elsewhere");
+      await db.customStatement("UPDATE sync_ops SET pushed_at = 1 WHERE tenant_id = 'col-bob-old'");
+      expect(await links.releaseEmptyForeignClaims('u-1'), isTrue);
+    });
+
+    test('release clears a sticky "unlinked by user" and, on web, deletes the released tenant\'s leftovers', () async {
+      final (c, _) = await switchedToEmptyBob(bobJwt(), web: true);
+      final links = c.read(collectionLinkProvider.notifier);
+      final bobCtx = await c.read(appContextProvider.future);
+      await userPlant(bobCtx.opLog, 'bobs-gone');
+      await (db.update(db.plants)..where((p) => p.id.equals('bobs-gone'))).write(const PlantsCompanion(deletedAt: Value(1)));
+      await db.customStatement("UPDATE sync_ops SET pushed_at = 1");
+      await links.unlink();
+      expect(c.read(collectionLinkProvider).unlinkedByUser, isTrue);
+      await c.read(plantlyAuthProvider.notifier).adoptToken(token);
+      expect(await links.releaseEmptyForeignClaims('u-1'), isTrue);
+      expect(c.read(collectionLinkProvider).unlinkedByUser, isFalse);
+      expect((await SharedPreferences.getInstance()).getBool(kCloudUnlinkedPrefKey), isNull);
+      expect(await countTenant(db, db.plants, 'col-2'), 0, reason: "web: bob's leftovers don't stay in alice's browser");
+      expect(await countTenant(db, db.syncOps, 'col-2'), 0);
+    });
+
+    test('REVIEW repro: B parked on an empty non-home tenant while B\'s home holds live plants + unpushed ops — must NOT release', () async {
+      final bobToken = bobJwt();
+      final (c, _) = await switchedToEmptyBob(bobToken);
+      final links = c.read(collectionLinkProvider.notifier);
+      final bobCtx = await c.read(appContextProvider.future);
+      await userPlant(bobCtx.opLog, 'bobs-plant'); // live + pending under col-2 (B's home)
+      // B switches to an (empty) owned / shared collection; sign-out keeps an owned one active.
+      final p = await SharedPreferences.getInstance();
+      await p.setString(kTenantIdPrefKey, 'col-office');
+      c.read(currentTenantIdProvider.notifier).state = 'col-office';
+      await c.read(plantlyAuthProvider.notifier).adoptToken(token); // A signs in
+      expect(await links.releaseEmptyForeignClaims('u-1'), isFalse, reason: "B's home col-2 still holds B's data");
+      expect(c.read(cloudStateProvider).heldByOther, 'bob');
     });
 
     test('data-owner marker on an empty tenant is dropped at load (fresh device / wiped data)', () async {

@@ -74,6 +74,7 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
     this.batchSize = 500,
     this.entitlementIsOwners = false,
     this.readOnly = false,
+    this.onRemoteApplied,
     DateTime Function()? now,
   })  : assert(clock == null || identical(clock, opLog.clock),
             'one HlcClock per device: pass the OpLogWriter\'s clock (or omit it)'),
@@ -134,6 +135,13 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
   /// `403 read_only` and halt the runner. Pull still runs, pending local
   /// ops (if any slipped in) stay queued for a later role change.
   final bool readOnly;
+
+  /// Called once after a cycle in which ops changed local rows (pull, a
+  /// push reply's `fresh_ops`, or the repair pass) — e.g. to re-arm the OS
+  /// reminders for
+  /// schedules that arrived from another device or member. Never awaited;
+  /// must not throw.
+  final void Function(Set<String> entities)? onRemoteApplied;
 
   final Stream<void> _localChanges;
   final DateTime Function() _now;
@@ -271,6 +279,22 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
 
   Future<void> _cycle() async {
     _emit(_status.copyWith(inFlight: true));
+    final applied = <String>{};
+    try {
+      await _cycleLoop((r) => applied.addAll(r.appliedEntities));
+    } finally {
+      // Rows changed even when a later step of the cycle failed.
+      if (applied.isNotEmpty) {
+        try {
+          onRemoteApplied?.call(applied);
+        } catch (e, st) {
+          debugPrint('sync: onRemoteApplied failed: $e\n$st');
+        }
+      }
+    }
+  }
+
+  Future<void> _cycleLoop(void Function(SyncApplyResult result) countApplied) async {
     var authRetried = false;
     while (true) {
       try {
@@ -279,7 +303,7 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
         // Retry parked apply errors; full self-heal on the first cycle. A
         // repair failure must never stop push/pull.
         try {
-          await _applier.repair();
+          countApplied(await _applier.repair());
         } catch (e, st) {
           debugPrint('sync: repair failed, continuing: $e\n$st');
         }
@@ -288,12 +312,12 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
                 sent: 0, accepted: 0, rejected: [], batches: 0, cursor: '', hasMore: false, freshOps: 0)
             : await _engine.pushPending(
                 onFresh: (ops) async {
-                  await _applier.applyBatch(ops);
+                  countApplied(await _applier.applyBatch(ops));
                 },
               );
         if (pushed.batches == 0 || pushed.hasMore) {
           await _engine.pullAll(onOps: (ops) async {
-            await _applier.applyBatch(ops);
+            countApplied(await _applier.applyBatch(ops));
           });
         }
         String? error;

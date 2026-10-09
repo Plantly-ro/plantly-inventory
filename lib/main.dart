@@ -13,10 +13,12 @@ import 'cloud/local_data_wipe.dart';
 import 'cloud/play_billing_notices.dart';
 import 'cloud/play_billing_providers.dart';
 import 'cloud/web_access.dart';
+import 'data/providers.dart';
 import 'features/gate/web_offline_banner.dart';
 import 'features/home/home_providers.dart';
 import 'handoff/handoff_listener.dart';
 import 'l10n/generated/app_localizations.dart';
+import 'notifications/notification_tap_listener.dart';
 import 'services/telemetry.dart';
 import 'services/web_bootstrap.dart';
 import 'theme/tokens.dart';
@@ -87,6 +89,8 @@ class _PlantlyAppState extends ConsumerState<PlantlyApp> {
     final mode = ref.watch(themeModeProvider);
     // Cloud sync glue lives for the whole session (inert when the flag is off).
     ref.watch(cloudSyncCoordinatorProvider);
+    // OS reminders follow the active tenant (collection switch, link, …).
+    ref.watch(reminderTenantResyncProvider);
     // Play Billing restore/resume glue (inert off Android or with the flags off).
     ref.watch(playBillingCoordinatorProvider);
     // Signed in with no greeting name on this device: adopt the plantly.ro
@@ -113,10 +117,13 @@ class _PlantlyAppState extends ConsumerState<PlantlyApp> {
       builder: (context, child) => DesktopThemeScope(
         child: HandoffListener(
           navigatorKey: _navKey,
-          child: CloudNotices(
-            child: PlayBillingNotices(
-              navigatorKey: _navKey,
-              child: WebOfflineBanner(child: child ?? const SizedBox.shrink()),
+          child: NotificationTapListener(
+            router: _router,
+            child: CloudNotices(
+              child: PlayBillingNotices(
+                navigatorKey: _navKey,
+                child: WebOfflineBanner(child: child ?? const SizedBox.shrink()),
+              ),
             ),
           ),
         ),

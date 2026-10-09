@@ -6229,6 +6229,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Another Plantly tab is busy with your data — retrying…'**
   String get dbBusyOtherTab;
+
+  /// No description provided for @reminderTapOtherCollection.
+  ///
+  /// In en, this message translates to:
+  /// **'That plant is in another collection — switch to it to see the plant.'**
+  String get reminderTapOtherCollection;
+
+  /// No description provided for @reminderTapPlantGone.
+  ///
+  /// In en, this message translates to:
+  /// **'That plant is no longer in your collection.'**
+  String get reminderTapPlantGone;
+
+  /// No description provided for @statsCardInDaysShort.
+  ///
+  /// In en, this message translates to:
+  /// **'in {count}d'**
+  String statsCardInDaysShort(int count);
 }
 
 class _AppLocalizationsDelegate

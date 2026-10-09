@@ -157,6 +157,51 @@ Future<bool> tenantIsEmpty(AppDatabase db, String tenant) async {
   return true;
 }
 
+/// True when [tenant] holds nothing anyone would miss: no live plant,
+/// space, tag, species or inventory record (tombstones and orphaned history
+/// don't count) and no op that still has to reach the server. Such a tenant
+/// is not "this device's plants" of the account that left it (see
+/// [CollectionLinkService.releaseEmptyForeignClaims]).
+Future<bool> tenantHoldsNoLiveData(AppDatabase db, String tenant) async {
+  const live = ['plants', 'locations', 'tags', 'species', 'inventory_transactions'];
+  final row = await db.customSelect(
+    'SELECT '
+    '${live.map((t) => 'EXISTS(SELECT 1 FROM $t WHERE tenant_id = ?1 AND deleted_at IS NULL)').join(' OR ')} OR '
+    'EXISTS(SELECT 1 FROM sync_ops WHERE tenant_id = ?1 AND pushed_at IS NULL) AS held',
+    variables: [Variable<String>(tenant)],
+  ).getSingle();
+  return !row.read<bool>('held');
+}
+
+/// True when any tenant on this device still has ops of one of [userIds]
+/// (or unattributed ones, `user_id IS NULL`) waiting to be pushed — work
+/// that only those accounts can upload.
+Future<bool> hasUnpushedOpsOf(AppDatabase db, Set<String> userIds) async {
+  final ids = userIds.toList();
+  final row = await db.customSelect(
+    'SELECT EXISTS(SELECT 1 FROM sync_ops WHERE pushed_at IS NULL AND '
+    '(user_id IS NULL${ids.isEmpty ? '' : ' OR user_id IN (${List.filled(ids.length, '?').join(', ')})'})) AS pending',
+    variables: [for (final id in ids) Variable<String>(id)],
+  ).getSingle();
+  return row.read<bool>('pending');
+}
+
+/// Hard-delete every row of [tenant] in every table (web: an account's
+/// leftovers must not stay hidden in somebody else's browser).
+Future<void> deleteTenantRows(AppDatabase db, String tenant) async {
+  await db.transaction(() async {
+    for (final table in db.allTables) {
+      if (!table.columnsByName.containsKey('tenant_id')) continue;
+      await db.customUpdate(
+        'DELETE FROM ${table.actualTableName} WHERE tenant_id = ?',
+        variables: [Variable<String>(tenant)],
+        updates: {table},
+        updateKind: UpdateKind.delete,
+      );
+    }
+  });
+}
+
 /// Move every row (and every pending op) from tenant [from] to tenant [to]
 /// in ONE transaction. Generic over the schema: any table with a
 /// `tenant_id` column is rewritten, so a new entity table can't be missed.
@@ -260,6 +305,11 @@ Future<int> migrateTenant(
 class CollectionLinkService extends StateNotifier<CollectionLinkState> {
   CollectionLinkService(this._ref) : super(const CollectionLinkState()) {
     _loaded = _load();
+    // An account switch onto a device whose foreign claims hold nothing
+    // (QA u26) resolves itself instead of asking Move / Start empty.
+    _ref.listen<String?>(plantlyAuthProvider.select((s) => s.valueOrNull?.userId), (prev, next) {
+      if (next != null && next != prev) unawaited(releaseEmptyForeignClaims(next).catchError((Object _) => false));
+    }, fireImmediately: true);
   }
 
   final Ref _ref;
@@ -301,6 +351,85 @@ class CollectionLinkService extends StateNotifier<CollectionLinkState> {
 
   /// Resolves once the persisted link has been read.
   Future<void> get ready => _loaded;
+
+  Future<bool>? _releasing;
+  String? _releasingFor;
+
+  /// The account-switch question ("This device holds plants synced by
+  /// `other`: Move / Start empty") only makes sense when the other
+  /// account's data is actually here. Released — the foreign link and
+  /// data-owner marker dropped, the device moved to a fresh empty tenant so
+  /// [ensureLinked] links [userId] directly (A's parked collection comes
+  /// back as after "Start empty") — only when ALL of:
+  ///  * the active tenant AND the foreign link's home tenant hold no live
+  ///    data ([tenantHoldsNoLiveData]) — B parked on an empty collection
+  ///    while B's home holds plants is still B's data;
+  ///  * no tenant has unpushed ops of the other account(s) or unattributed
+  ///    ones ([hasUnpushedOpsOf]).
+  /// B's leftovers (tombstones, pushed history) stay parked under B's
+  /// tenants — on web they are deleted instead. True when released.
+  Future<bool> releaseEmptyForeignClaims(String userId) {
+    final running = _releasing;
+    if (running != null && _releasingFor == userId) return running;
+    _releasingFor = userId;
+    late final Future<bool> run;
+    run = _releaseEmptyForeignClaims(userId).whenComplete(() {
+      if (identical(_releasing, run)) {
+        _releasing = null;
+        _releasingFor = null;
+      }
+    });
+    return _releasing = run;
+  }
+
+  Future<bool> _releaseEmptyForeignClaims(String userId) async {
+    await _loaded;
+    if (!mounted || state.heldByOtherLabel(userId) == null) return false; // nothing to release
+    // Session before any DB work: only for the account actually signed in
+    // (the settled value — `current()` would re-emit the session and
+    // restart every lookup that watches it).
+    if (_ref.read(plantlyAuthProvider).valueOrNull?.userId != userId) return false;
+    final before = state;
+    if (before.heldByOtherLabel(userId) == null) return false;
+    final tenant = _ref.read(currentTenantIdProvider);
+    final tenants = {tenant, ?before.link?.id};
+    final others = {before.dataOwnerUserId, before.link?.userId}
+        .whereType<String>()
+        .where((u) => u.isNotEmpty && u != userId)
+        .toSet();
+    final db = _ref.read(databaseProvider);
+    for (final t in tenants) {
+      if (!await tenantHoldsNoLiveData(db, t)) return false;
+    }
+    if (await hasUnpushedOpsOf(db, others)) return false;
+    final p = await _prefs;
+    // Anything may have moved while we were reading: only release the very
+    // state we checked, for the account still signed in.
+    if (!mounted || state != before || _ref.read(currentTenantIdProvider) != tenant) return false;
+    if (_ref.read(plantlyAuthProvider).valueOrNull?.userId != userId) return false;
+    final fresh = 'local-${Ulid()}';
+    _ref.read(currentTenantIdProvider.notifier).state = fresh;
+    state = state.copyWith(link: null, unlinkedByUser: false, dataOwnerUserId: null, dataOwnerUsername: '');
+    await p.setBool(kSkipSeedPrefKey, true);
+    await p.setString(kTenantIdPrefKey, fresh);
+    for (final k in [
+      kCollectionIdPrefKey,
+      kCollectionNamePrefKey,
+      kCollectionUserIdPrefKey,
+      kCollectionUsernamePrefKey,
+      kDataOwnerUserIdPrefKey,
+      kDataOwnerUsernamePrefKey,
+      kCloudUnlinkedPrefKey,
+    ]) {
+      await p.remove(k);
+    }
+    if (_ref.read(webPlatformProvider)) {
+      for (final t in tenants) {
+        await deleteTenantRows(db, t);
+      }
+    }
+    return true;
+  }
 
   /// Link (or re-link) to the signed-in user's default collection.
   /// Concurrent calls share one run. Throws `StateError` when signed out;
@@ -383,6 +512,7 @@ class CollectionLinkService extends StateNotifier<CollectionLinkState> {
     await _loaded;
     final session = await _ref.read(plantlyAuthProvider.notifier).current();
     if (session == null) throw StateError('not signed in');
+    await releaseEmptyForeignClaims(session.userId);
     if (state.dataHeldByOther(session.userId)) return null;
     final current = state.link;
     if (current == null) return link();

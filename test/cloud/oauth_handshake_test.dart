@@ -28,7 +28,6 @@ void main() {
     final h = make();
     expect(await h.consume('whatever'), isFalse);
     expect(await h.consume(null), isFalse);
-    expect(await h.consume(null, allowMissingNonce: true), isFalse);
   });
 
   test('started 11 minutes ago → ignored and cleared', () async {
@@ -52,16 +51,32 @@ void main() {
     final n = await h.begin();
     expect(await h.consume(n), isTrue);
     expect(await h.consume(n), isFalse);
-    expect(await h.consume(null, allowMissingNonce: true), isFalse);
+    expect(await h.consume(null), isFalse);
   });
 
-  test('missing nonce inside the window → accepted only for the custom-scheme form (transitional)', () async {
+  test('missing nonce inside the window → rejected on every platform; the pending sign-in survives', () async {
+    // Session fixation (QA 2026-10-07): another app firing
+    // `plantlyinventory://auth/callback#token=<ATTACKER_JWT>` while the
+    // victim's sign-in is open must NOT be adopted. The server has echoed
+    // the nonce since monolith 69872a0, so a nonce-less callback is never
+    // a legitimate answer.
     final h = make();
-    await h.begin();
-    now = t0.add(const Duration(minutes: 10));
-    expect(await h.consume(null), isFalse, reason: 'web ?token= form must carry the nonce');
-    expect(await h.consume(null, allowMissingNonce: true), isTrue);
-    expect(await h.consume(null, allowMissingNonce: true), isFalse, reason: 'single-use');
+    final n = await h.begin();
+    now = t0.add(const Duration(minutes: 1));
+    expect(await h.consume(null), isFalse);
+    expect(await h.consume(''), isFalse);
+    expect((await SharedPreferences.getInstance()).getString(OAuthHandshake.nonceKey), n,
+        reason: 'a forged callback must not cancel the real sign-in');
+    expect(await h.consume(n), isTrue, reason: 'the genuine echoed callback still lands');
+  });
+
+  test('a nonce differing only in case / length is rejected', () async {
+    final h = make();
+    final n = await h.begin();
+    expect(await h.consume(n.toUpperCase() == n ? n.toLowerCase() : n.toUpperCase()), isFalse);
+    expect(await h.consume(n.substring(1)), isFalse);
+    expect(await h.consume('${n}x'), isFalse);
+    expect(await h.consume(n), isTrue);
   });
 
   test('start URL: client=inventory (io) / inventory-web (web), nonce appended', () {
