@@ -42,6 +42,22 @@ void main() {
     expect(find.text('You were removed from Family greenhouse'), findsNothing, reason: 'previous SnackBar cleared');
   });
 
+  testWidgets('collection-gone notice → SnackBar naming it (server default localized), provider reset', (tester) async {
+    final c = await pump(tester);
+    c.read(collectionGoneNoticeProvider.notifier).state = 'Olive Grove';
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('cloud-notice-collection-gone')), findsOneWidget);
+    expect(find.textContaining('“Olive Grove”'), findsOneWidget);
+    expect(c.read(collectionGoneNoticeProvider), isNull, reason: 'one-shot');
+  });
+
+  testWidgets('collection-gone notice (ro, default name localized)', (tester) async {
+    final c = await pump(tester, locale: const Locale('ro'));
+    c.read(collectionGoneNoticeProvider.notifier).state = 'My plants';
+    await tester.pumpAndSettle();
+    expect(find.textContaining('„Plantele mele”'), findsOneWidget);
+  });
+
   testWidgets('device-revoked notice → SnackBar, provider reset to false (en + ro)', (tester) async {
     final c = await pump(tester);
     expect(find.byKey(const Key('cloud-notice-device-revoked')), findsNothing);

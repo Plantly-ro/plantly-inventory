@@ -183,7 +183,7 @@ class _JoinCollectionSheetState extends ConsumerState<JoinCollectionSheet> {
       unawaited(ref.read(syncRunnerProvider).syncNow());
       messenger
         ?..clearSnackBars()
-        ..showSnackBar(SnackBar(content: Text(t.shareJoined(col.displayName))));
+        ..showSnackBar(SnackBar(content: Text(t.shareJoined(collectionDisplayName(t, col)))));
       _closed();
       navigator.pop(col);
     } on PlantlyApiException catch (e) {

@@ -109,33 +109,42 @@ class _Header extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
-          // Flexible + ellipsis: localized titles (e.g. "Activitate recentă")
-          // plus the uppercase action can outgrow narrow phones.
-          Flexible(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: surface.text,
-                letterSpacing: -0.01 * 16,
-              ),
+          // Title + count take all the room the action leaves: the title
+          // only ellipsizes when it really doesn't fit (a Flexible next to
+          // a Spacer got half the free space — "Toate plan…" with room to
+          // spare, and the action floated mid-row on desktop).
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Flexible(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: surface.text,
+                      letterSpacing: -0.01 * 16,
+                    ),
+                  ),
+                ),
+                if (accentLabel != null) ...[
+                  const SizedBox(width: PlantlyTokens.space2),
+                  Text(
+                    accentLabel!,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: accentColor ?? surface.muted,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-          if (accentLabel != null) ...[
-            const SizedBox(width: PlantlyTokens.space2),
-            Text(
-              accentLabel!,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: accentColor ?? surface.muted,
-              ),
-            ),
-          ],
-          const Spacer(),
           if (action != null && !editing)
             InkWell(
               onTap: onAction,

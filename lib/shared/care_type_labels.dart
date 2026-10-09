@@ -126,3 +126,9 @@ Locale resolveAppLocale() => basicLocaleListResolution(
 /// [AppLocalizations] for [resolveAppLocale] — for notification titles and
 /// anything else built outside the widget tree.
 AppLocalizations appLocalizationsForPlatform() => lookupAppLocalizations(resolveAppLocale());
+
+/// [label] (a [careTypeLabel] / [careTypePastLabel] of [ct]) for mid-sentence
+/// chips: built-in names lower-cased ("water"), a user's own name exactly as
+/// they typed it ("Hydrate", not "hydrate").
+String careTypeInlineLabel(AppLocalizations t, CareType ct, String label) =>
+    careTypeUsesDefaultLabel(t, ct) ? label.toLowerCase() : label;

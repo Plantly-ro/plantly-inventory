@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plantly_inventory/cloud/sync_runner.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
@@ -324,6 +325,64 @@ void main() {
     expect(transport.pushes.single.ops.map((o) => o.entityId), ['a', 'b']);
     expect(transport.pulls.length, pullsAfterStart); // push reply said has_more=false → no extra pull
     expect(r.current.pendingOps, 0);
+  });
+
+  group('app hidden / backgrounded (web: tab hidden or closing) flushes a debounced push', () {
+    test('a write waiting out the debounce is pushed at once on hidden; nothing waiting → no extra cycle', () async {
+      final r = make(debounce: const Duration(seconds: 30));
+      r.start();
+      await settle(const Duration(milliseconds: 30));
+      final pullsAfterStart = transport.pulls.length;
+
+      r.didChangeAppLifecycleState(AppLifecycleState.inactive);
+      r.didChangeAppLifecycleState(AppLifecycleState.hidden);
+      await settle(const Duration(milliseconds: 30));
+      expect(transport.pushes, isEmpty);
+      expect(transport.pulls.length, pullsAfterStart, reason: 'nothing pending: hiding runs no cycle');
+
+      await localPlant('a');
+      await settle(const Duration(milliseconds: 10));
+      expect(transport.pushes, isEmpty, reason: 'still inside the 30 s debounce');
+      r.didChangeAppLifecycleState(AppLifecycleState.hidden);
+      await settle(const Duration(milliseconds: 50));
+      expect(transport.pushes, hasLength(1), reason: 'flushed without waiting for the debounce');
+      expect(transport.pushes.single.ops.map((o) => o.entityId), ['a']);
+      expect(r.current.pendingOps, 0);
+
+      // The cancelled debounce does not fire a second push later; paused
+      // (Android, after hidden) has nothing left to flush.
+      r.didChangeAppLifecycleState(AppLifecycleState.paused);
+      await settle(const Duration(milliseconds: 30));
+      expect(transport.pushes, hasLength(1));
+    });
+
+    test('paused alone (no hidden first) flushes too; inactive (web: window blur) does not', () async {
+      final r = make(debounce: const Duration(seconds: 30));
+      r.start();
+      await settle(const Duration(milliseconds: 30));
+      await localPlant('a');
+      await settle(const Duration(milliseconds: 10));
+      r.didChangeAppLifecycleState(AppLifecycleState.inactive);
+      await settle(const Duration(milliseconds: 30));
+      expect(transport.pushes, isEmpty, reason: 'a blur is not leaving the page');
+      r.didChangeAppLifecycleState(AppLifecycleState.paused);
+      await settle(const Duration(milliseconds: 50));
+      expect(transport.pushes, hasLength(1));
+    });
+
+    test('a halted runner stays halted when hidden', () async {
+      await localPlant('a');
+      transport.failures.add(const SyncEntitlementError());
+      final r = make(debounce: const Duration(seconds: 30));
+      r.start();
+      await settle(const Duration(milliseconds: 30));
+      expect(r.current.lastError, 'cloud_required');
+      await localPlant('b');
+      await settle(const Duration(milliseconds: 10));
+      r.didChangeAppLifecycleState(AppLifecycleState.hidden);
+      await settle(const Duration(milliseconds: 30));
+      expect(transport.pushes, hasLength(1), reason: 'only the halted first attempt');
+    });
   });
 
   test('429 → status retrying, exponential backoff, then success', () async {

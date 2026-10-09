@@ -1469,15 +1469,15 @@ class AppLocalizationsRo extends AppLocalizations {
   String get mePlantlySignedOut => 'Conectare';
 
   @override
-  String get mePlantlySignOutTitle => 'Te deconectezi?';
+  String get mePlantlySignOutTitle => 'Ieși din cont?';
 
   @override
   String mePlantlySignOutBody(String username) {
-    return 'Vei fi deconectat de la plantly.ro ($username) pe acest dispozitiv.';
+    return 'Vei ieși din contul plantly.ro ($username) pe acest dispozitiv.';
   }
 
   @override
-  String get mePlantlySignOut => 'Deconectare';
+  String get mePlantlySignOut => 'Ieși din cont';
 
   @override
   String get importTitle => 'Adaugă la plantele tale';
@@ -1616,10 +1616,26 @@ class AppLocalizationsRo extends AppLocalizations {
   String get meTitle => 'Eu';
 
   @override
-  String get meStatCardPlants => 'PLANTE';
+  String meStatCardPlants(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'PLANTE',
+      one: 'PLANTĂ',
+    );
+    return '$_temp0';
+  }
 
   @override
-  String get meStatCardSpaces => 'SPAȚII';
+  String meStatCardSpaces(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'SPAȚII',
+      one: 'SPAȚIU',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get meAboutApp => 'Aplicație';
@@ -2607,19 +2623,19 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String cloudAccountValue(String username) {
-    return 'Conectat ca $username · apasă pentru deconectare';
+    return 'Conectat ca $username · apasă ca să ieși din cont';
   }
 
   @override
-  String get cloudSignOutTitle => 'Te deconectezi de la plantly.ro?';
+  String get cloudSignOutTitle => 'Ieși din contul plantly.ro?';
 
   @override
   String cloudSignOutBody(String username) {
-    return 'Sincronizarea se oprește până când $username se conectează din nou. Plantele rămân pe acest dispozitiv.';
+    return 'Sincronizarea se oprește până când $username intră din nou în cont. Plantele rămân pe acest dispozitiv.';
   }
 
   @override
-  String get cloudSignOut => 'Deconectare';
+  String get cloudSignOut => 'Ieși din cont';
 
   @override
   String get cloudUnlinkLabel => 'Deconectează acest dispozitiv';
@@ -3332,7 +3348,7 @@ class AppLocalizationsRo extends AppLocalizations {
       'Plantele salvate în acest browser rămân aici; sincronizarea se reia imediat ce te abonezi.';
 
   @override
-  String get gateSignOutLink => 'Nu ești tu? Deconectează-te';
+  String get gateSignOutLink => 'Nu ești tu? Ieși din cont';
 
   @override
   String get gateUnreachableTitle => 'Nu putem verifica abonamentul';
@@ -3714,7 +3730,7 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String cloudSignOutBodyWeb(String username) {
-    return '$username va fi deconectat, iar copia colecției din acest browser va fi ștearsă. Tot ce s-a sincronizat rămâne în cloud.';
+    return 'Vei ieși din contul $username, iar copia colecției din acest browser va fi ștearsă. Tot ce s-a sincronizat rămâne în cloud.';
   }
 
   @override
@@ -3736,21 +3752,21 @@ class AppLocalizationsRo extends AppLocalizations {
       count,
       locale: localeName,
       other:
-          '$count de modificări nu au ajuns încă în cloud. Te deconectezi oricum? Se vor pierde.',
+          '$count de modificări nu au ajuns încă în cloud. Ieși oricum din cont? Se vor pierde.',
       few:
-          '$count modificări nu au ajuns încă în cloud. Te deconectezi oricum? Se vor pierde.',
+          '$count modificări nu au ajuns încă în cloud. Ieși oricum din cont? Se vor pierde.',
       one:
-          'O modificare nu a ajuns încă în cloud. Te deconectezi oricum? Se va pierde.',
+          'O modificare nu a ajuns încă în cloud. Ieși oricum din cont? Se va pierde.',
     );
     return '$_temp0';
   }
 
   @override
-  String get signOutAnyway => 'Deconectează-te oricum';
+  String get signOutAnyway => 'Ieși oricum din cont';
 
   @override
   String signOutWipeFailed(String error) {
-    return 'Te-ai deconectat, dar copia din acest browser nu a putut fi ștearsă ($error). Rămâne blocată în spatele autentificării — conectează-te și deconectează-te din nou pentru a reîncerca.';
+    return 'Ai ieșit din cont, dar copia din acest browser nu a putut fi ștearsă ($error). Rămâne blocată în spatele autentificării — intră în cont și ieși din nou ca să reîncerci.';
   }
 
   @override
@@ -3835,4 +3851,66 @@ class AppLocalizationsRo extends AppLocalizations {
   String statsCardInDaysShort(int count) {
     return 'în $count z';
   }
+
+  @override
+  String get addPlantDiscardTitle => 'Renunți la plantă?';
+
+  @override
+  String get addPlantDiscardBody => 'Ce ai completat până acum se va pierde.';
+
+  @override
+  String get addPlantDiscardKeep => 'Continuă';
+
+  @override
+  String get addPlantDiscardConfirm => 'Renunță';
+
+  @override
+  String get collectionDefaultName => 'Plantele mele';
+
+  @override
+  String shareCollectionGoneNotice(String name) {
+    return 'Nu mai ai acces la „$name” — te-am adus înapoi la colecția ta.';
+  }
+
+  @override
+  String homeGridEmptyAllDesktop(String button) {
+    return 'Nicio plantă încă — adaugă una cu „$button” din bara laterală.';
+  }
+
+  @override
+  String get homeGridEmptyFiltered =>
+      'Nicio plantă nu se potrivește filtrelor.';
+
+  @override
+  String get homeGridEmptyViewer => 'Încă nu sunt plante în colecția asta.';
+
+  @override
+  String get notFoundTitle => 'Pagina nu există';
+
+  @override
+  String get notFoundBody =>
+      'Adresa asta nu duce nicăieri în Plantly Inventory. Poate e scrisă greșit sau pagina s-a mutat.';
+
+  @override
+  String get notFoundHome => 'Mergi la Acasă';
+
+  @override
+  String get gateNoLocalData =>
+      'După ce te abonezi, plantele pe care le adaugi aici se salvează în contul tău plantly.ro și se sincronizează cu telefonul.';
+
+  @override
+  String get homeEditHintWeb =>
+      'Click dreapta sau ține apăsat ca să personalizezi ecranul principal';
+
+  @override
+  String get detailFabTooltipWeb =>
+      'Click dreapta sau ține apăsat ca să schimbi';
+
+  @override
+  String get spacePinHintPlaceWeb =>
+      'Click ca să plasezi • trage ca să muți • click dreapta ca să ștergi';
+
+  @override
+  String get spacePinHintDragWeb =>
+      'Trage pinii ca să-i muți • click dreapta ca să ștergi';
 }

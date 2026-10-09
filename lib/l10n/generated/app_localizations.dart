@@ -2915,14 +2915,14 @@ abstract class AppLocalizations {
   /// No description provided for @meStatCardPlants.
   ///
   /// In en, this message translates to:
-  /// **'PLANTS'**
-  String get meStatCardPlants;
+  /// **'{count, plural, =1{PLANT} other{PLANTS}}'**
+  String meStatCardPlants(int count);
 
   /// No description provided for @meStatCardSpaces.
   ///
   /// In en, this message translates to:
-  /// **'SPACES'**
-  String get meStatCardSpaces;
+  /// **'{count, plural, =1{SPACE} other{SPACES}}'**
+  String meStatCardSpaces(int count);
 
   /// No description provided for @meAboutApp.
   ///
@@ -6247,6 +6247,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'in {count}d'**
   String statsCardInDaysShort(int count);
+
+  /// No description provided for @addPlantDiscardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard this plant?'**
+  String get addPlantDiscardTitle;
+
+  /// No description provided for @addPlantDiscardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'What you\'ve entered so far will be lost.'**
+  String get addPlantDiscardBody;
+
+  /// No description provided for @addPlantDiscardKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep editing'**
+  String get addPlantDiscardKeep;
+
+  /// No description provided for @addPlantDiscardConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get addPlantDiscardConfirm;
+
+  /// No description provided for @collectionDefaultName.
+  ///
+  /// In en, this message translates to:
+  /// **'My plants'**
+  String get collectionDefaultName;
+
+  /// No description provided for @shareCollectionGoneNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'You no longer have access to “{name}” — back to your own collection.'**
+  String shareCollectionGoneNotice(String name);
+
+  /// No description provided for @homeGridEmptyAllDesktop.
+  ///
+  /// In en, this message translates to:
+  /// **'No plants yet — add one with “{button}” in the sidebar.'**
+  String homeGridEmptyAllDesktop(String button);
+
+  /// No description provided for @homeGridEmptyFiltered.
+  ///
+  /// In en, this message translates to:
+  /// **'No plants match these filters.'**
+  String get homeGridEmptyFiltered;
+
+  /// No description provided for @homeGridEmptyViewer.
+  ///
+  /// In en, this message translates to:
+  /// **'No plants in this collection yet.'**
+  String get homeGridEmptyViewer;
+
+  /// No description provided for @notFoundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Page not found'**
+  String get notFoundTitle;
+
+  /// No description provided for @notFoundBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This address doesn\'t lead anywhere in Plantly Inventory. It may be mistyped, or the page has moved.'**
+  String get notFoundBody;
+
+  /// No description provided for @notFoundHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Home'**
+  String get notFoundHome;
+
+  /// No description provided for @gateNoLocalData.
+  ///
+  /// In en, this message translates to:
+  /// **'Once you subscribe, the plants you add here are saved to your plantly.ro account and synced with your phone.'**
+  String get gateNoLocalData;
+
+  /// No description provided for @homeEditHintWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Right-click or long-press to customise your home'**
+  String get homeEditHintWeb;
+
+  /// No description provided for @detailFabTooltipWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Right-click or long-press to change'**
+  String get detailFabTooltipWeb;
+
+  /// No description provided for @spacePinHintPlaceWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Click to place • drag to move • right-click to remove'**
+  String get spacePinHintPlaceWeb;
+
+  /// No description provided for @spacePinHintDragWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag pins to move • right-click to remove'**
+  String get spacePinHintDragWeb;
 }
 
 class _AppLocalizationsDelegate

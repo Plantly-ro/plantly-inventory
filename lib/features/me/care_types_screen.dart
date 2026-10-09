@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/care_types.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../shared/text_controllers_scope.dart';
 import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
@@ -98,7 +99,7 @@ class CareTypesScreen extends ConsumerWidget {
     CareType? existing,
   ) async {
     final t = AppLocalizations.of(context);
-    final labelCtrl = TextEditingController(text: existing == null ? '' : careTypeLabel(t, existing));
+    final initialLabel = existing == null ? '' : careTypeLabel(t, existing);
     var days = existing?.defaultIntervalDays ?? 7.0;
     var iconCode = existing?.iconCode ?? Icons.notifications_active_outlined.codePoint;
     int? colorValue = existing?.colorValue;
@@ -107,7 +108,14 @@ class CareTypesScreen extends ConsumerWidget {
       context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) {
+      // Controllers belong to the sheet's widgets: disposed after the exit
+      // animation (disposing after the await crashed in debug), created
+      // once (the interval field used to get a fresh controller per build).
+      builder: (ctx) => TextControllersScope(
+        initialTexts: [initialLabel, _fmt(days)],
+        builder: (ctx, controllers) {
+        final labelCtrl = controllers[0];
+        final daysCtrl = controllers[1];
         return StatefulBuilder(builder: (ctx, setLocal) {
           return Padding(
             padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
@@ -117,6 +125,9 @@ class CareTypesScreen extends ConsumerWidget {
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(PlantlyTokens.radius2xl)),
               ),
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+              // Scrolls when the keyboard + pickers outgrow the screen (a
+              // 7.5 px overflow on a phone with the keyboard up).
+              child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,8 +157,7 @@ class CareTypesScreen extends ConsumerWidget {
                   _label(t.meCareTypeIntervalField, surface),
                   const SizedBox(height: 6),
                   TextField(
-                    controller: TextEditingController(text: _fmt(days))
-                      ..selection = TextSelection.collapsed(offset: _fmt(days).length),
+                    controller: daysCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     decoration: _dec(surface),
                     onChanged: (v) {
@@ -230,12 +240,13 @@ class CareTypesScreen extends ConsumerWidget {
                   ),
                 ],
               ),
+              ),
             ),
           );
         });
       },
+      ),
     );
-    labelCtrl.dispose();
   }
 
   String _fmt(double v) {

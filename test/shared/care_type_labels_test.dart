@@ -30,6 +30,12 @@ void main() {
   final ro = AppLocalizationsRo();
   final en = AppLocalizationsEn();
 
+  test('careTypeInlineLabel: built-ins lower-cased mid-sentence, a user\'s own name kept as typed', () {
+    expect(careTypeInlineLabel(en, _builtin('water'), careTypeLabel(en, _builtin('water'))), 'water');
+    final custom = _builtin('water').copyWith(label: 'Hydrate');
+    expect(careTypeInlineLabel(en, custom, careTypeLabel(en, custom)), 'Hydrate');
+  });
+
   group('careTypeLabel / careTypeVerb / careTypePastLabel', () {
     test('built-ins with the seeded label localize in all three forms (ro)', () {
       expect(careTypeLabel(ro, _builtin('water')), 'Udare');

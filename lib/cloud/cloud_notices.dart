@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/generated/app_localizations.dart';
 import '../data/database/cross_tab_lock.dart' show crossTabDbBusy;
+import '../features/collections/collection_ui.dart' show localizedCollectionName;
 import '../features/me/cloud_section.dart' show describeHomeLoss;
 import 'collections.dart';
 
@@ -30,8 +31,20 @@ class _CloudNoticesState extends ConsumerState<CloudNotices> {
       final t = AppLocalizations.of(context);
       ScaffoldMessenger.maybeOf(context)
         ?..clearSnackBars()
-        ..showSnackBar(SnackBar(key: const Key('cloud-notice-removed'), content: Text(t.shareRemovedFromCollection(name))));
+        ..showSnackBar(SnackBar(key: const Key('cloud-notice-removed'), content: Text(t.shareRemovedFromCollection(localizedCollectionName(t, name)))));
       ref.read(collectionRemovedNoticeProvider.notifier).state = null;
+    });
+    ref.listenManual<String?>(collectionGoneNoticeProvider, (_, name) {
+      if (name == null || !mounted) return;
+      final t = AppLocalizations.of(context);
+      ScaffoldMessenger.maybeOf(context)
+        ?..clearSnackBars()
+        ..showSnackBar(SnackBar(
+          key: const Key('cloud-notice-collection-gone'),
+          duration: const Duration(seconds: 6),
+          content: Text(t.shareCollectionGoneNotice(localizedCollectionName(t, name))),
+        ));
+      ref.read(collectionGoneNoticeProvider.notifier).state = null;
     });
     ref.listenManual<HomeLoss?>(homeLostNoticeProvider, (_, loss) {
       if (loss == null || !mounted) return;

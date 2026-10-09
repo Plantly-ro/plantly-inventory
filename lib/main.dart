@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'app/desktop_theme.dart';
+import 'app/ro_informal_material.dart';
 import 'app/router.dart';
 import 'app/scroll_behavior.dart';
 import 'app/url_strategy.dart';
@@ -24,8 +25,10 @@ import 'services/web_bootstrap.dart';
 import 'theme/tokens.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  // First: records the launch URL (with its `#fragment`) before anything
+  // touches the browser history.
   configureUrlStrategy();
+  WidgetsFlutterBinding.ensureInitialized();
   final container = ProviderContainer();
   final telemetry = container.read(telemetryServiceProvider);
   await telemetry.init();
@@ -110,7 +113,9 @@ class _PlantlyAppState extends ConsumerState<PlantlyApp> {
       theme: PlantlyApp.buildTheme(Brightness.light),
       darkTheme: PlantlyApp.buildTheme(Brightness.dark),
       scrollBehavior: const AppScrollBehavior(),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      // Informal Romanian framework strings first (first delegate of a
+      // type wins), then the generated list.
+      localizationsDelegates: const [RoInformalMaterialLocalizations.delegate, ...AppLocalizations.localizationsDelegates],
       supportedLocales: AppLocalizations.supportedLocales,
       // `builder` runs under the root ScaffoldMessenger, which is what
       // CloudNotices needs for its SnackBars.

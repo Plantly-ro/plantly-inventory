@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../cloud/account_name.dart';
+import '../../data/providers.dart' show plantsStreamProvider;
 import '../../cloud/entitlement.dart';
 import '../../cloud/local_data_wipe.dart';
 import '../../cloud/sign_in_events.dart';
@@ -292,6 +294,11 @@ class _NotEntitled extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = AppLocalizations.of(context);
+    // The account's first name when /users/me has one; the handle otherwise.
+    final name = ref.watch(accountGreetingNameProvider).valueOrNull ?? username;
+    // "Plants saved in this browser stay here" only when there are some;
+    // a fresh browser gets what subscribing will do instead.
+    final hasLocalPlants = ref.watch(plantsStreamProvider).whenOrNull(data: (rows) => rows.isNotEmpty);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -301,7 +308,7 @@ class _NotEntitled extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                t.gateHello(username),
+                t.gateHello(name),
                 key: const Key('gate-hello'),
                 style: TextStyle(
                   fontFamily: PlantlyFonts.plusJakartaSans,
@@ -346,12 +353,14 @@ class _NotEntitled extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 ),
               ),
-              const SizedBox(height: 16),
-              Text(
-                t.gateDataKept,
-                key: const Key('gate-data-kept'),
-                style: TextStyle(fontSize: 12.5, color: surface.muted, height: 1.4),
-              ),
+              if (hasLocalPlants != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  hasLocalPlants ? t.gateDataKept : t.gateNoLocalData,
+                  key: Key(hasLocalPlants ? 'gate-data-kept' : 'gate-no-local-data'),
+                  style: TextStyle(fontSize: 12.5, color: surface.muted, height: 1.4),
+                ),
+              ],
             ],
           ),
         ),

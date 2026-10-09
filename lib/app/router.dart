@@ -16,6 +16,7 @@ import '../features/plant_detail/plant_detail_screen.dart';
 import 'breakpoints.dart';
 import 'master_detail.dart';
 import 'navigation.dart';
+import 'not_found_screen.dart';
 import 'shell.dart';
 
 /// Navigator inside [AppShell]; imperative `Navigator.push` from features
@@ -59,6 +60,7 @@ GoRouter buildAppRouter({
     initialLocation: initialLocation ?? AppRoutes.home,
     refreshListenable: refreshListenable,
     redirect: webAccessRedirect,
+    errorBuilder: (context, state) => const NotFoundScreen(),
     routes: [
       GoRoute(
         path: AppRoutes.gate,

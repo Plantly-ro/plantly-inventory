@@ -992,7 +992,7 @@ class _ScheduleChip extends StatelessWidget {
               ),
             ),
             Text(
-              careTypeLabel(AppLocalizations.of(context), ct).toLowerCase(),
+              careTypeInlineLabel(AppLocalizations.of(context), ct, careTypeLabel(AppLocalizations.of(context), ct)),
               style: TextStyle(fontSize: 11, color: surface.muted),
             ),
           ],
@@ -1046,7 +1046,7 @@ class _DoneChip extends StatelessWidget {
               ),
             ),
             Text(
-              careTypePastLabel(AppLocalizations.of(context), ct).toLowerCase(),
+              careTypeInlineLabel(AppLocalizations.of(context), ct, careTypePastLabel(AppLocalizations.of(context), ct)),
               style: TextStyle(fontSize: 11, color: surface.muted),
             ),
           ],

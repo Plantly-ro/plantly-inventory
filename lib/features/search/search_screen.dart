@@ -38,10 +38,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     _debounce = Timer(const Duration(milliseconds: 180), () => _runSearch(value));
   }
 
-  Future<void> _runSearch(String query) async {
+  /// [quiet]: a refresh of the current query (data changed) — keep the
+  /// list on screen instead of flashing the spinner.
+  Future<void> _runSearch(String query, {bool quiet = false}) async {
     final repo = ref.read(searchRepositoryProvider);
     setState(() {
-      _loading = true;
+      if (!quiet) _loading = true;
       _lastQuery = query;
     });
     try {
@@ -62,6 +64,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
     final t = AppLocalizations.of(context);
+    // The query is one-shot: re-run it whenever the plants change (a plant
+    // opened from here and deleted / renamed must not linger in the list).
+    ref.listen(plantsStreamProvider, (_, next) {
+      final q = _lastQuery;
+      if (next.hasValue && q != null && q.trim().isNotEmpty) _runSearch(q, quiet: true);
+    });
 
     return Scaffold(
       backgroundColor: surface.bg,

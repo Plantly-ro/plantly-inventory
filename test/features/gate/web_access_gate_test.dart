@@ -1,6 +1,7 @@
 // WebAccessGate (WEB-ACCESS-POLICY §0): the three states' copy and
 // controls, RO + EN, prices from /subscriptions/plans with the EUR fallback,
 // the Play badge per locale, retry → re-fetch, sign-out from state 2.
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ import 'package:plantly_inventory/cloud/entitlement.dart';
 import 'package:plantly_inventory/cloud/local_data_wipe.dart';
 import 'package:plantly_inventory/cloud/web_access.dart';
 import 'package:plantly_inventory/config/plantly_features.dart';
+import 'package:plantly_inventory/data/providers.dart' show plantsStreamProvider;
 import 'package:plantly_inventory/features/gate/web_access_gate.dart';
 import 'package:plantly_inventory/features/gate/web_offline_banner.dart';
 import 'package:plantly_inventory/l10n/generated/app_localizations.dart';
@@ -32,12 +34,14 @@ void main() {
   late int plansHits;
   late int meHits;
   late bool plansFail;
+  String? meFirstName;
 
   setUp(() {
     SharedPreferences.setMockInitialValues({'plantly_onboarded': true});
     plansHits = 0;
     meHits = 0;
     plansFail = false;
+    meFirstName = null;
   });
 
   http.Response jsonRes(Object body, [int status = 200]) =>
@@ -56,6 +60,9 @@ void main() {
               {'interval': 'year', 'amount_minor': 1799, 'currency': 'eur', 'prices': {'eur': 1799, 'ron': 7900, 'usd': 1799}},
             ],
           });
+        }
+        if (path.endsWith('/users/me') && meFirstName != null) {
+          return jsonRes({'id': 'u-1', 'username': 'alice', 'first_name': meFirstName});
         }
         if (path.endsWith('/subscriptions/me')) {
           meHits++;
@@ -201,8 +208,23 @@ void main() {
       expect(find.text('Inclus în Plantly Pro.'), findsOneWidget);
       expect(find.byKey(const Key('gate-data-kept')), findsOneWidget);
       expect(find.byKey(const Key('gate-android-card')), findsOneWidget);
-      expect(find.text('Nu ești tu? Deconectează-te'), findsOneWidget);
+      expect(find.text('Nu ești tu? Ieși din cont'), findsOneWidget);
       expect(find.byKey(const Key('gate-sign-in')), findsNothing);
+    });
+
+    testWidgets('greets by first name from the account (not the handle); fresh browser → no "plants stay here" line', (tester) async {
+      meFirstName = 'Andrei';
+      await pump(
+        tester,
+        access: WebAccess.closedNotEntitled('qafinal1'),
+        locale: const Locale('en'),
+        storedToken: token,
+        extra: [plantsStreamProvider.overrideWith((ref) => Stream.value(const []))],
+      );
+      expect(find.textContaining('Hi, Andrei.'), findsOneWidget);
+      expect(find.textContaining('qafinal1'), findsNothing);
+      expect(find.byKey(const Key('gate-data-kept')), findsNothing);
+      expect(find.byKey(const Key('gate-no-local-data')), findsOneWidget);
     });
 
     testWidgets('RO at 375×667 (small phone): nothing overflows, CTA label fully laid out', (tester) async {
@@ -268,7 +290,7 @@ void main() {
       await tester.ensureVisible(find.byKey(const Key('gate-sign-out')));
       await tester.tap(find.byKey(const Key('gate-sign-out')));
       await tester.pumpAndSettle();
-      expect(find.text('Te deconectezi de la plantly.ro?'), findsOneWidget);
+      expect(find.text('Ieși din contul plantly.ro?'), findsOneWidget);
       await tester.tap(find.byKey(const Key('gate-sign-out-confirm')));
       await tester.pumpAndSettle();
       expect(container.read(plantlyAuthProvider).valueOrNull, isNull);
@@ -334,6 +356,32 @@ void main() {
       expect(wiper.signOuts, 2);
     });
 
+    testWidgets('sign-out: "Syncing your last changes…" can be cancelled — nothing signed out or wiped', (tester) async {
+      final wiper = _CountingWiper()..hang = Completer<int>();
+      await pump(
+        tester,
+        access: WebAccess.closedNotEntitled('alice'),
+        locale: const Locale('en'),
+        storedToken: token,
+        extra: [localDataWiperProvider.overrideWith((ref) => wiper)],
+      );
+      await tester.ensureVisible(find.byKey(const Key('gate-sign-out')));
+      await tester.tap(find.byKey(const Key('gate-sign-out')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('gate-sign-out-confirm')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byKey(const Key('sign-out-syncing')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('sign-out-syncing-cancel')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('sign-out-syncing')), findsNothing);
+      // The push finishing later changes nothing.
+      wiper.hang!.complete(0);
+      await tester.pumpAndSettle();
+      expect(wiper.signOuts, 0);
+      expect(find.byKey(const Key('sign-out-unsynced')), findsNothing);
+    });
+
     testWidgets('EN copy', (tester) async {
       await pump(tester, access: WebAccess.closedHeldByOther('alice', 'bob'), locale: const Locale('en'), storedToken: token);
       expect(find.text("This browser still holds bob's plants"), findsOneWidget);
@@ -394,10 +442,13 @@ class _CountingWiper implements LocalDataWiper {
   int calls = 0;
   int signOuts = 0;
   int pending = 0;
+
+  /// Set → [flush] hangs until completed (a slow push).
+  Completer<int>? hang;
   @override
   Future<void> wipeAndReload() async => calls++;
   @override
-  Future<int> flush({Duration timeout = Duration.zero, Duration pause = Duration.zero}) async => pending;
+  Future<int> flush({Duration timeout = Duration.zero, Duration pause = Duration.zero}) async => hang?.future ?? pending;
   @override
   Future<int> pendingCount() async => pending;
   @override

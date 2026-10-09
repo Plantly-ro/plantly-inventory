@@ -41,8 +41,8 @@ final syncStatusProvider = StreamProvider<SyncStatus>((ref) {
 ///   stored link belongs to another account — that is the user's call in
 ///   Me → Cloud), or asks for a sync when it already is and is entitled;
 /// * on every link change asks the runner for a sync (debounced by
-///   [debounce]; the freshly built runner's first cycle usually wins the
-///   race, in which case the request just joins it).
+///   [debounce]) unless a runner built since then already ran its first
+///   cycle — the usual case, and always the one at app start.
 class CloudSyncCoordinator {
   CloudSyncCoordinator(this._ref, {this.debounce = const Duration(milliseconds: 500)});
 
@@ -57,13 +57,21 @@ class CloudSyncCoordinator {
   int signInsHandled = 0;
 
   void start() {
-    _ref.listen<SyncRunner>(syncRunnerProvider, (_, _) {});
+    _ref.listen<SyncRunner>(syncRunnerProvider, (prev, next) {
+      if (!identical(prev, next)) _runnerBuilds++;
+    });
     _signIns = _ref.read(signInEventsProvider).stream.listen((_) => _onSignIn());
     _ref.listen<String?>(collectionLinkProvider.select((s) => s.link?.id), (prev, next) {
-      if (next != null && next != prev) requestSync();
+      if (next != null && next != prev) requestSync(unlessRebuilt: true);
     });
     _bootInFlight = _handleBoot();
   }
+
+  /// Runners [syncRunnerProvider] has built so far: a runner built after a
+  /// link change ran its first cycle (`HttpSyncRunner.start`) for it.
+  int _runnerBuilds = 0;
+  int _buildsAtRequest = 0;
+  bool _requestUnconditional = false;
 
   Future<void>? _bootInFlight;
 
@@ -137,11 +145,25 @@ class CloudSyncCoordinator {
   }
 
   /// Ask the current runner for a cycle, coalescing bursts.
-  void requestSync() {
+  ///
+  /// [unlessRebuilt]: skip it when a new runner was built after the
+  /// request — its own first cycle already covers it. That is the usual
+  /// outcome of a link change (the collection id moves, the runner
+  /// rebuilds) and always the one at app start, where the persisted link
+  /// resolving reads as a change: without this, start-up ran the same
+  /// push/pull twice.
+  void requestSync({bool unlessRebuilt = false}) {
     _timer?.cancel();
+    if (!unlessRebuilt) _requestUnconditional = true;
+    _buildsAtRequest = _runnerBuilds;
     _timer = Timer(debounce, () {
       _timer = null;
-      unawaited(_ref.read(syncRunnerProvider).syncNow());
+      final runner = _ref.read(syncRunnerProvider); // flushes a pending rebuild
+      final rebuilt = _runnerBuilds != _buildsAtRequest;
+      final unconditional = _requestUnconditional;
+      _requestUnconditional = false;
+      if (rebuilt && !unconditional) return;
+      unawaited(runner.syncNow());
     });
   }
 

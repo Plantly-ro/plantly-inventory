@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -101,6 +102,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with FirstRunOnboarding
                     // Long-pressing the home body toggles edit mode —
                     // replaces the old "✎ Customize home" button.
                     onLongPress: () => setState(() => _editing = !_editing),
+                    // Mouse: right-click does the same (the web hint says so).
+                    onSecondaryTap: () => setState(() => _editing = !_editing),
                     behavior: HitTestBehavior.deferToChild,
                     child: RefreshIndicator(
                     onRefresh: () async {
@@ -295,7 +298,7 @@ class _EditHint extends StatelessWidget {
           const SizedBox(width: 4),
           Expanded(
             child: Text(
-              AppLocalizations.of(context).homeEditHint,
+              kIsWeb ? AppLocalizations.of(context).homeEditHintWeb : AppLocalizations.of(context).homeEditHint,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 10.5, color: surface.muted, fontStyle: FontStyle.italic),

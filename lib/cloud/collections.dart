@@ -78,6 +78,12 @@ final deviceRevokedNoticeProvider = StateProvider<bool>((_) => false);
 /// once (`CloudNotices` SnackBar) and resets it to null.
 final collectionRemovedNoticeProvider = StateProvider<String?>((_) => null);
 
+/// Name of the active collection that vanished from the server list (the
+/// owner removed this account, or deleted / transferred it) while this
+/// device was switched to it; the app moved back to the linked default.
+/// The UI shows a one-shot notice and resets it to null.
+final collectionGoneNoticeProvider = StateProvider<String?>((_) => null);
+
 /// Why the linked default ("home") is gone for this account.
 enum HomeLossReason {
   /// 403 `not_a_member`: after a transfer (§2.8) the new owner removed us.
@@ -273,17 +279,52 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
       (prev, next) {
         if (next.$2 == null) {
           // Signed out: nothing to list, but keep the cache for the account.
+          _fetchedFor = null;
           _onSessionLost();
           return;
         }
-        if (prev != next) unawaited(refresh());
+        if (prev != next) unawaited(_refreshIfStale());
       },
     );
     if (refreshInterval > Duration.zero) {
       _timer = Timer.periodic(refreshInterval, (_) => unawaited(refresh()));
     }
     _ready = _loadCache();
-    unawaited(_ready.then((_) => refresh()));
+    unawaited(_boot());
+  }
+
+  /// First fetch, once the session AND the persisted link are known: they
+  /// resolve asynchronously after construction, and fetching before the
+  /// link was read would make its arrival look like a link change (a
+  /// second, identical `GET /inventory/collections` at every start).
+  Future<void> _boot() async {
+    await _ready;
+    try {
+      await _ref.read(collectionLinkProvider.notifier).ready;
+    } catch (_) {
+      // Unreadable link: fetch for the session as it is.
+    }
+    if (!mounted) return;
+    _booted = true;
+    await _refreshIfStale();
+  }
+
+  /// `(link, account)` of the cloud state, as the list fetch sees it.
+  (String?, String?) _cloudKey() {
+    final s = _ref.read(cloudStateProvider);
+    return (s.collectionId, s.account);
+  }
+
+  /// Fetch unless the last fetch (running or done) was already for the
+  /// current `(link, account)`: the listener fires for every resolution
+  /// step, explicit [refresh] calls always fetch. A fetch still running
+  /// for an older key is let finish, then followed by one for the new key.
+  Future<void> _refreshIfStale() async {
+    if (!_booted) return; // [_boot] fetches with whatever has resolved by then
+    final running = _inflight;
+    if (running != null && _fetchedFor != _cloudKey()) await running;
+    if (!mounted || _fetchedFor == _cloudKey()) return;
+    await refresh();
   }
 
   final Ref _ref;
@@ -302,6 +343,14 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
   int _homeRecheckAttempts = 0;
   StreamSubscription<Object?>? _signIns;
   Future<void>? _inflight;
+
+  /// [_boot] has run: before that, cloud-state changes are the session /
+  /// link still resolving and the boot fetch picks them up.
+  bool _booted = false;
+
+  /// [_cloudKey] when the latest fetch started (null: none yet for this
+  /// session).
+  (String?, String?)? _fetchedFor;
 
   /// Ids the last successful `GET /inventory/collections` named (the
   /// linked-default stand-in of [_withLinkedDefault] excluded).
@@ -368,12 +417,19 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
   /// `GET /inventory/collections`; concurrent calls share one fetch. Errors
   /// land in [CollectionsState.error] (the cached list stays), never throw.
   Future<void> refresh() {
-    return _inflight ??= _refresh().whenComplete(() => _inflight = null);
+    return _inflight ??= _fetchFor().whenComplete(() => _inflight = null);
+  }
+
+  Future<void> _fetchFor() async {
+    await _ready;
+    if (!mounted) return; // disposed while a previous fetch was awaited
+    _fetchedFor = _cloudKey();
+    await _refresh();
   }
 
   Future<void> _refresh() async {
     await _ready;
-    if (!_ref.read(cloudEnabledProvider)) return;
+    if (!mounted || !_ref.read(cloudEnabledProvider)) return;
     final session = await _ref.read(plantlyAuthProvider.notifier).current();
     if (session == null) {
       _onSessionLost();
@@ -398,6 +454,9 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
       // window): the home is back, the runner resumes against it.
       if (loss != null && _listed.contains(loss.collectionId)) await _setHomeLoss(null);
       final items = _sorted(_withLinkedDefault(listing.items));
+      // The active (shared) collection as the list knew it before this
+      // fetch — named in the notice if it is gone now.
+      final previousActive = state.byId(_ref.read(currentTenantIdProvider));
       await _saveCache(session.userId, items, callerEntitled: listing.callerEntitled);
       if (!mounted) return;
       state = state.copyWith(
@@ -407,7 +466,7 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
         fetchedAt: DateTime.now().toUtc(),
         callerEntitled: listing.callerEntitled,
       );
-      _reconcileActive();
+      _reconcileActive(previousActive);
     } catch (e) {
       if (mounted) state = state.copyWith(loading: false, error: e);
     }
@@ -441,12 +500,17 @@ class CollectionsNotifier extends StateNotifier<CollectionsState> {
 
   /// After a fetch: a tenant that is no longer in the list (removed as a
   /// member, collection deleted) goes back to the linked default so the
-  /// user is never left looking at a collection nobody syncs.
-  void _reconcileActive() {
+  /// user is never left looking at a collection nobody syncs. When the
+  /// previous list knew it ([previousActive]) the move is announced
+  /// ([collectionGoneNoticeProvider]) instead of happening silently.
+  void _reconcileActive([CloudCollection? previousActive]) {
     final cloud = _ref.read(cloudStateProvider);
     if (!cloudAccountReady(cloud)) return;
     final tenant = _ref.read(currentTenantIdProvider);
     if (tenant == cloud.collectionId || state.byId(tenant) != null) return;
+    if (previousActive != null && previousActive.id == tenant) {
+      _ref.read(collectionGoneNoticeProvider.notifier).state = previousActive.displayName;
+    }
     unawaited(_setTenant(cloud.collectionId!));
   }
 
