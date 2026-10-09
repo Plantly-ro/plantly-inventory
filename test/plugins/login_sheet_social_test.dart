@@ -64,6 +64,11 @@ void main() {
     expect(find.byKey(const Key('plantly-login-password')), findsOneWidget);
     expect(find.byKey(const Key('plantly-login-submit')), findsOneWidget);
     expect(find.byKey(const Key('plantly-login-oauth-waiting')), findsNothing);
+    // The show/hide eye is named and flips its name.
+    expect(find.byTooltip('Show password'), findsOneWidget);
+    await tester.tap(find.byTooltip('Show password'));
+    await tester.pump();
+    expect(find.byTooltip('Hide password'), findsOneWidget);
     final google = tester.getTopLeft(find.byKey(const Key('plantly-login-google')));
     final email = tester.getTopLeft(find.byKey(const Key('plantly-login-email')));
     expect(google.dy, lessThan(email.dy));
@@ -164,6 +169,13 @@ void main() {
       expect(find.text('Sign in to plantly.ro'), findsOneWidget);
       expect(find.byKey(const Key('plantly-login-google')), findsOneWidget);
       expect(find.byKey(const Key('plantly-login-submit')), findsOneWidget);
+      // Title is a heading; an explicit Close closes the sheet.
+      final semantics = tester.ensureSemantics();
+      expect(tester.getSemantics(find.text('Sign in to plantly.ro')), isSemantics(label: 'Sign in to plantly.ro', isHeader: true));
+      semantics.dispose();
+      await tester.tap(find.byKey(const Key('plantly-login-close')));
+      await tester.pumpAndSettle();
+      expect(find.byType(PlantlyLoginSheet), findsNothing);
     });
 
     testWidgets('desktop: right-side sheet, title in the chrome header only', (tester) async {
@@ -172,6 +184,7 @@ void main() {
       expect(find.byType(BottomSheet), findsNothing);
       expect(find.byType(PlantlyLoginSheet), findsOneWidget);
       expect(find.text('Sign in to plantly.ro'), findsOneWidget); // header, not duplicated in the body
+      expect(find.byKey(const Key('plantly-login-close')), findsNothing, reason: 'the chrome header has the ×');
       expect(find.byKey(const Key('plantly-login-google')), findsOneWidget);
       expect(find.byKey(const Key('plantly-login-submit')), findsOneWidget);
       // Panel hugs the right edge at the desktop side-sheet width.

@@ -140,30 +140,44 @@ class CareTypesScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  Text(
-                    existing == null ? t.meCareTypeNew : t.meCareTypeEdit(careTypeLabel(t, existing)),
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text),
+                  Semantics(
+                    container: true,
+                    header: true,
+                    child: Text(
+                      existing == null ? t.meCareTypeNew : t.meCareTypeEdit(careTypeLabel(t, existing)),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: surface.text),
+                    ),
                   ),
                   const SizedBox(height: 14),
-                  _label(t.meCareTypeLabelField, surface),
+                  // The upper-case captions are visual; each field carries a
+                  // sentence-case name of its own.
+                  ExcludeSemantics(child: _label(t.meCareTypeLabelField, surface)),
                   const SizedBox(height: 6),
-                  TextField(
-                    controller: labelCtrl,
-                    autofocus: true,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: _dec(surface, hint: t.meCareTypeLabelHint),
+                  Semantics(
+                    container: true,
+                    label: t.a11yCareTypeName,
+                    child: TextField(
+                      controller: labelCtrl,
+                      autofocus: true,
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: _dec(surface, hint: t.meCareTypeLabelHint),
+                    ),
                   ),
                   const SizedBox(height: 12),
-                  _label(t.meCareTypeIntervalField, surface),
+                  ExcludeSemantics(child: _label(t.meCareTypeIntervalField, surface)),
                   const SizedBox(height: 6),
-                  TextField(
-                    controller: daysCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: _dec(surface),
-                    onChanged: (v) {
-                      final parsed = double.tryParse(v.replaceAll(',', '.'));
-                      if (parsed != null && parsed > 0) days = parsed;
-                    },
+                  Semantics(
+                    container: true,
+                    label: t.a11yCareTypeInterval,
+                    child: TextField(
+                      controller: daysCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: _dec(surface),
+                      onChanged: (v) {
+                        final parsed = double.tryParse(v.replaceAll(',', '.'));
+                        if (parsed != null && parsed > 0) days = parsed;
+                      },
+                    ),
                   ),
                   const SizedBox(height: 12),
                   _label(t.meCareTypeIconField, surface),
@@ -304,7 +318,12 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    return Material(
+    // A button (named by the label + interval) so editing is reachable
+    // without a mouse; the mute/delete icons stay separate buttons.
+    return Semantics(
+      container: true,
+      button: true,
+      child: Material(
       color: surface.surface,
       borderRadius: BorderRadius.circular(PlantlyTokens.radius),
       child: InkWell(
@@ -361,6 +380,7 @@ class _Row extends StatelessWidget {
           ),
         ),
       ),
+      ),
     );
   }
 
@@ -376,14 +396,26 @@ class _IconPicker extends StatelessWidget {
   final PlantlySurface surface;
   final ValueChanged<int> onChanged;
 
+  /// Accessible names for [kCareIconPalette], by position.
+  static const _iconNames = <String>[
+    'water', 'leaf', 'bubbles', 'flower', 'scissors', 'light', 'sun', 'bug',
+    'air', 'thermometer', 'lotus', 'grass', 'tools', 'hands', 'bell', 'firstAid',
+  ];
+
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
-        for (final icon in kCareIconPalette)
-          InkWell(
+        for (final (i, icon) in kCareIconPalette.indexed)
+          Semantics(
+            button: true,
+            inMutuallyExclusiveGroup: true,
+            selected: icon.codePoint == value,
+            label: t.a11yCareIconName(i < _iconNames.length ? _iconNames[i] : 'other'),
+            child: InkWell(
             onTap: () => onChanged(icon.codePoint),
             borderRadius: BorderRadius.circular(PlantlyTokens.radius),
             child: Container(
@@ -401,6 +433,7 @@ class _IconPicker extends StatelessWidget {
               ),
             ),
           ),
+          ),
       ],
     );
   }
@@ -411,6 +444,9 @@ class _ColorPicker extends StatelessWidget {
   final int? value;
   final PlantlySurface surface;
   final ValueChanged<int?> onChanged;
+
+  /// Accessible names for [_palette], by position.
+  static const _names = <String>['green', 'terra', 'blue', 'violet', 'rose', 'mustard', 'slate', 'forest'];
 
   static const _palette = <int>[
     0xFF3D7A5F, // botanical green
@@ -430,16 +466,22 @@ class _ColorPicker extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
-        _swatch(null, t.meCareTypeColourDefault),
-        for (final c in _palette) _swatch(c, null),
+        _swatch(null, t.meCareTypeColourDefault, null),
+        for (final (i, c) in _palette.indexed) _swatch(c, null, t.a11yCareColourName(_names[i])),
       ],
     );
   }
 
-  Widget _swatch(int? v, String? label) {
+  Widget _swatch(int? v, String? label, String? semanticLabel) {
     final selected = value == v;
     final color = v == null ? null : Color(v);
-    return InkWell(
+    return Semantics(
+      button: true,
+      inMutuallyExclusiveGroup: true,
+      selected: selected,
+      // Null for the "Default" chip: its text already names it.
+      label: semanticLabel,
+      child: InkWell(
       onTap: () => onChanged(v),
       borderRadius: BorderRadius.circular(999),
       child: Container(
@@ -456,6 +498,7 @@ class _ColorPicker extends StatelessWidget {
         child: label == null
             ? (selected ? const Icon(Icons.check, color: Colors.white, size: 16) : null)
             : Text(label, style: TextStyle(fontSize: 11, color: surface.muted, fontWeight: FontWeight.w600)),
+      ),
       ),
     );
   }

@@ -536,6 +536,96 @@ abstract class AppLocalizations {
   /// **'Sort plants'**
   String get homeSortTooltip;
 
+  /// No description provided for @a11yNameField.
+  ///
+  /// In en, this message translates to:
+  /// **'Your name (optional)'**
+  String get a11yNameField;
+
+  /// No description provided for @a11yShowPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Show password'**
+  String get a11yShowPassword;
+
+  /// No description provided for @a11yHidePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide password'**
+  String get a11yHidePassword;
+
+  /// No description provided for @a11yClearSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get a11yClearSearch;
+
+  /// No description provided for @a11yCareTypeName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get a11yCareTypeName;
+
+  /// No description provided for @a11yCareTypeInterval.
+  ///
+  /// In en, this message translates to:
+  /// **'Default interval in days'**
+  String get a11yCareTypeInterval;
+
+  /// No description provided for @a11yDisconnectDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect {name}'**
+  String a11yDisconnectDevice(String name);
+
+  /// No description provided for @a11ySortPlantsValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort plants: {value}'**
+  String a11ySortPlantsValue(String value);
+
+  /// No description provided for @a11yCareIconName.
+  ///
+  /// In en, this message translates to:
+  /// **'{icon, select, water{Water drop} leaf{Leaf} bubbles{Bubbles} flower{Flower} scissors{Scissors} light{Light} sun{Sun} bug{Bug} air{Air} thermometer{Thermometer} lotus{Lotus} grass{Grass} tools{Tools} hands{Hands} bell{Bell} firstAid{First aid} other{Icon}}'**
+  String a11yCareIconName(String icon);
+
+  /// No description provided for @a11yCareColourName.
+  ///
+  /// In en, this message translates to:
+  /// **'{colour, select, green{Green} terra{Terracotta} blue{Blue} violet{Violet} rose{Rose} mustard{Mustard} slate{Slate grey} forest{Forest green} other{Colour}}'**
+  String a11yCareColourName(String colour);
+
+  /// No description provided for @a11yInviteCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite code'**
+  String get a11yInviteCode;
+
+  /// No description provided for @a11yInviteLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite link'**
+  String get a11yInviteLink;
+
+  /// No description provided for @a11yCopyCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy code'**
+  String get a11yCopyCode;
+
+  /// No description provided for @a11yCopyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get a11yCopyLink;
+
+  /// No description provided for @a11yPlantPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo {index} of {count} · {name}'**
+  String a11yPlantPhoto(int index, int count, String name);
+
   /// No description provided for @homeSortNameAZ.
   ///
   /// In en, this message translates to:

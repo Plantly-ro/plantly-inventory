@@ -198,6 +198,9 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
   bool _busy = false;
   bool _copied = false;
 
+  /// Which single part (`code` / `link`) the small copy buttons last copied.
+  String? _copiedPart;
+
   String _role = CollectionRole.editor;
   InvitePreset _preset = InvitePreset.single;
   int _maxUses = 1;
@@ -254,6 +257,44 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
   Future<void> _copy(AppLocalizations t, CollectionInvite i) async {
     await Clipboard.setData(ClipboardData(text: _message(t, i)));
     if (mounted) setState(() => _copied = true);
+  }
+
+  Future<void> _copyPart(String part, String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (mounted) setState(() => _copiedPart = part);
+  }
+
+  /// Read-only invite text (code / link): announced as label + value
+  /// instead of an unlabeled (web: disabled) text field; still
+  /// mouse-selectable, with its own copy button.
+  Widget _copyableText({
+    required String semanticLabel,
+    required String value,
+    required String part,
+    required String copyTooltip,
+    required Widget text,
+    required PlantlySurface surface,
+    required double iconSize,
+  }) {
+    final done = _copiedPart == part;
+    return Row(
+      children: [
+        Expanded(
+          child: Semantics(
+            container: true,
+            label: semanticLabel,
+            value: value,
+            child: ExcludeSemantics(child: text),
+          ),
+        ),
+        IconButton(
+          key: Key('invite-copy-$part'),
+          tooltip: done ? AppLocalizations.of(context).shareInviteCopied : copyTooltip,
+          onPressed: () => _copyPart(part, value),
+          icon: Icon(done ? Icons.check : Icons.copy, size: iconSize, color: surface.muted),
+        ),
+      ],
+    );
   }
 
   Future<void> _share(AppLocalizations t, CollectionInvite i) async {
@@ -460,31 +501,48 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
     return [
       Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        // Left inset matches the copy button so the code stays centred.
+        padding: const EdgeInsets.fromLTRB(48, 10, 0, 10),
         decoration: BoxDecoration(
           color: surface.greenSoft,
           borderRadius: BorderRadius.circular(PlantlyTokens.radius),
         ),
-        child: Center(
-          child: SelectableText(
-            _pretty(invite.code),
-            key: const Key('invite-code'),
-            style: TextStyle(
-              fontFamily: PlantlyFonts.plusJakartaSans,
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 4,
-              color: surface.green,
-              fontFeatures: const [FontFeature.tabularFigures()],
+        child: _copyableText(
+          semanticLabel: t.a11yInviteCode,
+          value: _pretty(invite.code),
+          part: 'code',
+          copyTooltip: t.a11yCopyCode,
+          surface: surface,
+          iconSize: 18,
+          text: Center(
+            child: SelectableText(
+              _pretty(invite.code),
+              key: const Key('invite-code'),
+              style: TextStyle(
+                fontFamily: PlantlyFonts.plusJakartaSans,
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 4,
+                color: surface.green,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ),
         ),
       ),
-      const SizedBox(height: 10),
-      SelectableText(
-        invite.url,
-        key: const Key('invite-url'),
-        style: TextStyle(fontSize: 12, color: surface.muted),
+      const SizedBox(height: 4),
+      _copyableText(
+        semanticLabel: t.a11yInviteLink,
+        value: invite.url,
+        part: 'link',
+        copyTooltip: t.a11yCopyLink,
+        surface: surface,
+        iconSize: 16,
+        text: SelectableText(
+          invite.url,
+          key: const Key('invite-url'),
+          style: TextStyle(fontSize: 12, color: surface.muted),
+        ),
       ),
       const SizedBox(height: 6),
       Row(

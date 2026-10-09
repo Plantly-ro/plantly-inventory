@@ -366,6 +366,7 @@ void main() {
 
     testWidgets('defaults: Editor + single use · 7 days → body {"role":"editor","max_uses":1,"ttl_days":7}; summary line',
         (tester) async {
+      final semantics = tester.ensureSemantics();
       final log = <http.Request>[];
       await openInvite(tester, overrides([_mine], _mine, log));
       expect(find.byKey(const Key('invite-role-editor')), findsOneWidget);
@@ -388,6 +389,13 @@ void main() {
       // already says when the code stops working.
       expect(find.text('Editor · single use'), findsOneWidget);
       expect(find.text('Editor · single use · 7 days'), findsNothing);
+      // Code and link read as labelled values (not unlabeled text fields),
+      // each with its own copy button.
+      expect(tester.getSemantics(find.bySemanticsLabel('Invite code')).value, isNotEmpty);
+      expect(tester.getSemantics(find.bySemanticsLabel('Invite link')).value, startsWith('http'));
+      expect(find.byTooltip('Copy code'), findsOneWidget);
+      expect(find.byTooltip('Copy link'), findsOneWidget);
+      semantics.dispose();
     });
 
     testWidgets('Family preset → max_uses 10 / ttl_days 30', (tester) async {

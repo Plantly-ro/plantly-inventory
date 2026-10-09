@@ -78,6 +78,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.chevron_left, color: surface.text),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: TextField(
@@ -95,6 +96,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           if (_controller.text.isNotEmpty)
             IconButton(
               icon: Icon(Icons.close, color: surface.muted),
+              tooltip: t.a11yClearSearch,
               onPressed: () {
                 _controller.clear();
                 _runSearch('');

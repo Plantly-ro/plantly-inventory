@@ -49,7 +49,13 @@ class PlantFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
+    // Toggle-group semantics: "Overdue, selected, button".
+    return Semantics(
+      container: true,
+      button: true,
+      selected: selected,
+      inMutuallyExclusiveGroup: true,
+      child: Material(
       color: selected ? surface.green : surface.surface,
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
@@ -70,6 +76,7 @@ class PlantFilterChip extends StatelessWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }

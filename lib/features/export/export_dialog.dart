@@ -283,6 +283,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                       ),
                     ),
                     IconButton(
+                      tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
                       onPressed: () => Navigator.of(context).maybePop(),
                       icon: Icon(Icons.close, color: surface.text),
                     ),

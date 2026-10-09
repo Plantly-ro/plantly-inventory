@@ -52,15 +52,16 @@ class WidgetShell extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (title != null) _Header(
-                  title: title!,
-                  accentLabel: accentLabel,
-                  accentColor: accentColor,
-                  action: action,
-                  onAction: onAction,
-                  editing: editing,
-                  surface: surface,
-                ),
+                if (title != null)
+                  _Header(
+                    title: title!,
+                    accentLabel: accentLabel,
+                    accentColor: accentColor,
+                    action: action,
+                    onAction: onAction,
+                    editing: editing,
+                    surface: surface,
+                  ),
                 child,
               ],
             ),
@@ -119,15 +120,23 @@ class _Header extends StatelessWidget {
               textBaseline: TextBaseline.alphabetic,
               children: [
                 Flexible(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: surface.text,
-                      letterSpacing: -0.01 * 16,
+                  // Container: without it the heading flag merged into the
+                  // whole card (web rendered it as a <header> banner).
+                  child: Semantics(
+                    container: true,
+                    header: true,
+                    headingLevel: 2,
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: PlantlyFonts.plusJakartaSans,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: surface.text,
+                        letterSpacing: -0.01 * 16,
+                      ),
                     ),
                   ),
                 ),
@@ -145,19 +154,28 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
+          // Own button node: otherwise its tap merged into the whole
+          // widget card, which then read as one giant button.
           if (action != null && !editing)
-            InkWell(
-              onTap: onAction,
-              borderRadius: BorderRadius.circular(6),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                child: Text(
-                  action!.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: surface.green,
-                    letterSpacing: 0.08 * 11,
+            Semantics(
+              container: true,
+              button: true,
+              child: InkWell(
+                onTap: onAction,
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 4,
+                  ),
+                  child: Text(
+                    action!.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: surface.green,
+                      letterSpacing: 0.08 * 11,
+                    ),
                   ),
                 ),
               ),
@@ -189,7 +207,11 @@ class _EditControls extends StatelessWidget {
         border: Border.all(color: surface.border),
         borderRadius: BorderRadius.circular(PlantlyTokens.radiusMd),
         boxShadow: const [
-          BoxShadow(color: Color(0x1F000000), blurRadius: 12, offset: Offset(0, 4)),
+          BoxShadow(
+            color: Color(0x1F000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
         ],
       ),
       padding: const EdgeInsets.all(3),
@@ -219,7 +241,10 @@ class _EditControls extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 6),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+              textStyle: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             onPressed: onRemove,
             child: Text(AppLocalizations.of(context).commonRemove),

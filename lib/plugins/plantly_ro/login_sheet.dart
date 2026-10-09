@@ -183,11 +183,29 @@ class _PlantlyLoginSheetState extends ConsumerState<PlantlyLoginSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (!desktop) ...[
-              Text(
-                t.plantlyLoginTitle,
-                style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, fontSize: 19, fontWeight: FontWeight.w800, color: surface.text),
+              // Heading + an explicit Close: the drag handle alone gives
+              // screen-reader and keyboard users no way out.
+              Row(
+                children: [
+                  Expanded(
+                    child: Semantics(
+                      container: true,
+                      header: true,
+                      child: Text(
+                        t.plantlyLoginTitle,
+                        style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, fontSize: 19, fontWeight: FontWeight.w800, color: surface.text),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    key: const Key('plantly-login-close'),
+                    tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: Icon(Icons.close, size: 20, color: surface.muted),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
               Text(subtitle, key: const Key('plantly-login-subtitle'), style: TextStyle(fontSize: 12.5, color: surface.muted)),
               const SizedBox(height: 16),
               ],
@@ -249,6 +267,7 @@ class _PlantlyLoginSheetState extends ConsumerState<PlantlyLoginSheet> {
                 style: TextStyle(fontSize: 14, color: surface.text),
                 decoration: _dec(surface, t.plantlyLoginPassword).copyWith(
                   suffixIcon: IconButton(
+                    tooltip: _obscure ? t.a11yShowPassword : t.a11yHidePassword,
                     icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                         size: 18, color: surface.muted),
                     onPressed: () => setState(() => _obscure = !_obscure),

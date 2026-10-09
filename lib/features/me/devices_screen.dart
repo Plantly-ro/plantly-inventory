@@ -231,7 +231,12 @@ class _DeviceTile extends StatelessWidget {
       if ((device.appVersion ?? '').isNotEmpty) 'v${device.appVersion}',
       if (device.lastSeenAt != null) t.devicesLastSeen(formatLastSeen(device.lastSeenAt!, t.localeName)),
     ];
-    return Container(
+    // One group per device, so its "Disconnect" is announced with the
+    // device it belongs to.
+    return Semantics(
+      container: true,
+      explicitChildNodes: true,
+      child: Container(
       key: Key('device-${device.deviceId}'),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -289,10 +294,15 @@ class _DeviceTile extends StatelessWidget {
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: Text(t.devicesRevoke, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              child: Text(
+                t.devicesRevoke,
+                semanticsLabel: t.a11yDisconnectDevice(deviceDisplayName(device, t)),
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
             ),
           ],
         ],
+      ),
       ),
     );
   }

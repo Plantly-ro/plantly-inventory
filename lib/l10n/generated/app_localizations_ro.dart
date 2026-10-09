@@ -257,6 +257,91 @@ class AppLocalizationsRo extends AppLocalizations {
   String get homeSortTooltip => 'Sortează plantele';
 
   @override
+  String get a11yNameField => 'Numele tău (opțional)';
+
+  @override
+  String get a11yShowPassword => 'Arată parola';
+
+  @override
+  String get a11yHidePassword => 'Ascunde parola';
+
+  @override
+  String get a11yClearSearch => 'Șterge căutarea';
+
+  @override
+  String get a11yCareTypeName => 'Nume';
+
+  @override
+  String get a11yCareTypeInterval => 'Intervalul implicit, în zile';
+
+  @override
+  String a11yDisconnectDevice(String name) {
+    return 'Deconectează $name';
+  }
+
+  @override
+  String a11ySortPlantsValue(String value) {
+    return 'Sortează plantele: $value';
+  }
+
+  @override
+  String a11yCareIconName(String icon) {
+    String _temp0 = intl.Intl.selectLogic(icon, {
+      'water': 'Picătură de apă',
+      'leaf': 'Frunză',
+      'bubbles': 'Bule',
+      'flower': 'Floare',
+      'scissors': 'Foarfecă',
+      'light': 'Lumină',
+      'sun': 'Soare',
+      'bug': 'Gândac',
+      'air': 'Aer',
+      'thermometer': 'Termometru',
+      'lotus': 'Lotus',
+      'grass': 'Iarbă',
+      'tools': 'Unelte',
+      'hands': 'Mâini',
+      'bell': 'Clopoțel',
+      'firstAid': 'Trusă de prim ajutor',
+      'other': 'Pictogramă',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String a11yCareColourName(String colour) {
+    String _temp0 = intl.Intl.selectLogic(colour, {
+      'green': 'Verde',
+      'terra': 'Teracotă',
+      'blue': 'Albastru',
+      'violet': 'Violet',
+      'rose': 'Roz',
+      'mustard': 'Muștar',
+      'slate': 'Gri ardezie',
+      'forest': 'Verde închis',
+      'other': 'Culoare',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get a11yInviteCode => 'Codul invitației';
+
+  @override
+  String get a11yInviteLink => 'Linkul invitației';
+
+  @override
+  String get a11yCopyCode => 'Copiază codul';
+
+  @override
+  String get a11yCopyLink => 'Copiază linkul';
+
+  @override
+  String a11yPlantPhoto(int index, int count, String name) {
+    return 'Fotografia $index din $count · $name';
+  }
+
+  @override
   String get homeSortNameAZ => 'Nume A–Z';
 
   @override

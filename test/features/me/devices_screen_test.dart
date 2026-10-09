@@ -110,7 +110,11 @@ void main() {
   Iterable<http.Request> listCalls() => requests.where((r) => r.method == 'GET' && r.url.path.endsWith('/inventory/devices'));
 
   testWidgets('renders both devices; "This device" chip only on the current one; revoke only on the other', (tester) async {
+    final semantics = tester.ensureSemantics();
     await pump(tester);
+    // Disconnect is announced with its device.
+    expect(find.bySemanticsLabel('Disconnect Chrome on Linux'), findsOneWidget);
+    semantics.dispose();
     expect(find.text('Devices'), findsOneWidget);
     expect(find.byKey(const Key('device-dev-me')), findsOneWidget);
     expect(find.byKey(const Key('device-dev-other')), findsOneWidget);
