@@ -10,6 +10,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/hover_card.dart';
 import '../../../shared/assignee_initial.dart';
 import '../../../shared/plant_thumb.dart';
+import '../../../shared/relative_days.dart';
 import '../../../theme/tokens.dart';
 import '../../search/search_screen.dart';
 import '../filter.dart';
@@ -136,7 +137,7 @@ class GridWidget extends ConsumerWidget {
                   final nextType = nextTypeByPlant[row.id];
                   final dueLabel = nextDueMs == null
                       ? null
-                      : _DueLabel.forMs(t, nextDueMs - nowMs);
+                      : homeDueLabel(t, nextDueMs, DateTime.fromMillisecondsSinceEpoch(nowMs));
                   final selection = ref.watch(plantSelectionProvider);
                   final selected = selection.contains(row.id);
                   final inSelectionMode = selection.isNotEmpty;
@@ -439,26 +440,28 @@ class _SortMenu extends StatelessWidget {
   }
 }
 
-/// Stand-alone short-form due-time formatter. Kept out of the `Card`
-/// widget so it's cheap to compute per item in the grid loop.
-class _DueLabel {
-  static String forMs(AppLocalizations t, int diffMs) {
-    if (diffMs < 0) {
-      final late = (-diffMs / (86400 * 1000)).floor();
-      if (late >= 1) return t.homeDueLateDays(late);
-      final h = (-diffMs / (3600 * 1000)).floor();
-      if (h >= 1) return t.homeDueLateHours(h);
-      return t.homeDueNowShort;
-    }
-    final days = (diffMs / (86400 * 1000)).round();
-    if (days == 0) {
-      final h = (diffMs / (3600 * 1000)).round();
-      if (h < 1) return t.homeDueUnderHour;
-      return t.homeDueInHours(h);
-    }
-    if (days == 1) return t.homeDueTomorrow;
-    return t.homeDueInDays(days);
+/// Short-form due-time copy for a grid card ("in 5 d", "tomorrow",
+/// "3 h late"). Day counts are CALENDAR days ([calendarDaysBetween]) so the
+/// card, Plant detail and Calendar name the same number for one due date;
+/// under a day it counts hours. Top-level so the grid loop stays cheap and
+/// tests can reach it.
+String homeDueLabel(AppLocalizations t, int dueMs, DateTime now) {
+  final diffMs = dueMs - now.millisecondsSinceEpoch;
+  final due = DateTime.fromMillisecondsSinceEpoch(dueMs, isUtc: true);
+  if (diffMs < 0) {
+    final h = (-diffMs / (3600 * 1000)).floor();
+    if (h >= 24) return t.homeDueLateDays(calendarDaysBetween(due, now));
+    if (h >= 1) return t.homeDueLateHours(h);
+    return t.homeDueNowShort;
   }
+  final days = calendarDaysBetween(now, due);
+  if (days == 0) {
+    final h = (diffMs / (3600 * 1000)).round();
+    if (h < 1) return t.homeDueUnderHour;
+    return t.homeDueInHours(h);
+  }
+  if (days == 1) return t.homeDueTomorrow;
+  return t.homeDueInDays(days);
 }
 
 class _LocationTagChipsRow extends ConsumerWidget {

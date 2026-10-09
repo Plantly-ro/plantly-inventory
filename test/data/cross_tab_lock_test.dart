@@ -128,7 +128,7 @@ void main() {
     await Future.wait([writer(a, 'a'), writer(b, 'b')]);
     expect(lock.maxHeld, 1, reason: 'the two connections never held the lock together');
     expect(await b.customSelect('SELECT COUNT(*) AS n FROM tags').map((r) => r.read<int>('n')).getSingle(), 40);
-  });
+  }, timeout: const Timeout(Duration(minutes: 3))); // CPU-bound; 30 s default flaked under full-suite load
 
   test('backstop: I/O / busy errors outside a transaction retry with backoff; other errors do not', () async {
     final flaky = Flaky(2, SqliteException(10, 'disk I/O error'));

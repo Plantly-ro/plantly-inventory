@@ -243,6 +243,26 @@ void main() {
       expect(gated.runs, 2);
     });
   });
+
+  test('arms at most kMaxOsReminders (Android caps alarms at 500) — the nearest ones', () async {
+    final opLog = OpLogWriter(db: db, clock: HlcClock(deviceId: 'cap'), tenantId: 'tenant-local');
+    final capPlants = PlantRepository(db: db, opLog: opLog);
+    final capSchedules = CareScheduleRepository(db: db, opLog: opLog);
+    for (var i = 0; i < kMaxOsReminders + 20; i++) {
+      final p = await capPlants.create(nickname: 'P$i');
+      await capSchedules.upsert(
+        plantId: p.id,
+        type: 'water',
+        baseIntervalDays: 30,
+        firstDueAt: DateTime.utc(2026, 5, 2).add(Duration(minutes: i)),
+      );
+    }
+    final n = await sync.syncFromDatabase();
+    expect(n, kMaxOsReminders);
+    expect(fake.calls, hasLength(kMaxOsReminders));
+    expect(fake.calls.map((c) => c.event.summary), contains('Water — P0'));
+    expect(fake.calls.map((c) => c.event.summary), isNot(contains('Water — P${kMaxOsReminders + 19}')));
+  });
 }
 
 /// [FakeNotificationService] that counts `syncAll` pipeline runs and can
@@ -254,7 +274,7 @@ class _GatedNotificationService extends FakeNotificationService {
   bool failNext = false;
 
   @override
-  Future<void> syncAll(Iterable<ICalEvent> events) async {
+  Future<void> syncAll(Iterable<ICalEvent> events, {String? tenantId}) async {
     runs++;
     if (!entered.isCompleted) entered.complete();
     if (failNext) {
@@ -266,6 +286,6 @@ class _GatedNotificationService extends FakeNotificationService {
       gate = null;
       await g.future;
     }
-    await super.syncAll(events);
+    await super.syncAll(events, tenantId: tenantId);
   }
 }

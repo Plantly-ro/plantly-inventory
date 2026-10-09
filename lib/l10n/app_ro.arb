@@ -1345,5 +1345,8 @@
   "@cloudHomeMoveBody": {"placeholders": {"name": {"type": "String"}}},
   "cloudHomeMoveBodyShared": "Sunt adăugate în „{name}”, pe care o împarți cu {count} persoane — le vor vedea și ele. Sunt încărcate din nou de pe acest dispozitiv; nu se șterge nimic.",
   "@cloudHomeMoveBodyShared": {"placeholders": {"name": {"type": "String"}, "count": {"type": "int"}}},
-  "dbBusyOtherTab": "Altă filă Plantly lucrează cu datele tale — reîncercăm…"
+  "dbBusyOtherTab": "Altă filă Plantly lucrează cu datele tale — reîncercăm…",
+  "reminderTapOtherCollection": "Planta este în altă colecție — comută pe ea ca să vezi planta.",
+  "reminderTapPlantGone": "Planta nu mai este în colecția ta.",
+  "statsCardInDaysShort": "în {count} z"
 }

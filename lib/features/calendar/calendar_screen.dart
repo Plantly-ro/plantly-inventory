@@ -9,6 +9,7 @@ import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../shared/care_type_labels.dart';
 import '../../shared/assignee_initial.dart';
+import '../../shared/relative_days.dart';
 import '../../theme/tokens.dart';
 import '../collections/read_only_banner.dart';
 import '../home/home_providers.dart';
@@ -40,29 +41,55 @@ int _firstWeekdayOf(BuildContext context) {
   return index == 0 ? DateTime.sunday : index;
 }
 
-/// Midnight of the first day of the week containing [d].
+/// Midnight of the first day of the week containing [d]. Calendar
+/// arithmetic (`DateTime(y, m, d - n)`): subtracting a `Duration` across a
+/// spring-forward lands at 23:00 of the previous date.
 DateTime weekStartOf(DateTime d, int firstWeekday) {
-  final s = DateTime(d.year, d.month, d.day);
-  return s.subtract(Duration(days: (s.weekday - firstWeekday + 7) % 7));
+  return addCalendarDays(d, -((d.weekday - firstWeekday + 7) % 7));
 }
 
-/// Relative "when" copy for an upcoming reminder: ("24 min overdue", urgent)
-/// / ("restant de 24 de minute", urgent). Plural forms (one/few/other) come
-/// from the ARB so Romanian gets "2 zile" vs "20 de zile" right. Exposed for
-/// unit tests.
-(String label, bool urgent) upcomingDueLabel(AppLocalizations t, Duration d) {
+/// First and last day (local midnights) of the week containing [d] — the
+/// week view's title range. The last day is the 7th calendar day, also in a
+/// DST week (`start + Duration(days: 6)` read "Oct 25–30").
+(DateTime start, DateTime end) weekRangeOf(DateTime d, int firstWeekday) {
+  final start = weekStartOf(d, firstWeekday);
+  return (start, addCalendarDays(start, 6));
+}
+
+/// The calendar anchor moved by one [v] period in [direction] (±1).
+DateTime stepCalendarAnchor(DateTime d, CalendarView v, int direction) {
+  switch (v) {
+    case CalendarView.week:
+      return addCalendarDays(d, 7 * direction);
+    case CalendarView.month:
+      // DateTime normalises month 0 / 13 into the neighbouring year.
+      return DateTime(d.year, d.month + direction, 1);
+    case CalendarView.year:
+      return DateTime(d.year + direction, d.month, 1);
+  }
+}
+
+/// Relative "when" copy for a reminder due at [due], seen at [now]:
+/// ("24 min overdue", urgent) / ("restant de 24 de minute", urgent). Under
+/// an hour / within today it counts minutes / hours; beyond that CALENDAR
+/// days (`calendarDaysBetween`) — the same count Plant detail and Home
+/// show, so Oct 12 is "in 5 days" on Oct 7 at any time of day. Plural
+/// forms (one/few/other) come from the ARB so Romanian gets "2 zile" vs
+/// "20 de zile" right. Exposed for unit tests.
+(String label, bool urgent) upcomingDueLabel(AppLocalizations t, DateTime now, DateTime due) {
+  final d = due.difference(now);
   if (d.isNegative) {
-    final days = -d.inDays;
     final hrs = -d.inHours;
     final mins = -d.inMinutes;
-    if (days > 0) return (t.detailOverdueDays(days), true);
+    if (hrs >= 24) return (t.detailOverdueDays(calendarDaysBetween(due, now)), true);
     if (hrs > 0) return (t.calOverdueHours(hrs), true);
     return (t.calOverdueMinutes(mins > 0 ? mins : 1), true);
   }
   if (d.inMinutes < 60) return (t.calInMinutes(d.inMinutes), d.inMinutes < 30);
-  if (d.inHours < 24) return (t.calInHours(d.inHours), false);
-  if (d.inDays == 1) return (t.detailDueTomorrow, false);
-  return (t.detailDueInDays(d.inDays), false);
+  final days = calendarDaysBetween(now, due);
+  if (days == 0) return (t.calInHours(d.inHours), false);
+  if (days == 1) return (t.detailDueTomorrow, false);
+  return (t.detailDueInDays(days), false);
 }
 
 /// "Sep 21–27" / "21–27 sept." when the week sits in one month, otherwise
@@ -164,7 +191,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           IconButton(
             tooltip: t.calPrevious,
             onPressed: () =>
-                setState(() => _anchor = _step(_anchor, _view, -1)),
+                setState(() => _anchor = stepCalendarAnchor(_anchor, _view, -1)),
             icon: Icon(Icons.arrow_back_ios_new, size: 18, color: surface.text),
           ),
           IconButton(
@@ -175,7 +202,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           ),
           IconButton(
             tooltip: t.calendarNext,
-            onPressed: () => setState(() => _anchor = _step(_anchor, _view, 1)),
+            onPressed: () => setState(() => _anchor = stepCalendarAnchor(_anchor, _view, 1)),
             icon: Icon(Icons.arrow_forward_ios, size: 18, color: surface.text),
           ),
         ],
@@ -289,34 +316,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final locale = _localeOf(context);
     switch (v) {
       case CalendarView.week:
-        final start = weekStartOf(d, _firstWeekdayOf(context));
-        final end = start.add(const Duration(days: 6));
+        final (start, end) = weekRangeOf(d, _firstWeekdayOf(context));
         return weekRangeLabel(locale, start, end);
       case CalendarView.month:
         return DateFormat.yMMM(locale).format(d);
       case CalendarView.year:
         return DateFormat.y(locale).format(d);
-    }
-  }
-
-  DateTime _step(DateTime d, CalendarView v, int direction) {
-    switch (v) {
-      case CalendarView.week:
-        return d.add(Duration(days: 7 * direction));
-      case CalendarView.month:
-        final m = d.month + direction;
-        return DateTime(
-          d.year +
-              (m < 1
-                  ? -1
-                  : m > 12
-                  ? 1
-                  : 0),
-          ((m - 1) % 12 + 12) % 12 + 1,
-          1,
-        );
-      case CalendarView.year:
-        return DateTime(d.year + direction, d.month, 1);
     }
   }
 
@@ -741,8 +746,7 @@ class _UpcomingScheduleRow extends StatelessWidget {
       schedule.nextDueAt!,
       isUtc: true,
     ).toLocal();
-    final delta = due.difference(now);
-    final (whenLabel, urgent) = upcomingDueLabel(t, delta);
+    final (whenLabel, urgent) = upcomingDueLabel(t, now, due);
     return InkWell(
       onTap: () {
         openPlant(context, schedule.plantId);

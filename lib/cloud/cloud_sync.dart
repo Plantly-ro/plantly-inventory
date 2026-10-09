@@ -79,6 +79,7 @@ class CloudSyncCoordinator {
       final session = await _ref.read(plantlyAuthProvider.notifier).current();
       if (session == null) return;
       await _ref.read(collectionLinkProvider.notifier).ready;
+      await _ref.read(collectionLinkProvider.notifier).releaseEmptyForeignClaims(session.userId);
       final state = _ref.read(cloudStateProvider);
       if (state.phase == CloudPhase.signedOut || state.phase == CloudPhase.off) return;
       if (state.linked || state.unlinkedByUser || state.heldByOther != null) return;
@@ -106,6 +107,13 @@ class CloudSyncCoordinator {
       await _ref.read(cloudEntitlementProvider.future);
     } catch (_) {
       return; // offline / server error — the Me section shows it
+    }
+    // Foreign claims over an empty tenant are not a question (QA u26).
+    final userId = _ref.read(plantlyAuthProvider).valueOrNull?.userId;
+    if (userId != null) {
+      try {
+        await _ref.read(collectionLinkProvider.notifier).releaseEmptyForeignClaims(userId);
+      } catch (_) {}
     }
     final state = _ref.read(cloudStateProvider);
     if (state.phase == CloudPhase.signedOut || state.phase == CloudPhase.off || state.heldByOther != null) return;

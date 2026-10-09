@@ -69,37 +69,40 @@ void main() {
   group('upcomingDueLabel · relative phrases', () {
     final ro = AppLocalizationsRo();
     final en = AppLocalizationsEn();
+    // Noon, so the sub-day offsets below never cross midnight.
+    final noon = DateTime(2026, 9, 10, 12);
+    (String, bool) upcomingDueLabelIn(AppLocalizations t, Duration d) => upcomingDueLabel(t, noon, noon.add(d));
 
     test('Romanian few/other plural forms', () {
-      expect(upcomingDueLabel(ro, const Duration(minutes: -24)), ('restant de 24 de minute', true));
-      expect(upcomingDueLabel(ro, const Duration(minutes: -3)), ('restant de 3 minute', true));
-      expect(upcomingDueLabel(ro, const Duration(minutes: -1)), ('restant de un minut', true));
-      expect(upcomingDueLabel(ro, const Duration(hours: -2)), ('restant de 2 ore', true));
-      expect(upcomingDueLabel(ro, const Duration(hours: -21)), ('restant de 21 de ore', true));
-      expect(upcomingDueLabel(ro, const Duration(days: -1)), ('restant de o zi', true));
-      expect(upcomingDueLabel(ro, const Duration(days: -25)), ('restant de 25 de zile', true));
-      expect(upcomingDueLabel(ro, const Duration(minutes: 10)), ('în 10 minute', true));
-      expect(upcomingDueLabel(ro, const Duration(minutes: 45)), ('în 45 de minute', false));
-      expect(upcomingDueLabel(ro, const Duration(hours: 5)), ('în 5 ore', false));
-      expect(upcomingDueLabel(ro, const Duration(days: 1, hours: 2)), ('mâine', false));
-      expect(upcomingDueLabel(ro, const Duration(days: 2, hours: 1)), ('în 2 zile', false));
-      expect(upcomingDueLabel(ro, const Duration(days: 30)), ('în 30 de zile', false));
+      expect(upcomingDueLabelIn(ro, const Duration(minutes: -24)), ('restant de 24 de minute', true));
+      expect(upcomingDueLabelIn(ro, const Duration(minutes: -3)), ('restant de 3 minute', true));
+      expect(upcomingDueLabelIn(ro, const Duration(minutes: -1)), ('restant de un minut', true));
+      expect(upcomingDueLabelIn(ro, const Duration(hours: -2)), ('restant de 2 ore', true));
+      expect(upcomingDueLabelIn(ro, const Duration(hours: -21)), ('restant de 21 de ore', true));
+      expect(upcomingDueLabelIn(ro, const Duration(days: -1)), ('restant de o zi', true));
+      expect(upcomingDueLabelIn(ro, const Duration(days: -25)), ('restant de 25 de zile', true));
+      expect(upcomingDueLabelIn(ro, const Duration(minutes: 10)), ('în 10 minute', true));
+      expect(upcomingDueLabelIn(ro, const Duration(minutes: 45)), ('în 45 de minute', false));
+      expect(upcomingDueLabelIn(ro, const Duration(hours: 5)), ('în 5 ore', false));
+      expect(upcomingDueLabelIn(ro, const Duration(days: 1, hours: 2)), ('mâine', false));
+      expect(upcomingDueLabelIn(ro, const Duration(days: 2, hours: 1)), ('în 2 zile', false));
+      expect(upcomingDueLabelIn(ro, const Duration(days: 30)), ('în 30 de zile', false));
     });
 
     test('English one/other plural forms', () {
-      expect(upcomingDueLabel(en, const Duration(minutes: -24)), ('24 min overdue', true));
-      expect(upcomingDueLabel(en, const Duration(hours: -1)), ('1 hour overdue', true));
-      expect(upcomingDueLabel(en, const Duration(hours: -3)), ('3 hours overdue', true));
-      expect(upcomingDueLabel(en, const Duration(days: -1)), ('1 day overdue', true));
-      expect(upcomingDueLabel(en, const Duration(minutes: 1)), ('in 1 min', true));
-      expect(upcomingDueLabel(en, const Duration(hours: 1)), ('in 1 hour', false));
-      expect(upcomingDueLabel(en, const Duration(hours: 6)), ('in 6 hours', false));
-      expect(upcomingDueLabel(en, const Duration(days: 1)), ('tomorrow', false));
-      expect(upcomingDueLabel(en, const Duration(days: 4)), ('in 4 days', false));
+      expect(upcomingDueLabelIn(en, const Duration(minutes: -24)), ('24 min overdue', true));
+      expect(upcomingDueLabelIn(en, const Duration(hours: -1)), ('1 hour overdue', true));
+      expect(upcomingDueLabelIn(en, const Duration(hours: -3)), ('3 hours overdue', true));
+      expect(upcomingDueLabelIn(en, const Duration(days: -1)), ('1 day overdue', true));
+      expect(upcomingDueLabelIn(en, const Duration(minutes: 1)), ('in 1 min', true));
+      expect(upcomingDueLabelIn(en, const Duration(hours: 1)), ('in 1 hour', false));
+      expect(upcomingDueLabelIn(en, const Duration(hours: 6)), ('in 6 hours', false));
+      expect(upcomingDueLabelIn(en, const Duration(days: 1)), ('tomorrow', false));
+      expect(upcomingDueLabelIn(en, const Duration(days: 4)), ('in 4 days', false));
     });
 
     test('never renders "0 min overdue"', () {
-      expect(upcomingDueLabel(en, const Duration(seconds: -5)).$1, '1 min overdue');
+      expect(upcomingDueLabelIn(en, const Duration(seconds: -5)).$1, '1 min overdue');
     });
   });
 
@@ -142,7 +145,7 @@ void main() {
         home: const CalendarScreen(),
         schedules: [
           _sched('s-overdue', now.subtract(const Duration(minutes: 24)).toUtc().millisecondsSinceEpoch),
-          _sched('s-soon', now.add(const Duration(days: 2, hours: 1)).toUtc().millisecondsSinceEpoch),
+          _sched('s-soon', DateTime(now.year, now.month, now.day + 2, 12).toUtc().millisecondsSinceEpoch),
         ],
       );
 

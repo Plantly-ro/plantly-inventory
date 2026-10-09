@@ -6,12 +6,17 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plantly_inventory/cloud/sync_runner.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
+import 'package:plantly_inventory/data/providers.dart' show RemoteReminderResync;
+import 'package:plantly_inventory/data/repositories/care_schedule_repository.dart';
+import 'package:plantly_inventory/data/repositories/plant_repository.dart';
 import 'package:plantly_inventory/sync/hlc.dart';
 import 'package:plantly_inventory/sync/http_sync_runner.dart';
 import 'package:plantly_inventory/sync/op_log.dart';
 import 'package:plantly_inventory/sync/sync_engine.dart';
 import 'package:plantly_inventory/sync/sync_rejections.dart';
 import 'package:plantly_inventory/sync/sync_transport.dart';
+
+import '../helpers/recording_reminder_sync.dart';
 
 String hlcAt(int ms, {String dev = 'dev-b'}) => Hlc(ms, 0, dev).encode();
 
@@ -125,8 +130,10 @@ void main() {
     DateTime Function()? now,
     SyncRejectionStore? rejections,
     bool entitlementIsOwners = false,
+    void Function(Set<String> entities)? onRemoteApplied,
   }) {
     return runner = HttpSyncRunner(
+      onRemoteApplied: onRemoteApplied,
       db: db,
       opLog: opLog,
       clock: clock,
@@ -189,6 +196,80 @@ void main() {
     expect(statuses.any((s) => s.inFlight), isTrue);
     expect(statuses.first.pendingOps, 0); // replayed initial value
     await sub.cancel();
+  });
+
+  test('onRemoteApplied fires once per cycle that changed rows, never for an empty pull', () async {
+    var calls = 0;
+    final seen = <String>{};
+    final r = make(onRemoteApplied: (e) {
+      calls++;
+      seen.addAll(e);
+    });
+    await r.syncNow();
+    expect(calls, 0, reason: 'nothing pulled');
+
+    transport.serverOps.addAll([remotePlant('R1', 1000), remotePlant('R2', 2000)]);
+    transport.pageSize = 1;
+    await r.syncNow();
+    expect(await plantIds(), {'R1', 'R2'});
+    expect(calls, 1, reason: 'two pages, one cycle → one re-arm');
+    expect(seen, {'plants'});
+
+    await r.syncNow();
+    expect(calls, 1);
+  });
+
+  test('a pulled next_due_at change re-arms the OS reminders exactly once (coalesced per cycle)', () async {
+    final plant = await PlantRepository(db: db, opLog: opLog).create(nickname: 'Bob');
+    final schedule = await CareScheduleRepository(db: db, opLog: opLog).upsert(
+      plantId: plant.id,
+      type: 'water',
+      baseIntervalDays: 7,
+      firstDueAt: DateTime.now().toUtc().add(const Duration(days: 2)),
+    );
+    final reminders = RecordingReminderSync(db: db, tenantId: tenant);
+    await reminders.syncFromDatabase();
+    reminders.calls = 0;
+    final resync = RemoteReminderResync(() => reminders.syncFromDatabase(), delay: const Duration(milliseconds: 30));
+    addTearDown(resync.dispose);
+    final r = make(onRemoteApplied: resync.onApplied);
+    await r.syncNow(); // push the local rows; nothing to pull
+    expect(reminders.calls, 0);
+
+    // Another device logged care: next_due moved 5 days out (+ a rename), two pages.
+    final newDue = DateTime.now().toUtc().add(const Duration(days: 5));
+    final ms = DateTime.now().millisecondsSinceEpoch + 1000;
+    transport.serverOps.addAll([
+      SyncOpDto(
+          entity: 'care_schedules',
+          entityId: schedule.id,
+          field: 'next_due_at',
+          value: newDue.toIso8601String(),
+          hlc: hlcAt(ms),
+          deviceId: 'dev-b'),
+      SyncOpDto(entity: 'plants', entityId: plant.id, field: 'nickname', value: 'Bobby', hlc: hlcAt(ms + 1), deviceId: 'dev-b'),
+    ]);
+    transport.pageSize = 1;
+    await r.syncNow();
+    await r.syncNow(); // a second cycle right after: still one re-sync (debounced)
+    await settle(const Duration(milliseconds: 120));
+    expect(reminders.calls, 1);
+    final call = reminders.fake.calls.single;
+    expect(call.event.start.millisecondsSinceEpoch, newDue.millisecondsSinceEpoch);
+    expect(call.event.summary, 'Water — Bobby');
+  });
+
+  test('remote changes that cannot move a reminder (tags, photos…) do not re-sync', () async {
+    var calls = 0;
+    final resync = RemoteReminderResync(() => calls++, delay: const Duration(milliseconds: 10));
+    addTearDown(resync.dispose);
+    resync.onApplied({'tags', 'plant_tags', 'photos'});
+    await settle(const Duration(milliseconds: 40));
+    expect(calls, 0);
+    resync.onApplied({'tags', 'care_schedules'});
+    resync.onApplied({'locations'});
+    await settle(const Duration(milliseconds: 40));
+    expect(calls, 1);
   });
 
   test('nothing pending → pull only, and remote ops never become pending', () async {

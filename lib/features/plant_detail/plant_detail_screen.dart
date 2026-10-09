@@ -46,6 +46,7 @@ import 'tag_chip_input.dart';
 import '../../app/side_sheet.dart';
 import '../../shared/actor_label.dart';
 import '../collections/collection_activity_screen.dart';
+import '../../shared/relative_days.dart';
 import '../../shared/sheet_chrome.dart';
 
 String _localeOf(BuildContext context) => Localizations.localeOf(context).toString();
@@ -1059,18 +1060,25 @@ class _UpcomingRowView extends ConsumerWidget {
   String label, {
   DateTime? now,
 }) {
-  final due = s.nextDueAt;
-  if (due == null) return (label, t.detailNoDueDate, false);
-  final nowMs = (now ?? DateTime.now()).millisecondsSinceEpoch;
-  final diffMs = due - nowMs;
-  final days = (diffMs / (86400 * 1000)).round();
-  if (diffMs < 0) {
+  final (whenText, urgent) = describeScheduleDue(t, s.nextDueAt, now: now);
+  return (label, whenText, urgent);
+}
+
+/// "in 3 days" / "tomorrow" / "2 days overdue" for a due instant, counted
+/// in CALENDAR days ([calendarDaysBetween]) — the same number Calendar and
+/// Home show for that date.
+@visibleForTesting
+(String when, bool urgent) describeScheduleDue(AppLocalizations t, int? dueMs, {DateTime? now}) {
+  if (dueMs == null) return (t.detailNoDueDate, false);
+  final at = now ?? DateTime.now();
+  final days = calendarDaysUntilMs(dueMs, at);
+  if (dueMs < at.millisecondsSinceEpoch) {
     final late = -days;
-    return (label, late == 0 ? t.detailOverdue : t.detailOverdueDays(late), true);
+    return (late <= 0 ? t.detailOverdue : t.detailOverdueDays(late), true);
   }
-  if (days == 0) return (label, t.detailDueToday, true);
-  if (days == 1) return (label, t.detailDueTomorrow, false);
-  return (label, t.detailDueInDays(days), false);
+  if (days == 0) return (t.detailDueToday, true);
+  if (days == 1) return (t.detailDueTomorrow, false);
+  return (t.detailDueInDays(days), false);
 }
 
 /// "Done" on a reminder: record the event, then the care feedback overlay.
@@ -1761,6 +1769,40 @@ class _ExportCTA extends ConsumerWidget {
   }
 }
 
+/// The "LAST `type`" stat: the newest care event that already happened and
+/// how many calendar days ago. A future-dated event (logged ahead, or a
+/// device clock that ran fast) is not "last" — it read "−16d"; only when
+/// every event lies ahead is the nearest one shown, as upcoming
+/// ([LastCareStat.future]). Null when there are no events.
+@visibleForTesting
+LastCareStat? lastCareStat(List<db.CareEventRow> events, DateTime now) {
+  if (events.isEmpty) return null;
+  final nowMs = now.millisecondsSinceEpoch;
+  db.CareEventRow? past;
+  db.CareEventRow? upcoming;
+  for (final e in events) {
+    if (e.doneAt <= nowMs) {
+      if (past == null || e.doneAt > past.doneAt) past = e;
+    } else if (upcoming == null || e.doneAt < upcoming.doneAt) {
+      upcoming = e;
+    }
+  }
+  final pick = past ?? upcoming!;
+  final days = calendarDaysUntilMs(pick.doneAt, now).abs();
+  return LastCareStat(pick, days, future: past == null);
+}
+
+class LastCareStat {
+  const LastCareStat(this.event, this.days, {required this.future});
+  final db.CareEventRow event;
+
+  /// Calendar days between today and the event's date (never negative).
+  final int days;
+
+  /// The event lies ahead (no past event exists): label "in Nd".
+  final bool future;
+}
+
 class _StatsCard extends ConsumerWidget {
   const _StatsCard({required this.plantId, required this.surface, this.inset = true});
   final String plantId;
@@ -1775,13 +1817,10 @@ class _StatsCard extends ConsumerWidget {
           data: (rows) => rows,
           orElse: () => const <db.CareEventRow>[],
         );
-    if (events.isEmpty) return const SizedBox.shrink();
+    final lastStat = lastCareStat(events, ref.read(clockProvider)());
+    if (lastStat == null) return const SizedBox.shrink();
     final total = events.length;
-    // events is newest-first — the first entry is the last action.
-    final last = events.first;
-    final lastType = last.type;
-    final lastWhen = DateTime.fromMillisecondsSinceEpoch(last.doneAt, isUtc: true).toLocal();
-    final daysAgo = ref.read(clockProvider)().difference(lastWhen).inDays;
+    final lastType = lastStat.event.type;
     // Average interval for the most-common type.
     final byType = <String, List<int>>{};
     for (final e in events) {
@@ -1822,7 +1861,11 @@ class _StatsCard extends ConsumerWidget {
                 Expanded(
                   child: _StatCell(
                     label: t.statsCardLast(careKeyLabel(t, types, lastType)).toUpperCase(),
-                    value: daysAgo == 0 ? t.statsCardToday : t.statsCardDaysShort(daysAgo),
+                    value: lastStat.days == 0
+                        ? t.statsCardToday
+                        : lastStat.future
+                            ? t.statsCardInDaysShort(lastStat.days)
+                            : t.statsCardDaysShort(lastStat.days),
                     surface: surface,
                   ),
                 ),

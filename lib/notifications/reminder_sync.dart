@@ -6,6 +6,11 @@ import '../data/database/app_database.dart';
 import '../domain/services/reminder_engine.dart';
 import 'notification_service.dart';
 
+/// Most OS reminders armed at once — under Android's 500-alarm cap, with
+/// headroom for the rest of the app. `ReminderEngine.buildUpcoming` sorts
+/// by fire time, so these are the nearest ones.
+const int kMaxOsReminders = 400;
+
 /// Glue between the Drift-backed care_schedules + plants + locations and
 /// the platform `NotificationService`. Call [syncFromDatabase] any time
 /// the schedule state changes so the OS reminders track reality.
@@ -59,6 +64,21 @@ class ReminderSync {
   // calls cost at most 2 pipeline runs, and the trailing run always sees
   // the newest rows.
   Future<int>? _inflight;
+  bool _disposed = false;
+
+  /// One OS-side rebuild at a time per [NotificationService], across
+  /// instances: when the active tenant flips, the provider builds a new
+  /// [ReminderSync] while the old one may still be mid-run. Chaining the
+  /// `syncAll` calls on the shared service (and skipping disposed
+  /// instances once their turn comes) guarantees the newest tenant's
+  /// rebuild is the last one the OS sees.
+  static final Expando<Future<void>> _osQueue = Expando<Future<void>>('reminder-os-queue');
+
+  /// The tenant this instance served is no longer active: never touch the
+  /// OS again (a run already queued is dropped when its turn comes).
+  void dispose() => _disposed = true;
+
+  bool get isDisposed => _disposed;
   Completer<int>? _trailing;
   bool _dirty = false;
   DateTime? _pendingNow;
@@ -137,7 +157,7 @@ class ReminderSync {
           s
     ];
 
-    final events = ReminderEngine.buildUpcoming(
+    final upcoming = ReminderEngine.buildUpcoming(
       schedules: activeSchedules,
       plantsById: plantsById,
       locationsById: locationsById,
@@ -152,7 +172,21 @@ class ReminderSync {
       includeOverdue: false,
       typeLabel: _typeLabel,
     );
-    await notifications.syncAll(events);
-    return events.length;
+    // Android keeps at most 500 alarms per app (more throws): arm the
+    // nearest [kMaxOsReminders]; later ones get armed by a later re-sync.
+    final events = upcoming.length > kMaxOsReminders ? upcoming.sublist(0, kMaxOsReminders) : upcoming;
+    if (_disposed) return 0;
+    final svc = notifications;
+    final previous = _osQueue[svc] ?? Future<void>.value();
+    final done = Completer<void>();
+    _osQueue[svc] = done.future;
+    try {
+      await previous.catchError((_) {});
+      if (_disposed) return 0;
+      await svc.syncAll(events, tenantId: tenantId);
+      return events.length;
+    } finally {
+      done.complete();
+    }
   }
 }

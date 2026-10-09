@@ -2200,5 +2200,9 @@
   "@cloudHomeMoveBody": {"placeholders": {"name": {"type": "String"}}},
   "cloudHomeMoveBodyShared": "They are added to “{name}”, which you share with {count} people — they will see them too. Uploaded again from this device; nothing is deleted.",
   "@cloudHomeMoveBodyShared": {"placeholders": {"name": {"type": "String"}, "count": {"type": "int"}}},
-  "dbBusyOtherTab": "Another Plantly tab is busy with your data — retrying…"
+  "dbBusyOtherTab": "Another Plantly tab is busy with your data — retrying…",
+  "reminderTapOtherCollection": "That plant is in another collection — switch to it to see the plant.",
+  "reminderTapPlantGone": "That plant is no longer in your collection.",
+  "statsCardInDaysShort": "in {count}d",
+  "@statsCardInDaysShort": {"placeholders": {"count": {"type": "int"}}}
 }

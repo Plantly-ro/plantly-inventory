@@ -232,12 +232,18 @@ final reminderSyncProvider = Provider<ReminderSync>((ref) {
     // Read at call time (not watched): a sign-in must not rebuild the sync.
     currentUserId: () => ref.read(plantlyAuthProvider).valueOrNull?.userId,
   );
+  // A tenant flip rebuilds this provider: the old instance must not touch
+  // the OS any more (its tenant is hidden now) — see ReminderSync.dispose.
+  ref.onDispose(sync.dispose);
   // Assigned schedules (MULTI-USER-V2 §0) are filtered per signed-in user,
   // so a sign-in / sign-out / account switch re-derives the OS reminders.
-  ref.listen<String?>(
-    plantlyAuthProvider.select((s) => s.valueOrNull?.userId),
+  // The session's first load at launch is not a change: the OS already
+  // holds what this account armed last time (reminderTenantResyncProvider).
+  ref.listen<AsyncValue<String?>>(
+    plantlyAuthProvider.select((s) => s.whenData((v) => v?.userId)),
     (prev, next) {
-      if (prev != next) unawaited(sync.syncFromDatabase());
+      if (prev == null || !prev.hasValue || !next.hasValue) return;
+      if (prev.value != next.value) unawaited(sync.syncFromDatabase());
     },
   );
   // Notification titles are baked at sync time from the care-type registry,
@@ -251,6 +257,104 @@ final reminderSyncProvider = Provider<ReminderSync>((ref) {
   });
   return sync;
 });
+
+/// Re-arms the OS reminders whenever the ACTIVE tenant changes — link,
+/// "Move", join, "Start empty", collection switch, rehome after losing the
+/// home collection, unlink back to the own default — and at launch when
+/// the tenant differs from the one last armed ([kRemindersArmedTenantPrefKey]):
+/// replace the pending reminders with the active tenant's only. A
+/// hidden tenant's alarms must not keep firing, and switching back must
+/// not leave the device without alarms until the next cold start (QA
+/// 2026-10-07). Watched from the app root (`PlantlyApp.build`) so it runs
+/// even when no screen holds a repository.
+final reminderTenantResyncProvider = Provider<void>((ref) {
+  // Watch (not listen-and-read): reading a dependent of appContextProvider
+  // from inside its own listener builds an instance that Riverpod rebuilds
+  // right after, dropping the re-arm with it.
+  if (!ref.watch(appContextProvider.select((c) => c.hasValue))) return;
+  final sync = ref.watch(reminderSyncProvider);
+  final memo = ref.read(_reminderArmMemoProvider);
+  final prefs = ref.read(sharedPreferencesProvider).valueOrNull;
+  if (memo.instance == null && memo.tenant == null) {
+    // Launch: the OS still holds the alarms armed for this tenant last time
+    // (repository writes and pulls keep them current) — don't re-arm.
+    final persisted = prefs?.getString(kRemindersArmedTenantPrefKey);
+    if (persisted != null) {
+      memo
+        ..tenant = persisted
+        ..landed = true;
+    }
+  }
+  if (identical(sync, memo.instance)) return;
+  if (sync.tenantId == memo.tenant && memo.landed) return;
+  memo
+    ..instance = sync
+    ..tenant = sync.tenantId
+    ..landed = false;
+  unawaited(sync.syncFromDatabase().then((_) {
+    // A disposed instance's run never reached the OS; the instance that
+    // replaced it re-arms when this provider rebuilds for it.
+    if (identical(memo.instance, sync) && !sync.isDisposed) {
+      memo.landed = true;
+      unawaited(prefs?.setString(kRemindersArmedTenantPrefKey, sync.tenantId));
+    }
+  }, onError: (Object e, StackTrace st) {
+    debugPrint('reminders: re-arm for tenant failed: $e\n$st');
+  }));
+});
+
+/// Tenant whose reminders the OS holds (last successful tenant re-arm).
+const String kRemindersArmedTenantPrefKey = 'plantly_reminders_armed_tenant';
+
+/// Remote changes (pull, push replies, the launch repair pass) that can
+/// move an OS reminder: schedules (next due, mute, assignee) and the plant
+/// / space rows that name or mute them. Bursts are coalesced into one
+/// re-sync [delay] after the last one. Lives at the container level so a
+/// runner rebuilt meanwhile does not drop a pending re-sync.
+class RemoteReminderResync {
+  RemoteReminderResync(this._resync, {this.delay = const Duration(milliseconds: 1500)});
+
+  static const Set<String> relevantEntities = {'care_schedules', 'plants', 'locations'};
+
+  final void Function() _resync;
+  final Duration delay;
+  Timer? _timer;
+
+  void onApplied(Set<String> entities) {
+    if (!entities.any(relevantEntities.contains)) return;
+    _timer?.cancel();
+    _timer = Timer(delay, () {
+      _timer = null;
+      _resync();
+    });
+  }
+
+  void dispose() => _timer?.cancel();
+}
+
+final remoteReminderResyncProvider = Provider<RemoteReminderResync>((ref) {
+  final r = RemoteReminderResync(() {
+    unawaited(ref.read(reminderSyncProvider).syncFromDatabase().catchError((Object e) {
+      debugPrint('reminders: re-arm after remote changes failed: $e');
+      return 0;
+    }));
+  }, delay: ref.watch(remoteReminderResyncDelayProvider));
+  ref.onDispose(r.dispose);
+  return r;
+});
+
+/// Debounce of [RemoteReminderResync] (overridable in tests).
+final remoteReminderResyncDelayProvider = Provider<Duration>((_) => const Duration(milliseconds: 1500));
+
+class _ReminderArmMemo {
+  /// Last [ReminderSync] asked to re-arm, its tenant, and whether that run
+  /// reached the OS (a run of an instance disposed meanwhile is dropped).
+  ReminderSync? instance;
+  String? tenant;
+  bool landed = false;
+}
+
+final _reminderArmMemoProvider = Provider<_ReminderArmMemo>((_) => _ReminderArmMemo());
 
 /// True when both registries map the same keys to the same labels — the
 /// only care-type fields that end up in a notification title.

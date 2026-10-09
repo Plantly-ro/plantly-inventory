@@ -139,17 +139,16 @@ class _HandoffListenerState extends ConsumerState<HandoffListener> {
     _enqueue(Uri.parse('plantlyinventory://join#c=${parked.code}'), replay: true);
   }
 
-  /// Adopt only callbacks that answer a sign-in this device started (nonce +
-  /// 10-minute window, see [OAuthHandshake]) — anything else is a fixation
-  /// attempt or a stale link and is dropped without a trace of the token.
+  /// Adopt only callbacks that answer a sign-in this device started (the
+  /// echoed nonce + 10-minute window, see [OAuthHandshake]) — on every
+  /// platform and both callback forms. Anything else (no nonce, wrong
+  /// nonce, nothing pending) is a fixation attempt or a stale link and is
+  /// dropped without a trace of the token; [OAuthHandshake.consume] logs why.
   Future<void> _adoptToken(AuthCallback callback) async {
     final handshake = ref.read(oauthHandshakeProvider);
     final auth = ref.read(plantlyAuthProvider.notifier);
     final events = ref.read(signInEventsProvider);
-    if (!await handshake.consume(callback.nonce, allowMissingNonce: callback.customScheme)) {
-      debugPrint('oauth callback ignored: no matching sign-in in progress');
-      return;
-    }
+    if (!await handshake.consume(callback.nonce)) return;
     try {
       final session = await auth.adoptToken(callback.token);
       events.emit(session);

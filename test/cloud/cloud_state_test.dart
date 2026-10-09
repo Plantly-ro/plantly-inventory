@@ -137,8 +137,21 @@ void main() {
       expect(s.canSync, isFalse);
     });
 
+    /// bob's plants live in the active tenant ('local' here) — a foreign
+    /// claim over an EMPTY tenant is released instead (QA u26, below).
+    Future<AppDatabase> bobsPlants() async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      await insertDummy(db, db.plants, kDefaultTenantId);
+      return db;
+    }
+
     test('a link made by another account on this device does not count', () async {
-      final s = await settle(make(entitlement: const CloudEntitlement(active: true, source: 'pro'), linked: true, linkUser: 'u-other'));
+      final s = await settle(make(
+          entitlement: const CloudEntitlement(active: true, source: 'pro'),
+          linked: true,
+          linkUser: 'u-other',
+          db: await bobsPlants()));
       expect(s.phase, CloudPhase.ready);
       expect(s.linked, isFalse);
       expect(s.canSync, isFalse);
@@ -149,7 +162,7 @@ void main() {
 
     test('QA2 BUG-4: a foreign link is never home — linked=false, no collection id, heldByOther set, in BOTH phases', () async {
       for (final e in [CloudEntitlement.none, const CloudEntitlement(active: true, source: 'pro')]) {
-        final s = await settle(make(entitlement: e, linked: true, linkUser: 'u-other'));
+        final s = await settle(make(entitlement: e, linked: true, linkUser: 'u-other', db: await bobsPlants()));
         expect(s.phase, e.active ? CloudPhase.ready : CloudPhase.notEntitled);
         expect(s.linked, isFalse, reason: 'phase ${s.phase}');
         expect(s.collectionId, isNull);
@@ -174,6 +187,19 @@ void main() {
       final own = await settle(make(entitlement: const CloudEntitlement(active: true, source: 'pro'), dataOwner: 'u-1', db: db));
       expect(own.heldByOther, isNull);
       expect(own.phase, CloudPhase.ready);
+    });
+
+    test('QA u26: a foreign link over a tenant with no live plant is released — no decision', () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      final c = make(entitlement: const CloudEntitlement(active: true, source: 'pro'), linked: true, linkUser: 'u-other', db: db);
+      await settle(c);
+      // The release runs off the sign-in; settle until it has landed.
+      await c.read(collectionLinkProvider.notifier).releaseEmptyForeignClaims('u-1');
+      final s = c.read(cloudStateProvider);
+      expect(s.heldByOther, isNull);
+      expect(c.read(collectionLinkProvider).link, isNull);
+      expect(c.read(currentTenantIdProvider), startsWith('local-'));
     });
 
     test('marker on an empty tenant is ignored; a fresh device never shows the decision', () async {

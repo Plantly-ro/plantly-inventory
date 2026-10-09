@@ -31,6 +31,7 @@ import 'package:plantly_inventory/theme/tokens.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../cloud/cloud_state_test.dart' show FixedEntitlement;
+import '../../cloud/collection_link_test.dart' show insertDummy;
 import '../../helpers/test_app.dart';
 import '../../marketplace/plantly_session_test.dart' show fakeJwt;
 
@@ -353,6 +354,8 @@ void main() {
     testWidgets('account switch: decision rows, nothing automatic; Move confirms then links', (tester) async {
       final db = AppDatabase.forTesting(NativeDatabase.memory());
       addTearDown(db.close);
+      // bob's plant in the active tenant: over an empty one there is no question (QA u26).
+      await tester.runAsync(() => insertDummy(db, db.plants, 'col-1'));
       await pump(tester, entitlement: const CloudEntitlement(active: true, source: 'pro'), linkUser: 'u-other', db: db);
       await tester.pumpAndSettle();
       expect(collectionCreates, 0, reason: 'never auto-link over another account\'s data');
@@ -423,6 +426,7 @@ void main() {
     testWidgets('account switch (ro): Start empty → fresh tenant, skip-seed set, linked for the new user', (tester) async {
       final db = AppDatabase.forTesting(NativeDatabase.memory());
       addTearDown(db.close);
+      await tester.runAsync(() => insertDummy(db, db.plants, 'col-1'));
       await pump(tester,
           entitlement: const CloudEntitlement(active: true, source: 'pro'), linkUser: 'u-other', db: db, locale: const Locale('ro'));
       expect(find.text('Pe acest dispozitiv sunt plante sincronizate de bob.'), findsOneWidget);

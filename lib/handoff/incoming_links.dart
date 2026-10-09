@@ -172,8 +172,8 @@ class AuthCallback {
   final String token;
   final String? nonce;
 
-  /// Arrived through `plantlyinventory://` (vs. the web hash route). Only
-  /// this form may be accepted without a nonce (older servers).
+  /// Arrived through `plantlyinventory://` (vs. the web hash route).
+  /// Informational only: both forms must carry the echoed nonce.
   final bool customScheme;
 
   AuthCallback viaCustomScheme() => AuthCallback(token: token, nonce: nonce, customScheme: true);

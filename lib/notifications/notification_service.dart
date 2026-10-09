@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../domain/services/ical_export.dart';
 import 'dnd_settings.dart';
+import 'reminder_payload.dart';
 
 /// Tiny surface over `flutter_local_notifications` so the rest of the app
 /// can schedule/cancel reminders without depending on the plugin directly.
@@ -25,33 +28,92 @@ abstract class NotificationService {
   /// Current permission state WITHOUT prompting. `null` when the platform
   /// can't tell (no plugin implementation for this host).
   Future<bool?> checkPermissions();
-  Future<void> schedule({required int id, required ICalEvent event});
+  /// [payload] travels with the OS notification and comes back on tap
+  /// (see [ReminderPayload]); null for notifications that open nothing.
+  Future<void> schedule({required int id, required ICalEvent event, String? payload});
   Future<void> cancel(int id);
   Future<void> cancelAll();
 
   DndSettings get dnd;
   set dnd(DndSettings value);
 
+  /// Payloads of reminders the user tapped while the app was running (or
+  /// in the background). Cold-start taps come from [takeLaunchPayload].
+  Stream<String> get taps => const Stream<String>.empty();
+
+  /// Payload of the reminder whose tap launched the app, once — null when
+  /// the app was started any other way (or it was already taken).
+  Future<String?> takeLaunchPayload() async => null;
+
+  /// Cancel every reminder that is SCHEDULED but not yet shown. Reminders
+  /// already in the notification shade stay there. Default: [cancelAll]
+  /// (fakes / hosts without a pending-request query).
+  Future<void> cancelPending() => cancelAll();
+
   /// Replace the whole schedule in one call — easiest way to keep the OS
-  /// in sync with [ReminderEngine.buildUpcoming]. Applies the DND window
-  /// if set, shifting each event out of the quiet hours.
-  Future<void> syncAll(Iterable<ICalEvent> events) async {
-    await cancelAll();
-    var i = 0;
-    for (final e in events) {
-      final shifted = dnd.enabled
-          ? ICalEvent(
-              uid: e.uid,
-              summary: e.summary,
-              description: e.description,
-              location: e.location,
-              start: dnd.pushPastWindow(e.start.toLocal()).toUtc(),
-              end: e.end == null ? null : dnd.pushPastWindow(e.end!.toLocal()).toUtc(),
-            )
-          : e;
-      await schedule(id: i++, event: shifted);
+  /// in sync with [ReminderEngine.buildUpcoming]. Only pending reminders are
+  /// replaced ([cancelPending]); displayed ones are left alone. Ids are
+  /// stable per event uid ([reminderNotificationIds]), so a re-sync never
+  /// reuses a delivered notification's id for another plant. Applies the
+  /// DND window if set, shifting each event out of the quiet hours.
+  /// [tenantId] is the tenant the events belong to; together with each
+  /// event's plant id it becomes the tap payload.
+  Future<void> syncAll(Iterable<ICalEvent> events, {String? tenantId}) async {
+    await cancelPending();
+    final list = events.toList();
+    final ids = reminderNotificationIds([for (final e in list) e.uid]);
+    for (var i = 0; i < list.length; i++) {
+      final e = list[i];
+      await schedule(id: ids[i], event: applyDnd(e), payload: reminderPayloadFor(e, tenantId));
     }
   }
+
+  /// [e] shifted out of the DND window (unchanged when DND is off).
+  @protected
+  ICalEvent applyDnd(ICalEvent e) => dnd.enabled
+      ? ICalEvent(
+          uid: e.uid,
+          summary: e.summary,
+          description: e.description,
+          location: e.location,
+          plantId: e.plantId,
+          start: dnd.pushPastWindow(e.start.toLocal()).toUtc(),
+          end: e.end == null ? null : dnd.pushPastWindow(e.end!.toLocal()).toUtc(),
+        )
+      : e;
+}
+
+/// Stable 31-bit notification ids for [uids] (FNV-1a of the uid, linear
+/// probing on a collision within the batch) — the same reminder keeps its
+/// id across re-syncs.
+List<int> reminderNotificationIds(List<String> uids) {
+  final used = <int>{};
+  return [
+    for (final uid in uids)
+      () {
+        var id = _fnv1a31(uid);
+        while (!used.add(id)) {
+          id = (id + 1) & 0x7fffffff;
+        }
+        return id;
+      }(),
+  ];
+}
+
+int _fnv1a31(String s) {
+  var h = 0x811c9dc5;
+  for (final c in s.codeUnits) {
+    h ^= c;
+    h = (h * 0x01000193) & 0xffffffff;
+  }
+  return h & 0x7fffffff;
+}
+
+/// Tap payload for a reminder event, or null when it names no plant.
+String? reminderPayloadFor(ICalEvent e, String? tenantId) {
+  final plantId = e.plantId;
+  if (plantId == null || plantId.isEmpty) return null;
+  return ReminderPayload(plantId: plantId, tenantId: tenantId).encode();
 }
 
 /// Web: browsers have no scheduled-local-notification story (no
@@ -76,7 +138,7 @@ class UnsupportedNotificationService extends NotificationService {
   Future<bool?> checkPermissions() async => false;
 
   @override
-  Future<void> schedule({required int id, required ICalEvent event}) async {}
+  Future<void> schedule({required int id, required ICalEvent event, String? payload}) async {}
 
   @override
   Future<void> cancel(int id) async {}
@@ -122,8 +184,8 @@ class FakeNotificationService extends NotificationService {
   }
 
   @override
-  Future<void> schedule({required int id, required ICalEvent event}) async {
-    calls.add(ScheduledCall(id: id, event: event));
+  Future<void> schedule({required int id, required ICalEvent event, String? payload}) async {
+    calls.add(ScheduledCall(id: id, event: event, payload: payload));
   }
 
   @override
@@ -137,29 +199,29 @@ class FakeNotificationService extends NotificationService {
     calls.clear();
   }
 
+  final StreamController<String> _taps = StreamController<String>.broadcast();
+
+  /// Payload [takeLaunchPayload] hands out once (a cold-start tap).
+  String? launchPayload;
+
+  /// Simulate the user tapping a delivered reminder.
+  void tap(String payload) => _taps.add(payload);
+
   @override
-  Future<void> syncAll(Iterable<ICalEvent> events) async {
-    await cancelAll();
-    var i = 0;
-    for (final e in events) {
-      final shifted = dnd.enabled
-          ? ICalEvent(
-              uid: e.uid,
-              summary: e.summary,
-              description: e.description,
-              location: e.location,
-              start: dnd.pushPastWindow(e.start.toLocal()).toUtc(),
-              end: e.end == null ? null : dnd.pushPastWindow(e.end!.toLocal()).toUtc(),
-            )
-          : e;
-      await schedule(id: i++, event: shifted);
-    }
+  Stream<String> get taps => _taps.stream;
+
+  @override
+  Future<String?> takeLaunchPayload() async {
+    final p = launchPayload;
+    launchPayload = null;
+    return p;
   }
 }
 
 @immutable
 class ScheduledCall {
-  const ScheduledCall({required this.id, required this.event});
+  const ScheduledCall({required this.id, required this.event, this.payload});
   final int id;
   final ICalEvent event;
+  final String? payload;
 }
