@@ -21,7 +21,7 @@ import 'side_sheet.dart';
 ///             "Add plant" FAB in the leading slot.
 /// * desktop — 240 px side nav (logo, sections, primary "Add plant"),
 ///             content column centred at ≤ 1280 px with 24–32 px gutters.
-class AppShell extends ConsumerWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({
     super.key,
     required this.location,
@@ -44,19 +44,35 @@ class AppShell extends ConsumerWidget {
   static const List<String> _sectionPaths = [AppRoutes.home, AppRoutes.calendar, AppRoutes.spaces, AppRoutes.me];
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends ConsumerState<AppShell> {
+  /// Wraps the side nav / rail so Tab can be steered into it (see
+  /// [_NavFirstNextFocusAction]).
+  final FocusNode _navNode = FocusNode(debugLabel: 'shell-nav', skipTraversal: true);
+
+  @override
+  void dispose() {
+    _navNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final child = widget.child;
     final ff = context.formFactor;
     if (ff == FormFactor.phone) return child;
 
     final mode = ref.watch(themeModeProvider);
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
     final t = AppLocalizations.of(context);
-    final selected = sectionIndexFor(location);
+    final selected = AppShell.sectionIndexFor(widget.location);
     final width = MediaQuery.sizeOf(context).width;
     // Viewer of a shared collection (MULTI-USER-V2 §3): no primary add action.
     final canEdit = ref.watch(canEditActiveCollectionProvider);
 
-    void select(int i) => context.go(_sectionPaths[i]);
+    void select(int i) => context.go(AppShell._sectionPaths[i]);
     void addPlant() => showAdaptiveSheet<void>(
           context,
           isScrollControlled: true,
@@ -75,7 +91,9 @@ class AppShell extends ConsumerWidget {
     if (ff == FormFactor.tablet) {
       body = Row(
         children: [
-          NavigationRail(
+          _NavRegion(
+            focusNode: _navNode,
+            child: NavigationRail(
             minWidth: Breakpoints.railWidth,
             backgroundColor: surface.surface,
             indicatorColor: surface.greenSoft,
@@ -106,23 +124,29 @@ class AppShell extends ConsumerWidget {
                 ),
             ],
           ),
+          ),
           VerticalDivider(width: 1, thickness: 1, color: surface.border),
-          Expanded(child: child),
+          Expanded(child: _ContentRegion(child: child)),
         ],
       );
     } else {
       final gutter = Breakpoints.gutterFor(width);
       body = Row(
         children: [
-          _SideNav(items: items, selected: selected, surface: surface, onSelect: select, onAddPlant: canEdit ? addPlant : null),
+          _NavRegion(
+            focusNode: _navNode,
+            child: _SideNav(items: items, selected: selected, surface: surface, onSelect: select, onAddPlant: canEdit ? addPlant : null),
+          ),
           VerticalDivider(width: 1, thickness: 1, color: surface.border),
           Expanded(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: Breakpoints.contentMaxWidth),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: gutter),
-                  child: child,
+            child: _ContentRegion(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: Breakpoints.contentMaxWidth),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: gutter),
+                    child: child,
+                  ),
                 ),
               ),
             ),
@@ -132,8 +156,82 @@ class AppShell extends ConsumerWidget {
     }
 
     return AppShortcuts(
-      shellNavigatorKey: shellNavigatorKey,
-      child: Material(color: surface.bg, child: body),
+      shellNavigatorKey: widget.shellNavigatorKey,
+      child: Actions(
+        actions: {NextFocusIntent: _NavFirstNextFocusAction(_navNode)},
+        // Navigation first, then the page: Tab order and reading order.
+        child: FocusTraversalGroup(
+          policy: OrderedTraversalPolicy(),
+          child: Material(color: surface.bg, child: body),
+        ),
+      ),
+    );
+  }
+}
+
+/// Tab while nothing inside the page has focus yet (a freshly pushed
+/// route only focuses its own scope) lands on the navigation instead of
+/// the page's first control; past that, plain traversal — the route
+/// scopes hand Tab back to the shell at their edges, so the nav stays
+/// reachable from anywhere.
+class _NavFirstNextFocusAction extends NextFocusAction {
+  _NavFirstNextFocusAction(this.navNode);
+  final FocusNode navNode;
+
+  @override
+  bool invoke(NextFocusIntent intent) {
+    final focus = primaryFocus;
+    if (focus is FocusScopeNode && focus.focusedChild == null) {
+      final first = navNode.traversalDescendants.firstOrNull;
+      if (first != null) {
+        first.requestFocus();
+        return true;
+      }
+    }
+    return super.invoke(intent);
+  }
+}
+
+/// Navigation column (side nav / rail): first in the Tab order and its own
+/// semantics container.
+class _NavRegion extends StatelessWidget {
+  const _NavRegion({required this.focusNode, required this.child});
+  final FocusNode focusNode;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return FocusTraversalOrder(
+      order: const NumericFocusOrder(1),
+      child: FocusTraversalGroup(
+        child: Focus(
+          focusNode: focusNode,
+          includeSemantics: false,
+          child: Semantics(container: true, explicitChildNodes: true, child: child),
+        ),
+      ),
+    );
+  }
+}
+
+/// Routed content (the shell's nested navigator).
+///
+/// The semantics container is load-bearing: every route's [ModalBarrier]
+/// carries a [BlockSemantics], which drops all semantics painted *before*
+/// it in the same container. Without a boundary here the nested
+/// navigator's barrier wiped the side nav / rail out of the accessibility
+/// tree — screen readers saw no navigation at all.
+class _ContentRegion extends StatelessWidget {
+  const _ContentRegion({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return FocusTraversalOrder(
+      order: const NumericFocusOrder(2),
+      child: FocusTraversalGroup(
+        child: Semantics(container: true, explicitChildNodes: true, child: child),
+      ),
     );
   }
 }
@@ -243,7 +341,10 @@ class _SideNavTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = active ? surface.green : surface.muted;
-    return Material(
+    return Semantics(
+      button: true,
+      selected: active,
+      child: Material(
       color: active ? surface.greenSoft : Colors.transparent,
       borderRadius: BorderRadius.circular(PlantlyTokens.radius),
       child: InkWell(
@@ -266,6 +367,7 @@ class _SideNavTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }

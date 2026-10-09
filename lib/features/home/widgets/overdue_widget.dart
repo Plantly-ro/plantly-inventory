@@ -186,7 +186,7 @@ class _DoneButton extends StatelessWidget {
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         minimumSize: Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        // Theme default tap target: 48 dp hit area on touch platforms.
         textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(PlantlyTokens.radiusMd),

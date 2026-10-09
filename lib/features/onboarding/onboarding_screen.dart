@@ -262,9 +262,16 @@ class _WelcomeStep extends StatelessWidget {
             style: TextStyle(fontSize: 14, color: surface.muted, height: 1.4),
           ),
           const SizedBox(height: 28),
-          Text(t.onbNameLabel, style: _labelStyle(surface)),
+          // The visible caption names the field for assistive tech too
+          // (instead of the paragraph above it).
+          ExcludeSemantics(child: Text(t.onbNameLabel, style: _labelStyle(surface))),
           const SizedBox(height: 8),
-          TextField(
+          Semantics(
+            // Container: a bare TextField merges into the nearest ancestor
+            // node, which gave it the whole step's text as its name.
+            container: true,
+            label: t.a11yNameField,
+            child: TextField(
             controller: nameController,
             onChanged: onNameChanged,
             textCapitalization: TextCapitalization.words,
@@ -287,6 +294,7 @@ class _WelcomeStep extends StatelessWidget {
                 borderSide: BorderSide(color: surface.green, width: 1.5),
               ),
             ),
+          ),
           ),
           if (fromAccount) ...[
             const SizedBox(height: 8),
@@ -462,7 +470,10 @@ class _ConsentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    // One toggle node named by the title + subtitle (the bare Switch had
+    // no accessible name).
+    return MergeSemantics(
+      child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: surface.surface,
@@ -488,6 +499,7 @@ class _ConsentTile extends StatelessWidget {
             onChanged: onChanged,
           ),
         ],
+      ),
       ),
     );
   }

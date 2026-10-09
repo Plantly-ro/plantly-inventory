@@ -112,6 +112,7 @@ class DayDetailSheet extends ConsumerWidget {
                   ),
                   const Spacer(),
                   IconButton(
+                    tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
                     onPressed: () => Navigator.of(context).maybePop(),
                     icon: Icon(Icons.close, color: surface.muted),
                   ),

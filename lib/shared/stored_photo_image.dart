@@ -19,6 +19,7 @@ class StoredPhotoImage extends StatelessWidget {
     this.fit = BoxFit.cover,
     this.width,
     this.height,
+    this.semanticLabel,
   });
 
   final String sha;
@@ -26,6 +27,11 @@ class StoredPhotoImage extends StatelessWidget {
   final BoxFit fit;
   final double? width;
   final double? height;
+
+  /// Alt text. Null = decorative (thumbnails inside an already-labelled
+  /// card/row): left out of the semantics tree rather than exposed as an
+  /// unlabeled image.
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +51,8 @@ class StoredPhotoImage extends StatelessWidget {
             fit: fit,
             width: width,
             height: height,
+            semanticLabel: semanticLabel,
+            excludeFromSemantics: semanticLabel == null,
           );
         },
       ),

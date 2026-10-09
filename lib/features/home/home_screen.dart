@@ -105,6 +105,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with FirstRunOnboarding
                     // Mouse: right-click does the same (the web hint says so).
                     onSecondaryTap: () => setState(() => _editing = !_editing),
                     behavior: HitTestBehavior.deferToChild,
+                    // An unnamed long-press over the whole body; assistive
+                    // tech gets the edit-mode toggle on the hint below.
+                    excludeFromSemantics: true,
                     child: RefreshIndicator(
                     onRefresh: () async {
                       // Drift streams are already live; the pull gesture
@@ -121,7 +124,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with FirstRunOnboarding
                         if (!hasPlants) FirstRunCallout(surface: surface),
                         // Tablet has the Customise button (§6); the gesture
                         // hint is phone copy.
-                        if (!_editing && !context.isWide) _EditHint(surface: surface),
+                        if (!_editing && !context.isWide)
+                          _EditHint(surface: surface, onActivate: () => setState(() => _editing = true)),
                         for (var i = 0; i < layout.length; i++)
                           _renderWidget(layout[i], i, layout.length, surface),
                         if (_editing) HomeEditPanel(surface: surface),
@@ -157,7 +161,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with FirstRunOnboarding
 
 /// First-run gate shared by the phone home and the desktop dashboard: once
 /// prefs have loaded and the user hasn't seen the onboarding, push it on
-/// the next frame. Guarded by `_pushed` so rebuilds don't re-push, and by
+/// the next frame (modal over the whole app, shell nav included). Guarded
+/// by `_pushed` so rebuilds don't re-push, and by
 /// `loaded` so we don't flash onboarding against the default-false state.
 mixin FirstRunOnboardingGate<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   bool _pushed = false;
@@ -167,7 +172,10 @@ mixin FirstRunOnboardingGate<T extends ConsumerStatefulWidget> on ConsumerState<
     _pushed = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      Navigator.of(context).push(
+      // Root navigator: on tablet/desktop the shell's nav sits outside the
+      // shell navigator, so a route there left the sidebar clickable and
+      // onboarding skippable. From the root it covers the whole window.
+      Navigator.of(context, rootNavigator: true).push(
         MaterialPageRoute(builder: (_) => const OnboardingScreen(), fullscreenDialog: true),
       );
     });
@@ -283,14 +291,21 @@ class _EditToggleBar extends StatelessWidget {
 /// users discover the long-press-to-customize gesture. Vanishes once
 /// they've tried it.
 class _EditHint extends StatelessWidget {
-  const _EditHint({required this.surface});
+  const _EditHint({required this.surface, required this.onActivate});
   final PlantlySurface surface;
+
+  /// Enters edit mode — the screen-reader route to the long-press gesture.
+  final VoidCallback onActivate;
 
   @override
   Widget build(BuildContext context) {
     // Would be nicer stored in prefs and dismissed after first long-press,
     // but this is fine for now — low-contrast, not obstructive.
-    return Padding(
+    return Semantics(
+      container: true,
+      button: true,
+      onTap: onActivate,
+      child: Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
       child: Row(
         children: [
@@ -305,6 +320,7 @@ class _EditHint extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -663,7 +679,10 @@ class _TabIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = active ? surface.green : surface.muted;
-    return InkWell(
+    return Semantics(
+      button: true,
+      selected: active,
+      child: InkWell(
       onTap: onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -679,6 +698,7 @@ class _TabIcon extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

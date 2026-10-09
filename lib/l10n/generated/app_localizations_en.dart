@@ -253,6 +253,91 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeSortTooltip => 'Sort plants';
 
   @override
+  String get a11yNameField => 'Your name (optional)';
+
+  @override
+  String get a11yShowPassword => 'Show password';
+
+  @override
+  String get a11yHidePassword => 'Hide password';
+
+  @override
+  String get a11yClearSearch => 'Clear search';
+
+  @override
+  String get a11yCareTypeName => 'Name';
+
+  @override
+  String get a11yCareTypeInterval => 'Default interval in days';
+
+  @override
+  String a11yDisconnectDevice(String name) {
+    return 'Disconnect $name';
+  }
+
+  @override
+  String a11ySortPlantsValue(String value) {
+    return 'Sort plants: $value';
+  }
+
+  @override
+  String a11yCareIconName(String icon) {
+    String _temp0 = intl.Intl.selectLogic(icon, {
+      'water': 'Water drop',
+      'leaf': 'Leaf',
+      'bubbles': 'Bubbles',
+      'flower': 'Flower',
+      'scissors': 'Scissors',
+      'light': 'Light',
+      'sun': 'Sun',
+      'bug': 'Bug',
+      'air': 'Air',
+      'thermometer': 'Thermometer',
+      'lotus': 'Lotus',
+      'grass': 'Grass',
+      'tools': 'Tools',
+      'hands': 'Hands',
+      'bell': 'Bell',
+      'firstAid': 'First aid',
+      'other': 'Icon',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String a11yCareColourName(String colour) {
+    String _temp0 = intl.Intl.selectLogic(colour, {
+      'green': 'Green',
+      'terra': 'Terracotta',
+      'blue': 'Blue',
+      'violet': 'Violet',
+      'rose': 'Rose',
+      'mustard': 'Mustard',
+      'slate': 'Slate grey',
+      'forest': 'Forest green',
+      'other': 'Colour',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get a11yInviteCode => 'Invite code';
+
+  @override
+  String get a11yInviteLink => 'Invite link';
+
+  @override
+  String get a11yCopyCode => 'Copy code';
+
+  @override
+  String get a11yCopyLink => 'Copy link';
+
+  @override
+  String a11yPlantPhoto(int index, int count, String name) {
+    return 'Photo $index of $count · $name';
+  }
+
+  @override
   String get homeSortNameAZ => 'Name A–Z';
 
   @override

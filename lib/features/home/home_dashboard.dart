@@ -222,56 +222,110 @@ class _Toolbar extends ConsumerWidget {
   }
 }
 
-class _SortDropdown extends StatelessWidget {
+class _SortDropdown extends StatefulWidget {
   const _SortDropdown({required this.surface, required this.value, required this.onChanged});
   final PlantlySurface surface;
   final PlantSort value;
   final ValueChanged<PlantSort> onChanged;
 
   @override
+  State<_SortDropdown> createState() => _SortDropdownState();
+}
+
+/// Exposed as ONE focusable "Sort plants: Name A–Z" button. The stock
+/// [DropdownMenu] semantics fall apart on web: with `selectOnly` its text
+/// field is dropped from the tree (no name, and DOM focus never follows
+/// Flutter focus) and the chevron is a second, unnamed Tab stop. So its own
+/// semantics are excluded and this widget supplies the node, with focus
+/// and tap wired to the real field and menu.
+class _SortDropdownState extends State<_SortDropdown> {
+  final _focus = FocusNode(debugLabel: 'home-sort');
+  // The chevron opens the same menu on click; keyboard users use the field.
+  final _chevronFocus = FocusNode(debugLabel: 'home-sort-chevron', skipTraversal: true);
+  final _menu = MenuController();
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(_onFocus);
+  }
+
+  void _onFocus() => setState(() {});
+
+  @override
+  void dispose() {
+    _focus.removeListener(_onFocus);
+    _focus.dispose();
+    _chevronFocus.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    _focus.requestFocus();
+    _menu.isOpen ? _menu.close() : _menu.open();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final surface = widget.surface;
+    final value = widget.value;
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(PlantlyTokens.radius),
       borderSide: BorderSide(color: surface.border),
     );
     return SizedBox(
       height: 36,
-      // Keyed on the value: `initialSelection` is only read once, and the
-      // persisted sort arrives asynchronously after the first build.
-      child: DropdownMenu<PlantSort>(
-        key: ValueKey(value),
-        width: 180,
-        initialSelection: value,
-        requestFocusOnTap: false,
-        onSelected: (s) => s == null ? null : onChanged(s),
-        textStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: surface.text),
-        trailingIcon: Icon(Icons.expand_more, size: 18, color: surface.muted),
-        selectedTrailingIcon: Icon(Icons.expand_less, size: 18, color: surface.muted),
-        inputDecorationTheme: InputDecorationTheme(
-          isDense: true,
-          filled: true,
-          fillColor: surface.surface,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-          constraints: const BoxConstraints.tightFor(height: 36),
-          border: border,
-          enabledBorder: border,
-          focusedBorder: border.copyWith(borderSide: BorderSide(color: surface.green)),
-        ),
-        menuStyle: MenuStyle(
-          backgroundColor: WidgetStatePropertyAll(surface.surface),
-          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
-        ),
-        dropdownMenuEntries: [
-          for (final s in PlantSort.values)
-            DropdownMenuEntry(
-              value: s,
-              label: s.label(context),
-              style: MenuItemButton.styleFrom(
-                foregroundColor: surface.text,
-                textStyle: const TextStyle(fontFamily: PlantlyFonts.inter, fontSize: 13),
-              ),
+      child: Semantics(
+        container: true,
+        button: true,
+        focusable: true,
+        focused: _focus.hasFocus,
+        label: AppLocalizations.of(context).a11ySortPlantsValue(value.label(context)),
+        onTap: _toggle,
+        onFocus: _focus.requestFocus,
+        child: ExcludeSemantics(
+          // Keyed on the value: `initialSelection` is only read once, and the
+          // persisted sort arrives asynchronously after the first build.
+          child: DropdownMenu<PlantSort>(
+            key: ValueKey(value),
+            width: 180,
+            initialSelection: value,
+            focusNode: _focus,
+            trailingIconFocusNode: _chevronFocus,
+            menuController: _menu,
+            // A focusable, keyboard-operable picker that never takes typing.
+            selectOnly: true,
+            onSelected: (s) => s == null ? null : widget.onChanged(s),
+            textStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: surface.text),
+            trailingIcon: Icon(Icons.expand_more, size: 18, color: surface.muted),
+            selectedTrailingIcon: Icon(Icons.expand_less, size: 18, color: surface.muted),
+            inputDecorationTheme: InputDecorationTheme(
+              isDense: true,
+              filled: true,
+              fillColor: surface.surface,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+              constraints: const BoxConstraints.tightFor(height: 36),
+              border: border,
+              enabledBorder: border,
+              focusedBorder: border.copyWith(borderSide: BorderSide(color: surface.green)),
             ),
-        ],
+            menuStyle: MenuStyle(
+              backgroundColor: WidgetStatePropertyAll(surface.surface),
+              surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+            ),
+            dropdownMenuEntries: [
+              for (final s in PlantSort.values)
+                DropdownMenuEntry(
+                  value: s,
+                  label: s.label(context),
+                  style: MenuItemButton.styleFrom(
+                    foregroundColor: surface.text,
+                    textStyle: const TextStyle(fontFamily: PlantlyFonts.inter, fontSize: 13),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -337,7 +391,11 @@ class _DashboardSearchFieldState extends ConsumerState<DashboardSearchField> {
   @override
   Widget build(BuildContext context) {
     final s = widget.surface;
-    return SizedBox(
+    // Container: a bare TextField merges into the nearest ancestor node —
+    // here the whole toolbar row, which then read as one control.
+    return Semantics(
+      container: true,
+      child: SizedBox(
       width: widget.width,
       height: 36,
       child: CallbackShortcuts(
@@ -372,6 +430,7 @@ class _DashboardSearchFieldState extends ConsumerState<DashboardSearchField> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

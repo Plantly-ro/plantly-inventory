@@ -168,17 +168,18 @@ class _CheckButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: surface.greenSoft,
-      borderRadius: BorderRadius.circular(PlantlyTokens.radius),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(PlantlyTokens.radius),
-        child: SizedBox(
-          width: 32,
-          height: 32,
-          child: Icon(Icons.check, size: 16, color: surface.green),
-        ),
+    // 32 px square; labelled, and padded to a 48 dp hit area on touch
+    // platforms by the theme's tap-target size.
+    return IconButton(
+      tooltip: AppLocalizations.of(context).doneBtn,
+      onPressed: onPressed,
+      icon: Icon(Icons.check, size: 16, color: surface.green),
+      style: IconButton.styleFrom(
+        backgroundColor: surface.greenSoft,
+        fixedSize: const Size.square(32),
+        minimumSize: const Size.square(32),
+        padding: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radius)),
       ),
     );
   }

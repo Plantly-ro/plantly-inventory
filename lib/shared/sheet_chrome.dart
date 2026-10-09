@@ -152,6 +152,7 @@ class SheetChrome extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Semantics(
+                      container: true,
                       header: true,
                       child: Text(
                         title ?? '',

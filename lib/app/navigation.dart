@@ -191,6 +191,7 @@ Widget? adaptiveBackButton(BuildContext context, PlantlySurface surface, {String
   if (context.isDesktop) return null;
   return IconButton(
     icon: Icon(Icons.chevron_left, color: surface.text),
+    tooltip: MaterialLocalizations.of(context).backButtonTooltip,
     onPressed: () => goBack(context, fallback: fallback),
   );
 }
@@ -202,6 +203,7 @@ Widget detailLeading(BuildContext context, PlantlySurface surface, {required Str
   if (!context.isDesktop) {
     return IconButton(
       icon: Icon(Icons.chevron_left, color: surface.text),
+      tooltip: MaterialLocalizations.of(context).backButtonTooltip,
       onPressed: () => goBack(context, fallback: parent),
     );
   }
