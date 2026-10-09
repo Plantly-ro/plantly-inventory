@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,10 +19,13 @@ Future<bool> completeWebSignOut(BuildContext context, WidgetRef ref) async {
   final navigator = Navigator.of(context, rootNavigator: true);
 
   var progressOpen = true;
+  // Cancel on the progress dialog: back out of the sign-out (nothing is
+  // signed out or wiped; the push itself just carries on in the background).
+  final cancelled = Completer<int?>();
   showDialog<void>(
     context: context,
     barrierDismissible: false,
-    builder: (_) => PopScope(
+    builder: (dctx) => PopScope(
       canPop: false,
       child: AlertDialog(
         key: const Key('sign-out-syncing'),
@@ -31,10 +36,21 @@ Future<bool> completeWebSignOut(BuildContext context, WidgetRef ref) async {
             Expanded(child: Text(t.signOutSyncing)),
           ],
         ),
+        actions: [
+          TextButton(
+            key: const Key('sign-out-syncing-cancel'),
+            onPressed: () {
+              if (!cancelled.isCompleted) cancelled.complete(null);
+              Navigator.of(dctx).pop();
+            },
+            child: Text(t.cancel),
+          ),
+        ],
       ),
     ),
   ).whenComplete(() => progressOpen = false);
-  final pending = await wiper.flush();
+  final pending = await Future.any<int?>([wiper.flush(), cancelled.future]);
+  if (pending == null) return false;
   if (progressOpen) navigator.pop();
   if (!context.mounted) return false;
 

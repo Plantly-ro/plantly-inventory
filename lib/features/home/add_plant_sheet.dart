@@ -33,7 +33,51 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
   final _nickname = TextEditingController();
   final _notes = TextEditingController();
   bool _saving = false;
+  bool _saved = false;
   String? _locationId;
+
+  /// Something the user would lose by closing the sheet.
+  bool get _dirty =>
+      _nickname.text.trim().isNotEmpty || _notes.text.trim().isNotEmpty || _locationId != null;
+
+  @override
+  void initState() {
+    super.initState();
+    // canPop follows the fields: rebuild only when dirtiness flips.
+    var wasDirty = false;
+    void onChange() {
+      if (_dirty != wasDirty && mounted) setState(() => wasDirty = _dirty);
+    }
+    _nickname.addListener(onChange);
+    _notes.addListener(onChange);
+  }
+
+  /// Back / barrier tap on a half-filled sheet: ask before throwing the
+  /// input away.
+  Future<void> _confirmDiscard() async {
+    final t = AppLocalizations.of(context);
+    final navigator = Navigator.of(context);
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        key: const Key('add-plant-discard-dialog'),
+        title: Text(t.addPlantDiscardTitle),
+        content: Text(t.addPlantDiscardBody),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.addPlantDiscardKeep)),
+          FilledButton(
+            key: const Key('add-plant-discard-confirm'),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(t.addPlantDiscardConfirm),
+          ),
+        ],
+      ),
+    );
+    if (discard == true && mounted) {
+      setState(() => _saved = true); // lets the pop through
+      navigator.pop();
+    }
+  }
 
   @override
   void dispose() {
@@ -67,18 +111,25 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
           locationId: _locationId,
         );
         if (!mounted) return;
-        navigator.maybePop();
+        _saved = true;
+        navigator.pop();
       } finally {
         if (mounted) setState(() => _saving = false);
       }
     }
 
-    return SafeArea(
+    return PopScope(
+      canPop: _saved || !_dirty,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmDiscard();
+      },
+      child: SafeArea(
       child: Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
         child: SheetChrome(
           surface: surface,
           title: t.addPlant,
+          scrollable: true,
           topRadius: 24,
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
           handleGap: 14,
@@ -207,6 +258,7 @@ class _AddPlantSheetState extends ConsumerState<AddPlantSheet> {
             const SizedBox(height: 18),
           ],
         ),
+      ),
       ),
     );
   }

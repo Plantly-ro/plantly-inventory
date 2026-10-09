@@ -48,7 +48,7 @@ class SharingRows extends ConsumerWidget {
       MeActionRow(
         key: const Key('share-active'),
         label: t.shareActiveLabel,
-        value: t.shareActiveValue(active.displayName, roleLabel(t, active.role)),
+        value: t.shareActiveValue(collectionDisplayName(t, active), roleLabel(t, active.role)),
         icon: active.isOwner ? Icons.folder_outlined : Icons.group_outlined,
         surface: surface,
       ),
@@ -73,7 +73,7 @@ class SharingRows extends ConsumerWidget {
         MeActionRow(
           key: const Key('share-leave'),
           label: t.shareLeaveLabel,
-          value: t.shareLeaveValue(active.displayName),
+          value: t.shareLeaveValue(collectionDisplayName(t, active)),
           icon: Icons.logout,
           surface: surface,
           valueColor: surface.terra,
@@ -139,7 +139,7 @@ Future<void> confirmLeaveCollection(BuildContext context, WidgetRef ref, CloudCo
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: Text(t.shareLeaveTitle(col.displayName)),
+      title: Text(t.shareLeaveTitle(collectionDisplayName(t, col))),
       content: Text(t.shareLeaveBody),
       actions: [
         TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.cancel)),
@@ -156,7 +156,7 @@ Future<void> confirmLeaveCollection(BuildContext context, WidgetRef ref, CloudCo
     await collections.leave(col.id);
     messenger
       ?..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(t.shareLeft(col.displayName))));
+      ..showSnackBar(SnackBar(content: Text(t.shareLeft(collectionDisplayName(t, col)))));
   } catch (e) {
     messenger
       ?..clearSnackBars()
@@ -249,7 +249,7 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
   }
 
   String _message(AppLocalizations t, CollectionInvite i) =>
-      t.shareInviteMessage(widget.collection.displayName, i.url, i.code);
+      t.shareInviteMessage(collectionDisplayName(t, widget.collection), i.url, i.code);
 
   Future<void> _copy(AppLocalizations t, CollectionInvite i) async {
     await Clipboard.setData(ClipboardData(text: _message(t, i)));
@@ -257,7 +257,7 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
   }
 
   Future<void> _share(AppLocalizations t, CollectionInvite i) async {
-    await ref.read(shareTextProvider)(_message(t, i), subject: t.shareInviteTitle(widget.collection.displayName));
+    await ref.read(shareTextProvider)(_message(t, i), subject: t.shareInviteTitle(collectionDisplayName(t, widget.collection)));
   }
 
   @override
@@ -266,7 +266,7 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
     final t = AppLocalizations.of(context);
     final invite = _invite;
-    final title = t.shareInviteTitle(widget.collection.displayName);
+    final title = t.shareInviteTitle(collectionDisplayName(t, widget.collection));
     final hint = invite == null ? t.shareInviteFormHint : t.shareInviteCodeShownOnce;
     return SheetChrome(
       surface: surface,
@@ -649,7 +649,7 @@ class MembersSheet extends ConsumerWidget {
     final members = ref.watch(membersProvider(collection.id));
     // The role may change under us (transfer): read the live record.
     final live = ref.watch(collectionsProvider.select((s) => s.byId(collection.id))) ?? collection;
-    final title = t.shareMembersTitle(live.displayName);
+    final title = t.shareMembersTitle(collectionDisplayName(t, live));
     return SheetChrome(
       surface: surface,
       title: title,
@@ -843,7 +843,7 @@ class MembersSheet extends ConsumerWidget {
     if (!ok) return;
     messenger
       ?..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(t.shareTransferDone(m.username, col.displayName))));
+      ..showSnackBar(SnackBar(content: Text(t.shareTransferDone(m.username, collectionDisplayName(t, col)))));
   }
 
   Future<void> _remove(BuildContext context, WidgetRef ref, AppLocalizations t, CloudCollection col, CollectionMember m) async {

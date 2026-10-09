@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -173,6 +174,7 @@ class _PlantDetailBody extends ConsumerWidget {
       backgroundColor: surface.bg,
       floatingActionButton: !canEdit ? null : GestureDetector(
         onLongPress: () => _pickFabType(context, ref, types),
+        onSecondaryTap: () => _pickFabType(context, ref, types),
         child: FloatingActionButton.extended(
           backgroundColor: fabType.color ?? surface.green,
           foregroundColor: Colors.white,
@@ -180,7 +182,7 @@ class _PlantDetailBody extends ConsumerWidget {
           label: Text(t.detailFabNow(careTypeVerb(t, fabType))),
           // "Long-press to change" is phone copy (§7); tablet keeps the
           // gesture but not the hint.
-          tooltip: context.isWide ? null : t.detailFabTooltip,
+          tooltip: context.isWide ? null : (kIsWeb ? t.detailFabTooltipWeb : t.detailFabTooltip),
           onPressed: () async {
             await ref.read(careEventRepositoryProvider).record(
                   plantId: plantRow.id,
@@ -1738,6 +1740,8 @@ class _ExportCTA extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Viewers can't list a plant (read-only collection, §3): no CTA.
+    if (!ref.watch(canEditActiveCollectionProvider)) return const SizedBox.shrink();
     final t = AppLocalizations.of(context);
     final sell = ref.watch(sellEnabledProvider);
     return Material(

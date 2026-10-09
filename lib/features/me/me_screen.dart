@@ -176,9 +176,9 @@ class _StatCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(child: _StatCol(label: t.meStatCardPlants, value: plants?.toString() ?? '…', surface: surface)),
+          Expanded(child: _StatCol(label: t.meStatCardPlants(plants ?? 0), value: plants?.toString() ?? '…', surface: surface)),
           Container(width: 1, height: 40, color: surface.border),
-          Expanded(child: _StatCol(label: t.meStatCardSpaces, value: locations?.toString() ?? '…', surface: surface)),
+          Expanded(child: _StatCol(label: t.meStatCardSpaces(locations ?? 0), value: locations?.toString() ?? '…', surface: surface)),
         ],
       ),
     );

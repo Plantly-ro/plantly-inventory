@@ -6,6 +6,8 @@ import '../../app/navigation.dart';
 import '../../cloud/collection_activity.dart';
 import '../../cloud/collections.dart';
 import '../../config/plantly_features.dart';
+import 'activity_local_names.dart';
+import 'collection_ui.dart' show collectionDisplayName;
 import '../../l10n/generated/app_localizations.dart';
 import '../../marketplace/plantly_api.dart';
 import '../../theme/tokens.dart';
@@ -18,10 +20,12 @@ import '../me/me_rows.dart';
 
 // --- copy (pure, unit-testable) ---------------------------------------------
 
-/// "Maria added Monstera" / "Maria a adăugat Monstera".
-String describeActivityEvent(AppLocalizations t, ActivityEvent e) {
+/// "Maria added Monstera" / "Maria a adăugat Monstera". [localName]: the
+/// name this device knows for the event's plant / space when the server
+/// sent none ([resolveActivityNames]).
+String describeActivityEvent(AppLocalizations t, ActivityEvent e, {String? localName}) {
   final user = e.user.isUnknown ? t.activityUnknownUser : e.user.username.trim();
-  final object = describeActivityObject(t, e);
+  final object = describeActivityObject(t, e, localName: localName);
   return switch (e.kind) {
     ActivityKind.created => t.activityCreated(user, object),
     ActivityKind.updated => t.activityUpdated(user, object),
@@ -30,9 +34,10 @@ String describeActivityEvent(AppLocalizations t, ActivityEvent e) {
 }
 
 /// The object phrase per codec entity, with a generic noun when the server
-/// sent no `summary.name`.
-String describeActivityObject(AppLocalizations t, ActivityEvent e) {
-  final name = (e.summaryName ?? '').trim();
+/// sent no `summary.name` and [localName] is unknown too.
+String describeActivityObject(AppLocalizations t, ActivityEvent e, {String? localName}) {
+  final server = (e.summaryName ?? '').trim();
+  final name = server.isNotEmpty ? server : (localName ?? '').trim();
   final named = name.isNotEmpty;
   return switch (e.entity) {
     'plants' => named ? name : t.activityObjPlant,
@@ -121,7 +126,7 @@ class CollectionActivityIconButton extends StatelessWidget {
     final t = AppLocalizations.of(context);
     return IconButton(
       key: Key('collection-activity-${collection.id}'),
-      tooltip: t.activityEntryTooltip(collection.displayName),
+      tooltip: t.activityEntryTooltip(collectionDisplayName(t, collection)),
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints.tightFor(width: 32, height: 32),
@@ -214,7 +219,7 @@ class CollectionActivityScreen extends ConsumerWidget {
             ),
             if (collection != null)
               Text(
-                collection.displayName,
+                collectionDisplayName(t, collection),
                 key: const Key('activity-collection-name'),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -308,7 +313,15 @@ class CollectionActivityScreen extends ConsumerWidget {
           );
         }
         final e = events[i - 1];
-        return ActivityEventTile(event: e, surface: surface, last: i == events.length);
+        return Consumer(builder: (context, ref, _) {
+          final names = ref.watch(activityLocalNamesProvider(collectionId)).valueOrNull ?? const {};
+          return ActivityEventTile(
+            event: e,
+            surface: surface,
+            last: i == events.length,
+            localName: names[activityNameKey(e.entity, e.entityId)],
+          );
+        });
       },
     );
   }
@@ -326,8 +339,11 @@ class CollectionActivityScreen extends ConsumerWidget {
 
 /// One feed row: avatar initial · "Maria added Monstera" · "5 min ago".
 class ActivityEventTile extends StatelessWidget {
-  const ActivityEventTile({super.key, required this.event, required this.surface, this.last = false, this.now});
+  const ActivityEventTile({super.key, required this.event, required this.surface, this.last = false, this.now, this.localName});
   final ActivityEvent event;
+
+  /// This device's name for the event's plant / space (see [describeActivityEvent]).
+  final String? localName;
   final PlantlySurface surface;
   final bool last;
 
@@ -360,7 +376,7 @@ class ActivityEventTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  describeActivityEvent(t, event),
+                  describeActivityEvent(t, event, localName: localName),
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: surface.text, height: 1.3),
                 ),
                 const SizedBox(height: 3),

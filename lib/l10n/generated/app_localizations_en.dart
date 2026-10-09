@@ -1594,10 +1594,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get meTitle => 'Me';
 
   @override
-  String get meStatCardPlants => 'PLANTS';
+  String meStatCardPlants(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'PLANTS',
+      one: 'PLANT',
+    );
+    return '$_temp0';
+  }
 
   @override
-  String get meStatCardSpaces => 'SPACES';
+  String meStatCardSpaces(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'SPACES',
+      one: 'SPACE',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get meAboutApp => 'App';
@@ -3774,4 +3790,63 @@ class AppLocalizationsEn extends AppLocalizations {
   String statsCardInDaysShort(int count) {
     return 'in ${count}d';
   }
+
+  @override
+  String get addPlantDiscardTitle => 'Discard this plant?';
+
+  @override
+  String get addPlantDiscardBody => 'What you\'ve entered so far will be lost.';
+
+  @override
+  String get addPlantDiscardKeep => 'Keep editing';
+
+  @override
+  String get addPlantDiscardConfirm => 'Discard';
+
+  @override
+  String get collectionDefaultName => 'My plants';
+
+  @override
+  String shareCollectionGoneNotice(String name) {
+    return 'You no longer have access to “$name” — back to your own collection.';
+  }
+
+  @override
+  String homeGridEmptyAllDesktop(String button) {
+    return 'No plants yet — add one with “$button” in the sidebar.';
+  }
+
+  @override
+  String get homeGridEmptyFiltered => 'No plants match these filters.';
+
+  @override
+  String get homeGridEmptyViewer => 'No plants in this collection yet.';
+
+  @override
+  String get notFoundTitle => 'Page not found';
+
+  @override
+  String get notFoundBody =>
+      'This address doesn\'t lead anywhere in Plantly Inventory. It may be mistyped, or the page has moved.';
+
+  @override
+  String get notFoundHome => 'Go to Home';
+
+  @override
+  String get gateNoLocalData =>
+      'Once you subscribe, the plants you add here are saved to your plantly.ro account and synced with your phone.';
+
+  @override
+  String get homeEditHintWeb =>
+      'Right-click or long-press to customise your home';
+
+  @override
+  String get detailFabTooltipWeb => 'Right-click or long-press to change';
+
+  @override
+  String get spacePinHintPlaceWeb =>
+      'Click to place • drag to move • right-click to remove';
+
+  @override
+  String get spacePinHintDragWeb => 'Drag pins to move • right-click to remove';
 }

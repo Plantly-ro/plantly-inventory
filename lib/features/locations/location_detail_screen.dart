@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -10,6 +11,7 @@ import '../../data/mock_plants.dart';
 import '../../data/photo_picker.dart';
 import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../shared/text_controllers_scope.dart';
 import '../../shared/photo_source_sheet.dart';
 import '../../shared/plant_thumb.dart';
 import '../../shared/remote_photo.dart';
@@ -443,8 +445,8 @@ class _LocationMapView extends ConsumerWidget {
                           ),
                           child: Text(
                             plants.any((p) => p.pinX == null || p.pinY == null)
-                                ? AppLocalizations.of(context).spacePinHintPlace
-                                : AppLocalizations.of(context).spacePinHintDrag,
+                                ? (kIsWeb ? AppLocalizations.of(context).spacePinHintPlaceWeb : AppLocalizations.of(context).spacePinHintPlace)
+                                : (kIsWeb ? AppLocalizations.of(context).spacePinHintDragWeb : AppLocalizations.of(context).spacePinHintDrag),
                             style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
                           ),
                         ),
@@ -511,6 +513,7 @@ class _PositionedPin extends StatelessWidget {
         cursor: editing ? SystemMouseCursors.move : SystemMouseCursors.click,
         child: GestureDetector(
         onLongPress: onRemove,
+        onSecondaryTap: onRemove, // right-click = long-press with a mouse
         onPanUpdate: onMove == null
             ? null
             : (details) {
@@ -712,10 +715,15 @@ class _LocationGallery extends ConsumerWidget {
       ),
     );
     if (choice == 'caption' && context.mounted) {
-      final controller = TextEditingController(text: row.caption ?? '');
       final result = await showDialog<String?>(
         context: context,
-        builder: (dctx) => AlertDialog(
+        // Controller owned by the dialog's widgets (disposed after the exit
+        // animation, not right after the await).
+        builder: (dctx) => TextControllersScope(
+          initialTexts: [row.caption ?? ''],
+          builder: (dctx, controllers) {
+          final controller = controllers.first;
+          return AlertDialog(
           title: Text(t.spaceCaptionTitle),
           content: TextField(
             controller: controller,
@@ -734,9 +742,10 @@ class _LocationGallery extends ConsumerWidget {
               ),
             FilledButton(onPressed: () => Navigator.of(dctx).pop(controller.text), child: Text(t.commonSave)),
           ],
+        );
+          },
         ),
       );
-      controller.dispose();
       if (result != null) {
         await ref
             .read(locationPhotoRepositoryProvider)

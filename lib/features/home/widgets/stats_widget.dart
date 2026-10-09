@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/providers.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/hover_card.dart';
+import '../../../shared/text_scale.dart';
 import '../../../theme/tokens.dart';
 import '../../search/search_screen.dart';
 import '../filter.dart';
@@ -77,16 +78,34 @@ class StatsWidget extends ConsumerWidget {
       onMoveUp: onMoveUp,
       onMoveDown: onMoveDown,
       onRemove: onRemove,
-      child: LayoutBuilder(builder: (context, constraints) => GridView.count(
-        crossAxisCount: adaptiveColumns(context, constraints.maxWidth, phone: 2, minTileWidth: 170, maxColumns: 4),
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
+      child: LayoutBuilder(builder: (context, constraints) {
+        final columns = adaptiveColumns(context, constraints.maxWidth, phone: 2, minTileWidth: 170, maxColumns: 4);
+        // Tiles keep their ratio unless the text needs more: a large
+        // accessibility font on a 360 dp phone overflowed the fixed 1.75.
+        final tileWidth = (constraints.maxWidth - (columns - 1) * 10) / columns;
         // Desktop tiles are a fixed 112 px tall (≈ the spec's 2.6 aspect
         // at 1232 px) — an aspect ratio overflows once the column drops
         // below ~1000 px, where four tiles would be under 80 px.
-        childAspectRatio: desktop ? _desktopTileWidth(constraints.maxWidth) / 112 : 1.75,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
+        final baseHeight = desktop ? 112.0 : tileWidth / 1.75;
+        final needed = _TileView.minHeight(context,
+            desktop: desktop, labels: [for (final t in tiles) t.label], width: tileWidth);
+        final extra = needed > baseHeight ? needed - baseHeight : 0.0;
+        return GridView(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: extra > 0
+            ? SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                mainAxisExtent: needed,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+              )
+            : SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                childAspectRatio: desktop ? _desktopTileWidth(constraints.maxWidth) / 112 : 1.75,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+              ),
         children: tiles
             .map((tile) => _TileView(
                   tile,
@@ -107,7 +126,8 @@ class StatsWidget extends ConsumerWidget {
                   },
                 ))
             .toList(growable: false),
-      )),
+      );
+      }),
     );
   }
 
@@ -133,6 +153,32 @@ class _TileView extends StatelessWidget {
   final PlantlySurface surface;
   final bool desktop;
   final VoidCallback onTap;
+
+  static TextStyle _valueStyle(bool desktop) => TextStyle(
+        fontFamily: PlantlyFonts.plusJakartaSans,
+        fontSize: desktop ? PlantlyTokens.text3xl : PlantlyTokens.text2xl,
+        fontWeight: FontWeight.w800,
+        height: 1,
+      );
+
+  static TextStyle _labelStyle(bool desktop) => TextStyle(
+        fontSize: desktop ? 13 : 11,
+        fontWeight: FontWeight.w500,
+      );
+
+  /// Border + padding + icon + value + the tallest label (wrapped to the
+  /// tile's inner [width]) at the ambient text scale.
+  static double minHeight(BuildContext context,
+      {required bool desktop, required List<String> labels, required double width}) {
+    const chrome = 2 * (PlantlyTokens.space3 + 1);
+    final inner = width - chrome;
+    var label = 0.0;
+    for (final l in labels) {
+      final h = textLineHeight(context, _labelStyle(desktop), text: l, maxWidth: inner > 0 ? inner : double.infinity);
+      if (h > label) label = h;
+    }
+    return chrome + 30 + textLineHeight(context, _valueStyle(desktop)) + label;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -168,20 +214,11 @@ class _TileView extends StatelessWidget {
             const Spacer(),
             Text(
               tile.value,
-              style: TextStyle(fontFamily: PlantlyFonts.plusJakartaSans, 
-                fontSize: desktop ? PlantlyTokens.text3xl : PlantlyTokens.text2xl,
-                fontWeight: FontWeight.w800,
-                color: surface.text,
-                height: 1,
-              ),
+              style: _valueStyle(desktop).copyWith(color: surface.text),
             ),
             Text(
               tile.label,
-              style: TextStyle(
-                fontSize: desktop ? 13 : 11,
-                color: surface.muted,
-                fontWeight: FontWeight.w500,
-              ),
+              style: _labelStyle(desktop).copyWith(color: surface.muted),
             ),
           ],
         ),

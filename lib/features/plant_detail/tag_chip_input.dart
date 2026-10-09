@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../cloud/collections.dart';
 import '../../data/providers.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../shared/text_controllers_scope.dart';
 import '../../theme/tokens.dart';
 
 /// Tag chip row on Plant Detail. Shows the currently-attached tags as
@@ -48,10 +49,14 @@ class TagChipInput extends ConsumerWidget {
 
   Future<void> _openDialog(BuildContext context, WidgetRef ref, List<String> attached) async {
     final t = AppLocalizations.of(context);
-    final controller = TextEditingController();
     await showDialog<void>(
       context: context,
-      builder: (ctx) {
+      // The controller lives as long as the dialog's widgets (incl. the
+      // exit animation) — disposing it after the await crashed in debug.
+      builder: (ctx) => TextControllersScope(
+        initialTexts: const [''],
+        builder: (ctx, controllers) {
+        final controller = controllers.first;
         return StatefulBuilder(
           builder: (ctx, setLocal) {
             return Consumer(builder: (ctx, dialogRef, _) {
@@ -129,8 +134,8 @@ class TagChipInput extends ConsumerWidget {
           },
         );
       },
+      ),
     );
-    controller.dispose();
   }
 
   Future<void> _commit(BuildContext ctx, WidgetRef ref, String raw) async {

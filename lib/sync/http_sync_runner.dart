@@ -27,8 +27,9 @@ typedef SyncAuthRefresher = Future<bool> Function();
 /// [usageInterval]).
 ///
 /// Triggers: [syncNow], [start], app resume, [debounce] after a local
-/// write, every [periodic] while resumed. Single-flight; triggers during a
-/// cycle queue exactly one follow-up cycle.
+/// write (cut short when the app goes to the background / the tab is
+/// hidden), every [periodic] while resumed. Single-flight; triggers during
+/// a cycle queue exactly one follow-up cycle.
 ///
 /// Oversized pushes (413) are handled inside [SyncEngine]: the batch is
 /// halved and retried; a lone op the server still refuses is parked
@@ -217,11 +218,29 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
       _resumed = true;
       _startPeriodic();
       unawaited(_trigger(force: true));
-    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+      return;
+    }
+    // Going to the background (Android) / the tab hidden or closing (web:
+    // `visibilitychange` → hidden, which also precedes `pagehide`): push a
+    // write still waiting out [debounce] now — the page may not come back.
+    // Best effort: a request the browser cuts off leaves the ops pending
+    // for the next start. Only the leading tab runs this runner at all.
+    if (state == AppLifecycleState.hidden || state == AppLifecycleState.paused) _flushDebounced();
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
       _resumed = false;
       _periodicTimer?.cancel();
       _periodicTimer = null;
     }
+  }
+
+  /// Run the push a local write scheduled right away instead of after
+  /// [debounce] (no-op when none is waiting; halted runners stay halted).
+  void _flushDebounced() {
+    final pending = _debounceTimer;
+    if (pending == null || !pending.isActive) return;
+    pending.cancel();
+    _debounceTimer = null;
+    unawaited(_trigger());
   }
 
   // --- scheduling -----------------------------------------------------------

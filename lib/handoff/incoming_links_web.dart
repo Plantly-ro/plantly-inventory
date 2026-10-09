@@ -3,6 +3,7 @@ import 'dart:js_interop';
 
 import 'package:web/web.dart' as web;
 
+import '../app/url_strategy.dart' show takeLaunchHref;
 import 'incoming_links.dart';
 
 IncomingLinks createIncomingLinks() => HashIncomingLinks();
@@ -26,8 +27,10 @@ class HashIncomingLinks implements IncomingLinks {
   final _controller = StreamController<Uri>.broadcast();
   late final JSFunction _listener;
 
+  /// The URL as loaded (fragment intact — see `takeLaunchHref`), else the
+  /// current one.
   @override
-  Future<Uri?> initial() async => Uri.parse(web.window.location.href);
+  Future<Uri?> initial() async => Uri.parse(takeLaunchHref() ?? web.window.location.href);
 
   @override
   Stream<Uri> get stream => _controller.stream;

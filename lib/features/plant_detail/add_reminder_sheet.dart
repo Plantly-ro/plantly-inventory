@@ -629,22 +629,21 @@ class _Presets extends StatelessWidget {
       ),
     ];
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final p in presets)
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: _PresetChip(
-                label: p.label,
-                icon: p.icon,
-                surface: surface,
-                onTap: p.apply,
-              ),
-            ),
-        ],
-      ),
+    // Wrapped, not a horizontal scroller: the last presets were cut off at
+    // the edge with nothing hinting that the row scrolls.
+    return Wrap(
+      key: const Key('add-reminder-presets'),
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        for (final p in presets)
+          _PresetChip(
+            label: p.label,
+            icon: p.icon,
+            surface: surface,
+            onTap: p.apply,
+          ),
+      ],
     );
   }
 }

@@ -37,7 +37,7 @@ Future<void> switchCollectionFromUi(BuildContext context, WidgetRef ref, CloudCo
   messenger
     ?..clearSnackBars()
     ..showSnackBar(
-      SnackBar(content: Text(t.shareSwitched(target.displayName)), duration: const Duration(milliseconds: 1800)),
+      SnackBar(content: Text(t.shareSwitched(collectionDisplayName(t, target))), duration: const Duration(milliseconds: 1800)),
     );
   // The rebuilt runner's first cycle usually wins; this just joins it.
   await runner.syncNow();
@@ -54,7 +54,7 @@ class CollectionSwitcherChip extends ConsumerWidget {
     if (!ref.watch(collectionSwitcherVisibleProvider)) return const SizedBox.shrink();
     final t = AppLocalizations.of(context);
     final active = ref.watch(activeCollectionProvider);
-    final name = active?.displayName ?? t.shareSwitcherTitle;
+    final name = active == null ? t.shareSwitcherTitle : collectionDisplayName(t, active);
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Tooltip(
@@ -118,7 +118,7 @@ class ActiveCollectionLabel extends ConsumerWidget {
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 200),
             child: Text(
-              active.displayName,
+              collectionDisplayName(AppLocalizations.of(context), active),
               overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: surface.text),
             ),
@@ -173,7 +173,7 @@ class CollectionSwitcherDropdown extends ConsumerWidget {
                     children: [
                       Icon(c.isOwner ? Icons.folder_outlined : Icons.group_outlined, size: 16, color: surface.green),
                       const SizedBox(width: 8),
-                      Expanded(child: Text(c.displayName, overflow: TextOverflow.ellipsis)),
+                      Expanded(child: Text(collectionDisplayName(t, c), overflow: TextOverflow.ellipsis)),
                     ],
                   ),
                 ),
@@ -187,7 +187,7 @@ class CollectionSwitcherDropdown extends ConsumerWidget {
                     children: [
                       Icon(c.isOwner ? Icons.folder_outlined : Icons.group_outlined, size: 16, color: surface.green),
                       const SizedBox(width: 8),
-                      Expanded(child: Text(c.displayName, overflow: TextOverflow.ellipsis)),
+                      Expanded(child: Text(collectionDisplayName(t, c), overflow: TextOverflow.ellipsis)),
                       if (!c.isOwner && needsCloud) ...[
                         const SizedBox(width: 6),
                         CollectionMarker(
@@ -280,7 +280,7 @@ class CollectionSwitcherSheet extends ConsumerWidget {
             child: Icon(c.isOwner ? Icons.folder_outlined : Icons.group_outlined, size: 16, color: surface.green),
           ),
           title: Text(
-            c.displayName,
+            collectionDisplayName(t, c),
             overflow: TextOverflow.ellipsis,
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: surface.text),
           ),
@@ -482,9 +482,9 @@ Future<void> showRenameCollectionDialog(BuildContext context, WidgetRef ref, Clo
   final collections = ref.read(collectionsProvider.notifier); // before the await (#14)
   final name = await showDialog<String>(
     context: context,
-    builder: (ctx) => _RenameDialog(initial: col.displayName),
+    builder: (ctx) => _RenameDialog(initial: collectionDisplayName(t, col)),
   );
-  if (name == null || name == col.displayName) return;
+  if (name == null || name == collectionDisplayName(t, col)) return;
   try {
     await collections.rename(col.id, name);
     messenger
@@ -567,7 +567,7 @@ Future<void> confirmDeleteCollection(
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: Text(t.collectionDeleteTitle(col.displayName)),
+      title: Text(t.collectionDeleteTitle(collectionDisplayName(t, col))),
       content: Text(t.collectionDeleteBody),
       actions: [
         TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.cancel)),
@@ -585,7 +585,7 @@ Future<void> confirmDeleteCollection(
     await collections.delete(col.id);
     messenger
       ?..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(t.collectionDeleted(col.displayName))));
+      ..showSnackBar(SnackBar(content: Text(t.collectionDeleted(collectionDisplayName(t, col)))));
     if (closeSheet && nav.mounted) nav.pop();
   } catch (e) {
     messenger

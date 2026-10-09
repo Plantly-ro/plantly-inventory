@@ -678,6 +678,21 @@ void main() {
     expect(container.read(collectionsProvider).items.map((c) => c.id), ['col-1']);
   });
 
+  test('the active shared collection vanishing from the list is announced (not a silent move); a plain refresh is quiet', () async {
+    await signInAlice();
+    final notifier = container.read(collectionsProvider.notifier);
+    final notices = <String?>[];
+    container.listen<String?>(collectionGoneNoticeProvider, (_, next) => notices.add(next));
+    await notifier.refresh();
+    expect(notices, isEmpty, reason: 'nothing vanished');
+    await notifier.switchCollection('col-2');
+    final name = container.read(collectionsProvider).items.firstWhere((c) => c.id == 'col-2').displayName;
+    serverCollections = [col('col-1', 'My plants')];
+    await notifier.refresh();
+    await waitFor(() => container.read(currentTenantIdProvider) == 'col-1', reason: 'reconciled to default');
+    expect(notices, [name]);
+  });
+
   test('unlink while switched restores the default tenant; re-link never migrates the shared tenant', () async {
     await signInAlice();
     await container.read(plantRepositoryProvider).create(nickname: 'Fern');

@@ -244,7 +244,7 @@ void main() {
       expect(find.byKey(const Key('cloud-subscribe')), findsOneWidget);
       expect(find.text('Abonează-te pe plantly.ro'), findsOneWidget);
       expect(find.text('Reîmprospătează starea'), findsOneWidget);
-      expect(find.text('Conectat ca alice · apasă pentru deconectare'), findsOneWidget);
+      expect(find.text('Conectat ca alice · apasă ca să ieși din cont'), findsOneWidget);
     });
 
     testWidgets('ready (en): status from SyncStatus, Sync now calls the runner, account, unlink with server-data-kept copy', (tester) async {
@@ -289,7 +289,9 @@ void main() {
       // Sticky: no automatic re-link, an explicit "turn it on" row instead.
       expect(collectionCreates, 0);
       expect(find.text('Sync is off on this device — tap to turn it on'), findsOneWidget);
-      expect(find.byKey(const Key('cloud-sync-now')), findsOneWidget);
+      // Unlinked: no disabled-but-chevroned "Sync now" / "Unlink" rows (QA d).
+      expect(find.byKey(const Key('cloud-sync-now')), findsNothing);
+      expect(find.byKey(const Key('cloud-unlink')), findsNothing);
 
       await tester.tap(find.byKey(const Key('cloud-status')));
       await tester.pumpAndSettle();
@@ -312,6 +314,36 @@ void main() {
       expect(collectionCreates, 2);
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString(kCollectionIdPrefKey), 'col-9');
+    });
+
+    testWidgets('a failed auto-link is not re-POSTed on every Me open (same account, same session)', (tester) async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      failCollectionCreate = true;
+      final mount = ValueNotifier<int>(0);
+      await pump(
+        tester,
+        entitlement: const CloudEntitlement(active: false),
+        linked: false,
+        db: db,
+        child: Scaffold(
+          body: ValueListenableBuilder<int>(
+            valueListenable: mount,
+            builder: (_, n, _) => ListView(
+              padding: const EdgeInsets.all(20),
+              children: [CloudSection(key: ValueKey(n), surface: PlantlySurface.light)],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(collectionCreates, 1);
+      for (var i = 1; i <= 3; i++) {
+        mount.value = i; // leave Me and come back
+        await tester.pumpAndSettle();
+      }
+      expect(collectionCreates, 1, reason: 'one automatic attempt per account per session');
+      failCollectionCreate = false;
     });
 
     testWidgets('ready (ro): status copy with diacritics', (tester) async {
@@ -702,6 +734,9 @@ void main() {
       expect(formatCloudBytes(12 * 1024 * 1024), '12 MB');
       expect(formatCloudBytes(2 * 1024 * 1024 * 1024), '2 GB');
       expect(formatCloudBytes((1.25 * 1024 * 1024 * 1024).round()), '1.3 GB');
+      // Romanian decimal comma (QA: "1.7 MB din 2 GB").
+      expect(formatCloudBytes((1.7 * 1024 * 1024).round(), locale: 'ro'), '1,7 MB');
+      expect(formatCloudBytes((1.7 * 1024 * 1024).round(), locale: 'en'), '1.7 MB');
     });
   });
 }

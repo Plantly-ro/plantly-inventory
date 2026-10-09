@@ -58,36 +58,65 @@ class SheetChrome extends StatelessWidget {
   final CrossAxisAlignment crossAxisAlignment;
   final bool expand;
 
-  /// Phone: wrap the column in a `SingleChildScrollView` (the form sheets
-  /// that already did so). Desktop always scrolls unless [expand].
+  /// Phone: the body ([children]) scrolls when it does not fit (keyboard
+  /// up, large font) while the handle and [footer] stay visible. Desktop
+  /// always scrolls unless [expand].
   final bool scrollable;
 
   @override
   Widget build(BuildContext context) {
     if (context.isDesktop) return _desktop(context);
-    final column = Column(
-      mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
-      crossAxisAlignment: crossAxisAlignment,
-      children: [
-        Center(
-          child: Container(
-            height: 4,
-            width: 40,
-            decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
-          ),
+    final handle = [
+      Center(
+        child: Container(
+          height: 4,
+          width: 40,
+          decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
         ),
-        SizedBox(height: handleGap),
-        ...children,
-        ?footer,
-      ],
-    );
+      ),
+      SizedBox(height: handleGap),
+    ];
+    final Widget column;
+    if (scrollable && !expand) {
+      // The body scrolls, the footer stays put: with the keyboard up and a
+      // large font the primary action used to scroll out of reach (or,
+      // in a non-scrolling sheet, be covered). Content that fits lays out
+      // exactly as a plain column (the Flexible hugs it).
+      column = Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: crossAxisAlignment,
+        children: [
+          ...handle,
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: crossAxisAlignment,
+                children: children,
+              ),
+            ),
+          ),
+          ?footer,
+        ],
+      );
+    } else {
+      column = Column(
+        mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+        crossAxisAlignment: crossAxisAlignment,
+        children: [
+          ...handle,
+          ...children,
+          ?footer,
+        ],
+      );
+    }
     return Container(
       decoration: BoxDecoration(
         color: surface.bg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(topRadius)),
       ),
       padding: padding,
-      child: scrollable ? SingleChildScrollView(child: column) : column,
+      child: column,
     );
   }
 
