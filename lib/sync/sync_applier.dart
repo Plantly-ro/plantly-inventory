@@ -7,6 +7,7 @@ import '../data/database/app_database.dart';
 import 'entity_codecs.dart';
 import 'hlc.dart';
 import 'op_log.dart';
+import 'sync_markers.dart';
 import 'sync_rejections.dart' show kApplyErrorReason, kIdCollisionReason, kInvalidRemoteOpReason;
 import 'sync_transport.dart';
 
@@ -123,7 +124,10 @@ bool isDeterministicApplyFailure(Object error) {
 /// re-stamp it — see [_orSetMembershipColumns].
 /// Unique-key conflicts follow the 1.1.0 rule ([_resolveUniqueConflict]);
 /// a [readOnly] applier resolves them without recording ops. [repair]
-/// re-materialises rows missing without a tombstone and retries parked ops.
+/// re-materialises rows missing without a tombstone, retries parked ops and
+/// re-applies 1.1.0 `@applyCareEvent` ops, which are expanded into
+/// per-column LWW writes ([_applyLegacyCareEvent]) and count as covering
+/// those columns in every comparison.
 ///
 /// Tombstones are final: a tombstoned row ignores every later op. A field op
 /// for a row we have not received yet is kept and materialised when the `*`
@@ -166,11 +170,16 @@ class SyncApplier {
     final result = SyncApplyResult();
     await _replayParkedPhotoCollisions(result);
     if (ops.isEmpty) return result;
-    await db.transaction(() async {
-      for (final op in ops) {
-        await _applyIsolated(op, result);
-      }
-    });
+    _scheduleCover = {};
+    try {
+      await db.transaction(() async {
+        for (final op in ops) {
+          await _applyIsolated(op, result);
+        }
+      });
+    } finally {
+      _scheduleCover = null;
+    }
     return result;
   }
 
@@ -197,6 +206,7 @@ class SyncApplier {
       result.remotePhotoShas.length = photos;
       result.idCollisions.length = collisions;
       _collisionTenant = null;
+      _scheduleCover?.clear(); // the savepoint rolled back what it saw
       if (!isDeterministicApplyFailure(e)) rethrow;
       debugPrint('sync: could not apply ${op.entity}/${op.entityId}.${op.field} @${op.hlc}: $e');
       await _parkInbound(op, reason: kApplyErrorReason, result: result, error: '$e');
@@ -243,6 +253,8 @@ class SyncApplier {
       applied = await _applyWholeRow(codec, op, opHlc, deviceId, result);
     } else if (codec.isOrSet && op.field == 'removed_hlc' && op.entityId.contains('/')) {
       applied = await _applyLegacyPairRemove(codec, op, opHlc, deviceId);
+    } else if (_isLegacyCareEvent(codec, op.field)) {
+      applied = await _applyLegacyCareEvent(codec, op, opHlc, deviceId);
     } else {
       applied = await _applyField(codec, op, opHlc, deviceId);
     }
@@ -252,6 +264,7 @@ class SyncApplier {
       result.skipped++;
     }
     final seq = await opLog.recordRemote(op, deviceId: deviceId, nowMillis: _nowMillis());
+    if (codec.entity == 'care_schedules') _noteScheduleOp(codec, op, opHlc);
     final held = _collisionTenant;
     if (held != null) {
       _collisionTenant = null;
@@ -530,27 +543,37 @@ class SyncApplier {
       }
     }
 
-    // Field ops that arrived before the row: the newest per field wins over
-    // the `*` payload(s).
-    final newest = <String, SyncOpRow>{};
+    // Field ops that arrived before the row (and legacy `@applyCareEvent`
+    // ops, column by column): the newest per field wins over the `*`
+    // payload(s).
+    final newest = <String, (Hlc, Object?, SyncOpRow)>{};
+    void offer(String column, Hlc h, Object? wireValue, SyncOpRow o) {
+      final covered = cover[column];
+      if (covered != null && h <= covered) return;
+      final prev = newest[column];
+      if (prev == null || h > prev.$1) newest[column] = (h, wireValue, o);
+    }
+
     for (final o in ops) {
       if (o.field == kWholeRowField || o.field == kTombstoneField) continue;
+      if (_isLegacyCareEvent(codec, o.field)) {
+        final h = Hlc.parse(o.hlc);
+        for (final e in _legacyCareEventColumns(codec, _starPayload(o)).entries) {
+          offer(e.key, h, e.value, o);
+        }
+        continue;
+      }
       if (!codec.isWireColumn(o.field)) continue;
-      final h = Hlc.parse(o.hlc);
-      final covered = cover[o.field];
-      if (covered != null && h <= covered) continue;
-      final prev = newest[o.field];
-      if (prev == null || h > Hlc.parse(prev.hlc)) newest[o.field] = o;
+      offer(o.field, Hlc.parse(o.hlc), SyncOpDto.fromRow(o).value, o);
     }
     for (final e in newest.entries) {
-      final dto = SyncOpDto.fromRow(e.value);
-      sql[e.key] = codec.decodeField(e.key, dto.value);
-      if (codec.isOrSet && e.key == 'removed_hlc') sql[e.key] ??= e.value.hlc;
+      final (h, wireValue, o) = e.value;
+      sql[e.key] = codec.decodeField(e.key, wireValue);
+      if (codec.isOrSet && e.key == 'removed_hlc') sql[e.key] ??= o.hlc;
       if (!_restampsRowHlc(codec, e.key)) continue;
-      final h = Hlc.parse(e.value.hlc);
       if (h > rowHlc) {
         rowHlc = h;
-        sql['device_id'] = e.value.deviceId;
+        sql['device_id'] = o.deviceId;
       }
     }
     sql[codec.hlcColumn] = rowHlc.encode();
@@ -588,14 +611,24 @@ class SyncApplier {
     final row = await _readRow(codec, op.entityId);
     if (row == null) return false; // materialised by the `*` op later
     if (_rowIsDeleted(codec, row)) return false;
-    final latest = _latest(
-      codec,
-      await _usableOps(codec, op.entity, op.entityId, fields: [op.field, kWholeRowField, kTombstoneField]),
-      op.field,
-    );
-    if (latest != null && latest.field == kTombstoneField) return false;
     final rowHlc = _rowHlc(codec, row);
-    final local = latest == null ? rowHlc : Hlc.parse(latest.hlc);
+    final Hlc? local;
+    if (codec.entity == 'care_schedules' && kLegacyCareEventColumns.contains(op.field)) {
+      // Same rule as below, but a 1.1.0 `@applyCareEvent` op covers these
+      // columns too; answered from the per-batch cover map (linear in the
+      // batch — a schedule's log grows by six ops per watering).
+      final cover = await _legacyCoverFor(codec, op.entityId);
+      if (cover == null) return false; // tombstoned
+      local = cover[op.field] ?? rowHlc;
+    } else {
+      final latest = _latest(
+        codec,
+        await _usableOps(codec, op.entity, op.entityId, fields: [op.field, kWholeRowField, kTombstoneField]),
+        op.field,
+      );
+      if (latest != null && latest.field == kTombstoneField) return false;
+      local = latest == null ? rowHlc : Hlc.parse(latest.hlc);
+    }
     if (local != null && opHlc <= local) return false;
 
     Object? value = codec.decodeField(op.field, op.value);
@@ -607,6 +640,190 @@ class SyncApplier {
       if (restamp) codec.hlcColumn: op.hlc,
       if (restamp || newer && codec.isOrSet && op.field == 'removed_hlc') 'device_id': deviceId,
     });
+    return true;
+  }
+
+  // --- legacy `@applyCareEvent` ---------------------------------------------
+
+  /// The columns a 1.1.0 `@applyCareEvent` op may write — exactly what that
+  /// build put in its payload. Anything else in the object is ignored, so a
+  /// malformed / forged op cannot move a schedule to another plant or
+  /// delete it.
+  static const Set<String> kLegacyCareEventColumns = {
+    'last_done_at',
+    'current_interval_days',
+    'next_due_at',
+    'snooze_count',
+    'recent_events_json',
+    'enabled',
+  };
+
+  bool _isLegacyCareEvent(EntityCodec codec, String field) =>
+      field == kLegacyApplyCareEventField && codec.entity == 'care_schedules';
+
+  /// The usable columns of a legacy payload, as wire values.
+  Map<String, Object?> _legacyCareEventColumns(EntityCodec codec, Map<String, dynamic> payload) => {
+        for (final e in payload.entries)
+          if (kLegacyCareEventColumns.contains(e.key) && codec.acceptsValue(e.key, e.value)) e.key: e.value,
+      };
+
+  /// Per-batch cache for [_applyLegacyCareEvent]: care_schedules id → the
+  /// newest HLC bearing on each legacy column (field ops, covering `*`, other
+  /// legacy ops), or null when the row has a tombstone. Built from the log on
+  /// first touch, then kept current as ops of the batch are recorded
+  /// ([_noteScheduleOp]), so a page of N legacy ops for one schedule is O(N)
+  /// instead of re-reading and re-decoding the whole log per op.
+  Map<String, Map<String, Hlc>?>? _scheduleCover;
+
+  Future<Map<String, Hlc>?> _legacyCoverFor(EntityCodec codec, String id) async {
+    final cache = _scheduleCover;
+    if (cache != null && cache.containsKey(id)) return cache[id];
+    final ops = await _usableOps(codec, codec.entity, id,
+        fields: [...kLegacyCareEventColumns, kWholeRowField, kTombstoneField, kLegacyApplyCareEventField]);
+    final cover = ops.any((o) => o.field == kTombstoneField) ? null : _columnMaxHlcs(codec, ops);
+    cache?[id] = cover;
+    return cover;
+  }
+
+  /// Keep [_scheduleCover] in step with a `care_schedules` op just recorded
+  /// by [_applyOne].
+  void _noteScheduleOp(EntityCodec codec, SyncOpDto op, Hlc opHlc) {
+    final cache = _scheduleCover;
+    if (cache == null) return;
+    if (op.field == kWholeRowField) {
+      cache.clear(); // may also have resolved a unique conflict on another id
+      return;
+    }
+    if (!cache.containsKey(op.entityId)) return;
+    final cover = cache[op.entityId];
+    if (cover == null) return;
+    if (op.field == kTombstoneField) {
+      cache[op.entityId] = null;
+      return;
+    }
+    void bump(String c) {
+      final prev = cover[c];
+      if (prev == null || opHlc > prev) cover[c] = opHlc;
+    }
+
+    if (_isLegacyCareEvent(codec, op.field)) {
+      final v = op.value;
+      if (v is Map) _legacyCareEventColumns(codec, v.map((k, v) => MapEntry('$k', v))).keys.forEach(bump);
+    } else if (kLegacyCareEventColumns.contains(op.field)) {
+      bump(op.field);
+    }
+  }
+
+  /// A 1.1.0 `@applyCareEvent` op carries the absolute post-event values of
+  /// the schedule (not a delta), so it is applied as if it were one field op
+  /// per payload column, all at the op's HLC: each column is written iff the
+  /// op beats the newest op bearing on that column (field op, covering `*`,
+  /// other legacy op). The comparison is against the log, not the row, so
+  /// arrival order does not matter.
+  Future<bool> _applyLegacyCareEvent(EntityCodec codec, SyncOpDto op, Hlc opHlc, String deviceId) async {
+    final value = op.value;
+    if (value is! Map) return false;
+    final columns = _legacyCareEventColumns(codec, value.map((k, v) => MapEntry('$k', v)));
+    if (columns.isEmpty) return false;
+    final row = await _readRow(codec, op.entityId);
+    if (row == null) return false; // folded in when the `*` op materialises the row
+    if (_rowIsDeleted(codec, row)) return false;
+    final cover = await _legacyCoverFor(codec, op.entityId);
+    if (cover == null) return false; // tombstoned
+    final rowHlc = _rowHlc(codec, row);
+    final updates = <String, Object?>{};
+    for (final e in columns.entries) {
+      final local = cover[e.key] ?? rowHlc;
+      if (local == null || opHlc > local) updates[e.key] = codec.decodeField(e.key, e.value);
+    }
+    if (updates.isEmpty) return false;
+    if (rowHlc == null || opHlc > rowHlc) {
+      updates[codec.hlcColumn] = op.hlc;
+      updates['device_id'] = deviceId;
+    }
+    await _update(codec, op.entityId, updates);
+    return true;
+  }
+
+  static const String _legacyCareEventsMarker = 'reapply_legacy_care_events_v1';
+
+  /// One-shot (per tenant, per database) repair: re-apply the stored
+  /// `@applyCareEvent` ops. Builds before this one stored them as "ignored",
+  /// so a device that pulled a 1.1.0 peer's waterings still shows the old
+  /// due date, and a 1.1.0 device's own waterings could have been
+  /// overwritten by older field ops. Ops pulled from now on go through
+  /// [_applyLegacyCareEvent], hence the marker.
+  ///
+  /// Linear per schedule: the log is decoded once; per column the newest
+  /// legacy op is written iff it beats the newest non-legacy op bearing on
+  /// that column and the row does not already hold its value.
+  Future<void> _reapplyLegacyCareEvents(SyncApplyResult result) async {
+    final codec = codecs.forEntity('care_schedules');
+    if (codec == null) return;
+    if (await hasSyncMarker(db, tenantId: tenantId, name: _legacyCareEventsMarker)) return;
+
+    final ids = await db
+        .customSelect(
+          'SELECT DISTINCT entity_id AS id FROM sync_ops WHERE tenant_id = ? AND entity = ? AND field = ?',
+          variables: [
+            Variable<String>(tenantId),
+            Variable<String>(codec.entity),
+            Variable<String>(kLegacyApplyCareEventField),
+          ],
+          readsFrom: {db.syncOps},
+        )
+        .get();
+    for (final m in ids) {
+      final id = m.read<String>('id');
+      try {
+        final applied = await db.transaction(() => _reapplyLegacyFor(codec, id), requireNew: true);
+        if (applied) result.applied++;
+      } catch (e) {
+        if (!isDeterministicApplyFailure(e)) rethrow;
+        debugPrint('sync: repair could not re-apply legacy care events of care_schedules/$id: $e');
+      }
+    }
+    await setSyncMarker(db, tenantId: tenantId, name: _legacyCareEventsMarker, atMillis: _nowMillis());
+  }
+
+  Future<bool> _reapplyLegacyFor(EntityCodec codec, String id) async {
+    final row = await _readRow(codec, id);
+    if (row == null || _rowIsDeleted(codec, row)) return false;
+    final ops = await _usableOps(codec, codec.entity, id);
+    if (ops.any((o) => o.field == kTombstoneField)) return false;
+    final others = _columnMaxHlcs(codec, [for (final o in ops) if (o.field != kLegacyApplyCareEventField) o]);
+    final best = <String, (Hlc, Object?, String)>{};
+    for (final o in ops) {
+      if (o.field != kLegacyApplyCareEventField) continue;
+      final h = Hlc.parse(o.hlc);
+      for (final e in _legacyCareEventColumns(codec, _starPayload(o)).entries) {
+        final prev = best[e.key];
+        if (prev == null || h > prev.$1) best[e.key] = (h, e.value, o.deviceId);
+      }
+    }
+    final rowHlc = _rowHlc(codec, row);
+    Hlc? stamp;
+    String? stampDevice;
+    final updates = <String, Object?>{};
+    for (final e in best.entries) {
+      final (h, wire, device) = e.value;
+      final other = others[e.key];
+      if (other != null && h <= other) continue;
+      final v = codec.decodeField(e.key, wire);
+      final current = row[e.key];
+      if (v == current || v is bool && current == (v ? 1 : 0)) continue;
+      updates[e.key] = v;
+      if ((rowHlc == null || h > rowHlc) && (stamp == null || h > stamp)) {
+        stamp = h;
+        stampDevice = device;
+      }
+    }
+    if (updates.isEmpty) return false;
+    if (stamp != null) {
+      updates[codec.hlcColumn] = stamp.encode();
+      updates['device_id'] = stampDevice;
+    }
+    await _update(codec, id, updates);
     return true;
   }
 
@@ -775,6 +992,8 @@ class SyncApplier {
   ///     Heals rows earlier builds dropped — notably a reminder / tag
   ///     re-created after a delete, whose insert 1.1.0 lost to the dead row
   ///     still holding the unique key — and `*` ops whose insert failed.
+  ///  3. Full pass only: re-applies stored 1.1.0 `@applyCareEvent` ops
+  ///     ([_reapplyLegacyCareEvents]) that earlier builds ignored.
   ///
   /// Transient failures propagate (the runner retries the cycle).
   Future<SyncApplyResult> repair() async {
@@ -804,6 +1023,7 @@ class SyncApplier {
         for (final codec in codecs.all) {
           await _rematerialiseMissing(codec, result);
         }
+        await _reapplyLegacyCareEvents(result);
       }
     });
     _repaired = true;
@@ -890,6 +1110,7 @@ class SyncApplier {
   /// (dropped on apply) is not outranked by it.
   bool _starCovers(EntityCodec codec, SyncOpRow star, String column) {
     final payload = _starPayload(star);
+    if (_isLegacyCareEvent(codec, star.field) && !kLegacyCareEventColumns.contains(column)) return false;
     return payload.containsKey(column) && codec.acceptsValue(column, payload[column]);
   }
 
@@ -902,7 +1123,7 @@ class SyncApplier {
     for (final o in ops) {
       if (onlyField != null) {
         if (o.field != onlyField) continue;
-      } else if (o.field == kWholeRowField) {
+      } else if (o.field == kWholeRowField || _isLegacyCareEvent(codec, o.field)) {
         if (!_starCovers(codec, o, column!)) continue;
       } else if (o.field != column && o.field != kTombstoneField) {
         continue;
@@ -931,6 +1152,10 @@ class SyncApplier {
         final payload = _starPayload(o);
         for (final e in payload.entries) {
           if (codec.isWireColumn(e.key) && codec.acceptsValue(e.key, e.value)) bump(e.key, h);
+        }
+      } else if (_isLegacyCareEvent(codec, o.field)) {
+        for (final c in _legacyCareEventColumns(codec, _starPayload(o)).keys) {
+          bump(c, h);
         }
       } else if (o.field != kTombstoneField) {
         bump(o.field, h);

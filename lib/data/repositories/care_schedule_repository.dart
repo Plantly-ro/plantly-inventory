@@ -228,19 +228,23 @@ class CareScheduleRepository {
           break;
       }
 
-      final hlc = await opLog.recordFieldUpdate(
+      // One ordinary field op per column, all six every time so the
+      // schedule a peer ends up with is one coherent "after this care
+      // event" state under LWW. 1.1.0 recorded a single `@applyCareEvent`
+      // op instead, which no applier understood (the schedule never moved
+      // on other devices); SyncApplier still expands those.
+      final hlc = (await opLog.recordFieldUpdates(
         entity: 'care_schedules',
         entityId: s.id,
-        field: '@applyCareEvent',
-        value: {
+        fields: {
           'last_done_at': nowMs,
           'current_interval_days': intervalDaysForPersist,
           'next_due_at': nextDueAtMs,
           'snooze_count': decision.consecutiveHighSnoozeCycles,
           'recent_events_json': _encodeWindow(updatedWindow),
-          'enabled': stillEnabled ? 1 : 0,
+          'enabled': stillEnabled,
         },
-      );
+      ))!;
 
       await (db.update(db.careSchedules)..where((row) => row.id.equals(s.id))).write(
         CareSchedulesCompanion(
@@ -421,12 +425,13 @@ class CareScheduleRepository {
       final s = await (db.select(db.careSchedules)..where((r) => r.id.equals(scheduleId))).getSingleOrNull();
       if (s == null || s.nextDueAt == null) return;
       final next = calendar.addDuration(s.nextDueAt!, by);
-      final hlc = await opLog.recordFieldUpdate(
+      // snooze_count is written below too, so it needs its own op — it used
+      // to change locally only and drift from every peer.
+      final hlc = (await opLog.recordFieldUpdates(
         entity: 'care_schedules',
         entityId: s.id,
-        field: 'next_due_at',
-        value: next,
-      );
+        fields: {'next_due_at': next, 'snooze_count': s.snoozeCount + 1},
+      ))!;
       await (db.update(db.careSchedules)..where((r) => r.id.equals(scheduleId))).write(
         CareSchedulesCompanion(
           nextDueAt: Value(next),

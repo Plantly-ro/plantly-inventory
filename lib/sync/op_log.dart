@@ -14,6 +14,15 @@ const String kTombstoneField = '__tombstone__';
 /// Whole-row create/upsert sentinel used in sync_ops.field.
 const String kWholeRowField = '*';
 
+/// Pseudo-field 1.1.0 clients record on `care_schedules` when care is
+/// logged: ONE op whose value is an object of absolute column values
+/// (`last_done_at`, `current_interval_days`, `next_due_at`, `snooze_count`,
+/// `recent_events_json`, `enabled`). Never emitted any more — care events
+/// now record one ordinary field op per column — but such ops are in server
+/// logs and still arrive from 1.1.0 devices, so the applier expands them
+/// into per-column LWW writes (`SyncApplier`).
+const String kLegacyApplyCareEventField = '@applyCareEvent';
+
 /// Seed a freshly created [clock] with the highest HLC in `sync_ops` — every
 /// tenant, local and remote ops alike — so the first op of this launch
 /// outranks everything this device has already produced or merged. Without
