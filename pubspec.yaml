@@ -1,7 +1,7 @@
 name: plantly_inventory
 description: "PlantlyInventory — offline-first companion plant care tracker. Phase 1 Flutter app; see PLAN.md."
 publish_to: 'none'
-version: 1.1.0+18
+version: 1.1.1+19
 
 environment:
   sdk: ^3.11.5
