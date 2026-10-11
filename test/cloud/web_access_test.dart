@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:plantly_inventory/cloud/collection_link.dart';
 import 'package:plantly_inventory/cloud/entitlement.dart';
 import 'package:plantly_inventory/cloud/web_access.dart';
 import 'package:plantly_inventory/config/plantly_features.dart';
@@ -466,6 +467,69 @@ void main() {
       status = 403;
       final c = make();
       expect(await verdict(c), WebAccess.closedNotEntitled('alice'));
+    });
+  });
+
+  group('another account\'s data on this browser (heldByOther)', () {
+    Future<AppDatabase> dbWithRowsUnder(String tenant) async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      await db.into(db.plants).insert(PlantsCompanion.insert(
+            id: 'their-plant',
+            tenantId: tenant,
+            nickname: 'Theirs',
+            status: 'alive',
+            updatedHlc: '00000000000001-00000-dev',
+            deviceId: 'dev',
+          ));
+      return db;
+    }
+
+    test('data-owner marker of another account: entitled but closed, with the account named', () async {
+      SharedPreferences.setMockInitialValues({
+        kSkipSeedPrefKey: true,
+        kTenantIdPrefKey: 'col-9',
+        kDataOwnerUserIdPrefKey: 'u-other',
+        kDataOwnerUsernamePrefKey: 'bob',
+      });
+      final c = make(db: await dbWithRowsUnder('col-9'));
+      await c.read(collectionLinkProvider.notifier).ready;
+      final v = await verdict(c);
+      expect(v, WebAccess.closedHeldByOther('alice', 'bob'));
+      expect(v.isClosed, isTrue);
+    });
+
+    test('a persisted link made by another account closes it too', () async {
+      SharedPreferences.setMockInitialValues({
+        kSkipSeedPrefKey: true,
+        kTenantIdPrefKey: 'col-9',
+        kCollectionIdPrefKey: 'col-9',
+        kCollectionUserIdPrefKey: 'u-other',
+        kCollectionUsernamePrefKey: 'bob',
+      });
+      final c = make(db: await dbWithRowsUnder('col-9'));
+      await c.read(collectionLinkProvider.notifier).ready;
+      expect(await verdict(c), WebAccess.closedHeldByOther('alice', 'bob'));
+    });
+
+    test('own data (marker = me) opens as before; off web the gate never engages', () async {
+      SharedPreferences.setMockInitialValues({
+        kSkipSeedPrefKey: true,
+        kTenantIdPrefKey: 'col-9',
+        kDataOwnerUserIdPrefKey: 'u-1',
+        kDataOwnerUsernamePrefKey: 'alice',
+      });
+      final c = make(db: await dbWithRowsUnder('col-9'));
+      await c.read(collectionLinkProvider.notifier).ready;
+      expect(await verdict(c), WebAccess.open);
+
+      SharedPreferences.setMockInitialValues({
+        kSkipSeedPrefKey: true,
+        kTenantIdPrefKey: 'col-9',
+        kDataOwnerUserIdPrefKey: 'u-other',
+      });
+      final android = make(web: false, db: await dbWithRowsUnder('col-9'));
+      expect(await verdict(android), WebAccess.open);
     });
   });
 

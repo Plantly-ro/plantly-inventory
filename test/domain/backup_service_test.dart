@@ -182,6 +182,13 @@ void main() {
           reason: 'own photo + the one this tenant still shows; not the parked one, not a detached reference');
       expect(rows('plant_photos').map((j) => j['plant_id']).toSet(), {myPlant.id});
       expect(json.encode(payload), isNot(contains('Theirs')));
+
+      // Schema 13: the same sha can also have its own row here — exported
+      // once, this tenant's row first.
+      await _insertPhoto(db, sha: shaShared, tenant: 'col-mine');
+      await _insertPhoto(db, sha: shaShared, tenant: 'col-other');
+      final again = await BackupService(db: db, tenantId: 'col-mine').photosInScope();
+      expect(again.map((p) => (p.sha256, p.tenantId)), [(shaMine, 'col-mine'), (shaShared, 'col-mine')]);
     });
 
     test('import lands every row under the importing tenant, whatever the file says', () async {
@@ -212,6 +219,34 @@ void main() {
       final imported = ops.where((o) => (json.decode(o.valueJson!) as Map)['nickname'] == 'From A').single;
       expect(imported.tenantId, 'col-b');
       expect((json.decode(imported.valueJson!) as Map)['tenant_id'], 'col-b');
+    });
+
+    test('restored photos start remote (no bytes known); device-local fields never reach the op', () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      final opLog = OpLogWriter(db: db, clock: HlcClock(deviceId: 'device-b'), tenantId: 'col-b');
+      final source = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(source.close);
+      await source.into(source.photos).insert(PhotosCompanion.insert(
+          sha256: shaMine, tenantId: 'tenant-local', mime: 'image/jpeg', bytes: 3, updatedHlc: 'h', deviceId: 'd',
+          localPath: const Value('/device-a/photos/aa.jpg'), remoteState: const Value('synced')));
+      final blob = await BackupService(db: source, tenantId: 'tenant-local').export(secret: _secret);
+
+      await BackupService(db: db, tenantId: 'col-b').import(blob: blob, secret: _secret, opLog: opLog);
+      final row = await db.select(db.photos).getSingle();
+      expect((row.tenantId, row.remoteState, row.localPath), ('col-b', 'remote', null));
+      final op = await (db.select(db.syncOps)..where((o) => o.entity.equals('photos'))).getSingle();
+      final payload = json.decode(op.valueJson!) as Map<String, dynamic>;
+      expect(payload.keys, isNot(contains('local_path')));
+      expect(payload.keys, isNot(contains('remote_state')));
+      expect(payload['sha256'], shaMine);
+
+      // Importing again over a row this tenant already holds keeps its state.
+      await (db.update(db.photos)..where((p) => p.sha256.equals(shaMine))).write(
+          const PhotosCompanion(remoteState: Value('synced'), localPath: Value('/device-b/photos/aa.jpg')));
+      await BackupService(db: db, tenantId: 'col-b').import(blob: blob, secret: _secret, opLog: opLog);
+      final again = await db.select(db.photos).getSingle();
+      expect((again.remoteState, again.localPath), ('synced', '/device-b/photos/aa.jpg'));
     });
 
     test('import refuses an op log for another tenant', () async {

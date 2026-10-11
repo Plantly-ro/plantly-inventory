@@ -42,7 +42,7 @@ void main() {
       expect(req.method, 'POST');
       expect(req.url.toString(), '$host/api/v1/auth/login');
       expect(req.headers['Content-Type'], startsWith('application/json'));
-      expect(req.headers['User-Agent'], 'PlantlyInventory/1.0.0 (+https://plantly.ro/app/inventory)');
+      expect(req.headers['User-Agent'], 'PlantlyInventory/dev (+https://plantly.ro/app/inventory)');
       expect(json.decode(req.body), {'email': 'alice@plantly.local', 'password': 'plantly123'});
     });
 

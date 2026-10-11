@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -46,6 +47,7 @@ import 'tag_chip_input.dart';
 import '../../app/side_sheet.dart';
 import '../../shared/actor_label.dart';
 import '../collections/collection_activity_screen.dart';
+import '../../shared/relative_days.dart';
 import '../../shared/sheet_chrome.dart';
 
 String _localeOf(BuildContext context) => Localizations.localeOf(context).toString();
@@ -170,8 +172,12 @@ class _PlantDetailBody extends ConsumerWidget {
     }
     return Scaffold(
       backgroundColor: surface.bg,
-      floatingActionButton: !canEdit ? null : GestureDetector(
+      // Merged so the long-press (change care type) belongs to the labelled
+      // FAB node instead of an anonymous one around it.
+      floatingActionButton: !canEdit ? null : MergeSemantics(
+        child: GestureDetector(
         onLongPress: () => _pickFabType(context, ref, types),
+        onSecondaryTap: () => _pickFabType(context, ref, types),
         child: FloatingActionButton.extended(
           backgroundColor: fabType.color ?? surface.green,
           foregroundColor: Colors.white,
@@ -179,7 +185,7 @@ class _PlantDetailBody extends ConsumerWidget {
           label: Text(t.detailFabNow(careTypeVerb(t, fabType))),
           // "Long-press to change" is phone copy (§7); tablet keeps the
           // gesture but not the hint.
-          tooltip: context.isWide ? null : t.detailFabTooltip,
+          tooltip: context.isWide ? null : (kIsWeb ? t.detailFabTooltipWeb : t.detailFabTooltip),
           onPressed: () async {
             await ref.read(careEventRepositoryProvider).record(
                   plantId: plantRow.id,
@@ -194,6 +200,7 @@ class _PlantDetailBody extends ConsumerWidget {
             );
           },
         ),
+      ),
       ),
       appBar: AppBar(
         backgroundColor: surface.bg,
@@ -362,7 +369,7 @@ class _PlantDetailBody extends ConsumerWidget {
               height: 360,
               child: Container(
                 color: surface.surfaceAlt,
-                child: _HeroCarousel(plantId: plantId, fallback: swatch, surface: surface),
+                child: _HeroCarousel(plantId: plantId, fallback: swatch, surface: surface, plantName: plantRow.nickname),
               ),
             )
           else
@@ -370,7 +377,7 @@ class _PlantDetailBody extends ConsumerWidget {
               aspectRatio: 1.3,
               child: Container(
                 color: surface.surfaceAlt,
-                child: _HeroCarousel(plantId: plantId, fallback: swatch, surface: surface),
+                child: _HeroCarousel(plantId: plantId, fallback: swatch, surface: surface, plantName: plantRow.nickname),
               ),
             ),
           Padding(
@@ -551,10 +558,13 @@ class _PlantDetailBody extends ConsumerWidget {
 }
 
 class _HeroCarousel extends ConsumerStatefulWidget {
-  const _HeroCarousel({required this.plantId, required this.fallback, required this.surface});
+  const _HeroCarousel({required this.plantId, required this.fallback, required this.surface, required this.plantName});
   final String plantId;
   final MockPlant fallback;
   final PlantlySurface surface;
+
+  /// Photo alt text.
+  final String plantName;
 
   @override
   ConsumerState<_HeroCarousel> createState() => _HeroCarouselState();
@@ -669,6 +679,8 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
             setState(() => _index = current);
           });
         }
+        final tapPad = canEdit && _CarouselIconBtn.padded(context);
+        final gap = tapPad ? 0.0 : 6.0;
         return Stack(
           children: [
             PageView.builder(
@@ -677,7 +689,11 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
               onPageChanged: (i) => setState(() => _index = i),
               itemBuilder: (_, i) => GestureDetector(
                 onLongPress: canEdit ? () => _confirmDetach(shas[i]) : null,
-                child: _PhotoView(sha: shas[i], fallback: widget.fallback),
+                child: _PhotoView(
+                  sha: shas[i],
+                  fallback: widget.fallback,
+                  semanticLabel: _photoAlt(t, rows, shas, i),
+                ),
               ),
             ),
             if (shas.length > 1)
@@ -703,9 +719,11 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
                   ],
                 ),
               ),
+            // Touch: the buttons' 48 dp hit boxes replace the 6 px gaps and
+            // the 10 px inset, so the 28 px circles land where they were.
             Positioned(
-              top: 10,
-              right: 10,
+              top: tapPad ? 0 : 10,
+              right: tapPad ? 0 : 10,
               child: Row(
                 children: [
                   Container(
@@ -720,14 +738,14 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
                     ),
                   ),
                   if (canEdit) ...[
-                  const SizedBox(width: 6),
+                  SizedBox(width: gap),
                   if (rows.length > 1)
                     _CarouselIconBtn(
                       icon: Icons.swap_vert,
                       tooltip: t.detailReorderTooltip,
                       onTap: () => _openReorder(rows),
                     ),
-                  if (rows.length > 1) const SizedBox(width: 6),
+                  if (rows.length > 1) SizedBox(width: gap),
                   _CarouselIconBtn(
                     icon: Icons.edit_calendar_outlined,
                     tooltip: t.detailEditDateTooltip,
@@ -735,7 +753,7 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
                       if (_index < rows.length) _editCapturedAt(rows[_index]);
                     },
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: gap),
                   _CarouselIconBtn(
                     icon: Icons.edit_note_outlined,
                     tooltip: t.detailCaptionTooltip,
@@ -743,7 +761,7 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
                       if (_index < rows.length) _editAnnotation(rows[_index]);
                     },
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: gap),
                   _CarouselIconBtn(
                     icon: Icons.delete_outline,
                     tooltip: t.commonRemove,
@@ -806,6 +824,13 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
     );
   }
 
+  /// Alt text: "Photo 2 of 3 · Calathea", plus the caption when there is one.
+  String _photoAlt(AppLocalizations t, List<db.PlantPhotoRow> rows, List<String> shas, int i) {
+    final base = t.a11yPlantPhoto(i + 1, shas.length, widget.plantName);
+    final caption = rows.where((r) => r.photoSha == shas[i]).firstOrNull?.caption;
+    return (caption ?? '').isEmpty ? base : '$base. $caption';
+  }
+
   Future<void> _confirmDetach(String sha) async {
     final t = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
@@ -826,15 +851,17 @@ class _HeroCarouselState extends ConsumerState<_HeroCarousel> {
 }
 
 class _PhotoView extends StatelessWidget {
-  const _PhotoView({required this.sha, required this.fallback});
+  const _PhotoView({required this.sha, required this.fallback, this.semanticLabel});
   final String sha;
   final MockPlant fallback;
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
     return StoredPhotoImage(
       sha: sha,
       width: double.infinity,
+      semanticLabel: semanticLabel,
       placeholder: Center(child: PlantThumb(plant: fallback, size: 280)),
     );
   }
@@ -1022,7 +1049,8 @@ class _UpcomingRowView extends ConsumerWidget {
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              // Theme default: 48 dp hit area on touch platforms (the pill
+              // keeps its size), shrink-wrapped for mouse on desktop.
               textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radiusMd)),
             ),
@@ -1037,7 +1065,6 @@ class _UpcomingRowView extends ConsumerWidget {
               side: BorderSide(color: surface.border),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PlantlyTokens.radiusMd)),
             ),
@@ -1059,18 +1086,25 @@ class _UpcomingRowView extends ConsumerWidget {
   String label, {
   DateTime? now,
 }) {
-  final due = s.nextDueAt;
-  if (due == null) return (label, t.detailNoDueDate, false);
-  final nowMs = (now ?? DateTime.now()).millisecondsSinceEpoch;
-  final diffMs = due - nowMs;
-  final days = (diffMs / (86400 * 1000)).round();
-  if (diffMs < 0) {
+  final (whenText, urgent) = describeScheduleDue(t, s.nextDueAt, now: now);
+  return (label, whenText, urgent);
+}
+
+/// "in 3 days" / "tomorrow" / "2 days overdue" for a due instant, counted
+/// in CALENDAR days ([calendarDaysBetween]) — the same number Calendar and
+/// Home show for that date.
+@visibleForTesting
+(String when, bool urgent) describeScheduleDue(AppLocalizations t, int? dueMs, {DateTime? now}) {
+  if (dueMs == null) return (t.detailNoDueDate, false);
+  final at = now ?? DateTime.now();
+  final days = calendarDaysUntilMs(dueMs, at);
+  if (dueMs < at.millisecondsSinceEpoch) {
     final late = -days;
-    return (label, late == 0 ? t.detailOverdue : t.detailOverdueDays(late), true);
+    return (late <= 0 ? t.detailOverdue : t.detailOverdueDays(late), true);
   }
-  if (days == 0) return (label, t.detailDueToday, true);
-  if (days == 1) return (label, t.detailDueTomorrow, false);
-  return (label, t.detailDueInDays(days), false);
+  if (days == 0) return (t.detailDueToday, true);
+  if (days == 1) return (t.detailDueTomorrow, false);
+  return (t.detailDueInDays(days), false);
 }
 
 /// "Done" on a reminder: record the event, then the care feedback overlay.
@@ -1730,6 +1764,8 @@ class _ExportCTA extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Viewers can't list a plant (read-only collection, §3): no CTA.
+    if (!ref.watch(canEditActiveCollectionProvider)) return const SizedBox.shrink();
     final t = AppLocalizations.of(context);
     final sell = ref.watch(sellEnabledProvider);
     return Material(
@@ -1761,6 +1797,40 @@ class _ExportCTA extends ConsumerWidget {
   }
 }
 
+/// The "LAST `type`" stat: the newest care event that already happened and
+/// how many calendar days ago. A future-dated event (logged ahead, or a
+/// device clock that ran fast) is not "last" — it read "−16d"; only when
+/// every event lies ahead is the nearest one shown, as upcoming
+/// ([LastCareStat.future]). Null when there are no events.
+@visibleForTesting
+LastCareStat? lastCareStat(List<db.CareEventRow> events, DateTime now) {
+  if (events.isEmpty) return null;
+  final nowMs = now.millisecondsSinceEpoch;
+  db.CareEventRow? past;
+  db.CareEventRow? upcoming;
+  for (final e in events) {
+    if (e.doneAt <= nowMs) {
+      if (past == null || e.doneAt > past.doneAt) past = e;
+    } else if (upcoming == null || e.doneAt < upcoming.doneAt) {
+      upcoming = e;
+    }
+  }
+  final pick = past ?? upcoming!;
+  final days = calendarDaysUntilMs(pick.doneAt, now).abs();
+  return LastCareStat(pick, days, future: past == null);
+}
+
+class LastCareStat {
+  const LastCareStat(this.event, this.days, {required this.future});
+  final db.CareEventRow event;
+
+  /// Calendar days between today and the event's date (never negative).
+  final int days;
+
+  /// The event lies ahead (no past event exists): label "in Nd".
+  final bool future;
+}
+
 class _StatsCard extends ConsumerWidget {
   const _StatsCard({required this.plantId, required this.surface, this.inset = true});
   final String plantId;
@@ -1775,13 +1845,10 @@ class _StatsCard extends ConsumerWidget {
           data: (rows) => rows,
           orElse: () => const <db.CareEventRow>[],
         );
-    if (events.isEmpty) return const SizedBox.shrink();
+    final lastStat = lastCareStat(events, ref.read(clockProvider)());
+    if (lastStat == null) return const SizedBox.shrink();
     final total = events.length;
-    // events is newest-first — the first entry is the last action.
-    final last = events.first;
-    final lastType = last.type;
-    final lastWhen = DateTime.fromMillisecondsSinceEpoch(last.doneAt, isUtc: true).toLocal();
-    final daysAgo = ref.read(clockProvider)().difference(lastWhen).inDays;
+    final lastType = lastStat.event.type;
     // Average interval for the most-common type.
     final byType = <String, List<int>>{};
     for (final e in events) {
@@ -1822,7 +1889,11 @@ class _StatsCard extends ConsumerWidget {
                 Expanded(
                   child: _StatCell(
                     label: t.statsCardLast(careKeyLabel(t, types, lastType)).toUpperCase(),
-                    value: daysAgo == 0 ? t.statsCardToday : t.statsCardDaysShort(daysAgo),
+                    value: lastStat.days == 0
+                        ? t.statsCardToday
+                        : lastStat.future
+                            ? t.statsCardInDaysShort(lastStat.days)
+                            : t.statsCardDaysShort(lastStat.days),
                     surface: surface,
                   ),
                 ),
@@ -1869,27 +1940,29 @@ class _StatCell extends StatelessWidget {
   }
 }
 
+/// 28 px dark circle over the photo. On touch platforms the theme's
+/// padded tap target grows the hit area to 48 dp around the same visual.
 class _CarouselIconBtn extends StatelessWidget {
   const _CarouselIconBtn({required this.icon, required this.tooltip, required this.onTap});
   final IconData icon;
   final String tooltip;
   final VoidCallback onTap;
 
+  /// True where buttons get a 48 dp hit area (touch platforms).
+  static bool padded(BuildContext context) => Theme.of(context).materialTapTargetSize == MaterialTapTargetSize.padded;
+
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.black.withValues(alpha: 0.45),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Tooltip(
-            message: tooltip,
-            child: Icon(icon, size: 16, color: Colors.white),
-          ),
-        ),
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onTap,
+      icon: Icon(icon, size: 16, color: Colors.white),
+      style: IconButton.styleFrom(
+        backgroundColor: Colors.black.withValues(alpha: 0.45),
+        fixedSize: const Size.square(28),
+        minimumSize: const Size.square(28),
+        padding: EdgeInsets.zero,
+        shape: const CircleBorder(),
       ),
     );
   }
@@ -1928,6 +2001,7 @@ class _ReorderPhotosScreenState extends ConsumerState<_ReorderPhotosScreen> {
         title: Text(t.detailReorderPhotosTitle, style: TextStyle(color: surface.text)),
         leading: IconButton(
           icon: Icon(Icons.close, color: surface.text),
+          tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
@@ -2275,7 +2349,7 @@ class _DesktopDetailLayout extends ConsumerWidget {
               borderRadius: BorderRadius.circular(PlantlyTokens.radiusXl),
               child: Container(
                 color: surface.surfaceAlt,
-                child: _HeroCarousel(plantId: plantId, fallback: swatch, surface: surface),
+                child: _HeroCarousel(plantId: plantId, fallback: swatch, surface: surface, plantName: plantRow.nickname),
               ),
             ),
           ),

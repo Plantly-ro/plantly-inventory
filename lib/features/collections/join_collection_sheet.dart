@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app/breakpoints.dart';
 import '../../app/side_sheet.dart';
 import '../../cloud/account_decision.dart';
 import '../../cloud/cloud_state.dart';
@@ -158,6 +159,7 @@ class _JoinCollectionSheetState extends ConsumerState<JoinCollectionSheet> {
       // left behind): the user decides where they go BEFORE the join —
       // otherwise `join` finds no link of ours and lands nowhere (QA2 BUG-4).
       await links.ready;
+      await links.releaseEmptyForeignClaims(session.userId);
       if (!mounted) return;
       final cloud = ref.read(cloudStateProvider);
       final other = cloud.heldByOther;
@@ -181,7 +183,7 @@ class _JoinCollectionSheetState extends ConsumerState<JoinCollectionSheet> {
       unawaited(ref.read(syncRunnerProvider).syncNow());
       messenger
         ?..clearSnackBars()
-        ..showSnackBar(SnackBar(content: Text(t.shareJoined(col.displayName))));
+        ..showSnackBar(SnackBar(content: Text(t.shareJoined(collectionDisplayName(t, col)))));
       _closed();
       navigator.pop(col);
     } on PlantlyApiException catch (e) {
@@ -272,6 +274,7 @@ class _JoinCollectionSheetState extends ConsumerState<JoinCollectionSheet> {
     final cloud = ref.watch(cloudStateProvider);
     final auth = ref.watch(plantlyAuthProvider);
     final inset = MediaQuery.of(context).viewInsets.bottom;
+    final desktop = context.isDesktop;
     // Resume by itself: the plan turned active while the step was showing
     // (the user subscribed in the browser / Play and came back).
     ref.listen<AsyncValue<CloudEntitlement?>>(cloudEntitlementProvider, (prev, next) {
@@ -293,6 +296,10 @@ class _JoinCollectionSheetState extends ConsumerState<JoinCollectionSheet> {
     final purchaseLink = ref.watch(cloudPurchaseLinkAllowedProvider);
 
     if (_cloudRequired) {
+      // Two stacked buttons don't fit SheetChrome's fixed 64 px desktop
+      // bar: on desktop they close the body instead (phone: unchanged,
+      // the footer follows the body either way).
+      final footer = _requirementFooter(t, surface, purchaseLink);
       return Padding(
         padding: EdgeInsets.only(bottom: inset),
         child: SheetChrome(
@@ -300,7 +307,7 @@ class _JoinCollectionSheetState extends ConsumerState<JoinCollectionSheet> {
           title: t.shareJoinCloudRequiredTitle,
           subtitle: t.shareJoinCloudRequiredBody,
           crossAxisAlignment: CrossAxisAlignment.start,
-          footer: _requirementFooter(t, surface, purchaseLink),
+          footer: desktop ? null : footer,
           children: [
             SafeArea(
               top: false,
@@ -308,32 +315,36 @@ class _JoinCollectionSheetState extends ConsumerState<JoinCollectionSheet> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.workspace_premium_outlined, size: 22, color: surface.terra),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          t.shareJoinCloudRequiredTitle,
-                          key: const Key('join-cloud-required'),
-                          style: TextStyle(
-                            fontFamily: PlantlyFonts.plusJakartaSans,
-                            fontSize: 19,
-                            fontWeight: FontWeight.w800,
-                            color: surface.text,
+                  // Desktop: the SheetChrome header already carries the
+                  // title + body as title/subtitle (#29).
+                  if (!desktop) ...[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.workspace_premium_outlined, size: 22, color: surface.terra),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            t.shareJoinCloudRequiredTitle,
+                            key: const Key('join-cloud-required'),
+                            style: TextStyle(
+                              fontFamily: PlantlyFonts.plusJakartaSans,
+                              fontSize: 19,
+                              fontWeight: FontWeight.w800,
+                              color: surface.text,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    t.shareJoinCloudRequiredBody,
-                    key: const Key('join-cloud-required-body'),
-                    style: TextStyle(fontSize: 12.5, height: 1.4, color: surface.muted),
-                  ),
-                  const SizedBox(height: 10),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      t.shareJoinCloudRequiredBody,
+                      key: const Key('join-cloud-required-body'),
+                      style: TextStyle(fontSize: 12.5, height: 1.4, color: surface.muted),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   _Note(
                     icon: Icons.check_circle_outline,
                     text: t.cloudNotIncludedValue,
@@ -378,6 +389,7 @@ class _JoinCollectionSheetState extends ConsumerState<JoinCollectionSheet> {
                 ],
               ),
             ),
+            if (desktop) footer,
           ],
         ),
       );
@@ -415,19 +427,22 @@ class _JoinCollectionSheetState extends ConsumerState<JoinCollectionSheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  t.shareJoinTitle,
-                  key: const Key('join-collection-title'),
-                  style: TextStyle(
-                    fontFamily: PlantlyFonts.plusJakartaSans,
-                    fontSize: 19,
-                    fontWeight: FontWeight.w800,
-                    color: surface.text,
+                // Desktop: title + body live in the SheetChrome header (#29).
+                if (!desktop) ...[
+                  Text(
+                    t.shareJoinTitle,
+                    key: const Key('join-collection-title'),
+                    style: TextStyle(
+                      fontFamily: PlantlyFonts.plusJakartaSans,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                      color: surface.text,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(t.shareJoinBody, style: TextStyle(fontSize: 12.5, color: surface.muted)),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 4),
+                  Text(t.shareJoinBody, style: TextStyle(fontSize: 12.5, color: surface.muted)),
+                  const SizedBox(height: 16),
+                ],
                 TextField(
                   key: const Key('join-collection-code'),
                   controller: _code,

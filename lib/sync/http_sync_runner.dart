@@ -27,8 +27,9 @@ typedef SyncAuthRefresher = Future<bool> Function();
 /// [usageInterval]).
 ///
 /// Triggers: [syncNow], [start], app resume, [debounce] after a local
-/// write, every [periodic] while resumed. Single-flight; triggers during a
-/// cycle queue exactly one follow-up cycle.
+/// write (cut short when the app goes to the background / the tab is
+/// hidden), every [periodic] while resumed. Single-flight; triggers during
+/// a cycle queue exactly one follow-up cycle.
 ///
 /// Oversized pushes (413) are handled inside [SyncEngine]: the batch is
 /// halved and retried; a lone op the server still refuses is parked
@@ -74,6 +75,7 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
     this.batchSize = 500,
     this.entitlementIsOwners = false,
     this.readOnly = false,
+    this.onRemoteApplied,
     DateTime Function()? now,
   })  : assert(clock == null || identical(clock, opLog.clock),
             'one HlcClock per device: pass the OpLogWriter\'s clock (or omit it)'),
@@ -90,7 +92,7 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
           userId: userId,
           batchSize: batchSize,
         ),
-        _applier = SyncApplier(db: db, opLog: opLog, clock: opLog.clock) {
+        _applier = SyncApplier(db: db, opLog: opLog, clock: opLog.clock, readOnly: readOnly) {
     _backoff = minBackoff;
   }
 
@@ -134,6 +136,13 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
   /// `403 read_only` and halt the runner. Pull still runs, pending local
   /// ops (if any slipped in) stay queued for a later role change.
   final bool readOnly;
+
+  /// Called once after a cycle in which ops changed local rows (pull, a
+  /// push reply's `fresh_ops`, or the repair pass) — e.g. to re-arm the OS
+  /// reminders for
+  /// schedules that arrived from another device or member. Never awaited;
+  /// must not throw.
+  final void Function(Set<String> entities)? onRemoteApplied;
 
   final Stream<void> _localChanges;
   final DateTime Function() _now;
@@ -209,11 +218,29 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
       _resumed = true;
       _startPeriodic();
       unawaited(_trigger(force: true));
-    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+      return;
+    }
+    // Going to the background (Android) / the tab hidden or closing (web:
+    // `visibilitychange` → hidden, which also precedes `pagehide`): push a
+    // write still waiting out [debounce] now — the page may not come back.
+    // Best effort: a request the browser cuts off leaves the ops pending
+    // for the next start. Only the leading tab runs this runner at all.
+    if (state == AppLifecycleState.hidden || state == AppLifecycleState.paused) _flushDebounced();
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
       _resumed = false;
       _periodicTimer?.cancel();
       _periodicTimer = null;
     }
+  }
+
+  /// Run the push a local write scheduled right away instead of after
+  /// [debounce] (no-op when none is waiting; halted runners stay halted).
+  void _flushDebounced() {
+    final pending = _debounceTimer;
+    if (pending == null || !pending.isActive) return;
+    pending.cancel();
+    _debounceTimer = null;
+    unawaited(_trigger());
   }
 
   // --- scheduling -----------------------------------------------------------
@@ -271,21 +298,45 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
 
   Future<void> _cycle() async {
     _emit(_status.copyWith(inFlight: true));
+    final applied = <String>{};
+    try {
+      await _cycleLoop((r) => applied.addAll(r.appliedEntities));
+    } finally {
+      // Rows changed even when a later step of the cycle failed.
+      if (applied.isNotEmpty) {
+        try {
+          onRemoteApplied?.call(applied);
+        } catch (e, st) {
+          debugPrint('sync: onRemoteApplied failed: $e\n$st');
+        }
+      }
+    }
+  }
+
+  Future<void> _cycleLoop(void Function(SyncApplyResult result) countApplied) async {
     var authRetried = false;
     while (true) {
       try {
+        await _healStaleCursor();
         await _synthesizeInitialOps();
+        // Retry parked apply errors; full self-heal on the first cycle. A
+        // repair failure must never stop push/pull.
+        try {
+          countApplied(await _applier.repair());
+        } catch (e, st) {
+          debugPrint('sync: repair failed, continuing: $e\n$st');
+        }
         final pushed = readOnly
             ? const SyncPushResult(
                 sent: 0, accepted: 0, rejected: [], batches: 0, cursor: '', hasMore: false, freshOps: 0)
             : await _engine.pushPending(
                 onFresh: (ops) async {
-                  await _applier.applyBatch(ops);
+                  countApplied(await _applier.applyBatch(ops));
                 },
               );
         if (pushed.batches == 0 || pushed.hasMore) {
           await _engine.pullAll(onOps: (ops) async {
-            await _applier.applyBatch(ops);
+            countApplied(await _applier.applyBatch(ops));
           });
         }
         String? error;
@@ -385,6 +436,24 @@ class HttpSyncRunner with WidgetsBindingObserver implements SyncRunner {
     } catch (_) {
       return false;
     }
+  }
+
+  /// The cursor lives in prefs, the data in the database: a lost database
+  /// with surviving prefs (OPFS evicted, a partial site-data clear, the
+  /// in-memory fallback, a restored prefs backup) would resume the pull
+  /// past every op the empty cache is missing. Every op this device ever
+  /// pushed or received sits in `sync_ops` with `pushed_at` set, so a
+  /// cursor with none of those behind it is stale: pull from the start.
+  /// Harmless when wrong — a full pull is idempotent.
+  Future<void> _healStaleCursor() async {
+    final current = await cursor.get();
+    if (current.isEmpty || current == '0') return;
+    final row = await db.customSelect(
+      'SELECT EXISTS(SELECT 1 FROM sync_ops WHERE tenant_id = ? AND pushed_at IS NOT NULL) AS present',
+      variables: [Variable<String>(collectionId)],
+      readsFrom: {db.syncOps},
+    ).getSingle();
+    if (!row.read<bool>('present')) await cursor.set('');
   }
 
   /// Rows that exist locally without any op (pre-cloud data, restored

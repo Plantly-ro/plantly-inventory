@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../data/care_types.dart';
 import '../../data/providers.dart';
+import '../../domain/services/local_calendar.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../shared/care_type_labels.dart';
 import '../../theme/tokens.dart';
@@ -533,14 +534,19 @@ class _Preview extends StatelessWidget {
     if (count == null || count <= 0) return const SizedBox.shrink();
     final t = AppLocalizations.of(context);
     final locale = Localizations.localeOf(context).toString();
-    final intervalMs = (unit.toDays(count) * 86400 * 1000).round();
+    final intervalDays = unit.toDays(count);
+    const calendar = LocalCalendar();
     final firings = <DateTime>[];
     var at = firstDue;
     final limit = mode == 'once' ? 1 : 3;
     for (var i = 0; i < limit; i++) {
       firings.add(at);
       if (mode == 'once') break;
-      at = at.add(Duration(milliseconds: intervalMs));
+      // Same stepping as the real schedule (wall-clock time across DST).
+      at = DateTime.fromMillisecondsSinceEpoch(
+        calendar.addDays(at.millisecondsSinceEpoch, intervalDays),
+        isUtc: at.isUtc,
+      );
     }
     return Container(
       padding: const EdgeInsets.all(10),
@@ -623,22 +629,21 @@ class _Presets extends StatelessWidget {
       ),
     ];
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final p in presets)
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: _PresetChip(
-                label: p.label,
-                icon: p.icon,
-                surface: surface,
-                onTap: p.apply,
-              ),
-            ),
-        ],
-      ),
+    // Wrapped, not a horizontal scroller: the last presets were cut off at
+    // the edge with nothing hinting that the row scrolls.
+    return Wrap(
+      key: const Key('add-reminder-presets'),
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        for (final p in presets)
+          _PresetChip(
+            label: p.label,
+            icon: p.icon,
+            surface: surface,
+            onTap: p.apply,
+          ),
+      ],
     );
   }
 }

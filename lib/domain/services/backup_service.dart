@@ -2,9 +2,13 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../cloud/collection_link.dart' show isCollectionTenant;
 import '../../data/database/app_database.dart';
+import '../../data/providers.dart' show kSkipSeedPrefKey;
+import '../../data/seed_manifest.dart';
 import '../../sync/hlc.dart';
 import '../../sync/op_log.dart';
 
@@ -116,7 +120,23 @@ class BackupService {
     }
 
     final counts = <String, int>{};
+    final prefs = await SharedPreferences.getInstance();
+    // A restore replaces the demo seed (Android QA b06: a fresh install
+    // ended up with the 8 demo plants next to the restored ones). Same
+    // rules as a collection link: only untouched seed rows of a local
+    // tenant go — never anything the user edited, cared for or filed —
+    // and the seed never comes back on this install.
+    final pruneSeed = !isCollectionTenant(tenantId);
     await db.transaction(() async {
+      if (pruneSeed) {
+        await dropUntouchedSeed(
+          db: db,
+          tenant: tenantId,
+          prefs: prefs,
+          deviceId: opLog.clock.deviceId,
+          web: kIsWeb,
+        );
+      }
       counts['plants'] = await _restore(db.plants, payload['plants'], opLog, 'plants');
       counts['locations'] = await _restore(db.locations, payload['locations'], opLog, 'locations');
       counts['species'] = await _restore(db.species, payload['species'], opLog, 'species');
@@ -139,12 +159,13 @@ class BackupService {
         'location_photos',
       );
     });
+    if (pruneSeed) await prefs.setBool(kSkipSeedPrefKey, true);
     // Replay the user preferences blob (custom care types / layout /
     // theme / sort). Guards each value against the expected type so a
-    // broken backup can't crash the app on read.
+    // broken backup can't crash the app on read. Providers that cached
+    // these values must reload them — `BackupActions.importBackup`.
     final prefsBlob = payload['prefs'];
     if (prefsBlob is Map<String, dynamic>) {
-      final prefs = await SharedPreferences.getInstance();
       for (final entry in prefsBlob.entries) {
         final v = entry.value;
         if (v is String) {
@@ -175,25 +196,32 @@ class BackupService {
     return rows.map((r) => Map<String, dynamic>.from(r.data)).toList(growable: false);
   }
 
-  /// `photos` is content-addressed (PK = sha) and shared across the tenants
-  /// on a device: a row keeps the stamp of whichever tenant stored it first,
-  /// while other collections may attach the same sha. In scope for this
-  /// tenant's backup: rows stamped [tenantId], plus rows still referenced
-  /// by one of its live join rows (plant / location galleries) or care
-  /// events. Nothing else — a parked account's photos never leave the device.
+  /// `photos` is keyed (tenant_id, sha256): normally this tenant's own rows.
+  /// Data from before that key (schema < 13) can still have a collection
+  /// attach a sha whose only row is stamped with another tenant, so rows
+  /// still referenced by one of this tenant's live join rows (plant /
+  /// location galleries) or care events are in scope too — one row per sha,
+  /// this tenant's own first. Nothing else: a parked account's photos never
+  /// leave the device.
   static const String _photosInScopeSql = '''
-SELECT * FROM photos
-WHERE deleted_at IS NULL AND (
-  tenant_id = ?
-  OR sha256 IN (SELECT photo_sha FROM plant_photos WHERE tenant_id = ? AND removed_hlc IS NULL)
-  OR sha256 IN (SELECT photo_sha FROM location_photos WHERE tenant_id = ? AND removed_hlc IS NULL)
-  OR sha256 IN (SELECT photo_sha FROM care_events WHERE tenant_id = ? AND deleted_at IS NULL AND photo_sha IS NOT NULL)
+SELECT * FROM photos p
+WHERE p.deleted_at IS NULL AND (
+  p.tenant_id = ?1
+  OR (
+    (p.sha256 IN (SELECT photo_sha FROM plant_photos WHERE tenant_id = ?1 AND removed_hlc IS NULL)
+      OR p.sha256 IN (SELECT photo_sha FROM location_photos WHERE tenant_id = ?1 AND removed_hlc IS NULL)
+      OR p.sha256 IN (SELECT photo_sha FROM care_events WHERE tenant_id = ?1 AND deleted_at IS NULL AND photo_sha IS NOT NULL))
+    AND NOT EXISTS (
+      SELECT 1 FROM photos o
+      WHERE o.sha256 = p.sha256 AND o.deleted_at IS NULL AND (o.tenant_id = ?1 OR o.tenant_id < p.tenant_id)
+    )
+  )
 )
-ORDER BY sha256''';
+ORDER BY p.sha256''';
 
   Future<List<QueryRow>> _photoQueryRows() => db.customSelect(
         _photosInScopeSql,
-        variables: [for (var i = 0; i < 4; i++) Variable<String>(tenantId)],
+        variables: [Variable<String>(tenantId)],
         readsFrom: {db.photos, db.plantPhotos, db.locationPhotos, db.careEvents},
       ).get();
 
@@ -223,6 +251,19 @@ ORDER BY sha256''';
     for (final raw in data) {
       if (raw is! Map<String, dynamic>) continue;
       final item = tenantScoped ? <String, dynamic>{...raw, 'tenant_id': tenantId} : raw;
+      if (entity == 'photos') {
+        // Device-local state from the exporting device means nothing here.
+        // A row this tenant already holds keeps its own state; a new one
+        // starts `remote` (no bytes known yet: the fetcher downloads it, or
+        // finds the blob already on this device and queues the upload).
+        // `ZipBackupService.importZip` turns rows whose bytes it restored
+        // into `local` — only then is there something to upload.
+        final existing = await (db.select(db.photos)
+              ..where((p) => p.tenantId.equals(tenantId) & p.sha256.equals('${item['sha256']}')))
+            .getSingleOrNull();
+        item['remote_state'] = existing?.remoteState ?? 'remote';
+        item['local_path'] = existing?.localPath;
+      }
       final columnsList = <String>[];
       final placeholders = <String>[];
       final values = <Object?>[];
@@ -243,11 +284,18 @@ ORDER BY sha256''';
       // deterministic on re-import.
       final id = item['id'] ?? item['sha256'];
       if (id is String) {
+        // Device-local columns (photos.local_path / remote_state,
+        // care_events.actor_user_id) never travel. tenant_id stays: it is
+        // forced to this tenant above and the server ignores it.
+        final excluded = {...?opLog.codecs.forEntity(entity)?.excludedColumns}..remove('tenant_id');
         await opLog.recordFieldUpdate(
           entity: entity,
           entityId: id,
           field: kWholeRowField,
-          value: item,
+          value: {
+            for (final e in item.entries)
+              if (!excluded.contains(e.key)) e.key: e.value,
+          },
         );
       }
       count++;

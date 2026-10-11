@@ -61,7 +61,12 @@ class _HoverCardState extends State<HoverCard> {
               width: keyboardFocus ? 2 : 1,
             ),
           );
-    return Material(
+    // A button of its own for assistive tech (named by the card's text);
+    // a bare ink well only exposed an anonymous tap target.
+    return Semantics(
+      container: true,
+      button: widget.onTap != null,
+      child: Material(
       type: MaterialType.transparency,
       child: InkWell(
         onTap: widget.onTap,
@@ -89,6 +94,7 @@ class _HoverCardState extends State<HoverCard> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

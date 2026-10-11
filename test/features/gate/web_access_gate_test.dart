@@ -1,6 +1,7 @@
 // WebAccessGate (WEB-ACCESS-POLICY §0): the three states' copy and
 // controls, RO + EN, prices from /subscriptions/plans with the EUR fallback,
 // the Play badge per locale, retry → re-fetch, sign-out from state 2.
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -10,8 +11,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:plantly_inventory/cloud/entitlement.dart';
+import 'package:plantly_inventory/cloud/local_data_wipe.dart';
 import 'package:plantly_inventory/cloud/web_access.dart';
 import 'package:plantly_inventory/config/plantly_features.dart';
+import 'package:plantly_inventory/data/providers.dart' show plantsStreamProvider;
 import 'package:plantly_inventory/features/gate/web_access_gate.dart';
 import 'package:plantly_inventory/features/gate/web_offline_banner.dart';
 import 'package:plantly_inventory/l10n/generated/app_localizations.dart';
@@ -31,12 +34,14 @@ void main() {
   late int plansHits;
   late int meHits;
   late bool plansFail;
+  String? meFirstName;
 
   setUp(() {
     SharedPreferences.setMockInitialValues({'plantly_onboarded': true});
     plansHits = 0;
     meHits = 0;
     plansFail = false;
+    meFirstName = null;
   });
 
   http.Response jsonRes(Object body, [int status = 200]) =>
@@ -56,6 +61,9 @@ void main() {
             ],
           });
         }
+        if (path.endsWith('/users/me') && meFirstName != null) {
+          return jsonRes({'id': 'u-1', 'username': 'alice', 'first_name': meFirstName});
+        }
         if (path.endsWith('/subscriptions/me')) {
           meHits++;
           return jsonRes({
@@ -74,6 +82,7 @@ void main() {
     String? storedToken,
     bool settle = true,
     Size size = const Size(480, 1400),
+    List<Override> extra = const [],
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
@@ -85,6 +94,7 @@ void main() {
         webAccessProvider.overrideWithValue(access),
         httpClientProvider.overrideWith((_) => client()),
         sessionStoreProvider.overrideWith((_) => InMemorySessionStore(storedToken)),
+        ...extra,
       ],
       child: MaterialApp(
         locale: locale,
@@ -198,8 +208,23 @@ void main() {
       expect(find.text('Inclus în Plantly Pro.'), findsOneWidget);
       expect(find.byKey(const Key('gate-data-kept')), findsOneWidget);
       expect(find.byKey(const Key('gate-android-card')), findsOneWidget);
-      expect(find.text('Nu ești tu? Deconectează-te'), findsOneWidget);
+      expect(find.text('Nu ești tu? Ieși din cont'), findsOneWidget);
       expect(find.byKey(const Key('gate-sign-in')), findsNothing);
+    });
+
+    testWidgets('greets by first name from the account (not the handle); fresh browser → no "plants stay here" line', (tester) async {
+      meFirstName = 'Andrei';
+      await pump(
+        tester,
+        access: WebAccess.closedNotEntitled('qafinal1'),
+        locale: const Locale('en'),
+        storedToken: token,
+        extra: [plantsStreamProvider.overrideWith((ref) => Stream.value(const []))],
+      );
+      expect(find.textContaining('Hi, Andrei.'), findsOneWidget);
+      expect(find.textContaining('qafinal1'), findsNothing);
+      expect(find.byKey(const Key('gate-data-kept')), findsNothing);
+      expect(find.byKey(const Key('gate-no-local-data')), findsOneWidget);
     });
 
     testWidgets('RO at 375×667 (small phone): nothing overflows, CTA label fully laid out', (tester) async {
@@ -265,10 +290,102 @@ void main() {
       await tester.ensureVisible(find.byKey(const Key('gate-sign-out')));
       await tester.tap(find.byKey(const Key('gate-sign-out')));
       await tester.pumpAndSettle();
-      expect(find.text('Te deconectezi de la plantly.ro?'), findsOneWidget);
+      expect(find.text('Ieși din contul plantly.ro?'), findsOneWidget);
       await tester.tap(find.byKey(const Key('gate-sign-out-confirm')));
       await tester.pumpAndSettle();
       expect(container.read(plantlyAuthProvider).valueOrNull, isNull);
+    });
+  });
+
+  group('held by another account (shared computer)', () {
+    testWidgets('RO: names the other account, no way in but "clear" or sign out; clear wipes + reloads', (tester) async {
+      final wiper = _CountingWiper();
+      await pump(
+        tester,
+        access: WebAccess.closedHeldByOther('alice', 'bob'),
+        storedToken: token,
+        extra: [localDataWiperProvider.overrideWith((ref) => wiper)],
+      );
+      expect(find.byKey(const Key('gate-held-by-other')), findsOneWidget);
+      expect(find.text('Acest browser conține încă plantele lui bob'), findsOneWidget);
+      expect(find.textContaining('Ești conectat ca alice.'), findsOneWidget);
+      expect(find.byKey(const Key('gate-subscribe')), findsNothing);
+      expect(find.byKey(const Key('gate-sign-out')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('gate-clear-local')));
+      await tester.pump();
+      expect(wiper.calls, 1);
+      // Busy: a second tap does nothing.
+      await tester.tap(find.byKey(const Key('gate-clear-local')), warnIfMissed: false);
+      await tester.pump();
+      expect(wiper.calls, 1);
+    });
+
+    testWidgets('explicit sign-out: flush, then a second confirm when changes would be lost', (tester) async {
+      final wiper = _CountingWiper()..pending = 2;
+      await pump(
+        tester,
+        access: WebAccess.closedNotEntitled('alice'),
+        locale: const Locale('en'),
+        storedToken: token,
+        extra: [localDataWiperProvider.overrideWith((ref) => wiper)],
+      );
+      Future<void> startSignOut() async {
+        await tester.ensureVisible(find.byKey(const Key('gate-sign-out')));
+        await tester.tap(find.byKey(const Key('gate-sign-out')));
+        await tester.pumpAndSettle();
+        expect(find.textContaining("this browser's copy of the collection is removed"), findsOneWidget);
+        await tester.tap(find.byKey(const Key('gate-sign-out-confirm')));
+        await tester.pumpAndSettle();
+      }
+
+      await startSignOut();
+      expect(find.text("2 changes haven't reached the cloud yet. Sign out anyway? They will be lost."), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(wiper.signOuts, 0, reason: 'backing out keeps the session and the data');
+
+      await startSignOut();
+      await tester.tap(find.byKey(const Key('sign-out-anyway')));
+      await tester.pumpAndSettle();
+      expect(wiper.signOuts, 1);
+
+      wiper.pending = 0;
+      await startSignOut();
+      expect(find.byKey(const Key('sign-out-unsynced')), findsNothing, reason: 'all synced: no second question');
+      expect(wiper.signOuts, 2);
+    });
+
+    testWidgets('sign-out: "Syncing your last changes…" can be cancelled — nothing signed out or wiped', (tester) async {
+      final wiper = _CountingWiper()..hang = Completer<int>();
+      await pump(
+        tester,
+        access: WebAccess.closedNotEntitled('alice'),
+        locale: const Locale('en'),
+        storedToken: token,
+        extra: [localDataWiperProvider.overrideWith((ref) => wiper)],
+      );
+      await tester.ensureVisible(find.byKey(const Key('gate-sign-out')));
+      await tester.tap(find.byKey(const Key('gate-sign-out')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('gate-sign-out-confirm')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byKey(const Key('sign-out-syncing')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('sign-out-syncing-cancel')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('sign-out-syncing')), findsNothing);
+      // The push finishing later changes nothing.
+      wiper.hang!.complete(0);
+      await tester.pumpAndSettle();
+      expect(wiper.signOuts, 0);
+      expect(find.byKey(const Key('sign-out-unsynced')), findsNothing);
+    });
+
+    testWidgets('EN copy', (tester) async {
+      await pump(tester, access: WebAccess.closedHeldByOther('alice', 'bob'), locale: const Locale('en'), storedToken: token);
+      expect(find.text("This browser still holds bob's plants"), findsOneWidget);
+      expect(find.text('Clear this browser and continue'), findsOneWidget);
     });
   });
 
@@ -319,4 +436,21 @@ void main() {
       expect(tester.widgetList<Semantics>(live).any((w) => w.properties.liveRegion == true), isTrue);
     });
   });
+}
+
+class _CountingWiper implements LocalDataWiper {
+  int calls = 0;
+  int signOuts = 0;
+  int pending = 0;
+
+  /// Set → [flush] hangs until completed (a slow push).
+  Completer<int>? hang;
+  @override
+  Future<void> wipeAndReload() async => calls++;
+  @override
+  Future<int> flush({Duration timeout = Duration.zero, Duration pause = Duration.zero}) async => hang?.future ?? pending;
+  @override
+  Future<int> pendingCount() async => pending;
+  @override
+  Future<void> signOutAndWipe() async => signOuts++;
 }

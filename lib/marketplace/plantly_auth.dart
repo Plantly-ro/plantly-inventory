@@ -156,6 +156,32 @@ class PlantlyAuth extends StateNotifier<AsyncValue<PlantlySession?>> {
     return session;
   }
 
+  /// A call outside this notifier was answered 401 with the stored token:
+  /// ask `/auth/refresh` before giving up on the session (a token the
+  /// device clock thought valid may simply have been rotated). Returns the
+  /// refreshed session; null when the server rejected the refresh too (the
+  /// session is then dropped — data on this device stays) or gave no
+  /// verdict (offline / 5xx: the token is kept).
+  Future<PlantlySession?> refreshAfterUnauthorized() async {
+    final token = await _store.readToken();
+    if (token == null || token.isEmpty) return null;
+    try {
+      final fresh = PlantlySession.fromToken(await _api.refresh(token));
+      await _store.writeToken(fresh.token);
+      _learnSkew(fresh);
+      _refreshDeferredAt = null;
+      _set(AsyncValue.data(fresh));
+      return fresh;
+    } on PlantlyApiException catch (e) {
+      if (e.isUnauthorized) await signOut();
+      return null;
+    } on PlantlyNetworkException {
+      return null;
+    } on FormatException {
+      return null;
+    }
+  }
+
   /// Drop the token. There is no logout route (§1).
   Future<void> signOut() async {
     await _store.clear();

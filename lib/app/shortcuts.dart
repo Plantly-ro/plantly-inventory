@@ -60,8 +60,10 @@ class AppShortcuts extends ConsumerWidget {
           }),
         },
         // Something must own focus for key events to reach [Shortcuts];
-        // without this the first keypress after load goes nowhere.
-        child: Focus(autofocus: true, skipTraversal: true, child: child),
+        // without this the first keypress after load goes nowhere. No
+        // semantics: it would wrap the whole window in one focusable node
+        // (on web: a focusable element around every control).
+        child: Focus(autofocus: true, skipTraversal: true, includeSemantics: false, child: child),
       ),
     );
   }

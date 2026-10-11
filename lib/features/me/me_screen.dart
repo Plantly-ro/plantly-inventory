@@ -11,15 +11,18 @@ import '../../data/user_prefs.dart';
 import '../../domain/services/backup_service.dart';
 import '../../domain/services/zip_backup_service.dart';
 import '../../config/plantly_features.dart';
+import '../../config/plantly_hosts.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../marketplace/plantly_auth.dart';
 import '../../plugins/plantly_ro/plantly_ro_plugin.dart';
 import '../../plugins/plugin_registry.dart';
 import '../../services/file_export.dart';
+import '../../shared/web_sign_out_flow.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../../app/navigation.dart';
 import 'backup_actions.dart';
+import 'backup_passphrase_dialog.dart';
 import '../collections/read_only_banner.dart';
 import 'cloud_section.dart';
 import 'me_rows.dart';
@@ -138,7 +141,7 @@ class MeScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           _ReadOnlyRow(
             label: t.meAboutApp,
-            value: t.meAboutAppValue,
+            value: t.meAboutAppValue(PlantlyHosts.appVersion),
             icon: Icons.info_outline,
             surface: surface,
           ),
@@ -173,9 +176,9 @@ class _StatCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(child: _StatCol(label: t.meStatCardPlants, value: plants?.toString() ?? '…', surface: surface)),
+          Expanded(child: _StatCol(label: t.meStatCardPlants(plants ?? 0), value: plants?.toString() ?? '…', surface: surface)),
           Container(width: 1, height: 40, color: surface.border),
-          Expanded(child: _StatCol(label: t.meStatCardSpaces, value: locations?.toString() ?? '…', surface: surface)),
+          Expanded(child: _StatCol(label: t.meStatCardSpaces(locations ?? 0), value: locations?.toString() ?? '…', surface: surface)),
         ],
       ),
     );
@@ -257,11 +260,13 @@ class _PlantlyAccountRow extends ConsumerWidget {
   Future<void> _signOut(BuildContext context, WidgetRef ref, String username) async {
     final t = AppLocalizations.of(context);
     final plugin = ref.read(plantlyRoPluginProvider); // before the await (#14)
+    final web = ref.read(webPlatformProvider);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(t.mePlantlySignOutTitle),
-        content: Text(t.mePlantlySignOutBody(username)),
+        // Web: the same session drives the cloud — signing out wipes this browser.
+        content: Text(web ? t.cloudSignOutBodyWeb(username) : t.mePlantlySignOutBody(username)),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.listedCancel)),
           FilledButton(
@@ -272,7 +277,12 @@ class _PlantlyAccountRow extends ConsumerWidget {
         ],
       ),
     );
-    if (ok == true) await plugin?.revoke();
+    if (ok != true || !context.mounted) return;
+    if (web) {
+      await completeWebSignOut(context, ref);
+      return;
+    }
+    await plugin?.revoke();
   }
 }
 
@@ -457,7 +467,7 @@ class _BackupRow extends ConsumerWidget {
     final t = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final actions = ref.read(backupActionsProvider);
-    final secret = await _promptSecret(context, title: t.meBackupPassphrase);
+    final secret = await showBackupPassphraseDialog(context, purpose: BackupPassphrasePurpose.export);
     if (secret == null || secret.isEmpty) return;
     try {
       final where = withPhotos
@@ -506,7 +516,7 @@ class _ImportRow extends ConsumerWidget {
     );
     if (file == null) return;
     if (!context.mounted) return;
-    final secret = await _promptSecret(context, title: t.meBackupPassphrase);
+    final secret = await showBackupPassphraseDialog(context, purpose: BackupPassphrasePurpose.import);
     if (secret == null || secret.isEmpty) return;
     try {
       final bytes = await file.readAsBytes();
@@ -577,56 +587,6 @@ class _ICalRow extends ConsumerWidget {
         ..clearSnackBars()
         ..showSnackBar(SnackBar(content: Text(t.meExportFailed('$e'))));
     }
-  }
-}
-
-Future<String?> _promptSecret(BuildContext context, {required String title}) {
-  return showDialog<String>(
-    context: context,
-    builder: (_) => _SecretDialog(title: title),
-  );
-}
-
-/// Owns its [TextEditingController] so it is disposed with the route, not
-/// the moment `showDialog` returns — the dialog is still animating out then
-/// and its TextField would rebuild against a disposed controller.
-class _SecretDialog extends StatefulWidget {
-  const _SecretDialog({required this.title});
-  final String title;
-
-  @override
-  State<_SecretDialog> createState() => _SecretDialogState();
-}
-
-class _SecretDialogState extends State<_SecretDialog> {
-  final _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    return AlertDialog(
-      title: Text(widget.title),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        obscureText: true,
-        decoration: InputDecoration(
-          hintText: t.meBackupPassphraseHint,
-          border: OutlineInputBorder(),
-        ),
-        onSubmitted: (v) => Navigator.of(context).pop(v),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(null), child: Text(t.cancel)),
-        FilledButton(onPressed: () => Navigator.of(context).pop(_controller.text), child: Text(t.commonOk)),
-      ],
-    );
   }
 }
 

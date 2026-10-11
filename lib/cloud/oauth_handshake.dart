@@ -9,11 +9,14 @@ import '../data/providers.dart';
 
 /// Anti-fixation guard for the OAuth deep link. Any app/page can open
 /// `plantlyinventory://auth/callback#token=<jwt>`; without this the device
-/// would adopt an attacker's session. So: every sign-in the user starts
-/// mints a random nonce (sent as `&nonce=` on the start URL, echoed back by
-/// the server in the callback fragment) and a callback is adopted only if a
-/// sign-in was started within [window] and the nonce — when present —
-/// matches. Single-use: consumed on the first accepted callback.
+/// would adopt an attacker's session (and upload the user's plants into the
+/// attacker's account). So: every sign-in the user starts mints a random
+/// nonce (sent as `&nonce=` on the start URL, echoed back by the server in
+/// the callback fragment — monolith 69872a0, live on prod) and a callback is
+/// adopted only if a sign-in was started within [window] AND it carries
+/// exactly that nonce. Strict on every platform and both callback forms: a
+/// callback without the nonce is never a legitimate answer. Single-use:
+/// consumed on the first accepted callback.
 class OAuthHandshake {
   OAuthHandshake(this._prefs, {DateTime Function()? now, Random? random})
       : _now = now ?? (() => DateTime.now().toUtc()),
@@ -38,33 +41,45 @@ class OAuthHandshake {
     return nonce;
   }
 
-  /// Decide whether a callback carrying [callbackNonce] may be adopted.
-  /// Strict when a nonce is present (mismatch → false). A callback WITHOUT
-  /// a nonce is accepted only when [allowMissingNonce] (the custom-scheme
-  /// form, for servers that predate the echo) and a sign-in started inside
-  /// the window; the web `?token=` form always needs the nonce. Clears the
-  /// stored nonce on acceptance; a mismatch leaves it in place so the
-  /// legitimate callback can still land.
-  Future<bool> consume(String? callbackNonce, {bool allowMissingNonce = false}) async {
+  /// Decide whether a callback carrying [callbackNonce] may be adopted:
+  /// only when a sign-in is pending (started inside [window]) and
+  /// [callbackNonce] equals its nonce. Clears the stored nonce on
+  /// acceptance (single-use) and when the window has lapsed. A missing or
+  /// wrong nonce is rejected and logged but leaves the pending sign-in in
+  /// place, so a forged link cannot cancel the user's real sign-in.
+  Future<bool> consume(String? callbackNonce) async {
     final p = await _prefs;
     final stored = p.getString(nonceKey);
     final startedAt = p.getInt(startedAtKey);
-    if (stored == null || stored.isEmpty || startedAt == null) return false;
+    if (stored == null || stored.isEmpty || startedAt == null) {
+      debugPrint('oauth callback rejected: no sign-in in progress');
+      return false;
+    }
     final age = _now().difference(DateTime.fromMillisecondsSinceEpoch(startedAt, isUtc: true));
     if (age.isNegative || age > window) {
       await _clear(p);
+      debugPrint('oauth callback rejected: sign-in window expired');
       return false;
     }
-    if (callbackNonce != null) {
-      if (callbackNonce != stored) return false;
-    } else {
-      if (!allowMissingNonce) return false;
-      // Transitional (custom scheme only): older monolith builds don't echo
-      // `nonce`. Flip to strict once every server does.
-      debugPrint('oauth callback: nonce missing (server not echoing yet) — accepted inside the sign-in window');
+    if (callbackNonce == null || callbackNonce.isEmpty) {
+      debugPrint('oauth callback rejected: nonce missing');
+      return false;
+    }
+    if (!_constantTimeEquals(callbackNonce, stored)) {
+      debugPrint('oauth callback rejected: nonce mismatch');
+      return false;
     }
     await _clear(p);
     return true;
+  }
+
+  static bool _constantTimeEquals(String a, String b) {
+    if (a.length != b.length) return false;
+    var diff = 0;
+    for (var i = 0; i < a.length; i++) {
+      diff |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
+    }
+    return diff == 0;
   }
 
   Future<void> _clear(SharedPreferences p) async {

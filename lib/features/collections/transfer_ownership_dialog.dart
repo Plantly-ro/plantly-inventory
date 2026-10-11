@@ -65,7 +65,7 @@ class _TransferOwnershipDialogState extends ConsumerState<TransferOwnershipDialo
     final t = AppLocalizations.of(context);
     final surface = widget.surface;
     return AlertDialog(
-      title: Text(t.shareTransferTitle(widget.collection.displayName, widget.target.username)),
+      title: Text(t.shareTransferTitle(collectionDisplayName(t, widget.collection), widget.target.username)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,

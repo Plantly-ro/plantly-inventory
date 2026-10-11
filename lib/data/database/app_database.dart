@@ -1,5 +1,10 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:flutter/foundation.dart' show ValueNotifier, debugPrint;
+
+import 'web_db_assets.dart';
+import 'cross_tab_lock.dart';
 
 part 'app_database.g.dart';
 
@@ -88,7 +93,9 @@ class Plants extends Table {
 
 @DataClassName('PhotoRow')
 class Photos extends Table {
-  // Primary key = content hash — photos are value-addressed, not id-addressed.
+  // Content-addressed per collection: the same image saved in two
+  // collections on one device is two rows (one `photos` op, upload state
+  // and quota entry per collection); the blob on disk is shared by sha.
   TextColumn get sha256 => text()();
   TextColumn get tenantId => text().named('tenant_id')();
   IntColumn get width => integer().nullable()();
@@ -104,7 +111,7 @@ class Photos extends Table {
   TextColumn get deviceId => text().named('device_id')();
 
   @override
-  Set<Column> get primaryKey => {sha256};
+  Set<Column> get primaryKey => {tenantId, sha256};
 }
 
 @DataClassName('PlantPhotoRow')
@@ -335,21 +342,41 @@ class SyncRejections extends Table {
 ])
 class AppDatabase extends _$AppDatabase {
   /// io: sqlite file in the app's data dir. Web: sqlite3.wasm + the drift
-  /// worker committed under `web/` (see tool/fetch_web_sqlite.sh), persisted
-  /// to OPFS when the page is cross-origin isolated, IndexedDB otherwise.
-  /// `driftDatabase` throws synchronously on web without these options.
+  /// worker committed under `web/vendor/` (see tool/fetch_web_sqlite.sh and
+  /// web_db_assets.dart), persisted to OPFS when the page is cross-origin
+  /// isolated, IndexedDB otherwise. `driftDatabase` throws synchronously on
+  /// web without these options.
+  /// On the web every tab has its own connection to the same file: it is
+  /// opened, and accessed, under one cross-tab lock (`cross_tab_lock.dart`);
+  /// elsewhere this is plain `driftDatabase`.
   AppDatabase()
-      : super(driftDatabase(
+      : super(openAppDatabase(
           name: 'plantly_inventory',
           web: DriftWebOptions(
-            sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-            driftWorker: Uri.parse('drift_worker.js'),
+            sqlite3Wasm: webDeployedFileUri(kSqlite3WasmPath),
+            driftWorker: webDeployedFileUri(kDriftWorkerPath),
+            onResult: reportWebStorage,
           ),
         ));
   AppDatabase.forTesting(super.executor);
 
+  /// Storage the browser build ended up with (null off web / until the
+  /// database opened). `inMemory` = nothing survives a reload: drift falls
+  /// back to it silently when neither OPFS nor IndexedDB is usable (private
+  /// windows, blocked storage). Me → Cloud shows a warning for it.
+  static final ValueNotifier<WasmStorageImplementation?> webStorage = ValueNotifier(null);
+
+  /// `DriftWebOptions.onResult`: log the choice and publish it.
+  static void reportWebStorage(WasmDatabaseResult result) {
+    if (result.chosenImplementation == WasmStorageImplementation.inMemory || result.missingFeatures.isNotEmpty) {
+      debugPrint('AppDatabase: web storage ${result.chosenImplementation.name} '
+          '(missing: ${result.missingFeatures.map((f) => f.name).join(', ')})');
+    }
+    webStorage.value = result.chosenImplementation;
+  }
+
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -417,8 +444,73 @@ class AppDatabase extends _$AppDatabase {
             // Multi-user v2: task assignment (synced, nullable).
             await _addColumnIfMissing(m, careSchedules, careSchedules.assigneeUserId);
           }
+          if (from < 13) {
+            await _rekeyPhotosPerTenant();
+          }
         },
       );
+
+  /// Schema 13: `photos` primary key sha256 → (tenant_id, sha256), so the
+  /// same image in two collections is two rows. See [rekeyPhotosV13].
+  Future<void> _rekeyPhotosPerTenant() => rekeyPhotosV13(
+        exec: customStatement,
+        photosPrimaryKey: () async => [
+          for (final r in await customSelect(
+            "SELECT name FROM pragma_table_info('photos') WHERE pk > 0 ORDER BY pk",
+          ).get())
+            r.read<String>('name'),
+        ],
+        exists: (table) async => (await customSelect(
+          "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+          variables: [Variable<String>(table)],
+        ).get())
+            .isNotEmpty,
+      );
+
+  /// `photos` exactly as schema 13 defines it. FROZEN: later schema changes
+  /// to `photos` get their own step; this one must keep producing the v13
+  /// table so the steps after it apply on top (never derive it from the
+  /// current drift definition).
+  @visibleForTesting
+  static const List<String> photosV13Columns = [
+    'sha256', 'tenant_id', 'width', 'height', 'mime', 'bytes', 'taken_at', 'exif_json', //
+    'local_path', 'remote_state', 'updated_hlc', 'deleted_at', 'device_id',
+  ];
+
+  @visibleForTesting
+  static String photosV13Ddl(String table) => 'CREATE TABLE IF NOT EXISTS "$table" ('
+      '"sha256" TEXT NOT NULL, "tenant_id" TEXT NOT NULL, "width" INTEGER NULL, "height" INTEGER NULL, '
+      '"mime" TEXT NOT NULL, "bytes" INTEGER NOT NULL, "taken_at" INTEGER NULL, "exif_json" TEXT NULL, '
+      '"local_path" TEXT NULL, "remote_state" TEXT NOT NULL DEFAULT \'local\', "updated_hlc" TEXT NOT NULL, '
+      '"deleted_at" INTEGER NULL, "device_id" TEXT NOT NULL, PRIMARY KEY ("tenant_id", "sha256"))';
+
+  /// The 12 → 13 step. SQLite cannot change a primary key in place, so (its
+  /// documented order): create `photos_v13`, copy every row unchanged (every
+  /// old sha is unique, nothing can conflict), drop `photos`, rename. Each
+  /// statement is safe to repeat, so an interrupted run resumes cleanly. A
+  /// `photos` already keyed (tenant_id, sha256) is left alone — a re-run
+  /// (crash before the version bump) must not rebuild it to the v13 shape
+  /// and drop columns a later step may have added. Uses only the frozen v13
+  /// shape above.
+  @visibleForTesting
+  static Future<void> rekeyPhotosV13({
+    required Future<void> Function(String sql) exec,
+    required Future<bool> Function(String table) exists,
+    required Future<List<String>> Function() photosPrimaryKey,
+  }) async {
+    const next = 'photos_v13';
+    if (!await exists(next) && await exists('photos')) {
+      final pk = await photosPrimaryKey();
+      if (pk.length == 2 && pk[0] == 'tenant_id' && pk[1] == 'sha256') return;
+    }
+    await exec(photosV13Ddl(next));
+    if (await exists('photos')) {
+      final cols = photosV13Columns.map((c) => '"$c"').join(', ');
+      await exec('INSERT OR IGNORE INTO $next ($cols) SELECT $cols FROM photos');
+      await exec('DROP TABLE photos');
+    }
+    await exec('ALTER TABLE $next RENAME TO photos');
+  }
 
   /// `ALTER TABLE … ADD COLUMN` is not idempotent in SQLite; check
   /// `PRAGMA table_info` first so an interrupted upgrade can be resumed.

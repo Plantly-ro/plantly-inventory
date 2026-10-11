@@ -86,6 +86,8 @@ void main() {
     final restoredPath = '${b.tmp.path}/${sha.substring(0, 2)}/$sha.jpg';
     expect(File(restoredPath).existsSync(), isTrue);
     expect(await File(restoredPath).readAsBytes(), _bytes('image-bytes'));
+    // Bytes came with the ZIP → queued for upload to this collection.
+    expect((await b.db.select(b.db.photos).getSingle()).remoteState, 'local');
   });
 
   test('exportZip bundles only the active tenant\'s photo bytes', () async {

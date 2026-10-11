@@ -180,6 +180,17 @@ void main() {
       }
     });
 
+    test('deletePhoto: DELETE /photos/{sha} with bearer; 204 ok; 403 read_only surfaces', () async {
+      final log = <http.Request>[];
+      final t = transport(log: log, (req) async => http.Response('', 204));
+      await t.deletePhoto('abc');
+      expect(log.single.method, 'DELETE');
+      expect(log.single.url.toString(), '$base/photos/abc');
+      expect(log.single.headers['Authorization'], 'Bearer tok');
+      final ro = transport((req) async => jsonRes({'error': 'read_only'}, 403));
+      await expectLater(ro.deletePhoto('abc'), throwsA(isA<SyncCollectionError>().having((e) => e.message, 'message', 'read_only')));
+    });
+
     test('without deviceMeta none of the headers go out', () async {
       final log = <http.Request>[];
       final t = transport(log: log, (req) async => req.method == 'POST' ? emptyPush : emptyPull);

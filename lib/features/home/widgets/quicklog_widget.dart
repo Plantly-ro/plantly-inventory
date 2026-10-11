@@ -2,16 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../cloud/collections.dart';
+import '../../../data/care_types.dart';
 import '../../../data/database/app_database.dart';
 import '../../../data/mock_plants.dart';
 import '../../../data/providers.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../shared/care_type_labels.dart';
 import '../../../shared/plant_thumb.dart';
 import '../../../theme/tokens.dart';
 import 'widget_shell.dart';
 import '../../../app/side_sheet.dart';
 
-/// "Quick log" — shortcut to record Water / Fertilize / Mist across any
+/// "Quick log" — shortcut to record Water / Fertilize / Mist / Rotate across any
 /// plant in the collection in two taps. Each tile opens a plant picker;
 /// picking a plant writes a `care_events` row of the chosen type.
 class QuickLogWidget extends ConsumerWidget {
@@ -39,11 +41,20 @@ class QuickLogWidget extends ConsumerWidget {
     // Every tile here writes a care event — nothing to offer a viewer.
     if (!ref.watch(canEditActiveCollectionProvider)) return const SizedBox.shrink();
     final t = AppLocalizations.of(context);
+    // Labels + icons come from the live care-type registry (issue #16):
+    // a renamed built-in shows the user's name, an untouched one the
+    // localized default — the same rule as every other surface.
+    final types = ref.watch(careTypesProvider);
+    _Action action(String key, Color color, Color soft) {
+      final ct = resolveCareType(types, key);
+      return _Action(careTypeLabel(t, ct), key, ct.icon, color, soft);
+    }
+
     final actions = <_Action>[
-      _Action(t.quickLogWater, 'water', Icons.water_drop_outlined, surface.green, surface.greenSoft),
-      _Action(t.quickLogFertilize, 'fertilize', Icons.eco_outlined, surface.green, surface.greenSoft),
-      _Action(t.quickLogMist, 'mist', Icons.bubble_chart_outlined, surface.terra, surface.terraSoft),
-      _Action(t.quickLogRotate, 'rotate', Icons.light_mode_outlined, surface.terra, surface.terraSoft),
+      action('water', surface.green, surface.greenSoft),
+      action('fertilize', surface.green, surface.greenSoft),
+      action('mist', surface.terra, surface.terraSoft),
+      action('rotate', surface.terra, surface.terraSoft),
     ];
     return WidgetShell(
       surface: surface,

@@ -253,6 +253,91 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeSortTooltip => 'Sort plants';
 
   @override
+  String get a11yNameField => 'Your name (optional)';
+
+  @override
+  String get a11yShowPassword => 'Show password';
+
+  @override
+  String get a11yHidePassword => 'Hide password';
+
+  @override
+  String get a11yClearSearch => 'Clear search';
+
+  @override
+  String get a11yCareTypeName => 'Name';
+
+  @override
+  String get a11yCareTypeInterval => 'Default interval in days';
+
+  @override
+  String a11yDisconnectDevice(String name) {
+    return 'Disconnect $name';
+  }
+
+  @override
+  String a11ySortPlantsValue(String value) {
+    return 'Sort plants: $value';
+  }
+
+  @override
+  String a11yCareIconName(String icon) {
+    String _temp0 = intl.Intl.selectLogic(icon, {
+      'water': 'Water drop',
+      'leaf': 'Leaf',
+      'bubbles': 'Bubbles',
+      'flower': 'Flower',
+      'scissors': 'Scissors',
+      'light': 'Light',
+      'sun': 'Sun',
+      'bug': 'Bug',
+      'air': 'Air',
+      'thermometer': 'Thermometer',
+      'lotus': 'Lotus',
+      'grass': 'Grass',
+      'tools': 'Tools',
+      'hands': 'Hands',
+      'bell': 'Bell',
+      'firstAid': 'First aid',
+      'other': 'Icon',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String a11yCareColourName(String colour) {
+    String _temp0 = intl.Intl.selectLogic(colour, {
+      'green': 'Green',
+      'terra': 'Terracotta',
+      'blue': 'Blue',
+      'violet': 'Violet',
+      'rose': 'Rose',
+      'mustard': 'Mustard',
+      'slate': 'Slate grey',
+      'forest': 'Forest green',
+      'other': 'Colour',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get a11yInviteCode => 'Invite code';
+
+  @override
+  String get a11yInviteLink => 'Invite link';
+
+  @override
+  String get a11yCopyCode => 'Copy code';
+
+  @override
+  String get a11yCopyLink => 'Copy link';
+
+  @override
+  String a11yPlantPhoto(int index, int count, String name) {
+    return 'Photo $index of $count · $name';
+  }
+
+  @override
   String get homeSortNameAZ => 'Name A–Z';
 
   @override
@@ -410,6 +495,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'A calm, offline-first way to track your houseplants — watering, fertilising, propagation, spaces, and more. Everything lives on your phone.';
 
   @override
+  String get onbWelcomeBodyCloud =>
+      'A calm, offline-first way to track your houseplants — watering, fertilising, propagation, spaces, and more. Everything works on your phone and syncs to your plantly.ro account.';
+
+  @override
+  String get onbWelcomeBodyWeb =>
+      'A calm way to track your houseplants — watering, fertilising, propagation, spaces, and more. Your collection is saved in your plantly.ro account and stays in sync on every device you sign in on.';
+
+  @override
   String get onbNameLabel => 'YOUR NAME (OPTIONAL)';
 
   @override
@@ -417,11 +510,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'We use this only in the greeting at the top of the home screen. You can change or remove it later in Me.';
 
   @override
+  String get onbNameFromAccount =>
+      'From your plantly.ro account — you can change it.';
+
+  @override
   String get onbNotifTitle => 'Plant reminders';
 
   @override
   String get onbNotifBody =>
-      'We schedule local notifications on your phone when a plant is due for care. Nothing is sent to a server.';
+      'We schedule reminders as local notifications on your phone when a plant is due for care — no push server involved.';
 
   @override
   String get onbNotifGranted => 'Reminders are enabled.';
@@ -441,7 +538,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onbPrivacyBody =>
-      'Both are off by default. Plant data never leaves your device for any reason. You can change these any time in Me → Privacy & data.';
+      'Both are off by default and never include plant data or photos. You can change these any time in Me → Privacy & data.';
 
   @override
   String get onbCrashTitle => 'Crash reports';
@@ -701,7 +798,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get spaceCaptionHint => 'e.g. morning light corner';
 
   @override
-  String get appTitle => 'PlantlyInventory';
+  String get appTitle => 'Plantly Inventory';
 
   @override
   String goodMorning(String name) {
@@ -1210,18 +1307,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quickLogTitle => 'Quick log';
 
   @override
-  String get quickLogWater => 'Water';
-
-  @override
-  String get quickLogFertilize => 'Fertilize';
-
-  @override
-  String get quickLogMist => 'Mist';
-
-  @override
-  String get quickLogRotate => 'Rotate';
-
-  @override
   String get tipOfTheDay => 'TIP OF THE DAY';
 
   @override
@@ -1259,10 +1344,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get exportPostOnPlantlyRoCta => 'Post on plantly.ro';
-
-  @override
-  String get exportSavedLocally =>
-      'Saved locally — plantly.ro sync lands in Phase 2';
 
   @override
   String get tagAdd => 'Add a tag';
@@ -1598,16 +1679,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get meTitle => 'Me';
 
   @override
-  String get meStatCardPlants => 'PLANTS';
+  String meStatCardPlants(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'PLANTS',
+      one: 'PLANT',
+    );
+    return '$_temp0';
+  }
 
   @override
-  String get meStatCardSpaces => 'SPACES';
+  String meStatCardSpaces(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'SPACES',
+      one: 'SPACE',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get meAboutApp => 'App';
 
   @override
-  String get meAboutAppValue => 'PlantlyInventory · Phase 1';
+  String meAboutAppValue(String version) {
+    return 'Plantly Inventory · $version';
+  }
 
   @override
   String get meAboutLicense => 'License';
@@ -1656,7 +1755,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get meBackupPassphrase => 'Backup passphrase';
 
   @override
-  String get meBackupPassphraseHint => 'Pick anything — needed to import again';
+  String get meBackupPassphraseExportHint =>
+      'Choose a passphrase — you\'ll need it to import';
+
+  @override
+  String get meBackupPassphraseExportNote =>
+      'The passphrase protects the file against tampering; the file is not encrypted — keep it private.';
+
+  @override
+  String get meBackupPassphraseImportHint =>
+      'The passphrase you chose when exporting';
 
   @override
   String meBackupSaved(String where) {
@@ -1725,7 +1833,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Open the next 30 days of reminders in any calendar app.';
 
   @override
-  String get meIcsShareText => 'PlantlyInventory reminders';
+  String get meIcsShareText => 'Plantly Inventory reminders';
 
   @override
   String meIcsSaved(String where) {
@@ -1740,7 +1848,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Plants + care events as a spreadsheet-friendly dump.';
 
   @override
-  String get meCsvShareText => 'PlantlyInventory CSV';
+  String get meCsvShareText => 'Plantly Inventory CSV';
 
   @override
   String meCsvSaved(String where) {
@@ -1759,20 +1867,47 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mePrivacyWhatLeaves => 'What leaves your device';
 
   @override
+  String get mePrivacyWhereDataLives => 'Where your data lives';
+
+  @override
   String get mePrivacyBulletLocal =>
       'Nothing by default. Plants, photos, care events, and schedules live in a local SQLite database on your phone.';
 
   @override
+  String get mePrivacyBulletCloud =>
+      'Cloud sync is on: plants, photos, care events, and schedules stay in a local database on your phone and are synced to your plantly.ro account. Photos are stored privately — only you and the people you share a collection with can see them. For the Devices list (Me → Cloud → Devices) we also send the device name, platform and app version.';
+
+  @override
+  String get mePrivacyBulletWeb =>
+      'Plants, photos, care events, and schedules are saved in your plantly.ro account (Inventory Cloud), with a working copy in this browser. Photos are stored privately — only you and the people you share a collection with can see them. For the Devices list (Me → Cloud → Devices) we also send the device name, platform and app version.';
+
+  @override
+  String get mePrivacyBulletPaused =>
+      'Sync is paused: nothing new leaves this phone — plants, photos, care events, and schedules stay in its local database. Anything already synced to your plantly.ro account is kept as described in the privacy policy.';
+
+  @override
   String get mePrivacyBulletBackups =>
-      'Backups (JSON or ZIP) only leave the device when you tap Export — you choose where they go via the share sheet.';
+      'Backups (JSON or ZIP) only leave the device when you tap Export — you choose where they go via the share sheet. They are not encrypted (the passphrase only protects them against tampering), so keep them private.';
+
+  @override
+  String get mePrivacyBulletBackupsWeb =>
+      'Backups (JSON or ZIP) are only created when you tap Export — your browser downloads the file to this device. They are not encrypted (the passphrase only protects them against tampering), so keep them private.';
 
   @override
   String get mePrivacyBulletNotifications =>
       'Notifications fire locally via the OS alarm system. We do not use a push server.';
 
   @override
+  String get mePrivacyBulletNotificationsWeb =>
+      'The browser version doesn\'t send notifications — reminders appear in the app and the calendar. We do not use a push server.';
+
+  @override
   String get mePrivacyBulletMarketplace =>
       'If you later post a plant to plantly.ro, only the fields you review in the Export dialog are sent — never the full database.';
+
+  @override
+  String get mePrivacyBulletMarketplaceCloud =>
+      'If you post a plant for sale on plantly.ro, the listing contains only the fields you review in the Export dialog — nothing else from your collection is published.';
 
   @override
   String get mePrivacySectionTelemetry => 'OPT-IN TELEMETRY';
@@ -1898,7 +2033,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get meNotifPermGranted =>
-      'OS notifications are allowed for PlantlyInventory.';
+      'OS notifications are allowed for Plantly Inventory.';
 
   @override
   String get meNotifPermDenied =>
@@ -2326,6 +2461,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your plants, photos and care history are backed up to your plantly.ro account and kept in sync on every device you sign in on. Nothing leaves this device until you link it.';
 
   @override
+  String get cloudScreenIntroWeb =>
+      'Your plants, photos and care history are saved in your plantly.ro account and kept in sync on every device you sign in on.';
+
+  @override
   String get cloudSignInLabel => 'Sign in to plantly.ro';
 
   @override
@@ -2441,6 +2580,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String cloudRenewsOn(String date) {
     return 'renews $date';
+  }
+
+  @override
+  String cloudEndsOn(String date) {
+    return 'ends $date';
   }
 
   @override
@@ -2613,6 +2757,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get cloudErrCollectionUnavailable =>
       'This collection is no longer available — unlink this device and link it again';
+
+  @override
+  String get cloudErrCollectionUnavailableWeb =>
+      'This collection is no longer available — sign out and sign in again';
 
   @override
   String get cloudErrQuotaExceeded =>
@@ -3590,4 +3738,200 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get devicesPlatformUnknown => 'Device';
+
+  @override
+  String gateHeldByOtherTitle(String other) {
+    return 'This browser still holds $other\'s plants';
+  }
+
+  @override
+  String gateHeldByOtherBody(String username, String other) {
+    return 'You\'re signed in as $username. To keep $other\'s plants private, Plantly Inventory stays closed in this browser until its copy is cleared. Their collection stays in their cloud; changes that never synced from this browser are lost.';
+  }
+
+  @override
+  String get gateClearLocal => 'Clear this browser and continue';
+
+  @override
+  String cloudSignOutBodyWeb(String username) {
+    return '$username is signed out and this browser\'s copy of the collection is removed. Everything that synced stays in the cloud.';
+  }
+
+  @override
+  String get cloudStorageMemoryLabel => 'Not saved in this browser';
+
+  @override
+  String get cloudStorageMemoryValue =>
+      'This browser blocks local storage (a private window?). Changes are kept only once they sync to the cloud.';
+
+  @override
+  String get signOutSyncing => 'Syncing your last changes…';
+
+  @override
+  String get signOutUnsyncedTitle => 'Not everything reached the cloud';
+
+  @override
+  String signOutUnsyncedBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count changes haven\'t reached the cloud yet. Sign out anyway? They will be lost.',
+      one:
+          '1 change hasn\'t reached the cloud yet. Sign out anyway? It will be lost.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get signOutAnyway => 'Sign out anyway';
+
+  @override
+  String signOutWipeFailed(String error) {
+    return 'Signed out, but this browser\'s copy could not be removed ($error). It stays locked behind sign-in — sign in and sign out again to retry.';
+  }
+
+  @override
+  String gateClearFailed(String error) {
+    return 'This browser\'s copy could not be removed ($error). Try again.';
+  }
+
+  @override
+  String cloudHomeLostRemoved(String name) {
+    return 'You no longer have access to $name. Your plants are still on this device — nothing was deleted.';
+  }
+
+  @override
+  String cloudHomeLostDeleted(String name) {
+    return '$name was deleted on the server. Your plants are still on this device — nothing was deleted.';
+  }
+
+  @override
+  String get cloudHomeLostBanner =>
+      'Your cloud collection is unavailable — changes stay on this device. Tap to fix.';
+
+  @override
+  String get cloudHomeRehomeLabel => 'Start a new collection';
+
+  @override
+  String get cloudHomeRehomeValue =>
+      'Upload the plants on this device to a new collection you own';
+
+  @override
+  String get cloudHomeRehomeTitle => 'Start a new collection?';
+
+  @override
+  String get cloudHomeRehomeBody =>
+      'The plants on this device will be uploaded to a collection you own. Nothing is deleted.';
+
+  @override
+  String get cloudHomeRehomeConfirm => 'Start';
+
+  @override
+  String cloudHomeRehomeDone(String name) {
+    return 'Your plants now sync to $name';
+  }
+
+  @override
+  String get cloudHomeSwitchLabel => 'Switch collection';
+
+  @override
+  String get cloudHomeSwitchValue =>
+      'Open another collection you have access to';
+
+  @override
+  String cloudHomeMoveLabel(String name) {
+    return 'Move your plants into “$name”';
+  }
+
+  @override
+  String cloudHomeMoveTitle(String name) {
+    return 'Move your plants into “$name”?';
+  }
+
+  @override
+  String cloudHomeMoveBody(String name) {
+    return 'They are added to your collection “$name” and uploaded again from this device. Nothing is deleted.';
+  }
+
+  @override
+  String cloudHomeMoveBodyShared(String name, int count) {
+    return 'They are added to “$name”, which you share with $count people — they will see them too. Uploaded again from this device; nothing is deleted.';
+  }
+
+  @override
+  String get dbBusyOtherTab =>
+      'Another Plantly tab is busy with your data — retrying…';
+
+  @override
+  String get reminderTapOtherCollection =>
+      'That plant is in another collection — switch to it to see the plant.';
+
+  @override
+  String get reminderTapPlantGone =>
+      'That plant is no longer in your collection.';
+
+  @override
+  String statsCardInDaysShort(int count) {
+    return 'in ${count}d';
+  }
+
+  @override
+  String get addPlantDiscardTitle => 'Discard this plant?';
+
+  @override
+  String get addPlantDiscardBody => 'What you\'ve entered so far will be lost.';
+
+  @override
+  String get addPlantDiscardKeep => 'Keep editing';
+
+  @override
+  String get addPlantDiscardConfirm => 'Discard';
+
+  @override
+  String get collectionDefaultName => 'My plants';
+
+  @override
+  String shareCollectionGoneNotice(String name) {
+    return 'You no longer have access to “$name” — back to your own collection.';
+  }
+
+  @override
+  String homeGridEmptyAllDesktop(String button) {
+    return 'No plants yet — add one with “$button” in the sidebar.';
+  }
+
+  @override
+  String get homeGridEmptyFiltered => 'No plants match these filters.';
+
+  @override
+  String get homeGridEmptyViewer => 'No plants in this collection yet.';
+
+  @override
+  String get notFoundTitle => 'Page not found';
+
+  @override
+  String get notFoundBody =>
+      'This address doesn\'t lead anywhere in Plantly Inventory. It may be mistyped, or the page has moved.';
+
+  @override
+  String get notFoundHome => 'Go to Home';
+
+  @override
+  String get gateNoLocalData =>
+      'Once you subscribe, the plants you add here are saved to your plantly.ro account and synced with your phone.';
+
+  @override
+  String get homeEditHintWeb =>
+      'Right-click or long-press to customise your home';
+
+  @override
+  String get detailFabTooltipWeb => 'Right-click or long-press to change';
+
+  @override
+  String get spacePinHintPlaceWeb =>
+      'Click to place • drag to move • right-click to remove';
+
+  @override
+  String get spacePinHintDragWeb => 'Drag pins to move • right-click to remove';
 }

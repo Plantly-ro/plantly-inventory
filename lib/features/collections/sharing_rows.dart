@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../app/breakpoints.dart';
 import '../../app/side_sheet.dart';
 import '../../cloud/cloud_state.dart';
 import '../../cloud/collections.dart';
@@ -47,7 +48,7 @@ class SharingRows extends ConsumerWidget {
       MeActionRow(
         key: const Key('share-active'),
         label: t.shareActiveLabel,
-        value: t.shareActiveValue(active.displayName, roleLabel(t, active.role)),
+        value: t.shareActiveValue(collectionDisplayName(t, active), roleLabel(t, active.role)),
         icon: active.isOwner ? Icons.folder_outlined : Icons.group_outlined,
         surface: surface,
       ),
@@ -72,7 +73,7 @@ class SharingRows extends ConsumerWidget {
         MeActionRow(
           key: const Key('share-leave'),
           label: t.shareLeaveLabel,
-          value: t.shareLeaveValue(active.displayName),
+          value: t.shareLeaveValue(collectionDisplayName(t, active)),
           icon: Icons.logout,
           surface: surface,
           valueColor: surface.terra,
@@ -138,7 +139,7 @@ Future<void> confirmLeaveCollection(BuildContext context, WidgetRef ref, CloudCo
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: Text(t.shareLeaveTitle(col.displayName)),
+      title: Text(t.shareLeaveTitle(collectionDisplayName(t, col))),
       content: Text(t.shareLeaveBody),
       actions: [
         TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.cancel)),
@@ -155,7 +156,7 @@ Future<void> confirmLeaveCollection(BuildContext context, WidgetRef ref, CloudCo
     await collections.leave(col.id);
     messenger
       ?..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(t.shareLeft(col.displayName))));
+      ..showSnackBar(SnackBar(content: Text(t.shareLeft(collectionDisplayName(t, col)))));
   } catch (e) {
     messenger
       ?..clearSnackBars()
@@ -196,6 +197,9 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
   String? _error;
   bool _busy = false;
   bool _copied = false;
+
+  /// Which single part (`code` / `link`) the small copy buttons last copied.
+  String? _copiedPart;
 
   String _role = CollectionRole.editor;
   InvitePreset _preset = InvitePreset.single;
@@ -248,15 +252,53 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
   }
 
   String _message(AppLocalizations t, CollectionInvite i) =>
-      t.shareInviteMessage(widget.collection.displayName, i.url, i.code);
+      t.shareInviteMessage(collectionDisplayName(t, widget.collection), i.url, i.code);
 
   Future<void> _copy(AppLocalizations t, CollectionInvite i) async {
     await Clipboard.setData(ClipboardData(text: _message(t, i)));
     if (mounted) setState(() => _copied = true);
   }
 
+  Future<void> _copyPart(String part, String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (mounted) setState(() => _copiedPart = part);
+  }
+
+  /// Read-only invite text (code / link): announced as label + value
+  /// instead of an unlabeled (web: disabled) text field; still
+  /// mouse-selectable, with its own copy button.
+  Widget _copyableText({
+    required String semanticLabel,
+    required String value,
+    required String part,
+    required String copyTooltip,
+    required Widget text,
+    required PlantlySurface surface,
+    required double iconSize,
+  }) {
+    final done = _copiedPart == part;
+    return Row(
+      children: [
+        Expanded(
+          child: Semantics(
+            container: true,
+            label: semanticLabel,
+            value: value,
+            child: ExcludeSemantics(child: text),
+          ),
+        ),
+        IconButton(
+          key: Key('invite-copy-$part'),
+          tooltip: done ? AppLocalizations.of(context).shareInviteCopied : copyTooltip,
+          onPressed: () => _copyPart(part, value),
+          icon: Icon(done ? Icons.check : Icons.copy, size: iconSize, color: surface.muted),
+        ),
+      ],
+    );
+  }
+
   Future<void> _share(AppLocalizations t, CollectionInvite i) async {
-    await ref.read(shareTextProvider)(_message(t, i), subject: t.shareInviteTitle(widget.collection.displayName));
+    await ref.read(shareTextProvider)(_message(t, i), subject: t.shareInviteTitle(collectionDisplayName(t, widget.collection)));
   }
 
   @override
@@ -265,7 +307,7 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
     final t = AppLocalizations.of(context);
     final invite = _invite;
-    final title = t.shareInviteTitle(widget.collection.displayName);
+    final title = t.shareInviteTitle(collectionDisplayName(t, widget.collection));
     final hint = invite == null ? t.shareInviteFormHint : t.shareInviteCodeShownOnce;
     return SheetChrome(
       surface: surface,
@@ -280,19 +322,22 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                key: const Key('invite-title'),
-                style: TextStyle(
-                  fontFamily: PlantlyFonts.plusJakartaSans,
-                  fontSize: 19,
-                  fontWeight: FontWeight.w800,
-                  color: surface.text,
+              // Desktop: title + hint live in the SheetChrome header (#29).
+              if (!context.isDesktop) ...[
+                Text(
+                  title,
+                  key: const Key('invite-title'),
+                  style: TextStyle(
+                    fontFamily: PlantlyFonts.plusJakartaSans,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    color: surface.text,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(hint, style: TextStyle(fontSize: 12.5, color: surface.muted)),
-              const SizedBox(height: 16),
+                const SizedBox(height: 4),
+                Text(hint, style: TextStyle(fontSize: 12.5, color: surface.muted)),
+                const SizedBox(height: 16),
+              ],
               if (invite == null) ..._form(t, surface),
               if (invite != null) ..._result(t, surface, invite),
               const SizedBox(height: 8),
@@ -456,31 +501,48 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
     return [
       Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        // Left inset matches the copy button so the code stays centred.
+        padding: const EdgeInsets.fromLTRB(48, 10, 0, 10),
         decoration: BoxDecoration(
           color: surface.greenSoft,
           borderRadius: BorderRadius.circular(PlantlyTokens.radius),
         ),
-        child: Center(
-          child: SelectableText(
-            _pretty(invite.code),
-            key: const Key('invite-code'),
-            style: TextStyle(
-              fontFamily: PlantlyFonts.plusJakartaSans,
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 4,
-              color: surface.green,
-              fontFeatures: const [FontFeature.tabularFigures()],
+        child: _copyableText(
+          semanticLabel: t.a11yInviteCode,
+          value: _pretty(invite.code),
+          part: 'code',
+          copyTooltip: t.a11yCopyCode,
+          surface: surface,
+          iconSize: 18,
+          text: Center(
+            child: SelectableText(
+              _pretty(invite.code),
+              key: const Key('invite-code'),
+              style: TextStyle(
+                fontFamily: PlantlyFonts.plusJakartaSans,
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 4,
+                color: surface.green,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ),
         ),
       ),
-      const SizedBox(height: 10),
-      SelectableText(
-        invite.url,
-        key: const Key('invite-url'),
-        style: TextStyle(fontSize: 12, color: surface.muted),
+      const SizedBox(height: 4),
+      _copyableText(
+        semanticLabel: t.a11yInviteLink,
+        value: invite.url,
+        part: 'link',
+        copyTooltip: t.a11yCopyLink,
+        surface: surface,
+        iconSize: 16,
+        text: SelectableText(
+          invite.url,
+          key: const Key('invite-url'),
+          style: TextStyle(fontSize: 12, color: surface.muted),
+        ),
       ),
       const SizedBox(height: 6),
       Row(
@@ -645,7 +707,7 @@ class MembersSheet extends ConsumerWidget {
     final members = ref.watch(membersProvider(collection.id));
     // The role may change under us (transfer): read the live record.
     final live = ref.watch(collectionsProvider.select((s) => s.byId(collection.id))) ?? collection;
-    final title = t.shareMembersTitle(live.displayName);
+    final title = t.shareMembersTitle(collectionDisplayName(t, live));
     return SheetChrome(
       surface: surface,
       title: title,
@@ -657,17 +719,20 @@ class MembersSheet extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                title,
-                key: const Key('members-title'),
-                style: TextStyle(
-                  fontFamily: PlantlyFonts.plusJakartaSans,
-                  fontSize: 19,
-                  fontWeight: FontWeight.w800,
-                  color: surface.text,
+              // Desktop: the SheetChrome header carries the title (#29).
+              if (!context.isDesktop) ...[
+                Text(
+                  title,
+                  key: const Key('members-title'),
+                  style: TextStyle(
+                    fontFamily: PlantlyFonts.plusJakartaSans,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    color: surface.text,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
+                const SizedBox(height: 10),
+              ],
               members.when(
                 loading: () => Padding(
                   padding: const EdgeInsets.all(16),
@@ -836,7 +901,7 @@ class MembersSheet extends ConsumerWidget {
     if (!ok) return;
     messenger
       ?..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(t.shareTransferDone(m.username, col.displayName))));
+      ..showSnackBar(SnackBar(content: Text(t.shareTransferDone(m.username, collectionDisplayName(t, col)))));
   }
 
   Future<void> _remove(BuildContext context, WidgetRef ref, AppLocalizations t, CloudCollection col, CollectionMember m) async {

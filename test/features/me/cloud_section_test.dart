@@ -10,11 +10,13 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:plantly_inventory/cloud/cloud_state.dart';
 import 'package:plantly_inventory/cloud/collection_link.dart';
+import 'package:plantly_inventory/cloud/collections.dart';
 import 'package:plantly_inventory/cloud/entitlement.dart';
 import 'package:plantly_inventory/cloud/cloud_sync.dart';
 import 'package:plantly_inventory/cloud/sync_runner.dart';
 import 'package:plantly_inventory/config/plantly_features.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
+import 'package:plantly_inventory/data/database_storage.dart';
 import 'package:plantly_inventory/data/providers.dart';
 import 'package:plantly_inventory/features/me/cloud_screen.dart';
 import 'package:plantly_inventory/features/me/cloud_section.dart';
@@ -29,6 +31,7 @@ import 'package:plantly_inventory/theme/tokens.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../cloud/cloud_state_test.dart' show FixedEntitlement;
+import '../../cloud/collection_link_test.dart' show insertDummy;
 import '../../helpers/test_app.dart';
 import '../../marketplace/plantly_session_test.dart' show fakeJwt;
 
@@ -74,8 +77,11 @@ void main() {
     AppDatabase? db,
     bool? purchaseLink,
     List<Override> extra = const [],
+    Map<String, Object> prefs = const {},
+    List<Map<String, Object?>>? collections,
   }) async {
     SharedPreferences.setMockInitialValues({
+      ...prefs,
       'plantly_onboarded': true,
       if (linked) kCollectionIdPrefKey: 'col-1',
       if (linked) kCollectionNamePrefKey: 'My plants',
@@ -108,6 +114,10 @@ void main() {
                   200,
                   headers: {'content-type': 'application/json; charset=utf-8'},
                 );
+              }
+              if (collections != null && req.method == 'GET' && req.url.path.endsWith('/inventory/collections')) {
+                return http.Response(json.encode({'collections': collections}), 200,
+                    headers: {'content-type': 'application/json; charset=utf-8'});
               }
               return http.Response('{"error":"nope"}', 404);
             })),
@@ -156,6 +166,39 @@ void main() {
       expect(find.text('Use your plantly.ro account to post listings.'), findsNothing);
     });
 
+    testWidgets('web in-memory fallback: a warning row that data is not persisted in this browser', (tester) async {
+      await pump(tester, signedIn: false, extra: [databaseInMemoryProvider.overrideWithValue(true)]);
+      expect(find.byKey(const Key('cloud-storage-memory')), findsOneWidget);
+      expect(find.text('Not saved in this browser'), findsOneWidget);
+      expect(find.byKey(const Key('cloud-sign-in')), findsOneWidget, reason: 'non-blocking');
+    });
+
+    testWidgets('persisted storage → no warning row', (tester) async {
+      await pump(tester, signedIn: false);
+      expect(find.byKey(const Key('cloud-storage-memory')), findsNothing);
+    });
+
+    testWidgets('web sign-out: copy says the browser copy goes; nothing pending → straight through', (tester) async {
+      final runner = await pump(
+        tester,
+        entitlement: const CloudEntitlement(active: true, source: 'pro'),
+        extra: [webPlatformProvider.overrideWithValue(true)],
+      );
+      final button = find.byKey(const Key('cloud-account'));
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      expect(find.textContaining("this browser's copy of the collection is removed"), findsOneWidget);
+      await tester.tap(find.byKey(const Key('cloud-sign-out-confirm')));
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.pumpAndSettle();
+      // Nothing pending → no second question, no extra sync; signed out.
+      expect(find.byKey(const Key('sign-out-unsynced')), findsNothing);
+      expect(runner.syncNowCalls, 0);
+      final container = ProviderScope.containerOf(tester.element(find.byType(Scaffold).first));
+      expect(container.read(plantlyAuthProvider).valueOrNull, isNull);
+    });
+
     testWidgets('signedOut (ro)', (tester) async {
       await pump(tester, signedIn: false, locale: const Locale('ro'));
       expect(find.text('Conectează-te la plantly.ro'), findsOneWidget);
@@ -201,7 +244,7 @@ void main() {
       expect(find.byKey(const Key('cloud-subscribe')), findsOneWidget);
       expect(find.text('Abonează-te pe plantly.ro'), findsOneWidget);
       expect(find.text('Reîmprospătează starea'), findsOneWidget);
-      expect(find.text('Conectat ca alice · apasă pentru deconectare'), findsOneWidget);
+      expect(find.text('Conectat ca alice · apasă ca să ieși din cont'), findsOneWidget);
     });
 
     testWidgets('ready (en): status from SyncStatus, Sync now calls the runner, account, unlink with server-data-kept copy', (tester) async {
@@ -246,7 +289,9 @@ void main() {
       // Sticky: no automatic re-link, an explicit "turn it on" row instead.
       expect(collectionCreates, 0);
       expect(find.text('Sync is off on this device — tap to turn it on'), findsOneWidget);
-      expect(find.byKey(const Key('cloud-sync-now')), findsOneWidget);
+      // Unlinked: no disabled-but-chevroned "Sync now" / "Unlink" rows (QA d).
+      expect(find.byKey(const Key('cloud-sync-now')), findsNothing);
+      expect(find.byKey(const Key('cloud-unlink')), findsNothing);
 
       await tester.tap(find.byKey(const Key('cloud-status')));
       await tester.pumpAndSettle();
@@ -271,6 +316,36 @@ void main() {
       expect(prefs.getString(kCollectionIdPrefKey), 'col-9');
     });
 
+    testWidgets('a failed auto-link is not re-POSTed on every Me open (same account, same session)', (tester) async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      failCollectionCreate = true;
+      final mount = ValueNotifier<int>(0);
+      await pump(
+        tester,
+        entitlement: const CloudEntitlement(active: false),
+        linked: false,
+        db: db,
+        child: Scaffold(
+          body: ValueListenableBuilder<int>(
+            valueListenable: mount,
+            builder: (_, n, _) => ListView(
+              padding: const EdgeInsets.all(20),
+              children: [CloudSection(key: ValueKey(n), surface: PlantlySurface.light)],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(collectionCreates, 1);
+      for (var i = 1; i <= 3; i++) {
+        mount.value = i; // leave Me and come back
+        await tester.pumpAndSettle();
+      }
+      expect(collectionCreates, 1, reason: 'one automatic attempt per account per session');
+      failCollectionCreate = false;
+    });
+
     testWidgets('ready (ro): status copy with diacritics', (tester) async {
       await pump(
         tester,
@@ -282,6 +357,17 @@ void main() {
       expect(find.text('Încă nesincronizat · toate modificările încărcate'), findsOneWidget);
       expect(find.text('Sincronizează acum'), findsOneWidget);
       expect(find.text('Deconectează acest dispozitiv'), findsOneWidget);
+    });
+
+    testWidgets('ready on web: no "Unlink this device" — signing out is the browser\'s exit', (tester) async {
+      await pump(
+        tester,
+        entitlement: const CloudEntitlement(active: true, source: 'inventory_cloud'),
+        extra: [webPlatformProvider.overrideWithValue(true)],
+      );
+      expect(find.byKey(const Key('cloud-sync-now')), findsOneWidget);
+      expect(find.byKey(const Key('cloud-account')), findsOneWidget);
+      expect(find.byKey(const Key('cloud-unlink')), findsNothing);
     });
 
     testWidgets('ready but not linked yet → links the default collection automatically', (tester) async {
@@ -300,6 +386,8 @@ void main() {
     testWidgets('account switch: decision rows, nothing automatic; Move confirms then links', (tester) async {
       final db = AppDatabase.forTesting(NativeDatabase.memory());
       addTearDown(db.close);
+      // bob's plant in the active tenant: over an empty one there is no question (QA u26).
+      await tester.runAsync(() => insertDummy(db, db.plants, 'col-1'));
       await pump(tester, entitlement: const CloudEntitlement(active: true, source: 'pro'), linkUser: 'u-other', db: db);
       await tester.pumpAndSettle();
       expect(collectionCreates, 0, reason: 'never auto-link over another account\'s data');
@@ -327,7 +415,7 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString(kCollectionUserIdPrefKey), 'u-1');
       expect(prefs.getString(kTenantIdPrefKey), 'col-9');
-      expect(prefs.getBool(kSkipSeedPrefKey), isNull);
+      expect(prefs.getBool(kSkipSeedPrefKey), isTrue, reason: 'a linked install never seeds demo data again');
       expect(find.byKey(const Key('cloud-move-to-me')), findsNothing);
       expect(find.byKey(const Key('cloud-sync-now')), findsOneWidget);
     });
@@ -370,6 +458,7 @@ void main() {
     testWidgets('account switch (ro): Start empty → fresh tenant, skip-seed set, linked for the new user', (tester) async {
       final db = AppDatabase.forTesting(NativeDatabase.memory());
       addTearDown(db.close);
+      await tester.runAsync(() => insertDummy(db, db.plants, 'col-1'));
       await pump(tester,
           entitlement: const CloudEntitlement(active: true, source: 'pro'), linkUser: 'u-other', db: db, locale: const Locale('ro'));
       expect(find.text('Pe acest dispozitiv sunt plante sincronizate de bob.'), findsOneWidget);
@@ -383,6 +472,89 @@ void main() {
       expect(prefs.getString(kCollectionUserIdPrefKey), 'u-1');
       expect(find.byKey(const Key('cloud-start-empty')), findsNothing);
       expect(find.text('Sincronizează acum'), findsOneWidget);
+    });
+
+    testWidgets('home lost (removed after a transfer): copy + no sync rows; Start a new collection confirms, links, moves the rows',
+        (tester) async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      await pump(
+        tester,
+        entitlement: const CloudEntitlement(active: true, source: 'pro'),
+        db: db,
+        prefs: {
+          kHomeLossPrefKey: json.encode(
+              const HomeLoss(collectionId: 'col-1', name: 'My plants', reason: HomeLossReason.removed).toJson()),
+        },
+      );
+      expect(find.byKey(const Key('cloud-home-lost')), findsOneWidget);
+      expect(find.textContaining('You no longer have access to My plants'), findsOneWidget);
+      expect(find.byKey(const Key('cloud-sync-now')), findsNothing);
+      expect(find.byKey(const Key('cloud-unlink')), findsNothing);
+      expect(find.byKey(const Key('cloud-home-switch')), findsNothing, reason: 'no other collection to switch to');
+
+      await tester.tap(find.byKey(const Key('cloud-home-rehome')));
+      await tester.pumpAndSettle();
+      expect(find.text('Start a new collection?'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('cloud-home-rehome-confirm')));
+      await tester.pumpAndSettle();
+      expect(collectionCreates, 1);
+      final p = await SharedPreferences.getInstance();
+      expect(p.getString(kCollectionIdPrefKey), 'col-9');
+      expect(p.getString(kTenantIdPrefKey), 'col-9');
+      expect(p.getString(kHomeLossPrefKey), isNull);
+      expect(find.byKey(const Key('cloud-home-lost')), findsNothing);
+      expect(find.text('Your plants now sync to Colecția mea'), findsOneWidget);
+    });
+
+    testWidgets('home lost, account owns a shared collection: row + dialog name the target and its members', (tester) async {
+      await pump(
+        tester,
+        entitlement: const CloudEntitlement(active: true, source: 'pro'),
+        prefs: {
+          kHomeLossPrefKey: json.encode(
+              const HomeLoss(collectionId: 'col-1', name: 'My plants', reason: HomeLossReason.removed).toJson()),
+        },
+        collections: [
+          {'id': 'col-7', 'name': 'Shared jungle', 'role': 'owner', 'owner_user_id': 'u-1', 'member_count': 3},
+        ],
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Move your plants into “Shared jungle”'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('cloud-home-rehome')));
+      await tester.pumpAndSettle();
+      expect(find.text('Move your plants into “Shared jungle”?'), findsOneWidget);
+      expect(find.textContaining('which you share with 2 people'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(collectionCreates, 0, reason: 'nothing moves before confirming');
+    });
+
+    testWidgets('home lost (ro, deleted)', (tester) async {
+      await pump(
+        tester,
+        entitlement: const CloudEntitlement(active: true, source: 'pro'),
+        locale: const Locale('ro'),
+        prefs: {
+          kHomeLossPrefKey: json.encode(
+              const HomeLoss(collectionId: 'col-1', name: 'Plantele mele', reason: HomeLossReason.deleted).toJson()),
+        },
+      );
+      expect(find.textContaining('Plantele mele a fost ștearsă de pe server'), findsOneWidget);
+      expect(find.text('Începe o colecție nouă'), findsOneWidget);
+    });
+
+    testWidgets('a loss marker for another collection than the linked one is ignored', (tester) async {
+      await pump(
+        tester,
+        entitlement: const CloudEntitlement(active: true, source: 'pro'),
+        prefs: {
+          kHomeLossPrefKey: json.encode(
+              const HomeLoss(collectionId: 'col-old', name: 'Old', reason: HomeLossReason.removed).toJson()),
+        },
+      );
+      expect(find.byKey(const Key('cloud-home-lost')), findsNothing);
+      expect(find.byKey(const Key('cloud-sync-now')), findsOneWidget);
     });
 
     testWidgets('section title opens the Cloud screen with plan + collection detail', (tester) async {
@@ -476,6 +648,28 @@ void main() {
       expect(find.byKey(const Key('cloud-rejections-retry')), findsNothing);
     });
 
+    test('describeEntitlement: "renews" vs "ends" when the grant is cancelled at period end', () {
+      final t = lookupAppLocalizations(const Locale('en'));
+      final ro = lookupAppLocalizations(const Locale('ro'));
+      final end = DateTime.utc(2026, 11, 7, 12);
+      final renewing = CloudEntitlement(active: true, source: 'pro', currentPeriodEnd: end);
+      final ending = CloudEntitlement(active: true, source: 'pro', currentPeriodEnd: end, cancelAtPeriodEnd: true);
+      expect(describeEntitlement(t, renewing), contains('renews'));
+      expect(describeEntitlement(t, ending), 'Included with Plantly Pro · ends Nov 7, 2026');
+      expect(describeEntitlement(t, ending), isNot(contains('renews')));
+      expect(describeEntitlement(ro, ending), contains('se încheie pe'));
+    });
+
+    test('describeSyncError: generic collection_unavailable on web says sign out / in (no Unlink there)', () {
+      final t = lookupAppLocalizations(const Locale('en'));
+      expect(describeSyncError(t, 'collection_unavailable', web: true), 'This collection is no longer available — sign out and sign in again');
+      expect(describeSyncError(t, 'collection_unavailable'), t.cloudErrCollectionUnavailable);
+      expect(describeSyncError(lookupAppLocalizations(const Locale('ro')), 'collection_unavailable', web: true),
+          'Această colecție nu mai este disponibilă — ieși din cont și conectează-te din nou');
+      // Specific halts keep their own copy on web too.
+      expect(describeSyncError(t, 'collection_unavailable', detail: 'read_only', web: true), t.shareErrReadOnly);
+    });
+
     test('describeSyncError: collection_unavailable + not_a_member names the collection; generic otherwise', () {
       final t = lookupAppLocalizations(const Locale('en'));
       expect(describeSyncError(t, 'collection_unavailable', detail: 'not_a_member', collectionName: 'Family greenhouse'),
@@ -540,6 +734,9 @@ void main() {
       expect(formatCloudBytes(12 * 1024 * 1024), '12 MB');
       expect(formatCloudBytes(2 * 1024 * 1024 * 1024), '2 GB');
       expect(formatCloudBytes((1.25 * 1024 * 1024 * 1024).round()), '1.3 GB');
+      // Romanian decimal comma (QA: "1.7 MB din 2 GB").
+      expect(formatCloudBytes((1.7 * 1024 * 1024).round(), locale: 'ro'), '1,7 MB');
+      expect(formatCloudBytes((1.7 * 1024 * 1024).round(), locale: 'en'), '1.7 MB');
     });
   });
 }

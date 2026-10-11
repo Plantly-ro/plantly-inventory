@@ -127,7 +127,7 @@ class ActivityWidget extends ConsumerWidget {
             width: 30,
             height: 30,
             decoration: BoxDecoration(color: surface.greenSoft, shape: BoxShape.circle),
-            child: Icon(_iconFor(event.type), size: 14, color: surface.green),
+            child: Icon(careKeyIcon(types, event.type), size: 14, color: surface.green),
           ),
           const SizedBox(width: 11),
           Expanded(
@@ -162,25 +162,6 @@ class ActivityWidget extends ConsumerWidget {
     if (e.notes != null && e.notes!.isNotEmpty) parts.add(e.notes!);
     if (parts.isEmpty) return verb;
     return '$verb — ${parts.join(' · ')}';
-  }
-
-  IconData _iconFor(String type) {
-    switch (type) {
-      case 'fertilize':
-        return Icons.eco_outlined;
-      case 'rotate':
-        return Icons.light_mode_outlined;
-      case 'mist':
-        return Icons.bubble_chart_outlined;
-      case 'repot':
-        return Icons.local_florist_outlined;
-      case 'prune':
-        return Icons.content_cut_outlined;
-      case 'water':
-        return Icons.water_drop_outlined;
-      default:
-        return Icons.notifications_active_outlined;
-    }
   }
 
   String _formatRelative(AppLocalizations t, String locale, DateTime then) {

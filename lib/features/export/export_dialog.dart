@@ -283,6 +283,7 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                       ),
                     ),
                     IconButton(
+                      tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
                       onPressed: () => Navigator.of(context).maybePop(),
                       icon: Icon(Icons.close, color: surface.text),
                     ),
@@ -558,13 +559,16 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
     }
     final url = last?.url;
     final warnings = last?.message;
+    // Without the marketplace the only plugin is local_draft: nothing was
+    // posted anywhere, so say what actually happened.
+    final done = ref.read(sellEnabledProvider) ? t.exportPosted : t.exportDraftSaved;
     Navigator.of(context).maybePop();
     final messenger = ScaffoldMessenger.of(context);
     messenger
       ..clearSnackBars()
       ..showSnackBar(SnackBar(
         content: Text(url == null
-            ? (warnings ?? t.exportPosted)
+            ? (warnings ?? done)
             : (warnings == null ? t.exportPosted : t.exportPostedWithWarnings(warnings))),
         duration: const Duration(seconds: 6),
         action: url == null

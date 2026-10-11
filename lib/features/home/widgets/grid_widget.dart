@@ -10,6 +10,8 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/hover_card.dart';
 import '../../../shared/assignee_initial.dart';
 import '../../../shared/plant_thumb.dart';
+import '../../../shared/relative_days.dart';
+import '../../../shared/text_scale.dart';
 import '../../../theme/tokens.dart';
 import '../../search/search_screen.dart';
 import '../filter.dart';
@@ -112,7 +114,19 @@ class GridWidget extends ConsumerWidget {
             loading: () => const SizedBox(height: 120, child: Center(child: CircularProgressIndicator())),
             error: (e, _) => _ErrorPlaceholder(message: '$e', surface: surface),
             data: (rows) {
-              if (rows.isEmpty) return _EmptyPlaceholder(surface: surface, filter: filter);
+              if (rows.isEmpty) {
+                return _EmptyPlaceholder(
+                  surface: surface,
+                  message: emptyGridMessage(
+                    t,
+                    filter: filter,
+                    query: ref.watch(plantQueryProvider),
+                    narrowed: ref.watch(activeLocationFilterProvider) != null || ref.watch(activeTagFilterProvider) != null,
+                    desktop: desktop,
+                    canEdit: ref.watch(canEditActiveCollectionProvider),
+                  ),
+                );
+              }
               final sorted = sortPlants(
                 plants: rows,
                 sort: sort,
@@ -120,13 +134,18 @@ class GridWidget extends ConsumerWidget {
                 locationNameById: locationsById,
               );
               final spacing = desktop ? 12.0 : 10.0;
-              return LayoutBuilder(builder: (context, constraints) => GridView.count(
-                crossAxisCount: adaptiveColumns(context, constraints.maxWidth, phone: 2, minTileWidth: desktop ? 200 : 180),
+              return LayoutBuilder(builder: (context, constraints) {
+                final columns = adaptiveColumns(context, constraints.maxWidth, phone: 2, minTileWidth: desktop ? 200 : 180);
+                return GridView(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                childAspectRatio: 0.78,
-                mainAxisSpacing: spacing,
-                crossAxisSpacing: spacing,
+                gridDelegate: plantGridDelegate(
+                  context,
+                  width: constraints.maxWidth,
+                  columns: columns,
+                  spacing: spacing,
+                  desktop: desktop,
+                ),
                 children: sorted.map((row) {
                   final swatch = MockPlants.byId(row.id);
                   final locName = row.locationId == null ? null : locationsById[row.locationId];
@@ -136,7 +155,7 @@ class GridWidget extends ConsumerWidget {
                   final nextType = nextTypeByPlant[row.id];
                   final dueLabel = nextDueMs == null
                       ? null
-                      : _DueLabel.forMs(t, nextDueMs - nowMs);
+                      : homeDueLabel(t, nextDueMs, DateTime.fromMillisecondsSinceEpoch(nowMs));
                   final selection = ref.watch(plantSelectionProvider);
                   final selected = selection.contains(row.id);
                   final inSelectionMode = selection.isNotEmpty;
@@ -165,13 +184,52 @@ class GridWidget extends ConsumerWidget {
                         : null,
                   );
                 }).toList(growable: false),
-              ));
+              );
+              });
             },
           ),
         ],
       ),
     );
   }
+}
+
+/// Card height = the square photo + the two text lines. The 0.78 ratio
+/// fits them from ~170 px wide at the default text scale; narrower tiles
+/// (360 dp phones) and large accessibility fonts get the height the text
+/// actually needs instead of clipping the location line. Wide tiles at
+/// 1.0 keep the plain ratio (pixel parity with the goldens).
+@visibleForTesting
+SliverGridDelegate plantGridDelegate(
+  BuildContext context, {
+  required double width,
+  required int columns,
+  required double spacing,
+  required bool desktop,
+}) {
+  const ratio = 0.78;
+  final tile = (width - (columns - 1) * spacing) / columns;
+  // The square photo (tile − 2: it sits inside the 1 px border) + the
+  // border + 8/10 padding + the name + 2 + the location line.
+  final needed = tile +
+      18 +
+      textLineHeight(context, _Card.nameStyle(desktop)) +
+      2 +
+      textLineHeight(context, _Card.locationStyle(desktop));
+  if (needed <= tile / ratio) {
+    return SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: columns,
+      childAspectRatio: ratio,
+      mainAxisSpacing: spacing,
+      crossAxisSpacing: spacing,
+    );
+  }
+  return SliverGridDelegateWithFixedCrossAxisCount(
+    crossAxisCount: columns,
+    mainAxisExtent: needed,
+    mainAxisSpacing: spacing,
+    crossAxisSpacing: spacing,
+  );
 }
 
 class _Card extends StatelessWidget {
@@ -210,6 +268,11 @@ class _Card extends StatelessWidget {
   final PlantlySurface surface;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
+
+  static TextStyle nameStyle(bool desktop) =>
+      TextStyle(fontSize: desktop ? 13 : 12.5, fontWeight: FontWeight.w600, height: 1.2);
+
+  static TextStyle locationStyle(bool desktop) => TextStyle(fontSize: desktop ? 11 : 10);
 
   @override
   Widget build(BuildContext context) {
@@ -325,12 +388,7 @@ class _Card extends StatelessWidget {
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: desktop ? 13 : 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: surface.text,
-                      height: 1.2,
-                    ),
+                    style: nameStyle(desktop).copyWith(color: surface.text),
                   ),
                   const SizedBox(height: 2),
                   Row(
@@ -342,7 +400,7 @@ class _Card extends StatelessWidget {
                           locationName ?? AppLocalizations.of(context).spaceNoSpace,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: desktop ? 11 : 10, color: surface.muted),
+                          style: locationStyle(desktop).copyWith(color: surface.muted),
                         ),
                       ),
                     ],
@@ -357,19 +415,40 @@ class _Card extends StatelessWidget {
   }
 }
 
+/// Copy for an empty plant grid, by why it is empty: a search with no
+/// match, location/tag chips narrowing to nothing, the Overdue / Due today
+/// chip, or truly no plants — then the add hint names the control that
+/// exists here (sidebar button on desktop, the + elsewhere; none for a
+/// viewer).
+String emptyGridMessage(
+  AppLocalizations t, {
+  required PlantFilter filter,
+  required String query,
+  required bool narrowed,
+  required bool desktop,
+  required bool canEdit,
+}) {
+  final q = query.trim();
+  if (q.isNotEmpty) return t.searchNoMatch(q);
+  if (narrowed) return t.homeGridEmptyFiltered;
+  return switch (filter) {
+    PlantFilter.overdue => t.nothingOverdue,
+    PlantFilter.dueToday => t.homeGridEmptyDueToday,
+    PlantFilter.all => !canEdit
+        ? t.homeGridEmptyViewer
+        : desktop
+            ? t.homeGridEmptyAllDesktop(t.addPlant)
+            : t.homeGridEmptyAll,
+  };
+}
+
 class _EmptyPlaceholder extends StatelessWidget {
-  const _EmptyPlaceholder({required this.surface, this.filter = PlantFilter.all});
+  const _EmptyPlaceholder({required this.surface, required this.message});
   final PlantlySurface surface;
-  final PlantFilter filter;
+  final String message;
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    final message = switch (filter) {
-      PlantFilter.all => t.homeGridEmptyAll,
-      PlantFilter.overdue => t.nothingOverdue,
-      PlantFilter.dueToday => t.homeGridEmptyDueToday,
-    };
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -439,26 +518,28 @@ class _SortMenu extends StatelessWidget {
   }
 }
 
-/// Stand-alone short-form due-time formatter. Kept out of the `Card`
-/// widget so it's cheap to compute per item in the grid loop.
-class _DueLabel {
-  static String forMs(AppLocalizations t, int diffMs) {
-    if (diffMs < 0) {
-      final late = (-diffMs / (86400 * 1000)).floor();
-      if (late >= 1) return t.homeDueLateDays(late);
-      final h = (-diffMs / (3600 * 1000)).floor();
-      if (h >= 1) return t.homeDueLateHours(h);
-      return t.homeDueNowShort;
-    }
-    final days = (diffMs / (86400 * 1000)).round();
-    if (days == 0) {
-      final h = (diffMs / (3600 * 1000)).round();
-      if (h < 1) return t.homeDueUnderHour;
-      return t.homeDueInHours(h);
-    }
-    if (days == 1) return t.homeDueTomorrow;
-    return t.homeDueInDays(days);
+/// Short-form due-time copy for a grid card ("in 5 d", "tomorrow",
+/// "3 h late"). Day counts are CALENDAR days ([calendarDaysBetween]) so the
+/// card, Plant detail and Calendar name the same number for one due date;
+/// under a day it counts hours. Top-level so the grid loop stays cheap and
+/// tests can reach it.
+String homeDueLabel(AppLocalizations t, int dueMs, DateTime now) {
+  final diffMs = dueMs - now.millisecondsSinceEpoch;
+  final due = DateTime.fromMillisecondsSinceEpoch(dueMs, isUtc: true);
+  if (diffMs < 0) {
+    final h = (-diffMs / (3600 * 1000)).floor();
+    if (h >= 24) return t.homeDueLateDays(calendarDaysBetween(due, now));
+    if (h >= 1) return t.homeDueLateHours(h);
+    return t.homeDueNowShort;
   }
+  final days = calendarDaysBetween(now, due);
+  if (days == 0) {
+    final h = (diffMs / (3600 * 1000)).round();
+    if (h < 1) return t.homeDueUnderHour;
+    return t.homeDueInHours(h);
+  }
+  if (days == 1) return t.homeDueTomorrow;
+  return t.homeDueInDays(days);
 }
 
 class _LocationTagChipsRow extends ConsumerWidget {

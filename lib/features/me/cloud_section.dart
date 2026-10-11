@@ -18,12 +18,18 @@ import '../../cloud/sign_in_events.dart';
 import '../../cloud/cloud_sync.dart';
 import '../../cloud/sync_runner.dart';
 import '../../app/navigation.dart';
+import '../../config/plantly_features.dart';
 import '../../config/plantly_hosts.dart';
+import '../../data/database_storage.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../marketplace/plantly_api.dart';
 import '../../marketplace/plantly_auth.dart';
 import '../../plugins/plantly_ro/login_sheet.dart';
+import '../../shared/web_sign_out_flow.dart';
+import '../../sync/sync_tabs.dart' show broadcastTabReload, syncTabsProvider;
 import '../../theme/tokens.dart';
+import '../collections/collection_switcher.dart' show showCollectionSwitcherSheet;
+import '../collections/collection_ui.dart' show collectionDisplayName, localizedCollectionName;
 import '../collections/sharing_rows.dart';
 import 'me_rows.dart';
 import 'play_plan_picker.dart';
@@ -35,6 +41,19 @@ import 'sync_rejections_screen.dart';
 final cloudPurchaseLinkAllowedProvider = Provider<bool>((_) {
   if (kIsWeb) return true;
   return defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS;
+});
+
+/// Accounts the automatic collection link was already attempted for in
+/// this app session. App-wide (not per [CloudRows] state): every Me open
+/// mounts a fresh state, and an account whose link fails (no plan, offline)
+/// used to `POST /collections/default` again on each visit. Cleared on
+/// sign-out; the failed row offers "tap to retry".
+final autoLinkAttemptsProvider = Provider<Set<String>>((ref) {
+  final attempted = <String>{};
+  ref.listen<String?>(cloudStateProvider.select((s) => s.account), (_, account) {
+    if (account == null) attempted.clear();
+  });
+  return attempted;
 });
 
 /// Me → Cloud (§2.4 status surface). Renders nothing when the feature flag
@@ -90,11 +109,6 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
   bool _linking = false;
   String? _linkError;
 
-  /// Account the automatic link was last attempted for. One attempt per
-  /// account: a failure leaves a "tap to retry" row instead of re-firing on
-  /// every state tick (which would hammer the server while offline).
-  String? _autoLinkedFor;
-
   PlantlySurface get surface => widget.surface;
 
   @override
@@ -112,19 +126,28 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
     if (state.phase == CloudPhase.off || state.phase == CloudPhase.signedOut) return;
     if (state.linked || state.checking || state.unlinkedByUser) return;
     if (state.heldByOther != null) return; // the user decides — never automatic
-    if (_linking || _autoLinkedFor == state.account) return;
-    _autoLinkedFor = state.account;
+    // One attempt per account per session ([autoLinkAttemptsProvider]): a
+    // failure leaves a "tap to retry" row instead of re-firing on every
+    // state tick or Me visit (which would hammer the server while offline
+    // or without a plan).
+    final attempted = ref.read(autoLinkAttemptsProvider);
+    final account = state.account;
+    if (_linking || account == null || attempted.contains(account)) return;
+    attempted.add(account);
     unawaited(_link());
   }
 
   Future<void> _link() async {
     final links = ref.read(collectionLinkProvider.notifier);
+    final tabs = ref.read(syncTabsProvider);
     setState(() {
       _linking = true;
       _linkError = null;
     });
     try {
       await links.link();
+      // Other open tabs still point at the previous tenant: reload them.
+      broadcastTabReload(tabs);
     } catch (e) {
       if (mounted) setState(() => _linkError = _describe(e));
     } finally {
@@ -139,12 +162,25 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
     ref.listen<CloudState>(cloudStateProvider, (_, next) => _maybeAutoLink(next));
     final state = ref.watch(cloudStateProvider);
     final t = AppLocalizations.of(context);
-    final rows = switch (state.phase) {
-      CloudPhase.off => const <Widget>[],
-      CloudPhase.signedOut => _signedOut(t),
-      CloudPhase.notEntitled => _notEntitled(t, state),
-      CloudPhase.ready => _ready(t, state),
-    };
+    final rows = [
+      // Web, drift's silent in-memory fallback: nothing survives a reload
+      // unless it reached the cloud.
+      if (state.phase != CloudPhase.off && ref.watch(databaseInMemoryProvider))
+        MeActionRow(
+          key: const Key('cloud-storage-memory'),
+          label: t.cloudStorageMemoryLabel,
+          value: t.cloudStorageMemoryValue,
+          icon: Icons.warning_amber_outlined,
+          surface: surface,
+          valueColor: surface.terra,
+        ),
+      ...switch (state.phase) {
+        CloudPhase.off => const <Widget>[],
+        CloudPhase.signedOut => _signedOut(t),
+        CloudPhase.notEntitled => _notEntitled(t, state),
+        CloudPhase.ready => _ready(t, state),
+      },
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -172,12 +208,15 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
     // still hold (and join, §3) collections, and never on top of another
     // account's link.
     if (state.heldByOther != null) return _heldByOther(t, state);
+    final loss = ref.watch(homeLossProvider);
+    if (loss != null) return _homeLost(t, state, loss);
     final purchaseLink = ref.watch(cloudPurchaseLinkAllowedProvider);
     // Android with both flags on: buy in-app (PLAY-BILLING-CONTRACT §4). The
     // picker never shows while the entitlement is still being checked —
     // "no purchase CTA when entitled" (§0) must be decided on fresh data.
     final playBilling = ref.watch(playBillingAvailableProvider) && !state.checking;
-    final collectionName = ref.watch(activeCollectionProvider)?.displayName;
+    final activeCol = ref.watch(activeCollectionProvider);
+    final collectionName = activeCol == null ? null : collectionDisplayName(t, activeCol);
     // A shared collection still pulls under the read grace here (§8), so
     // its status / last error stay visible.
     final sharedActive = ref.watch(activeCollectionIsSharedProvider);
@@ -200,7 +239,7 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
           key: const Key('cloud-last-error'),
           label: t.cloudLastErrorLabel,
           value: describeSyncError(t, status.lastError!,
-              detail: status.lastErrorDetail, status: status, collectionName: collectionName),
+              detail: status.lastErrorDetail, status: status, collectionName: collectionName, web: ref.watch(webPlatformProvider)),
           icon: Icons.error_outline,
           surface: surface,
           valueColor: surface.terra,
@@ -283,10 +322,49 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
     ];
   }
 
+  /// The linked home is gone (removed / deleted after a transfer): say so,
+  /// keep the local data, offer a new collection or another one.
+  List<Widget> _homeLost(AppLocalizations t, CloudState state, HomeLoss loss) {
+    final others = ref.watch(collectionsProvider.select((s) => s.items.any((c) => c.id != loss.collectionId)));
+    ref.watch(collectionsProvider); // the target follows the list
+    final target = ref.read(collectionsProvider.notifier).rehomeTarget;
+    return [
+      MeActionRow(
+        key: const Key('cloud-home-lost'),
+        label: t.cloudStatusLabel,
+        value: _linking ? t.cloudSettingUp : (_linkError ?? describeHomeLoss(t, loss)),
+        icon: Icons.cloud_off_outlined,
+        surface: surface,
+        valueColor: surface.terra,
+      ),
+      MeActionRow(
+        key: const Key('cloud-home-rehome'),
+        label: target == null ? t.cloudHomeRehomeLabel : t.cloudHomeMoveLabel(collectionDisplayName(t, target)),
+        value: t.cloudHomeRehomeValue,
+        icon: Icons.create_new_folder_outlined,
+        surface: surface,
+        onTap: _linking ? null : _rehome,
+      ),
+      if (others)
+        MeActionRow(
+          key: const Key('cloud-home-switch'),
+          label: t.cloudHomeSwitchLabel,
+          value: t.cloudHomeSwitchValue,
+          icon: Icons.swap_horiz,
+          surface: surface,
+          onTap: () => showCollectionSwitcherSheet(context),
+        ),
+      _accountRow(t, state),
+    ];
+  }
+
   List<Widget> _ready(AppLocalizations t, CloudState state) {
     if (state.heldByOther != null) return _heldByOther(t, state);
+    final loss = ref.watch(homeLossProvider);
+    if (loss != null) return _homeLost(t, state, loss);
     final status = ref.watch(syncStatusProvider).valueOrNull ?? SyncStatus.empty;
-    final collectionName = ref.watch(activeCollectionProvider)?.displayName;
+    final activeCol = ref.watch(activeCollectionProvider);
+    final collectionName = activeCol == null ? null : collectionDisplayName(t, activeCol);
     final String statusText;
     Color? statusColor;
     VoidCallback? statusTap;
@@ -341,7 +419,7 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
           MeActionRow(
             key: const Key('cloud-collection'),
             label: t.cloudCollectionLabel,
-            value: (state.collectionName ?? '').isEmpty ? state.collectionId! : state.collectionName!,
+            value: _linkedCollectionName(t, state),
             icon: Icons.folder_outlined,
             surface: surface,
           ),
@@ -350,7 +428,7 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
             key: const Key('cloud-last-error'),
             label: t.cloudLastErrorLabel,
             value: describeSyncError(t, status.lastError!,
-                detail: status.lastErrorDetail, status: status, collectionName: collectionName),
+                detail: status.lastErrorDetail, status: status, collectionName: collectionName, web: ref.watch(webPlatformProvider)),
             icon: Icons.error_outline,
             surface: surface,
             valueColor: surface.terra,
@@ -367,24 +445,43 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
             ),
           ),
       ],
-      MeActionRow(
-        key: const Key('cloud-sync-now'),
-        label: t.cloudSyncNowLabel,
-        value: t.cloudSyncNowValue,
-        icon: Icons.sync,
-        surface: surface,
-        onTap: state.linked && !status.inFlight ? _syncNow : null,
-      ),
+      // Unlinked: nothing to sync or unlink — the status row above is the
+      // way back (tap to link). Showing them disabled read as tappable.
+      if (state.linked)
+        MeActionRow(
+          key: const Key('cloud-sync-now'),
+          label: t.cloudSyncNowLabel,
+          value: t.cloudSyncNowValue,
+          icon: Icons.sync,
+          surface: surface,
+          onTap: !status.inFlight ? _syncNow : null,
+        ),
       _accountRow(t, state),
-      MeActionRow(
-        key: const Key('cloud-unlink'),
-        label: t.cloudUnlinkLabel,
-        value: t.cloudUnlinkValue,
-        icon: Icons.link_off,
-        surface: surface,
-        onTap: state.linked ? _unlink : null,
-      ),
+      // Not on web: the browser IS the Inventory Cloud surface. Unlinking it
+      // would leave the gate open on a stale, unsynced browser copy whose
+      // edits never reach the account — signing out is the browser's exit.
+      if (!ref.watch(webPlatformProvider) && state.linked)
+        MeActionRow(
+          key: const Key('cloud-unlink'),
+          label: t.cloudUnlinkLabel,
+          value: t.cloudUnlinkValue,
+          icon: Icons.link_off,
+          surface: surface,
+          onTap: _unlink,
+        ),
     ];
+  }
+
+  /// The linked collection's CURRENT name: the server list (renames from
+  /// any device), else the name stored at link time, else the id — the
+  /// stored name went stale after a rename ("Collection: My plants" next to
+  /// "Active collection: Olive Grove").
+  String _linkedCollectionName(AppLocalizations t, CloudState state) {
+    final id = state.collectionId!;
+    final listed = ref.watch(collectionsProvider.select((s) => s.byId(id)));
+    if (listed != null) return collectionDisplayName(t, listed);
+    final stored = state.collectionName ?? '';
+    return stored.isEmpty ? id : localizedCollectionName(t, stored);
   }
 
   Widget _accountRow(AppLocalizations t, CloudState state) => MeActionRow(
@@ -405,14 +502,59 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
     await _link();
   }
 
+  Future<void> _rehome() async {
+    final t = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final collections = ref.read(collectionsProvider.notifier); // before the await (#14)
+    // `POST /collections/default` hands out the OLDEST collection the
+    // account owns — possibly a shared one: name it before moving anything.
+    final target = collections.rehomeTarget;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(target == null ? t.cloudHomeRehomeTitle : t.cloudHomeMoveTitle(collectionDisplayName(t, target))),
+        content: Text(target == null
+            ? t.cloudHomeRehomeBody
+            : target.memberCount > 1
+                ? t.cloudHomeMoveBodyShared(collectionDisplayName(t, target), target.memberCount - 1)
+                : t.cloudHomeMoveBody(collectionDisplayName(t, target))),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.cancel)),
+          FilledButton(
+            key: const Key('cloud-home-rehome-confirm'),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(t.cloudHomeRehomeConfirm),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() {
+      _linking = true;
+      _linkError = null;
+    });
+    try {
+      final link = await collections.rehome();
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(t.cloudHomeRehomeDone(link.name.isEmpty ? link.id : link.name))));
+    } catch (e) {
+      if (mounted) setState(() => _linkError = _describe(e));
+    } finally {
+      if (mounted) setState(() => _linking = false);
+    }
+  }
+
   Future<void> _startEmpty() async {
     final links = ref.read(collectionLinkProvider.notifier); // before the await (#14)
+    final tabs = ref.read(syncTabsProvider);
     setState(() {
       _linking = true;
       _linkError = null;
     });
     try {
       await links.startEmpty();
+      broadcastTabReload(tabs);
     } catch (e) {
       if (mounted) setState(() => _linkError = _describe(e));
     } finally {
@@ -453,11 +595,13 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
   Future<void> _signOut(String username) async {
     final t = AppLocalizations.of(context);
     final auth = ref.read(plantlyAuthProvider.notifier); // before the await (#14)
+    final web = ref.read(webPlatformProvider);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(t.cloudSignOutTitle),
-        content: Text(t.cloudSignOutBody(username)),
+        // Web: the sign-out wipes this browser's copy (local_data_wipe.dart).
+        content: Text(web ? t.cloudSignOutBodyWeb(username) : t.cloudSignOutBody(username)),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.cancel)),
           FilledButton(
@@ -468,7 +612,12 @@ class _CloudRowsState extends ConsumerState<CloudRows> {
         ],
       ),
     );
-    if (ok == true) await auth.signOut();
+    if (ok != true || !mounted) return;
+    if (web) {
+      await completeWebSignOut(context, ref);
+      return;
+    }
+    await auth.signOut();
   }
 
   Future<void> _unlink() async {
@@ -506,7 +655,7 @@ String describeSyncStatus(AppLocalizations t, SyncStatus s, {DateTime? now}) {
     if (s.inFlight) t.cloudSyncing else describeLastSync(t, s.lastSyncAt, now: now),
     t.cloudPendingOps(s.pendingOps),
     if (s.bytesStored != null && s.bytesQuota != null)
-      t.cloudStorageUsed(formatCloudBytes(s.bytesStored!), formatCloudBytes(s.bytesQuota!)),
+      t.cloudStorageUsed(formatCloudBytes(s.bytesStored!, locale: t.localeName), formatCloudBytes(s.bytesQuota!, locale: t.localeName)),
   ];
   return parts.join(' · ');
 }
@@ -526,7 +675,8 @@ String describeEntitlement(AppLocalizations t, CloudEntitlement? e) {
   final source = e.managedByPlay ? '$base · ${t.cloudEntitlementViaPlay}' : base;
   final end = e.currentPeriodEnd;
   if (end == null) return source;
-  return '$source · ${t.cloudRenewsOn(DateFormat.yMMMd(t.localeName).format(end.toLocal()))}';
+  final date = DateFormat.yMMMd(t.localeName).format(end.toLocal());
+  return '$source · ${e.cancelAtPeriodEnd ? t.cloudEndsOn(date) : t.cloudRenewsOn(date)}';
 }
 
 /// Engine error codes (`SyncStatus.lastError`) → copy; anything else is
@@ -540,7 +690,10 @@ String describeEntitlement(AppLocalizations t, CloudEntitlement? e) {
 /// the `not_a_member` copy ("You were removed from …"). The MULTI-USER-V2
 /// halts (`read_only`, `device_revoked`, `too_many_devices`) and the
 /// `device_lookup_failed` retry each get their own line.
-String describeSyncError(AppLocalizations t, String code, {String? detail, SyncStatus? status, String? collectionName}) =>
+/// [web]: the browser build has no "Unlink this device", so the generic
+/// collection-unavailable copy points at signing out and in again.
+String describeSyncError(AppLocalizations t, String code,
+        {String? detail, SyncStatus? status, String? collectionName, bool web = false}) =>
     switch (code) {
       'cloud_required' => switch (detail) {
           kOwnerPlanLapsedDetail => t.shareErrOwnerLapsed,
@@ -554,7 +707,7 @@ String describeSyncError(AppLocalizations t, String code, {String? detail, SyncS
           kReadOnlyDetail => t.shareErrReadOnly,
           kDeviceRevokedDetail => t.shareErrDeviceRevoked,
           kTooManyDevicesDetail => t.shareErrTooManyDevices,
-          _ => t.cloudErrCollectionUnavailable,
+          _ => web ? t.cloudErrCollectionUnavailableWeb : t.cloudErrCollectionUnavailable,
         },
       'quota_exceeded' => t.cloudErrQuotaExceeded,
       'op_too_large' => detail == null || detail.isEmpty ? t.cloudErrOpTooLarge : t.cloudErrOpTooLargeDetail(detail),
@@ -567,8 +720,16 @@ String describeSyncError(AppLocalizations t, String code, {String? detail, SyncS
       _ => code,
     };
 
-/// 1024-based, at most one decimal: `0 B`, `512 KB`, `1.5 MB`, `2 GB`.
-String formatCloudBytes(int bytes) {
+/// Copy for a lost linked home ([HomeLoss]): who took it away, and that the
+/// local plants are untouched.
+String describeHomeLoss(AppLocalizations t, HomeLoss loss) => switch (loss.reason) {
+      HomeLossReason.removed => t.cloudHomeLostRemoved(loss.name),
+      HomeLossReason.deleted => t.cloudHomeLostDeleted(loss.name),
+    };
+
+/// 1024-based, at most one decimal: `0 B`, `512 KB`, `1.5 MB`, `2 GB` —
+/// with [locale]'s decimal separator (`1,5 MB` in ro).
+String formatCloudBytes(int bytes, {String? locale}) {
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
   var v = bytes.toDouble();
   var i = 0;
@@ -576,6 +737,8 @@ String formatCloudBytes(int bytes) {
     v /= 1024;
     i++;
   }
-  final text = i == 0 || v >= 100 || v == v.roundToDouble() ? v.round().toString() : v.toStringAsFixed(1);
+  final text = i == 0 || v >= 100 || v == v.roundToDouble()
+      ? v.round().toString()
+      : NumberFormat('0.0', locale).format(double.parse(v.toStringAsFixed(1)));
   return '$text ${units[i]}';
 }

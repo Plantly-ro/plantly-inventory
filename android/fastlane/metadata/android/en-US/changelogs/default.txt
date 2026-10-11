@@ -1,1 +1,1 @@
-New: Inventory Cloud — sync between phone and web, automatic backup, shared collections and photos in the cloud (optional subscription, included in Plantly Pro). Improvements and fixes.
+Security and reliability update: safer sign-in; logging care on one device now updates reminders everywhere; reminders keep their time across daylight-saving changes, follow the collection you open, and tapping one opens the plant; more reliable sync and photos in shared collections; clearer privacy texts; accessibility and large-font fixes.

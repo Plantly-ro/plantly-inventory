@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../cloud/data_residency.dart';
+import '../../config/plantly_features.dart';
 import '../../data/user_prefs.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../home/home_providers.dart';
 import '../../app/navigation.dart';
 
-/// Privacy & Data — the plain-English statement of what leaves the
-/// device, plus two toggles the user must opt in to explicitly. Both
-/// default off; nothing is collected unless the user flips these on.
+/// Privacy & Data — the plain-English statement of where the collection
+/// lives and what leaves the device (true per [DataResidency]: local-only
+/// app, app with cloud sync running, web), plus two toggles the user must
+/// opt in to explicitly. Both default off; no telemetry is collected
+/// unless the user flips these on.
 class PrivacyScreen extends ConsumerWidget {
   const PrivacyScreen({super.key});
 
@@ -19,6 +23,8 @@ class PrivacyScreen extends ConsumerWidget {
     final surface = mode == ThemeMode.dark ? PlantlySurface.dark : PlantlySurface.light;
     final prefs = ref.watch(userPrefsProvider);
     final t = AppLocalizations.of(context);
+    final residency = ref.watch(dataResidencyProvider);
+    final web = residency == DataResidency.web;
 
     return Scaffold(
       backgroundColor: surface.bg,
@@ -46,26 +52,36 @@ class PrivacyScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  t.mePrivacyWhatLeaves,
+                  web ? t.mePrivacyWhereDataLives : t.mePrivacyWhatLeaves,
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: surface.text),
                 ),
                 const SizedBox(height: 8),
                 _Bullet(
+                  key: const ValueKey('privacy-bullet-storage'),
                   surface: surface,
-                  text: t.mePrivacyBulletLocal,
+                  text: switch (residency) {
+                    DataResidency.deviceOnly => t.mePrivacyBulletLocal,
+                    DataResidency.deviceAndCloud => t.mePrivacyBulletCloud,
+                    DataResidency.syncPaused => t.mePrivacyBulletPaused,
+                    DataResidency.web => t.mePrivacyBulletWeb,
+                  },
                 ),
                 _Bullet(
                   surface: surface,
-                  text: t.mePrivacyBulletBackups,
+                  text: web ? t.mePrivacyBulletBackupsWeb : t.mePrivacyBulletBackups,
                 ),
                 _Bullet(
                   surface: surface,
-                  text: t.mePrivacyBulletNotifications,
+                  text: web ? t.mePrivacyBulletNotificationsWeb : t.mePrivacyBulletNotifications,
                 ),
-                _Bullet(
-                  surface: surface,
-                  text: t.mePrivacyBulletMarketplace,
-                ),
+                if (ref.watch(sellEnabledProvider))
+                  _Bullet(
+                    key: const ValueKey('privacy-bullet-marketplace'),
+                    surface: surface,
+                    text: residency == DataResidency.deviceOnly
+                        ? t.mePrivacyBulletMarketplace
+                        : t.mePrivacyBulletMarketplaceCloud,
+                  ),
               ],
             ),
           ),
@@ -173,7 +189,7 @@ class _Card extends StatelessWidget {
 }
 
 class _Bullet extends StatelessWidget {
-  const _Bullet({required this.surface, required this.text});
+  const _Bullet({super.key, required this.surface, required this.text});
   final PlantlySurface surface;
   final String text;
 

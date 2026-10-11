@@ -2820,7 +2820,7 @@ class $PhotosTable extends Photos with TableInfo<$PhotosTable, PhotoRow> {
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {sha256};
+  Set<GeneratedColumn> get $primaryKey => {tenantId, sha256};
   @override
   PhotoRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';

@@ -37,7 +37,7 @@ class CareType {
   final int? colorValue;
   final bool builtin;
 
-  IconData get icon => kCareIconByCodePoint[iconCode] ?? Icons.notifications_active_outlined;
+  IconData get icon => kCareIconByCodePoint[iconCode] ?? kUnknownCareTypeIcon;
   Color? get color => colorValue == null ? null : Color(colorValue!);
 
   CareType copyWith({
@@ -97,6 +97,10 @@ const List<IconData> kCareIconPalette = <IconData>[
   Icons.medical_services_outlined,
 ];
 
+/// Icon for a care type whose key isn't in the registry (deleted custom
+/// type, legacy row) or whose stored codepoint isn't in the palette.
+const IconData kUnknownCareTypeIcon = Icons.notifications_active_outlined;
+
 /// Lookup-by-codepoint from [kCareIconPalette]. `CareType.icon` hits
 /// this instead of `IconData(codepoint, fontFamily: 'MaterialIcons')`
 /// so release builds don't trip the non-const-IconData tree-shake guard.
@@ -123,7 +127,7 @@ CareType resolveCareType(List<CareType> list, String key) {
   return CareType(
     key: key,
     label: key.isEmpty ? 'Care' : '${key[0].toUpperCase()}${key.substring(1)}',
-    iconCode: Icons.notifications_active_outlined.codePoint,
+    iconCode: kUnknownCareTypeIcon.codePoint,
     defaultIntervalDays: 7,
   );
 }
@@ -135,6 +139,11 @@ class CareTypesController extends StateNotifier<List<CareType>> {
 
   static const _key = 'plantly_care_types';
   final Future<SharedPreferences> _prefs;
+
+  /// Re-read the persisted registry — after something wrote the pref
+  /// behind this controller's back (a backup restore). A label change
+  /// re-syncs the OS reminders through `reminderSyncProvider`'s listener.
+  Future<void> reload() => _load();
 
   Future<void> _load() async {
     final prefs = await _prefs;

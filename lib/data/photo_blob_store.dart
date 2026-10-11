@@ -64,10 +64,19 @@ abstract class PhotoBlobStore {
   }
 }
 
+/// A store whose every blob can be dropped at once (the web sign-out wipe:
+/// a shared computer must not keep the previous account's photos).
+abstract interface class ClearablePhotoBlobStore {
+  Future<void> clear();
+}
+
 /// Pure-Dart store for tests — the same behavioural contract without a
 /// filesystem or a browser.
-class InMemoryPhotoBlobStore implements PhotoBlobStore {
+class InMemoryPhotoBlobStore implements PhotoBlobStore, ClearablePhotoBlobStore {
   final Map<String, Uint8List> blobs = {};
+
+  @override
+  Future<void> clear() async => blobs.clear();
 
   String _key(String sha, String mime) => '$sha.${PhotoBlobStore.extensionFor(mime)}';
 

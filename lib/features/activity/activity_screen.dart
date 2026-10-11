@@ -37,6 +37,7 @@ class ActivityScreen extends ConsumerWidget {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.chevron_left, color: surface.text),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: Text(
@@ -139,7 +140,7 @@ class ActivityScreen extends ConsumerWidget {
               width: 30,
               height: 30,
               decoration: BoxDecoration(color: surface.greenSoft, shape: BoxShape.circle),
-              child: Icon(_iconFor(event.type), size: 14, color: surface.green),
+              child: Icon(careKeyIcon(types, event.type), size: 14, color: surface.green),
             ),
             const SizedBox(width: 11),
             Expanded(
@@ -174,25 +175,6 @@ class ActivityScreen extends ConsumerWidget {
     if (e.dose != null && e.dose!.isNotEmpty) parts.add(e.dose!);
     if (e.notes != null && e.notes!.isNotEmpty) parts.add(e.notes!);
     return parts.isEmpty ? verb : '$verb — ${parts.join(' · ')}';
-  }
-
-  IconData _iconFor(String type) {
-    switch (type) {
-      case 'fertilize':
-        return Icons.eco_outlined;
-      case 'rotate':
-        return Icons.light_mode_outlined;
-      case 'mist':
-        return Icons.bubble_chart_outlined;
-      case 'repot':
-        return Icons.local_florist_outlined;
-      case 'prune':
-        return Icons.content_cut_outlined;
-      case 'water':
-        return Icons.water_drop_outlined;
-      default:
-        return Icons.notifications_active_outlined;
-    }
   }
 
   List<_DayGroup> _groupByDay(List<db.CareEventRow> events, AppLocalizations t, String locale) {

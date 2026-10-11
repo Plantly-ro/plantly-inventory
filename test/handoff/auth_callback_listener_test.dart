@@ -64,6 +64,14 @@ void main() {
     links.emit(Uri.parse('https://inventory.plantly.ro/#/auth/callback?token=$other'));
     await tester.pumpAndSettle();
     expect(container.read(plantlyAuthProvider).valueOrNull, isNull, reason: 'web form without nonce is never accepted');
+    // Session fixation: another app fires the custom-scheme callback with
+    // the attacker's token and no nonce while the victim's sign-in is open.
+    final attacker = fakeJwt(iat: 1, exp: 4102444800, username: 'eve', userId: 'u-666');
+    links.emit(Uri.parse('plantlyinventory://auth/callback#token=$attacker'));
+    await tester.pumpAndSettle();
+    expect(container.read(plantlyAuthProvider).valueOrNull, isNull,
+        reason: 'custom-scheme callback without the nonce is never adopted');
+    expect(events, isEmpty);
 
     links.emit(Uri.parse('plantlyinventory://auth/callback#token=$token&nonce=$nonce'));
     await tester.pumpAndSettle();
@@ -93,11 +101,23 @@ void main() {
     expect(events, hasLength(3));
 
     // Garbage is dropped silently; the session is untouched.
-    await container.read(oauthHandshakeProvider).begin();
-    links.emit(Uri.parse('plantlyinventory://auth/callback#token=abc.def.ghi'));
+    final garbageNonce = await container.read(oauthHandshakeProvider).begin();
+    links.emit(Uri.parse('plantlyinventory://auth/callback#token=abc.def.ghi&nonce=$garbageNonce'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(container.read(plantlyAuthProvider).valueOrNull?.username, 'bob');
     expect(find.byKey(const Key('import-error')), findsNothing);
+
+    // A nonce-less custom-scheme callback while a sign-in is pending is
+    // rejected even inside the window, and does not burn the pending nonce.
+    final pending = await container.read(oauthHandshakeProvider).begin();
+    links.emit(Uri.parse('plantlyinventory://auth/callback#token=$attacker'));
+    await tester.pumpAndSettle();
+    expect(container.read(plantlyAuthProvider).valueOrNull?.username, 'bob');
+    expect(events, hasLength(3));
+    links.emit(Uri.parse('plantlyinventory://auth/callback#token=$other&nonce=$pending'));
+    await tester.pumpAndSettle();
+    expect(container.read(plantlyAuthProvider).valueOrNull?.username, 'mallory');
+    expect(events, hasLength(4));
   });
 }

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:ulid/ulid.dart';
 
+import '../../domain/services/local_calendar.dart';
 import '../../notifications/reminder_sync.dart';
 import '../../sync/op_log.dart';
 import '../database/app_database.dart';
@@ -260,22 +261,24 @@ class PlantRepository {
       for (final r in tags) {
         liveTagIds.add(r.tagId);
       }
+      // Same shape as PlantTagRepository.attach: a ULID row id (a
+      // `<plant>/<tag>` id reads as a legacy pair-remove key to the applier).
       for (final tagId in liveTagIds) {
-        final id = (await opLog.recordCreate(
+        final id = _freshId();
+        final hlc = await opLog.recordCreate(
           entity: 'plant_tags',
-          entityId: '${child.id}/$tagId',
-          value: {'plant_id': child.id, 'tag_id': tagId},
-        )).encode();
+          entityId: id,
+          value: {'id': id, 'tenant_id': opLog.tenantId, 'plant_id': child.id, 'tag_id': tagId},
+        );
         await db.into(db.plantTags).insert(
               PlantTagsCompanion.insert(
-                id: '${child.id}/$tagId',
+                id: id,
                 tenantId: opLog.tenantId,
                 plantId: child.id,
                 tagId: tagId,
-                addedHlc: id,
+                addedHlc: hlc.encode(),
                 deviceId: opLog.clock.deviceId,
               ),
-              mode: InsertMode.insertOrReplace,
             );
       }
       // Copy care schedules — keep the same intervals + modes but reset
@@ -288,14 +291,24 @@ class PlantRepository {
           .get();
       for (final s in schedules) {
         final id = _freshId();
+        final nextDueAt = const LocalCalendar().addDays(DateTime.now().millisecondsSinceEpoch, s.baseIntervalDays);
+        // The `*` payload must carry every column the local row gets —
+        // absent columns materialise on peers as defaults (null due date,
+        // 0-day interval).
         final hlc = await opLog.recordCreate(
           entity: 'care_schedules',
           entityId: id,
           value: {
             'id': id,
+            'tenant_id': opLog.tenantId,
             'plant_id': child.id,
             'type': s.type,
             'base_interval_days': s.baseIntervalDays,
+            'current_interval_days': s.baseIntervalDays,
+            'next_due_at': nextDueAt,
+            'enabled': true,
+            'recent_events_json': '[]',
+            'snooze_count': 0,
             'recurrence_mode': s.recurrenceMode,
           },
         );
@@ -307,9 +320,7 @@ class PlantRepository {
                 type: s.type,
                 baseIntervalDays: s.baseIntervalDays,
                 currentIntervalDays: s.baseIntervalDays,
-                nextDueAt: Value(DateTime.now().toUtc()
-                    .add(Duration(milliseconds: (s.baseIntervalDays * 86400 * 1000).round()))
-                    .millisecondsSinceEpoch),
+                nextDueAt: Value(nextDueAt),
                 recurrenceMode: Value(s.recurrenceMode),
                 updatedHlc: hlc.encode(),
                 deviceId: opLog.clock.deviceId,

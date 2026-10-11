@@ -3,15 +3,21 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plantly_inventory/cloud/sync_runner.dart';
 import 'package:plantly_inventory/data/database/app_database.dart';
+import 'package:plantly_inventory/data/providers.dart' show RemoteReminderResync;
+import 'package:plantly_inventory/data/repositories/care_schedule_repository.dart';
+import 'package:plantly_inventory/data/repositories/plant_repository.dart';
 import 'package:plantly_inventory/sync/hlc.dart';
 import 'package:plantly_inventory/sync/http_sync_runner.dart';
 import 'package:plantly_inventory/sync/op_log.dart';
 import 'package:plantly_inventory/sync/sync_engine.dart';
 import 'package:plantly_inventory/sync/sync_rejections.dart';
 import 'package:plantly_inventory/sync/sync_transport.dart';
+
+import '../helpers/recording_reminder_sync.dart';
 
 String hlcAt(int ms, {String dev = 'dev-b'}) => Hlc(ms, 0, dev).encode();
 
@@ -125,8 +131,10 @@ void main() {
     DateTime Function()? now,
     SyncRejectionStore? rejections,
     bool entitlementIsOwners = false,
+    void Function(Set<String> entities)? onRemoteApplied,
   }) {
     return runner = HttpSyncRunner(
+      onRemoteApplied: onRemoteApplied,
       db: db,
       opLog: opLog,
       clock: clock,
@@ -191,6 +199,80 @@ void main() {
     await sub.cancel();
   });
 
+  test('onRemoteApplied fires once per cycle that changed rows, never for an empty pull', () async {
+    var calls = 0;
+    final seen = <String>{};
+    final r = make(onRemoteApplied: (e) {
+      calls++;
+      seen.addAll(e);
+    });
+    await r.syncNow();
+    expect(calls, 0, reason: 'nothing pulled');
+
+    transport.serverOps.addAll([remotePlant('R1', 1000), remotePlant('R2', 2000)]);
+    transport.pageSize = 1;
+    await r.syncNow();
+    expect(await plantIds(), {'R1', 'R2'});
+    expect(calls, 1, reason: 'two pages, one cycle → one re-arm');
+    expect(seen, {'plants'});
+
+    await r.syncNow();
+    expect(calls, 1);
+  });
+
+  test('a pulled next_due_at change re-arms the OS reminders exactly once (coalesced per cycle)', () async {
+    final plant = await PlantRepository(db: db, opLog: opLog).create(nickname: 'Bob');
+    final schedule = await CareScheduleRepository(db: db, opLog: opLog).upsert(
+      plantId: plant.id,
+      type: 'water',
+      baseIntervalDays: 7,
+      firstDueAt: DateTime.now().toUtc().add(const Duration(days: 2)),
+    );
+    final reminders = RecordingReminderSync(db: db, tenantId: tenant);
+    await reminders.syncFromDatabase();
+    reminders.calls = 0;
+    final resync = RemoteReminderResync(() => reminders.syncFromDatabase(), delay: const Duration(milliseconds: 30));
+    addTearDown(resync.dispose);
+    final r = make(onRemoteApplied: resync.onApplied);
+    await r.syncNow(); // push the local rows; nothing to pull
+    expect(reminders.calls, 0);
+
+    // Another device logged care: next_due moved 5 days out (+ a rename), two pages.
+    final newDue = DateTime.now().toUtc().add(const Duration(days: 5));
+    final ms = DateTime.now().millisecondsSinceEpoch + 1000;
+    transport.serverOps.addAll([
+      SyncOpDto(
+          entity: 'care_schedules',
+          entityId: schedule.id,
+          field: 'next_due_at',
+          value: newDue.toIso8601String(),
+          hlc: hlcAt(ms),
+          deviceId: 'dev-b'),
+      SyncOpDto(entity: 'plants', entityId: plant.id, field: 'nickname', value: 'Bobby', hlc: hlcAt(ms + 1), deviceId: 'dev-b'),
+    ]);
+    transport.pageSize = 1;
+    await r.syncNow();
+    await r.syncNow(); // a second cycle right after: still one re-sync (debounced)
+    await settle(const Duration(milliseconds: 120));
+    expect(reminders.calls, 1);
+    final call = reminders.fake.calls.single;
+    expect(call.event.start.millisecondsSinceEpoch, newDue.millisecondsSinceEpoch);
+    expect(call.event.summary, 'Water — Bobby');
+  });
+
+  test('remote changes that cannot move a reminder (tags, photos…) do not re-sync', () async {
+    var calls = 0;
+    final resync = RemoteReminderResync(() => calls++, delay: const Duration(milliseconds: 10));
+    addTearDown(resync.dispose);
+    resync.onApplied({'tags', 'plant_tags', 'photos'});
+    await settle(const Duration(milliseconds: 40));
+    expect(calls, 0);
+    resync.onApplied({'tags', 'care_schedules'});
+    resync.onApplied({'locations'});
+    await settle(const Duration(milliseconds: 40));
+    expect(calls, 1);
+  });
+
   test('nothing pending → pull only, and remote ops never become pending', () async {
     transport.serverOps.add(remotePlant('R1', 1000));
     final r = make();
@@ -243,6 +325,64 @@ void main() {
     expect(transport.pushes.single.ops.map((o) => o.entityId), ['a', 'b']);
     expect(transport.pulls.length, pullsAfterStart); // push reply said has_more=false → no extra pull
     expect(r.current.pendingOps, 0);
+  });
+
+  group('app hidden / backgrounded (web: tab hidden or closing) flushes a debounced push', () {
+    test('a write waiting out the debounce is pushed at once on hidden; nothing waiting → no extra cycle', () async {
+      final r = make(debounce: const Duration(seconds: 30));
+      r.start();
+      await settle(const Duration(milliseconds: 30));
+      final pullsAfterStart = transport.pulls.length;
+
+      r.didChangeAppLifecycleState(AppLifecycleState.inactive);
+      r.didChangeAppLifecycleState(AppLifecycleState.hidden);
+      await settle(const Duration(milliseconds: 30));
+      expect(transport.pushes, isEmpty);
+      expect(transport.pulls.length, pullsAfterStart, reason: 'nothing pending: hiding runs no cycle');
+
+      await localPlant('a');
+      await settle(const Duration(milliseconds: 10));
+      expect(transport.pushes, isEmpty, reason: 'still inside the 30 s debounce');
+      r.didChangeAppLifecycleState(AppLifecycleState.hidden);
+      await settle(const Duration(milliseconds: 50));
+      expect(transport.pushes, hasLength(1), reason: 'flushed without waiting for the debounce');
+      expect(transport.pushes.single.ops.map((o) => o.entityId), ['a']);
+      expect(r.current.pendingOps, 0);
+
+      // The cancelled debounce does not fire a second push later; paused
+      // (Android, after hidden) has nothing left to flush.
+      r.didChangeAppLifecycleState(AppLifecycleState.paused);
+      await settle(const Duration(milliseconds: 30));
+      expect(transport.pushes, hasLength(1));
+    });
+
+    test('paused alone (no hidden first) flushes too; inactive (web: window blur) does not', () async {
+      final r = make(debounce: const Duration(seconds: 30));
+      r.start();
+      await settle(const Duration(milliseconds: 30));
+      await localPlant('a');
+      await settle(const Duration(milliseconds: 10));
+      r.didChangeAppLifecycleState(AppLifecycleState.inactive);
+      await settle(const Duration(milliseconds: 30));
+      expect(transport.pushes, isEmpty, reason: 'a blur is not leaving the page');
+      r.didChangeAppLifecycleState(AppLifecycleState.paused);
+      await settle(const Duration(milliseconds: 50));
+      expect(transport.pushes, hasLength(1));
+    });
+
+    test('a halted runner stays halted when hidden', () async {
+      await localPlant('a');
+      transport.failures.add(const SyncEntitlementError());
+      final r = make(debounce: const Duration(seconds: 30));
+      r.start();
+      await settle(const Duration(milliseconds: 30));
+      expect(r.current.lastError, 'cloud_required');
+      await localPlant('b');
+      await settle(const Duration(milliseconds: 10));
+      r.didChangeAppLifecycleState(AppLifecycleState.hidden);
+      await settle(const Duration(milliseconds: 30));
+      expect(transport.pushes, hasLength(1), reason: 'only the halted first attempt');
+    });
   });
 
   test('429 → status retrying, exponential backoff, then success', () async {
@@ -473,6 +613,41 @@ void main() {
     await r.syncNow();
     expect(r.current.lastError, isNull);
     expect(r.current.lastErrorDetail, isNull);
+  });
+
+  group('stale cursor (lost database, surviving prefs)', () {
+    test('a cursor with no synced op behind it is reset: the pull starts over and restores the cache', () async {
+      // OPFS evicted / in-memory fallback: the database is new, the
+      // prefs cursor from the old one survived.
+      cursor.value = '3';
+      transport.serverOps.addAll([remotePlant('R1', 1000), remotePlant('R2', 2000), remotePlant('R3', 3000)]);
+      final r = make();
+      await r.syncNow();
+      expect(transport.pulls.first.since, '', reason: 'resuming at 3 would leave the cache empty forever');
+      expect(await plantIds(), {'R1', 'R2', 'R3'});
+      expect(cursor.value, '3');
+    });
+
+    test('a healthy cache (ops received or pushed before) keeps its cursor', () async {
+      transport.serverOps.addAll([remotePlant('R1', 1000), remotePlant('R2', 2000)]);
+      final r = make();
+      await r.syncNow();
+      expect(cursor.value, '2');
+      transport.serverOps.add(remotePlant('R3', 3000));
+      await r.syncNow();
+      expect(transport.pulls.last.since, '2');
+      expect(await plantIds(), {'R1', 'R2', 'R3'});
+    });
+
+    test('pending-only local ops do not count as history: the cursor still resets', () async {
+      cursor.value = '2';
+      transport.serverOps.addAll([remotePlant('R1', 1000), remotePlant('R2', 2000)]);
+      await localPlant('L1');
+      final r = make();
+      await r.syncNow();
+      expect(transport.pushes.single.toJson()['since'], '0', reason: 'empty cursor goes out as since=0');
+      expect(await plantIds(), {'L1', 'R1', 'R2'});
+    });
   });
 
   test('NoopSyncRunner is inert', () async {

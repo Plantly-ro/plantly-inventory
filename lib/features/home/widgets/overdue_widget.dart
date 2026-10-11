@@ -11,6 +11,7 @@ import '../../../data/care_types.dart';
 import '../../../shared/care_feedback.dart';
 import '../../../shared/assignee_initial.dart';
 import '../../../shared/care_type_labels.dart';
+import '../../../shared/relative_days.dart';
 import 'plant_row.dart';
 import 'swipe_row.dart';
 import 'widget_shell.dart';
@@ -115,7 +116,10 @@ class OverdueWidget extends ConsumerWidget {
     final plant = plantsById[schedule.plantId];
     final title = plant?.nickname ?? schedule.plantId;
     final swatch = MockPlants.byId(schedule.plantId);
-    final daysLate = ((now.millisecondsSinceEpoch - schedule.nextDueAt!) / (86400 * 1000)).floor();
+    // Calendar days, like every other relative date (shared/relative_days.dart);
+    // under a day late reads "<action> now".
+    final lateMs = now.millisecondsSinceEpoch - schedule.nextDueAt!;
+    final daysLate = lateMs < Duration.millisecondsPerDay ? 0 : calendarDaysUntilMs(schedule.nextDueAt!, now).abs();
     return Consumer(
       builder: (context, ref, _) {
         final ct = resolveCareType(ref.watch(careTypesProvider), schedule.type);
@@ -145,7 +149,7 @@ class OverdueWidget extends ConsumerWidget {
             swatch: swatch,
             surface: surface,
             subtitle: subtitle,
-            subtitleIcon: _iconFor(schedule.type),
+            subtitleIcon: ct.icon,
             subtitleColor: surface.terra,
             first: false,
             last: last,
@@ -167,17 +171,6 @@ class OverdueWidget extends ConsumerWidget {
       },
     );
   }
-
-  IconData _iconFor(String type) {
-    switch (type) {
-      case 'fertilize':
-        return Icons.eco_outlined;
-      case 'rotate':
-        return Icons.light_mode_outlined;
-      default:
-        return Icons.water_drop_outlined;
-    }
-  }
 }
 
 class _DoneButton extends StatelessWidget {
@@ -193,7 +186,7 @@ class _DoneButton extends StatelessWidget {
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         minimumSize: Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        // Theme default tap target: 48 dp hit area on touch platforms.
         textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(PlantlyTokens.radiusMd),

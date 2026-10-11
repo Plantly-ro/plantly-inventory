@@ -79,6 +79,11 @@ String careKeyVerb(AppLocalizations t, List<CareType> types, String key) =>
 String careKeyPastLabel(AppLocalizations t, List<CareType> types, String key) =>
     careTypePastLabel(t, resolveCareType(types, key));
 
+/// Icon for a raw `care_events.type` / `care_schedules.type` key: the
+/// registry entry's (user-editable) icon, or [kUnknownCareTypeIcon] for a
+/// key that isn't registered.
+IconData careKeyIcon(List<CareType> types, String key) => resolveCareType(types, key).icon;
+
 String? _noun(AppLocalizations t, String key) => switch (key) {
       'water' => t.careTypeWater,
       'fertilize' => t.careTypeFertilize,
@@ -121,3 +126,9 @@ Locale resolveAppLocale() => basicLocaleListResolution(
 /// [AppLocalizations] for [resolveAppLocale] — for notification titles and
 /// anything else built outside the widget tree.
 AppLocalizations appLocalizationsForPlatform() => lookupAppLocalizations(resolveAppLocale());
+
+/// [label] (a [careTypeLabel] / [careTypePastLabel] of [ct]) for mid-sentence
+/// chips: built-in names lower-cased ("water"), a user's own name exactly as
+/// they typed it ("Hydrate", not "hydrate").
+String careTypeInlineLabel(AppLocalizations t, CareType ct, String label) =>
+    careTypeUsesDefaultLabel(t, ct) ? label.toLowerCase() : label;

@@ -155,6 +155,9 @@ void main() {
       expect(last.succeeded, isTrue);
       expect(last.fraction, 1.0);
       expect(last.remoteId, isNotNull);
+      // No hardcoded (English, "Phase 2") message: the dialog shows its own
+      // localized "Draft saved".
+      expect(last.message, isNull);
 
       final saved = await plugin.loadDraft('p1');
       expect(saved!.postedAt, isNotNull);

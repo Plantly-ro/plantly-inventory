@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
@@ -36,16 +39,50 @@ AndroidNotificationDetails androidReminderDetails(AppLocalizations t) => Android
 
 /// io platforms: schedule through `flutter_local_notifications`.
 class LocalNotificationService extends NotificationService {
-  LocalNotificationService() : _plugin = FlutterLocalNotificationsPlugin();
+  LocalNotificationService({FlutterLocalNotificationsPlugin? plugin})
+      : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   final FlutterLocalNotificationsPlugin _plugin;
   bool _ready = false;
+  Future<void>? _initializing;
+  bool _launchTaken = false;
+  final StreamController<String> _taps = StreamController<String>.broadcast();
+
+  @override
+  Stream<String> get taps => _taps.stream;
+
+  /// Cold start from a tapped reminder: the plugin reports it via the launch
+  /// details, not via `onDidReceiveNotificationResponse`. Handed out once.
+  @override
+  Future<String?> takeLaunchPayload() async {
+    if (_launchTaken) return null;
+    _launchTaken = true;
+    try {
+      await init();
+      final details = await _plugin.getNotificationAppLaunchDetails();
+      if (details == null || !details.didNotificationLaunchApp) return null;
+      return details.notificationResponse?.payload;
+    } catch (e) {
+      debugPrint('notifications: launch details unavailable: $e');
+      return null;
+    }
+  }
+
+  void _onResponse(NotificationResponse response) {
+    final payload = response.payload;
+    if (payload != null && payload.isNotEmpty) _taps.add(payload);
+  }
 
   @override
   DndSettings dnd = DndSettings.disabled;
 
   @override
-  Future<void> init() async {
+  Future<void> init() => _initializing ??= _init().catchError((Object e) {
+        _initializing = null; // let the next call retry
+        throw e;
+      });
+
+  Future<void> _init() async {
     if (_ready) return;
     tzdata.initializeTimeZones();
     // Keeping the device zone configurable via build env would be ideal;
@@ -59,6 +96,8 @@ class LocalNotificationService extends NotificationService {
     );
     await _plugin.initialize(
       const InitializationSettings(android: android, iOS: darwin),
+      // Tap on a reminder while the app runs (foreground / background).
+      onDidReceiveNotificationResponse: _onResponse,
     );
     // Create the channel up front (no-op once it exists) so the first
     // reminder never targets a missing channel.
@@ -90,7 +129,7 @@ class LocalNotificationService extends NotificationService {
   }
 
   @override
-  Future<void> schedule({required int id, required ICalEvent event}) async {
+  Future<void> schedule({required int id, required ICalEvent event, String? payload}) async {
     await init();
     final nowTz = tz.TZDateTime.now(tz.local);
     final when = tz.TZDateTime.from(event.start, tz.local);
@@ -113,6 +152,7 @@ class LocalNotificationService extends NotificationService {
       ),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      payload: payload,
     );
   }
 
@@ -120,6 +160,18 @@ class LocalNotificationService extends NotificationService {
   Future<void> cancel(int id) async {
     await init();
     await _plugin.cancel(id);
+  }
+
+  /// Only reminders still waiting to fire: a re-sync (every launch, every
+  /// pull that touched schedules) must not wipe the ones the user has not
+  /// looked at yet from the shade — `cancelAll()` removes those too.
+  @override
+  Future<void> cancelPending() async {
+    await init();
+    final pending = await _plugin.pendingNotificationRequests();
+    for (final r in pending) {
+      await _plugin.cancel(r.id);
+    }
   }
 
   @override

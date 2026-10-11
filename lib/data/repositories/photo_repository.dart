@@ -4,6 +4,7 @@ import 'package:flutter/painting.dart';
 import 'package:ulid/ulid.dart';
 
 import '../../sync/op_log.dart';
+import '../../sync/photo_sync.dart' show kPhotoStateCollected, photoLiveReferenceSql;
 import '../database/app_database.dart';
 import '../photo_blob_store.dart';
 
@@ -24,9 +25,11 @@ class PhotoRepository {
   final OpLogWriter opLog;
   final PhotoBlobStore store;
 
-  /// Compute SHA-256 + write to the sharded store + insert a `photos` row.
-  /// Idempotent: the same bytes always produce the same sha, and the
-  /// INSERT OR REPLACE semantics keep the row count at 1 per unique photo.
+  /// Compute SHA-256 + write to the sharded store + insert a `photos` row
+  /// (and its `*` op) for the CURRENT collection. Idempotent per collection:
+  /// the same bytes always produce the same sha and at most one row per
+  /// (tenant, sha); the same image in another collection gets its own row,
+  /// op and upload there, sharing the blob on disk.
   /// Returns the SHA-256 hex string so callers can attach it to plants.
   Future<String> saveBytes(
     Uint8List bytes, {
@@ -39,8 +42,13 @@ class PhotoRepository {
     final localPath = await store.write(sha: shaHex, mime: mime, bytes: bytes);
 
     await db.transaction(() async {
-      final existing = await (db.select(db.photos)..where((t) => t.sha256.equals(shaHex))).getSingleOrNull();
-      if (existing != null) return;
+      final existing = await (db.select(db.photos)
+            ..where((t) => t.sha256.equals(shaHex) & t.tenantId.equals(opLog.tenantId)))
+          .getSingleOrNull();
+      if (existing != null) {
+        await _reviveIfUnreferenced(existing, localPath);
+        return;
+      }
       final hlc = await opLog.recordCreate(
         entity: 'photos',
         entityId: shaHex,
@@ -75,8 +83,38 @@ class PhotoRepository {
     return shaHex;
   }
 
-  Future<PhotoRow?> byHash(String sha) {
-    return (db.select(db.photos)..where((p) => p.sha256.equals(sha))).getSingleOrNull();
+  /// The same image saved again while nothing in this collection references
+  /// it (it is about to be re-attached): its collection blob may have been
+  /// garbage-collected — here (`gc`) or by another device, which we cannot
+  /// see — so queue it for upload again. The uploader's `upload-url` answers
+  /// `already_stored` when the blob is still there, so this costs one request.
+  Future<void> _reviveIfUnreferenced(PhotoRow row, String localPath) async {
+    if (row.deletedAt != null || row.remoteState == 'local') return;
+    if (row.remoteState != kPhotoStateCollected && await _hasLiveReference(row.sha256)) return;
+    await (db.update(db.photos)..where((t) => t.sha256.equals(row.sha256) & t.tenantId.equals(row.tenantId))).write(
+      PhotosCompanion(remoteState: const Value('local'), localPath: Value(localPath)),
+    );
+  }
+
+  Future<bool> _hasLiveReference(String sha) async {
+    final row = await db.customSelect(
+      'SELECT ${photoLiveReferenceSql(tenant: '?1', sha: '?2')} AS live',
+      variables: [Variable<String>(opLog.tenantId), Variable<String>(sha)],
+      readsFrom: {db.plantPhotos, db.locationPhotos, db.careEvents, db.locations},
+    ).getSingle();
+    return row.read<bool>('live');
+  }
+
+  /// The current collection's row for [sha]; else (data from before rows
+  /// were per collection) a live row of another collection on this device —
+  /// the blob on disk is shared by sha either way.
+  Future<PhotoRow?> byHash(String sha) async {
+    final rows = await (db.select(db.photos)..where((p) => p.sha256.equals(sha))).get();
+    if (rows.isEmpty) return null;
+    for (final r in rows) {
+      if (r.tenantId == opLog.tenantId) return r;
+    }
+    return rows.firstWhere((r) => r.deletedAt == null, orElse: () => rows.first);
   }
 
   /// Raw bytes for a stored photo row, or null if the blob is gone.
@@ -96,6 +134,11 @@ class PhotoRepository {
 /// OR-Set operations over `plant_photos`. A photo is "present" on a plant
 /// when its most-recent add_hlc outranks every remove_hlc for the same
 /// (plant, photo) pair — PLAN.md §"Schema non-negotiables".
+///
+/// Metadata edits (caption, captured_at, display_order) are plain field ops
+/// and never touch `added_hlc` / `device_id`: those belong to the add itself
+/// (presence, gallery tie-break order, fallback "date added"), and
+/// `SyncApplier` leaves them alone for the same ops on every other device.
 class PlantPhotoRepository {
   PlantPhotoRepository({required this.db, required this.opLog});
 
@@ -215,7 +258,7 @@ class PlantPhotoRepository {
   /// Update the caption of a specific attachment.
   Future<void> setCaption(String plantPhotoRowId, String? caption) async {
     return db.transaction(() async {
-      final hlc = await opLog.recordFieldUpdate(
+      await opLog.recordFieldUpdate(
         entity: 'plant_photos',
         entityId: plantPhotoRowId,
         field: 'caption',
@@ -224,8 +267,6 @@ class PlantPhotoRepository {
       await (db.update(db.plantPhotos)..where((r) => r.id.equals(plantPhotoRowId))).write(
         PlantPhotosCompanion(
           caption: Value(caption),
-          addedHlc: Value(hlc.encode()),
-          deviceId: Value(opLog.clock.deviceId),
         ),
       );
     });
@@ -235,7 +276,7 @@ class PlantPhotoRepository {
   /// fall back to the HLC physicalMs.
   Future<void> setCapturedAt(String plantPhotoRowId, int? capturedAtMs) async {
     return db.transaction(() async {
-      final hlc = await opLog.recordFieldUpdate(
+      await opLog.recordFieldUpdate(
         entity: 'plant_photos',
         entityId: plantPhotoRowId,
         field: 'captured_at',
@@ -244,8 +285,6 @@ class PlantPhotoRepository {
       await (db.update(db.plantPhotos)..where((r) => r.id.equals(plantPhotoRowId))).write(
         PlantPhotosCompanion(
           capturedAt: Value(capturedAtMs),
-          addedHlc: Value(hlc.encode()),
-          deviceId: Value(opLog.clock.deviceId),
         ),
       );
     });
@@ -259,7 +298,7 @@ class PlantPhotoRepository {
       for (var i = 0; i < orderedRows.length; i++) {
         final row = orderedRows[i];
         if (row.displayOrder == i) continue;
-        final hlc = await opLog.recordFieldUpdate(
+        await opLog.recordFieldUpdate(
           entity: 'plant_photos',
           entityId: row.id,
           field: 'display_order',
@@ -268,8 +307,6 @@ class PlantPhotoRepository {
         await (db.update(db.plantPhotos)..where((r) => r.id.equals(row.id))).write(
           PlantPhotosCompanion(
             displayOrder: Value(i),
-            addedHlc: Value(hlc.encode()),
-            deviceId: Value(opLog.clock.deviceId),
           ),
         );
       }
@@ -378,7 +415,7 @@ class LocationPhotoRepository {
 
   Future<void> setCaption(String rowId, String? caption) async {
     return db.transaction(() async {
-      final hlc = await opLog.recordFieldUpdate(
+      await opLog.recordFieldUpdate(
         entity: 'location_photos',
         entityId: rowId,
         field: 'caption',
@@ -387,8 +424,6 @@ class LocationPhotoRepository {
       await (db.update(db.locationPhotos)..where((r) => r.id.equals(rowId))).write(
         LocationPhotosCompanion(
           caption: Value(caption),
-          addedHlc: Value(hlc.encode()),
-          deviceId: Value(opLog.clock.deviceId),
         ),
       );
     });
@@ -396,7 +431,7 @@ class LocationPhotoRepository {
 
   Future<void> setCapturedAt(String rowId, int? capturedAtMs) async {
     return db.transaction(() async {
-      final hlc = await opLog.recordFieldUpdate(
+      await opLog.recordFieldUpdate(
         entity: 'location_photos',
         entityId: rowId,
         field: 'captured_at',
@@ -405,8 +440,6 @@ class LocationPhotoRepository {
       await (db.update(db.locationPhotos)..where((r) => r.id.equals(rowId))).write(
         LocationPhotosCompanion(
           capturedAt: Value(capturedAtMs),
-          addedHlc: Value(hlc.encode()),
-          deviceId: Value(opLog.clock.deviceId),
         ),
       );
     });

@@ -146,3 +146,16 @@ String? inviteExpiryLabel(AppLocalizations t, DateTime? expiresAt, {DateTime? no
   final days = (left.inHours / 24).ceil();
   return t.shareInviteExpiresDays(days);
 }
+
+/// The name the server gives every account's default collection
+/// (`POST /inventory/collections/default`). Shown localized; a user who
+/// renamed it sees their own name verbatim.
+const String kServerDefaultCollectionName = 'My plants';
+
+/// [name] for display: the server default reads in the UI language
+/// ("Plantele mele" in ro), anything else as the user typed it.
+String localizedCollectionName(AppLocalizations t, String name) =>
+    name == kServerDefaultCollectionName ? t.collectionDefaultName : name;
+
+/// [CloudCollection.displayName], localized via [localizedCollectionName].
+String collectionDisplayName(AppLocalizations t, CloudCollection c) => localizedCollectionName(t, c.displayName);

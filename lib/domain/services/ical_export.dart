@@ -19,6 +19,7 @@ class ICalEvent {
     this.end,
     this.description,
     this.location,
+    this.plantId,
   });
 
   /// Globally unique event id. Conventional form: `<ulid>@plantly.inventory`.
@@ -28,6 +29,10 @@ class ICalEvent {
   final DateTime? end;
   final String? description;
   final String? location;
+
+  /// Plant the event is about (reminders); not serialized to iCal — it
+  /// rides along so an OS notification can open that plant on tap.
+  final String? plantId;
 }
 
 class ICalExport {

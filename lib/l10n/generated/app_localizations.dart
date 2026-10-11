@@ -536,6 +536,96 @@ abstract class AppLocalizations {
   /// **'Sort plants'**
   String get homeSortTooltip;
 
+  /// No description provided for @a11yNameField.
+  ///
+  /// In en, this message translates to:
+  /// **'Your name (optional)'**
+  String get a11yNameField;
+
+  /// No description provided for @a11yShowPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Show password'**
+  String get a11yShowPassword;
+
+  /// No description provided for @a11yHidePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide password'**
+  String get a11yHidePassword;
+
+  /// No description provided for @a11yClearSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get a11yClearSearch;
+
+  /// No description provided for @a11yCareTypeName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get a11yCareTypeName;
+
+  /// No description provided for @a11yCareTypeInterval.
+  ///
+  /// In en, this message translates to:
+  /// **'Default interval in days'**
+  String get a11yCareTypeInterval;
+
+  /// No description provided for @a11yDisconnectDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect {name}'**
+  String a11yDisconnectDevice(String name);
+
+  /// No description provided for @a11ySortPlantsValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort plants: {value}'**
+  String a11ySortPlantsValue(String value);
+
+  /// No description provided for @a11yCareIconName.
+  ///
+  /// In en, this message translates to:
+  /// **'{icon, select, water{Water drop} leaf{Leaf} bubbles{Bubbles} flower{Flower} scissors{Scissors} light{Light} sun{Sun} bug{Bug} air{Air} thermometer{Thermometer} lotus{Lotus} grass{Grass} tools{Tools} hands{Hands} bell{Bell} firstAid{First aid} other{Icon}}'**
+  String a11yCareIconName(String icon);
+
+  /// No description provided for @a11yCareColourName.
+  ///
+  /// In en, this message translates to:
+  /// **'{colour, select, green{Green} terra{Terracotta} blue{Blue} violet{Violet} rose{Rose} mustard{Mustard} slate{Slate grey} forest{Forest green} other{Colour}}'**
+  String a11yCareColourName(String colour);
+
+  /// No description provided for @a11yInviteCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite code'**
+  String get a11yInviteCode;
+
+  /// No description provided for @a11yInviteLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite link'**
+  String get a11yInviteLink;
+
+  /// No description provided for @a11yCopyCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy code'**
+  String get a11yCopyCode;
+
+  /// No description provided for @a11yCopyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get a11yCopyLink;
+
+  /// No description provided for @a11yPlantPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo {index} of {count} · {name}'**
+  String a11yPlantPhoto(int index, int count, String name);
+
   /// No description provided for @homeSortNameAZ.
   ///
   /// In en, this message translates to:
@@ -758,6 +848,18 @@ abstract class AppLocalizations {
   /// **'A calm, offline-first way to track your houseplants — watering, fertilising, propagation, spaces, and more. Everything lives on your phone.'**
   String get onbWelcomeBody;
 
+  /// Onboarding step 1 body on the Android app while Inventory Cloud sync is running (onbWelcomeBody is the local-only variant).
+  ///
+  /// In en, this message translates to:
+  /// **'A calm, offline-first way to track your houseplants — watering, fertilising, propagation, spaces, and more. Everything works on your phone and syncs to your plantly.ro account.'**
+  String get onbWelcomeBodyCloud;
+
+  /// Onboarding step 1 body in the web app (always Inventory Cloud).
+  ///
+  /// In en, this message translates to:
+  /// **'A calm way to track your houseplants — watering, fertilising, propagation, spaces, and more. Your collection is saved in your plantly.ro account and stays in sync on every device you sign in on.'**
+  String get onbWelcomeBodyWeb;
+
   /// No description provided for @onbNameLabel.
   ///
   /// In en, this message translates to:
@@ -770,6 +872,12 @@ abstract class AppLocalizations {
   /// **'We use this only in the greeting at the top of the home screen. You can change or remove it later in Me.'**
   String get onbNameHelp;
 
+  /// Onboarding step 1: helper under the name field when it was prefilled from the signed-in plantly.ro account.
+  ///
+  /// In en, this message translates to:
+  /// **'From your plantly.ro account — you can change it.'**
+  String get onbNameFromAccount;
+
   /// No description provided for @onbNotifTitle.
   ///
   /// In en, this message translates to:
@@ -779,7 +887,7 @@ abstract class AppLocalizations {
   /// No description provided for @onbNotifBody.
   ///
   /// In en, this message translates to:
-  /// **'We schedule local notifications on your phone when a plant is due for care. Nothing is sent to a server.'**
+  /// **'We schedule reminders as local notifications on your phone when a plant is due for care — no push server involved.'**
   String get onbNotifBody;
 
   /// No description provided for @onbNotifGranted.
@@ -815,7 +923,7 @@ abstract class AppLocalizations {
   /// No description provided for @onbPrivacyBody.
   ///
   /// In en, this message translates to:
-  /// **'Both are off by default. Plant data never leaves your device for any reason. You can change these any time in Me → Privacy & data.'**
+  /// **'Both are off by default and never include plant data or photos. You can change these any time in Me → Privacy & data.'**
   String get onbPrivacyBody;
 
   /// No description provided for @onbCrashTitle.
@@ -1271,7 +1379,7 @@ abstract class AppLocalizations {
   /// Application title shown in task switcher and app bar
   ///
   /// In en, this message translates to:
-  /// **'PlantlyInventory'**
+  /// **'Plantly Inventory'**
   String get appTitle;
 
   /// Greeting on the home screen
@@ -2234,30 +2342,6 @@ abstract class AppLocalizations {
   /// **'Quick log'**
   String get quickLogTitle;
 
-  /// No description provided for @quickLogWater.
-  ///
-  /// In en, this message translates to:
-  /// **'Water'**
-  String get quickLogWater;
-
-  /// No description provided for @quickLogFertilize.
-  ///
-  /// In en, this message translates to:
-  /// **'Fertilize'**
-  String get quickLogFertilize;
-
-  /// No description provided for @quickLogMist.
-  ///
-  /// In en, this message translates to:
-  /// **'Mist'**
-  String get quickLogMist;
-
-  /// No description provided for @quickLogRotate.
-  ///
-  /// In en, this message translates to:
-  /// **'Rotate'**
-  String get quickLogRotate;
-
   /// No description provided for @tipOfTheDay.
   ///
   /// In en, this message translates to:
@@ -2329,12 +2413,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Post on plantly.ro'**
   String get exportPostOnPlantlyRoCta;
-
-  /// No description provided for @exportSavedLocally.
-  ///
-  /// In en, this message translates to:
-  /// **'Saved locally — plantly.ro sync lands in Phase 2'**
-  String get exportSavedLocally;
 
   /// No description provided for @tagAdd.
   ///
@@ -2927,14 +3005,14 @@ abstract class AppLocalizations {
   /// No description provided for @meStatCardPlants.
   ///
   /// In en, this message translates to:
-  /// **'PLANTS'**
-  String get meStatCardPlants;
+  /// **'{count, plural, =1{PLANT} other{PLANTS}}'**
+  String meStatCardPlants(int count);
 
   /// No description provided for @meStatCardSpaces.
   ///
   /// In en, this message translates to:
-  /// **'SPACES'**
-  String get meStatCardSpaces;
+  /// **'{count, plural, =1{SPACE} other{SPACES}}'**
+  String meStatCardSpaces(int count);
 
   /// No description provided for @meAboutApp.
   ///
@@ -2942,11 +3020,11 @@ abstract class AppLocalizations {
   /// **'App'**
   String get meAboutApp;
 
-  /// No description provided for @meAboutAppValue.
+  /// Me → About → App row: app name and the build's version (PLANTLY_APP_VERSION).
   ///
   /// In en, this message translates to:
-  /// **'PlantlyInventory · Phase 1'**
-  String get meAboutAppValue;
+  /// **'Plantly Inventory · {version}'**
+  String meAboutAppValue(String version);
 
   /// No description provided for @meAboutLicense.
   ///
@@ -3038,11 +3116,23 @@ abstract class AppLocalizations {
   /// **'Backup passphrase'**
   String get meBackupPassphrase;
 
-  /// No description provided for @meBackupPassphraseHint.
+  /// Hint in the passphrase field when exporting a backup.
   ///
   /// In en, this message translates to:
-  /// **'Pick anything — needed to import again'**
-  String get meBackupPassphraseHint;
+  /// **'Choose a passphrase — you\'ll need it to import'**
+  String get meBackupPassphraseExportHint;
+
+  /// Export passphrase dialog body. The passphrase only signs the backup (HMAC); the contents are plaintext. Must not imply encryption.
+  ///
+  /// In en, this message translates to:
+  /// **'The passphrase protects the file against tampering; the file is not encrypted — keep it private.'**
+  String get meBackupPassphraseExportNote;
+
+  /// Hint in the passphrase field when importing a backup.
+  ///
+  /// In en, this message translates to:
+  /// **'The passphrase you chose when exporting'**
+  String get meBackupPassphraseImportHint;
 
   /// No description provided for @meBackupSaved.
   ///
@@ -3125,7 +3215,7 @@ abstract class AppLocalizations {
   /// No description provided for @meIcsShareText.
   ///
   /// In en, this message translates to:
-  /// **'PlantlyInventory reminders'**
+  /// **'Plantly Inventory reminders'**
   String get meIcsShareText;
 
   /// No description provided for @meIcsSaved.
@@ -3149,7 +3239,7 @@ abstract class AppLocalizations {
   /// No description provided for @meCsvShareText.
   ///
   /// In en, this message translates to:
-  /// **'PlantlyInventory CSV'**
+  /// **'Plantly Inventory CSV'**
   String get meCsvShareText;
 
   /// No description provided for @meCsvSaved.
@@ -3176,17 +3266,47 @@ abstract class AppLocalizations {
   /// **'What leaves your device'**
   String get mePrivacyWhatLeaves;
 
+  /// Me → Privacy & data card heading in the web app (mePrivacyWhatLeaves on Android).
+  ///
+  /// In en, this message translates to:
+  /// **'Where your data lives'**
+  String get mePrivacyWhereDataLives;
+
   /// No description provided for @mePrivacyBulletLocal.
   ///
   /// In en, this message translates to:
   /// **'Nothing by default. Plants, photos, care events, and schedules live in a local SQLite database on your phone.'**
   String get mePrivacyBulletLocal;
 
+  /// Me → Privacy & data, Android app while Inventory Cloud sync is running (mePrivacyBulletLocal is the local-only variant).
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud sync is on: plants, photos, care events, and schedules stay in a local database on your phone and are synced to your plantly.ro account. Photos are stored privately — only you and the people you share a collection with can see them. For the Devices list (Me → Cloud → Devices) we also send the device name, platform and app version.'**
+  String get mePrivacyBulletCloud;
+
+  /// Me → Privacy & data in the web app (always Inventory Cloud).
+  ///
+  /// In en, this message translates to:
+  /// **'Plants, photos, care events, and schedules are saved in your plantly.ro account (Inventory Cloud), with a working copy in this browser. Photos are stored privately — only you and the people you share a collection with can see them. For the Devices list (Me → Cloud → Devices) we also send the device name, platform and app version.'**
+  String get mePrivacyBulletWeb;
+
+  /// Me → Privacy & data, Android app linked to a plantly.ro collection but not syncing (plan lapsed / signed out).
+  ///
+  /// In en, this message translates to:
+  /// **'Sync is paused: nothing new leaves this phone — plants, photos, care events, and schedules stay in its local database. Anything already synced to your plantly.ro account is kept as described in the privacy policy.'**
+  String get mePrivacyBulletPaused;
+
   /// No description provided for @mePrivacyBulletBackups.
   ///
   /// In en, this message translates to:
-  /// **'Backups (JSON or ZIP) only leave the device when you tap Export — you choose where they go via the share sheet.'**
+  /// **'Backups (JSON or ZIP) only leave the device when you tap Export — you choose where they go via the share sheet. They are not encrypted (the passphrase only protects them against tampering), so keep them private.'**
   String get mePrivacyBulletBackups;
+
+  /// Me → Privacy & data in the web app: exports are browser downloads, no share sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Backups (JSON or ZIP) are only created when you tap Export — your browser downloads the file to this device. They are not encrypted (the passphrase only protects them against tampering), so keep them private.'**
+  String get mePrivacyBulletBackupsWeb;
 
   /// No description provided for @mePrivacyBulletNotifications.
   ///
@@ -3194,11 +3314,23 @@ abstract class AppLocalizations {
   /// **'Notifications fire locally via the OS alarm system. We do not use a push server.'**
   String get mePrivacyBulletNotifications;
 
+  /// Me → Privacy & data in the web app: no OS notifications in the browser.
+  ///
+  /// In en, this message translates to:
+  /// **'The browser version doesn\'t send notifications — reminders appear in the app and the calendar. We do not use a push server.'**
+  String get mePrivacyBulletNotificationsWeb;
+
   /// No description provided for @mePrivacyBulletMarketplace.
   ///
   /// In en, this message translates to:
   /// **'If you later post a plant to plantly.ro, only the fields you review in the Export dialog are sent — never the full database.'**
   String get mePrivacyBulletMarketplace;
+
+  /// Me → Privacy & data while the collection syncs to plantly.ro (Android with cloud sync, web): the whole database already syncs privately, so the claim is about what gets published.
+  ///
+  /// In en, this message translates to:
+  /// **'If you post a plant for sale on plantly.ro, the listing contains only the fields you review in the Export dialog — nothing else from your collection is published.'**
+  String get mePrivacyBulletMarketplaceCloud;
 
   /// No description provided for @mePrivacySectionTelemetry.
   ///
@@ -3401,7 +3533,7 @@ abstract class AppLocalizations {
   /// No description provided for @meNotifPermGranted.
   ///
   /// In en, this message translates to:
-  /// **'OS notifications are allowed for PlantlyInventory.'**
+  /// **'OS notifications are allowed for Plantly Inventory.'**
   String get meNotifPermGranted;
 
   /// No description provided for @meNotifPermDenied.
@@ -4076,6 +4208,12 @@ abstract class AppLocalizations {
   /// **'Your plants, photos and care history are backed up to your plantly.ro account and kept in sync on every device you sign in on. Nothing leaves this device until you link it.'**
   String get cloudScreenIntro;
 
+  /// Me → Cloud intro in the web app — the browser is always linked, so no "until you link it" clause.
+  ///
+  /// In en, this message translates to:
+  /// **'Your plants, photos and care history are saved in your plantly.ro account and kept in sync on every device you sign in on.'**
+  String get cloudScreenIntroWeb;
+
   /// No description provided for @cloudSignInLabel.
   ///
   /// In en, this message translates to:
@@ -4231,6 +4369,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'renews {date}'**
   String cloudRenewsOn(String date);
+
+  /// Me → Cloud → Plan when the subscription is cancelled (cancel_at_period_end): the date it stops.
+  ///
+  /// In en, this message translates to:
+  /// **'ends {date}'**
+  String cloudEndsOn(String date);
 
   /// No description provided for @cloudPlayPlansTitle.
   ///
@@ -4507,6 +4651,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This collection is no longer available — unlink this device and link it again'**
   String get cloudErrCollectionUnavailable;
+
+  /// Web variant of cloudErrCollectionUnavailable: the browser has no "Unlink this device".
+  ///
+  /// In en, this message translates to:
+  /// **'This collection is no longer available — sign out and sign in again'**
+  String get cloudErrCollectionUnavailableWeb;
 
   /// No description provided for @cloudErrQuotaExceeded.
   ///
@@ -6001,6 +6151,294 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Device'**
   String get devicesPlatformUnknown;
+
+  /// No description provided for @gateHeldByOtherTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This browser still holds {other}\'s plants'**
+  String gateHeldByOtherTitle(String other);
+
+  /// No description provided for @gateHeldByOtherBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re signed in as {username}. To keep {other}\'s plants private, Plantly Inventory stays closed in this browser until its copy is cleared. Their collection stays in their cloud; changes that never synced from this browser are lost.'**
+  String gateHeldByOtherBody(String username, String other);
+
+  /// No description provided for @gateClearLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear this browser and continue'**
+  String get gateClearLocal;
+
+  /// No description provided for @cloudSignOutBodyWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'{username} is signed out and this browser\'s copy of the collection is removed. Everything that synced stays in the cloud.'**
+  String cloudSignOutBodyWeb(String username);
+
+  /// No description provided for @cloudStorageMemoryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Not saved in this browser'**
+  String get cloudStorageMemoryLabel;
+
+  /// No description provided for @cloudStorageMemoryValue.
+  ///
+  /// In en, this message translates to:
+  /// **'This browser blocks local storage (a private window?). Changes are kept only once they sync to the cloud.'**
+  String get cloudStorageMemoryValue;
+
+  /// No description provided for @signOutSyncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing your last changes…'**
+  String get signOutSyncing;
+
+  /// No description provided for @signOutUnsyncedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Not everything reached the cloud'**
+  String get signOutUnsyncedTitle;
+
+  /// No description provided for @signOutUnsyncedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 change hasn\'t reached the cloud yet. Sign out anyway? It will be lost.} other{{count} changes haven\'t reached the cloud yet. Sign out anyway? They will be lost.}}'**
+  String signOutUnsyncedBody(int count);
+
+  /// No description provided for @signOutAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out anyway'**
+  String get signOutAnyway;
+
+  /// No description provided for @signOutWipeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed out, but this browser\'s copy could not be removed ({error}). It stays locked behind sign-in — sign in and sign out again to retry.'**
+  String signOutWipeFailed(String error);
+
+  /// No description provided for @gateClearFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'This browser\'s copy could not be removed ({error}). Try again.'**
+  String gateClearFailed(String error);
+
+  /// No description provided for @cloudHomeLostRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'You no longer have access to {name}. Your plants are still on this device — nothing was deleted.'**
+  String cloudHomeLostRemoved(String name);
+
+  /// No description provided for @cloudHomeLostDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} was deleted on the server. Your plants are still on this device — nothing was deleted.'**
+  String cloudHomeLostDeleted(String name);
+
+  /// No description provided for @cloudHomeLostBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Your cloud collection is unavailable — changes stay on this device. Tap to fix.'**
+  String get cloudHomeLostBanner;
+
+  /// No description provided for @cloudHomeRehomeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a new collection'**
+  String get cloudHomeRehomeLabel;
+
+  /// No description provided for @cloudHomeRehomeValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload the plants on this device to a new collection you own'**
+  String get cloudHomeRehomeValue;
+
+  /// No description provided for @cloudHomeRehomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a new collection?'**
+  String get cloudHomeRehomeTitle;
+
+  /// No description provided for @cloudHomeRehomeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The plants on this device will be uploaded to a collection you own. Nothing is deleted.'**
+  String get cloudHomeRehomeBody;
+
+  /// No description provided for @cloudHomeRehomeConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get cloudHomeRehomeConfirm;
+
+  /// No description provided for @cloudHomeRehomeDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Your plants now sync to {name}'**
+  String cloudHomeRehomeDone(String name);
+
+  /// No description provided for @cloudHomeSwitchLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch collection'**
+  String get cloudHomeSwitchLabel;
+
+  /// No description provided for @cloudHomeSwitchValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Open another collection you have access to'**
+  String get cloudHomeSwitchValue;
+
+  /// No description provided for @cloudHomeMoveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Move your plants into “{name}”'**
+  String cloudHomeMoveLabel(String name);
+
+  /// No description provided for @cloudHomeMoveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Move your plants into “{name}”?'**
+  String cloudHomeMoveTitle(String name);
+
+  /// No description provided for @cloudHomeMoveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'They are added to your collection “{name}” and uploaded again from this device. Nothing is deleted.'**
+  String cloudHomeMoveBody(String name);
+
+  /// No description provided for @cloudHomeMoveBodyShared.
+  ///
+  /// In en, this message translates to:
+  /// **'They are added to “{name}”, which you share with {count} people — they will see them too. Uploaded again from this device; nothing is deleted.'**
+  String cloudHomeMoveBodyShared(String name, int count);
+
+  /// No description provided for @dbBusyOtherTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Another Plantly tab is busy with your data — retrying…'**
+  String get dbBusyOtherTab;
+
+  /// No description provided for @reminderTapOtherCollection.
+  ///
+  /// In en, this message translates to:
+  /// **'That plant is in another collection — switch to it to see the plant.'**
+  String get reminderTapOtherCollection;
+
+  /// No description provided for @reminderTapPlantGone.
+  ///
+  /// In en, this message translates to:
+  /// **'That plant is no longer in your collection.'**
+  String get reminderTapPlantGone;
+
+  /// No description provided for @statsCardInDaysShort.
+  ///
+  /// In en, this message translates to:
+  /// **'in {count}d'**
+  String statsCardInDaysShort(int count);
+
+  /// No description provided for @addPlantDiscardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard this plant?'**
+  String get addPlantDiscardTitle;
+
+  /// No description provided for @addPlantDiscardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'What you\'ve entered so far will be lost.'**
+  String get addPlantDiscardBody;
+
+  /// No description provided for @addPlantDiscardKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep editing'**
+  String get addPlantDiscardKeep;
+
+  /// No description provided for @addPlantDiscardConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get addPlantDiscardConfirm;
+
+  /// No description provided for @collectionDefaultName.
+  ///
+  /// In en, this message translates to:
+  /// **'My plants'**
+  String get collectionDefaultName;
+
+  /// No description provided for @shareCollectionGoneNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'You no longer have access to “{name}” — back to your own collection.'**
+  String shareCollectionGoneNotice(String name);
+
+  /// No description provided for @homeGridEmptyAllDesktop.
+  ///
+  /// In en, this message translates to:
+  /// **'No plants yet — add one with “{button}” in the sidebar.'**
+  String homeGridEmptyAllDesktop(String button);
+
+  /// No description provided for @homeGridEmptyFiltered.
+  ///
+  /// In en, this message translates to:
+  /// **'No plants match these filters.'**
+  String get homeGridEmptyFiltered;
+
+  /// No description provided for @homeGridEmptyViewer.
+  ///
+  /// In en, this message translates to:
+  /// **'No plants in this collection yet.'**
+  String get homeGridEmptyViewer;
+
+  /// No description provided for @notFoundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Page not found'**
+  String get notFoundTitle;
+
+  /// No description provided for @notFoundBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This address doesn\'t lead anywhere in Plantly Inventory. It may be mistyped, or the page has moved.'**
+  String get notFoundBody;
+
+  /// No description provided for @notFoundHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Home'**
+  String get notFoundHome;
+
+  /// No description provided for @gateNoLocalData.
+  ///
+  /// In en, this message translates to:
+  /// **'Once you subscribe, the plants you add here are saved to your plantly.ro account and synced with your phone.'**
+  String get gateNoLocalData;
+
+  /// No description provided for @homeEditHintWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Right-click or long-press to customise your home'**
+  String get homeEditHintWeb;
+
+  /// No description provided for @detailFabTooltipWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Right-click or long-press to change'**
+  String get detailFabTooltipWeb;
+
+  /// No description provided for @spacePinHintPlaceWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Click to place • drag to move • right-click to remove'**
+  String get spacePinHintPlaceWeb;
+
+  /// No description provided for @spacePinHintDragWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag pins to move • right-click to remove'**
+  String get spacePinHintDragWeb;
 }
 
 class _AppLocalizationsDelegate

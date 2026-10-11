@@ -11,8 +11,9 @@ import '../theme/tokens.dart';
 ///   40×4 drag handle centred with [handleGap] below it, then [children]
 ///   (the sheet's own title stays in there, untouched), then [footer].
 ///   Byte-identical to the hand-rolled version each sheet had before.
-/// * desktop (side sheet) — no radius, no handle. A 56 px header carries
-///   [title] (18 w800) and a `×`; the body scrolls; [footer] is pinned in a
+/// * desktop (side sheet) — no radius, no handle. A header (min 56 px,
+///   grows for a 2-line title) carries [title] (18 w800, a semantic
+///   header) and a `×`; the body scrolls; [footer] is pinned in a
 ///   64 px bottom bar with a top border.
 ///
 /// [expand] is for sheets that live in a `DraggableScrollableSheet` (the
@@ -57,36 +58,65 @@ class SheetChrome extends StatelessWidget {
   final CrossAxisAlignment crossAxisAlignment;
   final bool expand;
 
-  /// Phone: wrap the column in a `SingleChildScrollView` (the form sheets
-  /// that already did so). Desktop always scrolls unless [expand].
+  /// Phone: the body ([children]) scrolls when it does not fit (keyboard
+  /// up, large font) while the handle and [footer] stay visible. Desktop
+  /// always scrolls unless [expand].
   final bool scrollable;
 
   @override
   Widget build(BuildContext context) {
     if (context.isDesktop) return _desktop(context);
-    final column = Column(
-      mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
-      crossAxisAlignment: crossAxisAlignment,
-      children: [
-        Center(
-          child: Container(
-            height: 4,
-            width: 40,
-            decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
-          ),
+    final handle = [
+      Center(
+        child: Container(
+          height: 4,
+          width: 40,
+          decoration: BoxDecoration(color: surface.border, borderRadius: BorderRadius.circular(2)),
         ),
-        SizedBox(height: handleGap),
-        ...children,
-        ?footer,
-      ],
-    );
+      ),
+      SizedBox(height: handleGap),
+    ];
+    final Widget column;
+    if (scrollable && !expand) {
+      // The body scrolls, the footer stays put: with the keyboard up and a
+      // large font the primary action used to scroll out of reach (or,
+      // in a non-scrolling sheet, be covered). Content that fits lays out
+      // exactly as a plain column (the Flexible hugs it).
+      column = Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: crossAxisAlignment,
+        children: [
+          ...handle,
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: crossAxisAlignment,
+                children: children,
+              ),
+            ),
+          ),
+          ?footer,
+        ],
+      );
+    } else {
+      column = Column(
+        mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+        crossAxisAlignment: crossAxisAlignment,
+        children: [
+          ...handle,
+          ...children,
+          ?footer,
+        ],
+      );
+    }
     return Container(
       decoration: BoxDecoration(
         color: surface.bg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(topRadius)),
       ),
       padding: padding,
-      child: scrollable ? SingleChildScrollView(child: column) : column,
+      child: column,
     );
   }
 
@@ -110,23 +140,31 @@ class SheetChrome extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            height: 56,
+          // At least 56 px; a long title (ro copy, long collection
+          // names) wraps to a 2nd line and the header grows. One-line
+          // titles lay out exactly as in a fixed 56 px bar: the 4 px
+          // vertical padding + the 48 px close button = 56.
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 56),
             child: Padding(
-              padding: EdgeInsets.only(left: padding.left, right: padding.right - 8),
+              padding: EdgeInsets.fromLTRB(padding.left, 4, padding.right - 8, 4),
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      title ?? '',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: PlantlyFonts.plusJakartaSans,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: surface.text,
-                        letterSpacing: -0.02 * 18,
+                    child: Semantics(
+                      container: true,
+                      header: true,
+                      child: Text(
+                        title ?? '',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: PlantlyFonts.plusJakartaSans,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: surface.text,
+                          letterSpacing: -0.02 * 18,
+                        ),
                       ),
                     ),
                   ),
