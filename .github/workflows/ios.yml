@@ -1,0 +1,51 @@
+# iOS — compile check only (no signing, no TestFlight).
+#
+# Public repositories get free macOS runners, so this keeps the Xcode project
+# building with the pinned Flutter version. Code signing and the TestFlight
+# upload are deliberately NOT here yet: they wait for the Apple Developer
+# Program enrollment and an App Store Connect API key. When those exist, add a
+# `play-release`-style environment (e.g. `app-store-release`) holding
+#   APPLE_CERTIFICATE_P12_BASE64 / APPLE_CERTIFICATE_PASSWORD
+#   APPLE_PROVISIONING_PROFILE_BASE64
+#   ASC_KEY_ID / ASC_ISSUER_ID / ASC_API_KEY_P8
+# and a second job that runs `flutter build ipa --export-options-plist` and
+# uploads with `xcrun altool` / fastlane pilot.
+#
+# Manual trigger only for now so it does not burn macOS minutes on every PR.
+
+name: iOS (build only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: "3.44.0"
+
+jobs:
+  build-ios:
+    name: flutter build ios --no-codesign
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter --version
+      - run: flutter doctor -v
+      - run: flutter pub get
+      - run: flutter build ios --release --no-codesign
+      - name: Archive Runner.app (unsigned)
+        run: |
+          cd build/ios/iphoneos
+          zip -qr "$RUNNER_TEMP/Runner.app.zip" Runner.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-unsigned-runner-app
+          path: ${{ runner.temp }}/Runner.app.zip
+          retention-days: 7

@@ -186,7 +186,7 @@ Phase 1 (per `PLAN.md`) is **feature-complete** on `main` across PRs #2 → #22.
 | #21 | **Externalised strings** + locale-aware PlantFilter.label | `lib/l10n/app_{en,ro}.arb` |
 | #22 | **Propagate UI** on Plant Detail overflow menu | `lib/features/plant_detail/propagate_dialog.dart` |
 
-**96 Dart tests + 13 Playwright tests pass.** `flutter analyze` clean. Release APKs (v0.5.0-phase1) for all three ABIs ship at `http://wrk2.netbird.overlay:4173/`.
+**96 Dart tests + 13 Playwright tests pass.** `flutter analyze` clean. Release APKs (v0.5.0-phase1) for all three ABIs were shared on an internal download host (not part of this repo).
 
 ### Still deferred (explicitly out of Phase 1 scope as scoped)
 

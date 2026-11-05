@@ -994,7 +994,7 @@
   "mePrivacyUsageTitle": "Anonymous usage",
   "mePrivacyUsageBody": "Tap counts by screen — so we know which features are loved. No identifiers, no text you enter.",
   "mePrivacySectionLegal": "LEGAL",
-  "mePrivacyLicenseValue": "AGPL-3.0-or-later · source: github.com/URunDEAD/PlantlyInventory",
+  "mePrivacyLicenseValue": "AGPL-3.0-or-later · source: github.com/Plantly-ro/plantly-inventory",
   "meCareTypeNew": "New care type",
   "meCareTypeEdit": "Edit \"{label}\"",
   "@meCareTypeEdit": {

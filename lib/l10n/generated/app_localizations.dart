@@ -3371,7 +3371,7 @@ abstract class AppLocalizations {
   /// No description provided for @mePrivacyLicenseValue.
   ///
   /// In en, this message translates to:
-  /// **'AGPL-3.0-or-later · source: github.com/URunDEAD/PlantlyInventory'**
+  /// **'AGPL-3.0-or-later · source: github.com/Plantly-ro/plantly-inventory'**
   String get mePrivacyLicenseValue;
 
   /// No description provided for @meCareTypeNew.

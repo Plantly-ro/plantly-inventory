@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Plantly-ro/plantly-inventory/blob/development/SECURITY.md
+    about: Please report security problems privately — see SECURITY.md.
+  - name: Account, subscription or marketplace support
+    url: https://plantly.ro
+    about: Questions about your plantly.ro account, Inventory Cloud billing or a listing belong with support@plantly.ro, not this tracker.

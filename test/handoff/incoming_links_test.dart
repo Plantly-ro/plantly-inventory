@@ -12,7 +12,7 @@ void main() {
     test('2. universal page https://plantly.ro/app/inventory/import#d=', () {
       expect(extractImportParam(Uri.parse('https://plantly.ro/app/inventory/import#d=$d')), d);
       expect(extractImportParam(Uri.parse('https://plantly.ro/ro/app/inventory/import#d=$d')), d);
-      expect(extractImportParam(Uri.parse('https://development.agent-khepri.urundead.win/app/inventory/import#d=$d')), d);
+      expect(extractImportParam(Uri.parse('https://preview.example.com/app/inventory/import#d=$d')), d);
     });
 
     test('3. inventory web hash route /#/import?d=', () {

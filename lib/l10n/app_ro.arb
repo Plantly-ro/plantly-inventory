@@ -547,7 +547,7 @@
   "mePrivacyUsageTitle": "Utilizare anonimă",
   "mePrivacyUsageBody": "Număr de atingeri pe ecran — ca să știm ce funcții sunt îndrăgite. Fără identificatori, fără textul pe care îl introduci.",
   "mePrivacySectionLegal": "LEGAL",
-  "mePrivacyLicenseValue": "AGPL-3.0-or-later · sursă: github.com/URunDEAD/PlantlyInventory",
+  "mePrivacyLicenseValue": "AGPL-3.0-or-later · sursă: github.com/Plantly-ro/plantly-inventory",
   "meCareTypeNew": "Tip de îngrijire nou",
   "meCareTypeEdit": "Modifică „{label}”",
   "meCareTypeLabelField": "DENUMIRE",

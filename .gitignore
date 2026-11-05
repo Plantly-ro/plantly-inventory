@@ -99,3 +99,4 @@ app.*.map.json
 
 # Local headless-browser QA artifacts (screenshots, smoke script scratch)
 .qa/
+test/goldens/failures/

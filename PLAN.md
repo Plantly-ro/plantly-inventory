@@ -13,7 +13,7 @@ plantly.ro (codebase: `~/Desktop/Pltio`) is a deliberately minimal Romanian plan
 
 **Non-goals**: replacing plantly.ro, replacing social plant apps (Planta, Greg), or competing with botanical reference apps (PictureThis).
 
-**Repo**: `git@github.com:URunDEAD/PlantlyInventory.git` (working dir `~/Desktop/PlantlyInventory`).
+**Repo**: `https://github.com/Plantly-ro/plantly-inventory` (public, AGPL-3.0).
 
 ---
 

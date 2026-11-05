@@ -1,0 +1,53 @@
+name: Feature request
+description: Suggest an improvement / Propune o îmbunătățire
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English or Romanian are both fine. / Poți scrie în română sau engleză.
+        Check [FEATURES.md](../blob/development/FEATURES.md) and [TODO.md](../blob/development/TODO.md) first — it may already be planned.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the situation, not the solution. Who runs into it and how often?
+      placeholder: "When I repot several plants on the same day I have to …"
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How would you like it to work? Sketches and screenshots welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Plants / care tracking
+        - Reminders / notifications
+        - Calendar
+        - Spaces / locations
+        - Photos
+        - Backup / import / export
+        - Marketplace (plantly.ro) integration
+        - Inventory Cloud / sync
+        - Web app
+        - Accessibility / localisation
+        - Other
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - label: This works offline / does not require a server (local-first is the default for this app).
+        - label: I would be willing to open a PR for this.

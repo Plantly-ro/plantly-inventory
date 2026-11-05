@@ -1931,7 +1931,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mePrivacyLicenseValue =>
-      'AGPL-3.0-or-later · source: github.com/URunDEAD/PlantlyInventory';
+      'AGPL-3.0-or-later · source: github.com/Plantly-ro/plantly-inventory';
 
   @override
   String get meCareTypeNew => 'New care type';
