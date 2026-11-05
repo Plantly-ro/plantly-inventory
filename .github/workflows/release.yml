@@ -1,0 +1,336 @@
+# Release — signed Android App Bundle → Google Play
+#
+# Port of the publish-internal / publish-production jobs in .gitlab-ci.yml.
+#
+# Triggers
+#   workflow_dispatch  — pick the track (internal | production) and options.
+#   push tag v*        — always the INTERNAL track (production is only reachable
+#                        through the manual dispatch, on purpose).
+#
+# Gate: the job runs in the `play-release` GitHub environment. Configure it in
+# Settings → Environments with required reviewers (maintainers) and restrict
+# deployment branches/tags to main, development and v*. Secrets below are scoped
+# to that environment, so nothing is decrypted before a reviewer approves.
+#
+# Secrets (environment `play-release`)
+#   ANDROID_KEYSTORE_BASE64     base64 -w0 of the Play *upload* keystore (.jks)
+#   ANDROID_KEYSTORE_PASSWORD   keystore password
+#   ANDROID_KEY_ALIAS           key alias in the keystore ("upload" for the official app)
+#   ANDROID_KEY_PASSWORD        key password
+#   PLAY_SERVICE_ACCOUNT_JSON   full JSON key of the Play Console service account
+#                               (Release manager on ro.plantly.inventory)
+#
+# Variables (vars.*, repository or environment level)
+#   PLAY_VERSION_CODE_BASE      REQUIRED. versionCode = BASE + github.run_number.
+#                               Play needs strictly increasing codes across ALL
+#                               tracks; set it above the highest code already on
+#                               Play and never lower it.
+#   PLAY_VERSION_CODE_MIN       optional floor (default 2882 = production 1.0.0).
+#
+# Flow: resolve params → fail fast on missing secrets → lint release tooling →
+#       (optional) push store listing → decode keystore → flutter build appbundle
+#       --release (cloud + billing ON) → tool/play_upload.py → artifacts → scrub.
+
+name: Release (Android)
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: "Play track"
+        type: choice
+        required: true
+        default: internal
+        options: [internal, production]
+      rollout:
+        description: "Staged rollout: auto (= 0.2 on production, 100 % on internal), full (100 %), or a fraction in (0,1)"
+        type: string
+        required: false
+        default: auto
+      build_name:
+        description: "versionName override (empty = pubspec version; internal builds default to <version>-internal.<run>)"
+        type: string
+        required: false
+        default: ""
+      push_listing:
+        description: "Push the store listing (texts + graphics, app-wide) before building — recommended for production"
+        type: boolean
+        required: false
+        default: false
+      dart_defines:
+        description: "Compile-time flags (space-separated --dart-define=K=V). Empty = feature defaults (cloud OFF)."
+        type: string
+        required: false
+        default: "--dart-define=PLANTLY_CLOUD_ENABLED=true --dart-define=PLANTLY_PLAY_BILLING_ENABLED=true"
+      extra_upload_args:
+        description: "Extra flags for tool/play_upload.py (e.g. --status draft)"
+        type: string
+        required: false
+        default: ""
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+# Serialise uploads (GitLab's resource_group: play-upload) so two runs never
+# race on the same Play edit. Never cancel a running release.
+concurrency:
+  group: play-upload
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: "3.44.0"
+  PLAY_PACKAGE: ro.plantly.inventory
+  PLAY_METADATA_DIR: android/fastlane/metadata/android
+  PLAY_INTERNAL_NOTES_DIR: android/fastlane/metadata/internal
+
+jobs:
+  release:
+    name: build + upload (${{ inputs.track || 'internal' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment:
+      name: play-release
+      url: https://play.google.com/console/
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve release parameters
+        id: params
+        env:
+          IN_TRACK: ${{ inputs.track }}
+          IN_ROLLOUT: ${{ inputs.rollout }}
+          IN_BUILD_NAME: ${{ inputs.build_name }}
+          IN_PUSH_LISTING: ${{ inputs.push_listing }}
+          IN_DART_DEFINES: ${{ inputs.dart_defines }}
+          IN_EXTRA_ARGS: ${{ inputs.extra_upload_args }}
+          VERSION_CODE_BASE: ${{ vars.PLAY_VERSION_CODE_BASE }}
+          VERSION_CODE_MIN: ${{ vars.PLAY_VERSION_CODE_MIN }}
+        run: |
+          set -euo pipefail
+          PUBSPEC_VERSION=$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' pubspec.yaml)
+          [ -n "$PUBSPEC_VERSION" ] || { echo "::error::could not read version: from pubspec.yaml"; exit 1; }
+
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            # Tag push: internal track, production flags, no listing push.
+            TRACK=internal
+            ROLLOUT=auto
+            BUILD_NAME=""
+            PUSH_LISTING=false
+            DART_DEFINES="--dart-define=PLANTLY_CLOUD_ENABLED=true --dart-define=PLANTLY_PLAY_BILLING_ENABLED=true"
+            EXTRA_ARGS=""
+          else
+            TRACK="$IN_TRACK"
+            ROLLOUT="${IN_ROLLOUT:-auto}"
+            BUILD_NAME="$IN_BUILD_NAME"
+            PUSH_LISTING="$IN_PUSH_LISTING"
+            DART_DEFINES="$IN_DART_DEFINES"
+            EXTRA_ARGS="$IN_EXTRA_ARGS"
+          fi
+
+          case "$TRACK" in internal|production) ;; *) echo "::error::unknown track '$TRACK'"; exit 1;; esac
+
+          # Rollout fraction → `--rollout <f>` or nothing (status completed, 100 %).
+          case "$ROLLOUT" in
+            auto)  if [ "$TRACK" = production ]; then ROLLOUT_FRACTION="0.2"; else ROLLOUT_FRACTION=""; fi ;;
+            full|"") ROLLOUT_FRACTION="" ;;
+            *) ROLLOUT_FRACTION="$ROLLOUT" ;;
+          esac
+          if [ -n "$ROLLOUT_FRACTION" ]; then
+            python3 -c "import sys; f=float(sys.argv[1]); sys.exit(0 if 0 < f < 1 else 1)" "$ROLLOUT_FRACTION" \
+              || { echo "::error::rollout must be auto, full, or a fraction in (0,1); got '$ROLLOUT'"; exit 1; }
+          fi
+
+          # versionName: pubspec unless overridden; internal builds get a suffix
+          # like the GitLab job's 1.1.0-internal.<iid>.
+          if [ -z "$BUILD_NAME" ] && [ "$TRACK" = internal ]; then
+            BUILD_NAME="${PUBSPEC_VERSION}-internal.${GITHUB_RUN_NUMBER}"
+          fi
+          EFFECTIVE_NAME="${BUILD_NAME:-$PUBSPEC_VERSION}"
+
+          # versionCode: BASE + run_number (monotonic per workflow). Re-runs reuse
+          # the run_number, so only re-run when the previous attempt did not
+          # commit the Play edit.
+          [ -n "$VERSION_CODE_BASE" ] || { echo "::error::repository variable PLAY_VERSION_CODE_BASE is not set (see CONTRIBUTING.md § Release pipeline)"; exit 1; }
+          VERSION_CODE=$(( VERSION_CODE_BASE + GITHUB_RUN_NUMBER ))
+          MIN="${VERSION_CODE_MIN:-2882}"
+          if [ "$VERSION_CODE" -le "$MIN" ]; then
+            echo "::error::versionCode $VERSION_CODE would not exceed PLAY_VERSION_CODE_MIN=$MIN"; exit 1
+          fi
+
+          if [ "$TRACK" = internal ]; then NOTES_DIR="$PLAY_INTERNAL_NOTES_DIR"; else NOTES_DIR="$PLAY_METADATA_DIR"; fi
+
+          {
+            echo "track=$TRACK"
+            echo "rollout_fraction=$ROLLOUT_FRACTION"
+            echo "build_name=$BUILD_NAME"
+            echo "effective_name=$EFFECTIVE_NAME"
+            echo "version_code=$VERSION_CODE"
+            echo "push_listing=$PUSH_LISTING"
+            echo "dart_defines=$DART_DEFINES"
+            echo "extra_args=$EXTRA_ARGS"
+            echo "notes_dir=$NOTES_DIR"
+          } >> "$GITHUB_OUTPUT"
+          echo "release - track=$TRACK versionCode=$VERSION_CODE versionName=$EFFECTIVE_NAME rollout=${ROLLOUT_FRACTION:-completed} listing=$PUSH_LISTING notes=$NOTES_DIR dart-defines: ${DART_DEFINES:-<none, feature defaults>}"
+
+      # Fail loudly here rather than deep inside Gradle if a secret is missing
+      # (e.g. the environment is not configured yet).
+      - name: Check secrets
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          SA_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          missing=""
+          [ -n "$KS_B64" ]    || missing="$missing ANDROID_KEYSTORE_BASE64"
+          [ -n "$KS_PASS" ]   || missing="$missing ANDROID_KEYSTORE_PASSWORD"
+          [ -n "$KEY_ALIAS" ] || missing="$missing ANDROID_KEY_ALIAS"
+          [ -n "$KEY_PASS" ]  || missing="$missing ANDROID_KEY_PASSWORD"
+          [ -n "$SA_JSON" ]   || missing="$missing PLAY_SERVICE_ACCOUNT_JSON"
+          if [ -n "$missing" ]; then
+            echo "::error::missing secrets in environment play-release:$missing"; exit 1
+          fi
+          echo "secrets present"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Play API client
+        run: python3 -m pip install --quiet google-api-python-client google-auth google-auth-httplib2
+
+      # Same checks as CI's lint-tools, so a bad listing or release note fails
+      # before the ~20 min build.
+      - name: Lint release tooling + metadata
+        run: |
+          python3 -m unittest discover -s tool/tests
+          python3 tool/play_listing.py --package "$PLAY_PACKAGE" --metadata-dir "$PLAY_METADATA_DIR" --dry-run
+          python3 - <<'EOF'
+          import os, sys; sys.path.insert(0, "tool"); import play_api, play_upload
+          notes = play_api.load_release_notes(os.environ["PLAY_INTERNAL_NOTES_DIR"], 0, play_upload.LOCALE_MAP)
+          langs = sorted(n["language"] for n in notes)
+          assert langs == ["en-US", "ro"], f"internal release notes: expected en-US + ro, got {langs}"
+          print("internal release notes ok:", ", ".join(langs))
+          EOF
+
+      - name: Write service-account key
+        env:
+          SA_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          umask 077
+          printf '%s' "$SA_JSON" > "$RUNNER_TEMP/play-sa.json"
+          python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert d.get('type')=='service_account', 'not a service-account key'" "$RUNNER_TEMP/play-sa.json"
+
+      # Store listing is app-wide (not per track): validated + pushed BEFORE the
+      # long build so a bad listing fails in seconds.
+      - name: Push store listing
+        if: steps.params.outputs.push_listing == 'true'
+        run: python3 tool/play_listing.py --package "$PLAY_PACKAGE" --credentials "$RUNNER_TEMP/play-sa.json" --metadata-dir "$PLAY_METADATA_DIR"
+
+      - name: Decode upload keystore
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          umask 077
+          printf '%s' "$KS_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          [ -s "$RUNNER_TEMP/upload.jks" ] || { echo "::error::keystore decode produced an empty file"; exit 1; }
+          # android/app/build.gradle.kts reads android/key.properties when present.
+          cat > android/key.properties <<EOF
+          storeFile=$RUNNER_TEMP/upload.jks
+          storePassword=$KS_PASS
+          keyPassword=$KEY_PASS
+          keyAlias=$KEY_ALIAS
+          EOF
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter --version
+      - run: flutter pub get
+
+      # PLANTLY_APP_VERSION stamps the User-Agent / X-Plantly-Client version with
+      # the effective versionName (same as CI's build-web does for the web build).
+      - name: flutter build appbundle --release
+        env:
+          BUILD_NAME: ${{ steps.params.outputs.build_name }}
+          EFFECTIVE_NAME: ${{ steps.params.outputs.effective_name }}
+          VERSION_CODE: ${{ steps.params.outputs.version_code }}
+          DART_DEFINES: ${{ steps.params.outputs.dart_defines }}
+        run: |
+          # shellcheck disable=SC2086  # DART_DEFINES is intentionally word-split
+          flutter build appbundle --release --build-number="$VERSION_CODE" \
+            ${BUILD_NAME:+--build-name="$BUILD_NAME"} \
+            --dart-define=PLANTLY_APP_VERSION="$EFFECTIVE_NAME" \
+            ${DART_DEFINES:-}
+          ls -l build/app/outputs/bundle/release/app-release.aab
+
+      # --mapping is passed explicitly (not auto-detected) so the job FAILS if R8
+      # stops producing a mapping — otherwise Play crash stacks silently go
+      # obfuscated. Native symbols stay auto-detected.
+      - name: Upload to Google Play
+        env:
+          TRACK: ${{ steps.params.outputs.track }}
+          ROLLOUT_FRACTION: ${{ steps.params.outputs.rollout_fraction }}
+          NOTES_DIR: ${{ steps.params.outputs.notes_dir }}
+          EXTRA_ARGS: ${{ steps.params.outputs.extra_args }}
+        run: |
+          # shellcheck disable=SC2086  # EXTRA_ARGS is intentionally word-split
+          python3 tool/play_upload.py \
+            --package "$PLAY_PACKAGE" \
+            --aab build/app/outputs/bundle/release/app-release.aab \
+            --mapping build/app/outputs/mapping/release/mapping.txt \
+            --credentials "$RUNNER_TEMP/play-sa.json" \
+            --track "$TRACK" \
+            --release-notes-dir "$NOTES_DIR" \
+            ${ROLLOUT_FRACTION:+--rollout "$ROLLOUT_FRACTION"} \
+            $EXTRA_ARGS
+
+      # Keep the AAB + R8 mapping for this versionCode so a crash can be
+      # retraced by hand (`retrace mapping.txt stack.txt`) if needed.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aab-${{ steps.params.outputs.track }}-${{ steps.params.outputs.version_code }}
+          path: |
+            build/app/outputs/bundle/release/app-release.aab
+            build/app/outputs/mapping/release/mapping.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Scrub signing material
+        if: always()
+        run: |
+          rm -f android/key.properties "$RUNNER_TEMP/upload.jks" "$RUNNER_TEMP/play-sa.json"
+          echo "scrubbed"
+
+      - name: Summary
+        if: success()
+        env:
+          TRACK: ${{ steps.params.outputs.track }}
+          VERSION_CODE: ${{ steps.params.outputs.version_code }}
+          EFFECTIVE_NAME: ${{ steps.params.outputs.effective_name }}
+          ROLLOUT_FRACTION: ${{ steps.params.outputs.rollout_fraction }}
+        run: |
+          {
+            echo "## Play release"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| package | \`$PLAY_PACKAGE\` |"
+            echo "| track | **$TRACK** |"
+            echo "| versionCode | $VERSION_CODE |"
+            echo "| versionName | $EFFECTIVE_NAME |"
+            echo "| rollout | ${ROLLOUT_FRACTION:-completed (100 %)} |"
+          } >> "$GITHUB_STEP_SUMMARY"

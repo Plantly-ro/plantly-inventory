@@ -1,0 +1,80 @@
+name: Bug report
+description: Something in the app does not work as expected / Ceva nu funcționează cum trebuie
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. English or Romanian are both fine. / Mulțumim — poți scrie în română sau engleză.
+        **Security problems: do not file them here** — see [SECURITY.md](../blob/development/SECURITY.md).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what happened instead?
+      placeholder: "I tapped Done on a watering reminder and …"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open plant X
+        2. Tap …
+        3. See error
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options:
+        - Android (Google Play build)
+        - Android (built from source)
+        - Web (inventory.plantly.ro)
+        - Web (built from source)
+        - iOS (built from source)
+        - Desktop (Linux / macOS / Windows, built from source)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Me → About → version (e.g. `1.1.1`), or the commit hash for source builds.
+      placeholder: "1.1.1"
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device / OS / browser
+      placeholder: "Pixel 8, Android 15 / Firefox 140 on Linux"
+  - type: dropdown
+    id: cloud
+    attributes:
+      label: Inventory Cloud
+      description: Does the affected account use Inventory Cloud sync?
+      options:
+        - "No — local-only"
+        - "Yes — synced collection"
+        - "Not sure"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, screenshots, backup
+      description: |
+        Screenshots or `adb logcat` output help a lot. Attach a backup export only if it contains nothing you mind sharing;
+        otherwise send it to support@plantly.ro and mention the issue number.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: This is not a security vulnerability (those go to SECURITY.md).
+          required: true

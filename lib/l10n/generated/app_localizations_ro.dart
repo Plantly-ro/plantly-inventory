@@ -1958,7 +1958,7 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get mePrivacyLicenseValue =>
-      'AGPL-3.0-or-later · sursă: github.com/URunDEAD/PlantlyInventory';
+      'AGPL-3.0-or-later · sursă: github.com/Plantly-ro/plantly-inventory';
 
   @override
   String get meCareTypeNew => 'Tip de îngrijire nou';

@@ -23,7 +23,7 @@ void main() {
     test('2. invite url https://plantly.ro/app/inventory/join#c=', () {
       expect(extractJoinCode(Uri.parse('https://plantly.ro/app/inventory/join#c=$code')), code);
       expect(extractJoinCode(Uri.parse('https://plantly.ro/ro/app/inventory/join#c=$code')), code);
-      expect(extractJoinCode(Uri.parse('https://development.agent-khepri.urundead.win/app/inventory/join?c=$code')), code);
+      expect(extractJoinCode(Uri.parse('https://preview.example.com/app/inventory/join?c=$code')), code);
     });
 
     test('3. inventory web path route /join?c= (+ legacy hash route /#/join?c=)', () {

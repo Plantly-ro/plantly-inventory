@@ -1,0 +1,175 @@
+# CI — Plantly Inventory
+#
+# Port of the analyze / test / build stages of .gitlab-ci.yml. Runs on every pull
+# request and on pushes to the two long-lived branches:
+#   analyze → test + lint-tools → build-web, build-android
+#
+# Flutter is pinned to FLUTTER_VERSION (the same version the GitLab image pins) so
+# golden tests render identically on every run. Bump it deliberately, together with
+# FLUTTER_IMAGE in .gitlab-ci.yml while that file still exists.
+#
+# Not ported (yet): dart format enforcement (repo predates a format pass), the
+# prototype's Playwright suite, deploy-web-prod (needs host access that is not
+# part of this repository). Signed Android builds live in release.yml.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [development, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.44.0"
+  PLAY_PACKAGE: ro.plantly.inventory
+  PLAY_METADATA_DIR: android/fastlane/metadata/android
+  PLAY_INTERNAL_NOTES_DIR: android/fastlane/metadata/internal
+
+jobs:
+  analyze:
+    name: analyze
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter --version
+      - run: flutter pub get
+      # Non-fatal on infos (e.g. framework deprecations) so they don't block
+      # delivery; warnings and errors still fail the job.
+      - run: flutter analyze --no-fatal-infos
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [analyze]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      # Goldens (test/goldens/) are part of this run; they are rendered with the
+      # pinned Flutter version on Linux, which is what the committed PNGs expect.
+      - run: flutter test --reporter=expanded
+      # On a golden mismatch flutter_test writes <test dir>/failures/*.png
+      # (masterImage / testImage / isolatedDiff). Keep them for the PR author.
+      - name: Upload golden failure diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-failures
+          path: test/**/failures/**
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # Release tooling under tool/ (Play listing + upload scripts): unit tests with
+  # stdlib-only fakes, plus a --dry-run over the real store metadata so an
+  # over-long description or a mis-sized graphic fails here in seconds instead
+  # of in the release workflow. No pip, no Flutter.
+  lint-tools:
+    name: lint-tools
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 --version
+      - run: python3 -m unittest discover -s tool/tests -v
+      - run: python3 tool/play_listing.py --package "$PLAY_PACKAGE" --metadata-dir "$PLAY_METADATA_DIR" --dry-run
+      # Internal-track release notes: same loader the release workflow uses
+      # (≤500 chars, ro + en-US present).
+      - name: Validate internal release notes
+        run: |
+          python3 - <<'EOF'
+          import os, sys; sys.path.insert(0, "tool"); import play_api, play_upload
+          notes = play_api.load_release_notes(os.environ["PLAY_INTERNAL_NOTES_DIR"], 0, play_upload.LOCALE_MAP)
+          langs = sorted(n["language"] for n in notes)
+          assert langs == ["en-US", "ro"], f"internal release notes: expected en-US + ro, got {langs}"
+          print("internal release notes ok:", ", ".join(langs))
+          EOF
+
+  # Web build. Stamps PLANTLY_APP_VERSION from pubspec (User-Agent /
+  # X-Plantly-Client, see lib/config/plantly_hosts.dart). Extra compile-time
+  # flags come from the optional repository variable INVENTORY_WEB_DART_DEFINES
+  # (space-separated `--dart-define=K=V`); unset = feature defaults.
+  build-web:
+    name: build-web
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [analyze, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: flutter build web
+        env:
+          INVENTORY_WEB_DART_DEFINES: ${{ vars.INVENTORY_WEB_DART_DEFINES }}
+        run: |
+          APP_VERSION=$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' pubspec.yaml)
+          if [ -z "$APP_VERSION" ]; then echo "build-web - could not read version: from pubspec.yaml"; exit 1; fi
+          echo "build-web - PLANTLY_APP_VERSION=$APP_VERSION extra defines: ${INVENTORY_WEB_DART_DEFINES:-<none>}"
+          # shellcheck disable=SC2086  # INVENTORY_WEB_DART_DEFINES is intentionally word-split
+          flutter build web --release --no-web-resources-cdn \
+            --dart-define=PLANTLY_APP_VERSION="$APP_VERSION" ${INVENTORY_WEB_DART_DEFINES:-}
+      # Per-release URL space (see tool/web_version_assets.py): everything but
+      # index.html & co. moves under build/web/v/<id>/ so no cache can serve a
+      # previous release's main.dart.js. id = short sha + hex run id (unique per
+      # build, like the GitLab short sha + hex pipeline id).
+      - name: Version web assets
+        run: |
+          REL_ID="${GITHUB_SHA::8}$(printf '%x' "$GITHUB_RUN_ID")"
+          python3 tool/web_version_assets.py build/web "$REL_ID"
+          cat build/web/version.json; echo
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: build/web/
+          retention-days: 7
+
+  # Unsigned release AAB (no key.properties → debug keystore fallback, see
+  # android/app/build.gradle.kts) so Gradle/AGP/manifest/plugin/R8 breakage
+  # surfaces pre-merge. Skipped on pushes to development/main: every change
+  # reaches them through a PR that already ran this gate, and release.yml
+  # builds the same variant signed. No artifact on purpose (~90 MB, pass/fail only).
+  build-android:
+    name: build-android (unsigned)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [analyze, test]
+    if: github.event_name != 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build appbundle --release

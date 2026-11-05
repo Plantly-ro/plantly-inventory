@@ -17,7 +17,7 @@ void main() {
 
     test('2. https page …/auth/callback#token=', () {
       expect(extractAuthToken(Uri.parse('https://plantly.ro/app/inventory/auth/callback#token=$jwt')), jwt);
-      expect(extractAuthToken(Uri.parse('https://development.agent-khepri.urundead.win/auth/callback?token=$jwt')), jwt);
+      expect(extractAuthToken(Uri.parse('https://preview.example.com/auth/callback?token=$jwt')), jwt);
     });
 
     test('3. inventory web hash route /#/auth/callback#token= and ?token=', () {

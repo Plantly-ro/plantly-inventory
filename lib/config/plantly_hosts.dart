@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 ///
 /// Everything that talks to plantly.ro reads the base URL from the
 /// `PLANTLY_HOST` dart-define so the same binary can target a preview
-/// environment: `--dart-define=PLANTLY_HOST=https://development.agent-khepri.urundead.win`.
+/// environment: `--dart-define=PLANTLY_HOST=https://preview.example.com`.
 abstract final class PlantlyHosts {
   static const String _hostDefine = String.fromEnvironment(
     'PLANTLY_HOST',

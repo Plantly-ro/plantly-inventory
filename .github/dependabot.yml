@@ -1,0 +1,35 @@
+# Dependabot — weekly, grouped so the inbox stays readable.
+# Secret scanning + push protection are enabled in the repository settings, not here.
+version: 2
+updates:
+  - package-ecosystem: "pub"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Bucharest"
+    target-branch: "development"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "dart"]
+    groups:
+      dart-minor-patch:
+        update-types: ["minor", "patch"]
+    # Flutter-SDK-pinned packages move with the toolchain, not with Dependabot.
+    ignore:
+      - dependency-name: "flutter_localizations"
+      - dependency-name: "flutter_test"
+      - dependency-name: "flutter_web_plugins"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Bucharest"
+    target-branch: "development"
+    labels: ["dependencies", "ci"]
+    groups:
+      actions:
+        patterns: ["*"]
