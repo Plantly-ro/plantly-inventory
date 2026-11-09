@@ -12,7 +12,7 @@ dependencies:
 
   # State + routing (per PLAN.md §"Package list")
   flutter_riverpod: ^2.5.1
-  go_router: ^14.2.7
+  go_router: ^18.1.3
 
   # Lightweight prefs — for UI state (layout, theme). Drift handles the
   # domain data; prefs are just for per-install UI choices.
