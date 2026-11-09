@@ -18,7 +18,7 @@ dependencies:
   # domain data; prefs are just for per-install UI choices.
   shared_preferences: ^2.3.2
 
-  cupertino_icons: ^1.0.8
+  cupertino_icons: ^2.0.0
 
   # Phase-1 data layer — Drift (SQLite) + HLC + op-log (PLAN.md §"Schema
   # non-negotiables"). Each synced entity carries id/tenant_id/updated_hlc/
