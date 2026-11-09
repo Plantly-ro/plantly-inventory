@@ -16,22 +16,22 @@ dependencies:
 
   # Lightweight prefs — for UI state (layout, theme). Drift handles the
   # domain data; prefs are just for per-install UI choices.
-  shared_preferences: ^2.3.2
+  shared_preferences: ^2.5.6
 
   cupertino_icons: ^1.0.8
 
   # Phase-1 data layer — Drift (SQLite) + HLC + op-log (PLAN.md §"Schema
   # non-negotiables"). Each synced entity carries id/tenant_id/updated_hlc/
   # deleted_at/device_id and every write emits an entry in sync_ops.
-  drift: ^2.21.0
-  drift_flutter: ^0.2.4
-  sqlite3_flutter_libs: ^0.5.26
-  path_provider: ^2.1.5
+  drift: ^2.34.4
+  drift_flutter: ^0.3.1
+  sqlite3_flutter_libs: ^0.6.0+eol
+  path_provider: ^2.1.6
   path: ^1.9.0
-  ulid: ^2.0.0
-  crypto: ^3.0.5    # photo content-addressing (sha256)
-  image_picker: ^1.1.2
-  flutter_image_compress: ^2.3.0
+  ulid: ^2.2.0
+  crypto: ^3.0.8    # photo content-addressing (sha256)
+  image_picker: ^1.2.4
+  flutter_image_compress: ^2.5.1
 
   # i18n — en + ro from day 1, per PLAN.md.
   flutter_localizations:
@@ -45,11 +45,11 @@ dependencies:
   # + SCHEDULE_EXACT_ALARM itself on Android; iOS requests permission via
   # UNNotificationCenter.
   flutter_local_notifications: ^18.0.1
-  timezone: ^0.9.4
+  timezone: ^0.10.1
 
   # ZIP-with-photos export (Phase 1). Pure-Dart; already pulled in via
   # flutter_local_notifications → xml → archive is a different lib.
-  archive: ^4.0.0
+  archive: ^4.6.0
 
   # Opt-in crash reporting + anonymous usage events. Initialised only
   # when the user explicitly flips the toggle in Me → Privacy & data
@@ -68,23 +68,23 @@ dependencies:
   # Web build only: IndexedDB photo store + anchor-click downloads
   # (lib/**/*_web.dart behind conditional imports). Already transitive
   # via drift/sqlite3; listed so the direct imports are legal.
-  web: ^1.1.1
+  web: ^1.1.2
   http: ^1.6.0
   http_parser: ^4.1.2
   flutter_secure_storage: ^10.3.4
-  app_links: ^7.2.1
-  url_launcher: ^6.3.2
+  app_links: ^7.2.2
+  url_launcher: ^6.3.3
   in_app_purchase: ^3.3.1
-  in_app_purchase_android: ^0.5.3
+  in_app_purchase_android: ^0.5.5
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-  drift_dev: ^2.21.0
-  build_runner: ^2.4.13
+  drift_dev: ^2.34.0
+  build_runner: ^2.15.1
   # test/flutter_test_config.dart overrides sqlite3 lookup path on Linux
-  sqlite3: ^2.4.7
+  sqlite3: ^3.5.2
   # Generates launcher icons (legacy + Android adaptive) from assets/launcher.
   # Run: dart run flutter_launcher_icons
   flutter_launcher_icons: ^0.14.1
