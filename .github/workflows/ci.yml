@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -57,7 +57,7 @@ jobs:
     timeout-minutes: 30
     needs: [analyze]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -71,7 +71,7 @@ jobs:
       # (masterImage / testImage / isolatedDiff). Keep them for the PR author.
       - name: Upload golden failure diffs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: golden-failures
           path: test/**/failures/**
@@ -87,8 +87,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: python3 --version
@@ -116,7 +116,7 @@ jobs:
     timeout-minutes: 30
     needs: [analyze, test]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -142,7 +142,7 @@ jobs:
           REL_ID="${GITHUB_SHA::8}$(printf '%x' "$GITHUB_RUN_ID")"
           python3 tool/web_version_assets.py build/web "$REL_ID"
           cat build/web/version.json; echo
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: web-build
           path: build/web/
@@ -160,8 +160,8 @@ jobs:
     needs: [analyze, test]
     if: github.event_name != 'push'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"

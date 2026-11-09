@@ -30,7 +30,7 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -44,7 +44,7 @@ jobs:
         run: |
           cd build/ios/iphoneos
           zip -qr "$RUNNER_TEMP/Runner.app.zip" Runner.app
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ios-unsigned-runner-app
           path: ${{ runner.temp }}/Runner.app.zip
